@@ -68,7 +68,7 @@ describe("mobile session review", () => {
     ]);
     expect(metrics.find((m) => m.label === "dispersion width")).toMatchObject({
       value: "16",
-      detail: "Middle 80% of 3 measured side readings",
+      detail: "Middle 80% of 3 reported side readings",
     });
     expect(metrics.find((m) => m.label === "ball speed")).toMatchObject({ value: "105.0" });
     expect(metrics.find((m) => m.label === "smash factor")).toMatchObject({ value: "1.40" });

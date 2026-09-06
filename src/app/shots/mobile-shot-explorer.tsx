@@ -1,4 +1,5 @@
 "use client";
+import { ShotFlightEvidence } from "@/components/analysis/shot-flight-evidence";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -114,7 +115,7 @@ export function MobileShotExplorer({
                 type="button"
                 className="mobile-shot-row"
                 onClick={() => setSelectedId(shot.id)}
-                aria-label={`${shot.clubTypeLabel}, ${shot.carryYd !== null ? `${Math.round(shot.carryYd)} yards carry` : "carry not recorded"}, ${shot.evidenceStatus}, view shot`}
+                aria-label={`${shot.clubTypeLabel}, ${shot.carryYd !== null ? `${Math.round(shot.carryYd)} yards carry` : "carry not recorded"}, ${shot.evidenceStatus === "trusted" ? "included" : "needs review"}, view shot`}
               >
                 <span className="min-w-0">
                   <span className="block font-semibold">{shot.clubTypeLabel}</span>
@@ -124,7 +125,7 @@ export function MobileShotExplorer({
                   <MobileStatus
                     label={
                       shot.evidenceStatus === "trusted"
-                        ? "Trusted"
+                        ? "Included"
                         : `${shot.reviewStatusLabel} · not trusted`
                     }
                     tone={shot.evidenceStatus === "trusted" ? "positive" : "attention"}
@@ -223,11 +224,18 @@ export function MobileShotExplorer({
                   </div>
                 ))}
               </dl>
+              {selected.flightEvidence && (
+                <ShotFlightEvidence
+                  evidence={selected.flightEvidence}
+                  sessionId={selected.sessionId}
+                  shotId={selected.id}
+                />
+              )}
               <MobileSection title="Evidence">
                 <MobileStatus
                   label={
                     selected.evidenceStatus === "trusted"
-                      ? "Trusted"
+                      ? "Included"
                       : `${selected.reviewStatusLabel} · not trusted`
                   }
                   tone={selected.evidenceStatus === "trusted" ? "positive" : "attention"}

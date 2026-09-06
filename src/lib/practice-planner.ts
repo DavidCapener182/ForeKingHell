@@ -1,3 +1,4 @@
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import "server-only";
 
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
@@ -2804,10 +2805,10 @@ async function getImportedPracticeSessionSummary(
       shotAt: shots.shotAt,
       carryYd: shots.carryYd,
       totalYd: shots.totalYd,
-      offlineYd: shots.sideCarryYd,
-      launchDirectionDeg: shots.launchDirectionDeg,
-      clubPathDeg: shots.clubPathDeg,
-      faceAngleDeg: shots.faceAngleDeg,
+      offlineYd: directionalMetricSql(shots.sideCarryYd),
+      launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
+      clubPathDeg: directionalMetricSql(shots.clubPathDeg),
+      faceAngleDeg: directionalMetricSql(shots.faceAngleDeg),
       ballSpeedMph: shots.ballSpeedMph,
       clubSpeedMph: shots.clubSpeedMph,
       reviewStatus: shots.reviewStatus,

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import type { FlightEvidence } from "@/lib/session-data-confidence";
+import { ShotFlightEvidence } from "@/components/analysis/shot-flight-evidence";
 import { Fragment, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import {
   ArrowDown,
@@ -54,6 +56,7 @@ import { isRestorableShotReviewStatus, type ShotReviewStatus } from "@/lib/shot-
 import { cn } from "@/lib/utils";
 
 export type ShotMasterDetailRow = {
+  flightEvidence?: FlightEvidence;
   id: string;
   sessionId: string;
   shotAtLabel: string;
@@ -668,7 +671,7 @@ function EvidenceBadge({ status }: { status: ShotMasterDetailRow["evidenceStatus
       ) : (
         <ShieldAlert className="size-3" aria-hidden />
       )}
-      {status === "trusted" ? "Trusted" : "Review"}
+      {status === "trusted" ? "Included" : "Review"}
     </Badge>
   );
 }
@@ -806,10 +809,22 @@ export function SelectedShotDetail({
               <DetailPair label="Spin" value={`${shot.spinRateLabel} rpm`} />
               <DetailPair label="Attack" value={`${shot.attackLabel}°`} />
               <DetailPair label="Path" value={`${shot.pathLabel}°`} />
-              <DetailPair label="Face" value={`${shot.faceLabel}°`} />
+              <DetailPair
+                label={shot.flightEvidence?.faceSource === "modelled" ? "Modelled face" : "Face"}
+                value={`${shot.faceLabel}°`}
+              />
+              <DetailPair label="Spin axis" value={`${shot.spinAxisLabel}°`} />
               <DetailPair label="Smash" value={shot.smashLabel} />
             </dl>
           </DetailSection>
+
+          {shot.flightEvidence && (
+            <ShotFlightEvidence
+              evidence={shot.flightEvidence}
+              sessionId={shot.sessionId}
+              shotId={shot.id}
+            />
+          )}
 
           <DetailSection
             title="Evidence read"
@@ -817,7 +832,7 @@ export function SelectedShotDetail({
           >
             <p className="text-sm leading-6 text-muted-foreground">
               {shot.evidenceStatus === "trusted"
-                ? "This row is eligible for trusted bag and record calculations."
+                ? "This row passes shot inclusion checks. Individual metrics can still have limited confidence; see Flight evidence."
                 : "This row remains visible in raw analysis but is not eligible for trusted calculations."}
             </p>
             {shot.evidenceReasons.length > 0 ? (
@@ -934,18 +949,21 @@ function BallFlightVisual({ shot }: { shot: ShotMasterDetailRow }) {
     <div className="overflow-hidden rounded-xl border bg-muted/25 p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold">Ball flight</p>
+          <p className="text-xs font-semibold">Illustrative flight</p>
           <p className="text-[11px] text-muted-foreground">
             {shot.shotShapeLabel} · {shot.apexLabel} ft apex
           </p>
         </div>
-        <Badge variant="outline">Trajectory</Badge>
+        <Badge variant="outline">Illustration</Badge>
       </div>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        The curve is illustrative; its shape does not validate the reported finish.
+      </p>
       <svg
         viewBox="0 0 340 112"
         className="mt-2 h-24 w-full"
         role="img"
-        aria-label={`${shot.shotShapeLabel} trajectory`}
+        aria-label={`Illustrative arc, not a measured trajectory. Reported side ${shot.sideLabel} yards.`}
       >
         <line x1="18" x2="322" y1="92" y2="92" className="stroke-border" />
         <line x1="170" x2="170" y1="14" y2="96" className="stroke-border" strokeDasharray="3 5" />

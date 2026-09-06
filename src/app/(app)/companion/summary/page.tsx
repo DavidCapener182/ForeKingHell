@@ -1,3 +1,4 @@
+import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
@@ -56,6 +57,7 @@ export default async function CompanionSummaryPage({
             />
           )}
         </IOSGroupedList>
+        {from.startsWith("/coach") && <DriverDevelopmentPanel compact />}
         <Button asChild variant="outline" className="min-h-11 rounded-xl">
           <AppSurfaceLink href={`/surface/workbench?next=${encodeURIComponent(from)}`}>
             Open full desktop site

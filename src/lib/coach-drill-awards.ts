@@ -1,3 +1,4 @@
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
@@ -190,13 +191,13 @@ async function loadCoachDrillShots(challenges: CoachDrillChallenge[], userId: st
           qualityTag: shots.qualityTag,
           reviewStatus: shots.reviewStatus,
           carryYd: shots.carryYd,
-          sideCarryYd: shots.sideCarryYd,
+          sideCarryYd: directionalMetricSql(shots.sideCarryYd),
           launchAngleDeg: shots.launchAngleDeg,
-          launchDirectionDeg: shots.launchDirectionDeg,
+          launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
           ballSpeedMph: shots.ballSpeedMph,
           clubSpeedMph: shots.clubSpeedMph,
           smashFactor: shots.smashFactor,
-          clubPathDeg: shots.clubPathDeg,
+          clubPathDeg: directionalMetricSql(shots.clubPathDeg),
         })
         .from(shots)
         .where(

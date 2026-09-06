@@ -1,5 +1,7 @@
 import "server-only";
 
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
+
 import { and, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 
 import { clubs, sessions, shots } from "@/db/schema";
@@ -129,7 +131,7 @@ export async function getShotPattern(request: ShotPatternRequest): Promise<ShotP
       clubType: shots.clubType,
       carryYd: shots.carryYd,
       totalYd: shots.totalYd,
-      sideCarryYd: shots.sideCarryYd,
+      sideCarryYd: directionalMetricSql(shots.sideCarryYd),
       shotAt: shots.shotAt,
       reviewStatus: shots.reviewStatus,
       shotCategory: shots.shotCategory,
@@ -320,7 +322,7 @@ export function filterShotPatternRawShots(
     }
 
     const distanceYd = shotDistanceForMode(shot, mode);
-    const sideYd = shot.sideCarryYd ?? 0;
+    const sideYd = shot.sideCarryYd;
 
     return (
       isFiniteNumber(distanceYd) &&

@@ -4,6 +4,10 @@ import type { PracticePlannerContext } from "@/lib/practice-planner";
 import type { TodayPracticeData, TodayPracticeShot } from "@/lib/today-session-data";
 import { buildMobileTodayReview, practiceDateKey } from "@/lib/mobile-today-review";
 
+// The shared async evidence panel has its own metric and rendering tests.
+vi.mock("@/components/analysis/driver-development-panel", () => ({
+  DriverDevelopmentPanel: () => <div>Driver development evidence</div>,
+}));
 vi.mock("@/lib/current-user", () => ({ requireCurrentUserId: async () => "owner" }));
 vi.mock("@/lib/practice-planner", () => ({
   getPracticePlannerContext: vi.fn(),

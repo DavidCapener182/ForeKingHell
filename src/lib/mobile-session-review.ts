@@ -59,7 +59,7 @@ export function mobileSessionMetrics(shots: SessionStoryShot[]) {
       label: "dispersion width",
       value: String(Math.round(percentile(sides, 0.9) - percentile(sides, 0.1))),
       unit: "yd",
-      detail: `Middle 80% of ${sides.length} measured side readings`,
+      detail: `Middle 80% of ${sides.length} reported side readings`,
     });
   for (const [label, key, unit, digits] of [
     ["ball speed", "ballSpeedMph", "mph", 1],

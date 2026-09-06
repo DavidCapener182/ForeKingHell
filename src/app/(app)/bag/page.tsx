@@ -1,3 +1,5 @@
+import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import { MobileLargeTitle } from "@/components/app/mobile-screen";
 import { MobileBagDistanceExplorer } from "@/app/bag/mobile-bag-distance-explorer";
 import { MobileBagLadder } from "@/app/bag/mobile-bag-ladder";
@@ -277,16 +279,16 @@ const bagShotSelect = {
   shotAt: shots.shotAt,
   carryYd: shots.carryYd,
   totalYd: shots.totalYd,
-  sideCarryYd: shots.sideCarryYd,
+  sideCarryYd: directionalMetricSql(shots.sideCarryYd),
   ballSpeedMph: shots.ballSpeedMph,
   clubSpeedMph: shots.clubSpeedMph,
   launchAngleDeg: shots.launchAngleDeg,
-  launchDirectionDeg: shots.launchDirectionDeg,
+  launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
   apexFt: shots.apexFt,
   descentAngleDeg: shots.descentAngleDeg,
   attackAngleDeg: shots.attackAngleDeg,
-  clubPathDeg: shots.clubPathDeg,
-  faceAngleDeg: shots.faceAngleDeg,
+  clubPathDeg: directionalMetricSql(shots.clubPathDeg),
+  faceAngleDeg: directionalMetricSql(shots.faceAngleDeg),
   clubDataEstType: shots.clubDataEstType,
   spinRate: shots.spinRate,
   smashFactor: shots.smashFactor,
@@ -343,6 +345,7 @@ async function BagCompanionPage({
           accountId={accountId}
         />
       </div>
+      <DriverDevelopmentPanel compact />
     </PageShell>
   );
 }
@@ -546,6 +549,7 @@ async function BagWorkbenchPage({
           )}
         </DesktopWorkbenchLayout>
       </div>
+      <DriverDevelopmentPanel compact />
     </PageShell>
   );
 }
@@ -2825,7 +2829,7 @@ async function getPeerBenchmarkSummary(
       shotAt: shots.shotAt,
       carryYd: shots.carryYd,
       totalYd: shots.totalYd,
-      sideCarryYd: shots.sideCarryYd,
+      sideCarryYd: directionalMetricSql(shots.sideCarryYd),
       ballSpeedMph: shots.ballSpeedMph,
       clubSpeedMph: shots.clubSpeedMph,
       launchAngleDeg: shots.launchAngleDeg,

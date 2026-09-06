@@ -1,4 +1,5 @@
 import "server-only";
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, or, type SQL } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -812,8 +813,8 @@ async function calculateImportedChallengeAttemptState(
       clubType: shots.clubType,
       carryYd: shots.carryYd,
       totalYd: shots.totalYd,
-      sideCarryYd: shots.sideCarryYd,
-      launchDirectionDeg: shots.launchDirectionDeg,
+      sideCarryYd: directionalMetricSql(shots.sideCarryYd),
+      launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
       shotCategory: shots.shotCategory,
       qualityTag: shots.qualityTag,
       reviewStatus: shots.reviewStatus,

@@ -1,3 +1,4 @@
+import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
@@ -333,6 +334,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   return (
     <PageShell size="full" className="today-review-page" contentClassName="pb-4 sm:pb-5">
       <TodayHoverStyles comparisons={data.clubComparisons} />
+      <DriverDevelopmentPanel date={data.dateKey} compact />
       <TodayDesktopDashboard
         data={data}
         socialContext={socialContext}

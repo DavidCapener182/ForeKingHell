@@ -1,3 +1,4 @@
+import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import {
@@ -237,6 +238,8 @@ export default async function DashboardPage() {
             detail: metric.detail,
           }))}
         />
+
+        <DriverDevelopmentPanel compact />
 
         <DriverStatusPanel pathTrend={data.pathTrend} />
 

@@ -1,3 +1,4 @@
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import { clubs, sessions, shots } from "@/db/schema";
@@ -60,15 +61,15 @@ export async function getProgressData(userId?: string): Promise<ProgressData> {
           shotAt: shots.shotAt,
           carryYd: shots.carryYd,
           totalYd: shots.totalYd,
-          sideCarryYd: shots.sideCarryYd,
+          sideCarryYd: directionalMetricSql(shots.sideCarryYd),
           ballSpeedMph: shots.ballSpeedMph,
           clubSpeedMph: shots.clubSpeedMph,
           launchAngleDeg: shots.launchAngleDeg,
-          launchDirectionDeg: shots.launchDirectionDeg,
+          launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
           apexFt: shots.apexFt,
           attackAngleDeg: shots.attackAngleDeg,
-          clubPathDeg: shots.clubPathDeg,
-          faceAngleDeg: shots.faceAngleDeg,
+          clubPathDeg: directionalMetricSql(shots.clubPathDeg),
+          faceAngleDeg: directionalMetricSql(shots.faceAngleDeg),
           descentAngleDeg: shots.descentAngleDeg,
           smashFactor: shots.smashFactor,
           spinRate: shots.spinRate,

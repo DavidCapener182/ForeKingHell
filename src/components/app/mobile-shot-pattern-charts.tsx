@@ -91,7 +91,7 @@ export function MobileShotPatternCharts({
   if (clubs.length === 0) {
     return (
       <AppEmptyState
-        title="No measured landing data"
+        title="No reported landing data"
         description="Import a measured session with carry and lateral coordinates to unlock the shot pattern."
         primaryAction={
           <Button asChild size="sm">
@@ -154,7 +154,7 @@ export function MobileShotPatternCharts({
       {!compact ? (
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
           <p className="text-xs text-muted-foreground">
-            {confidence.sampleSize} measured landing points · {confidence.label} confidence
+            {confidence.sampleSize} reported landing points · {confidence.label} sample coverage
           </p>
           <MobileSegmentedControl
             value={trustedOnly ? "trusted" : "all"}

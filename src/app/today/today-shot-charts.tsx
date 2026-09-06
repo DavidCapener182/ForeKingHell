@@ -455,19 +455,18 @@ function ChartPanel({
 }) {
   const confidence =
     sampleSize >= 30
-      ? "High confidence"
+      ? "High sample coverage"
       : sampleSize >= 12
-        ? "Moderate confidence"
+        ? "Moderate sample coverage"
         : sampleSize > 0
-          ? "Low confidence"
+          ? "Low sample coverage"
           : "Insufficient evidence";
 
   return (
     <ChartSurface
       title={title}
       description={detail}
-      metadata={`${sampleSize} measured shot${sampleSize === 1 ? "" : "s"} · current review filter`}
-      confidence={confidence}
+      metadata={`${sampleSize} reported shot${sampleSize === 1 ? "" : "s"} · ${confidence} · current review filter`}
       className={className}
       chartClassName={chartClassName}
       emptyState={

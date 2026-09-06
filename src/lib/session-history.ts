@@ -1,5 +1,7 @@
 import "server-only";
 
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
+
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import type { SessionTimelineItem } from "@/app/sessions/session-timeline";
@@ -73,10 +75,10 @@ export async function getRecentSessionHistory(
           clubType: shots.clubType,
           carryYd: shots.carryYd,
           totalYd: shots.totalYd,
-          sideCarryYd: shots.sideCarryYd,
+          sideCarryYd: directionalMetricSql(shots.sideCarryYd),
           apexFt: shots.apexFt,
           launchAngleDeg: shots.launchAngleDeg,
-          launchDirectionDeg: shots.launchDirectionDeg,
+          launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
           ballSpeedMph: shots.ballSpeedMph,
           shotNumber: shots.shotNumber,
           shotAt: shots.shotAt,

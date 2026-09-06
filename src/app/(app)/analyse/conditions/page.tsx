@@ -1,3 +1,4 @@
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import Link from "next/link";
 import { and, count, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { ArrowLeft, ArrowRight, CloudSun, Database, ShieldAlert } from "lucide-react";
@@ -265,7 +266,7 @@ async function getConditionsData(requestedClubId?: string) {
     .select({
       sessionId: shots.sessionId,
       carryYd: shots.carryYd,
-      sideCarryYd: shots.sideCarryYd,
+      sideCarryYd: directionalMetricSql(shots.sideCarryYd),
       playContext: shots.playContext,
       location: sessions.location,
       weather: sessions.weatherJson,

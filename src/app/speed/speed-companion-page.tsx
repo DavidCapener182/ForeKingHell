@@ -1,3 +1,4 @@
+import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import { resolveMobileSpeedSaveReceipt } from "@/lib/mobile-speed-save-receipt";
 import Link from "next/link";
 import { mobileSpeedPlanForTransfer } from "@/lib/mobile-speed-plan";
@@ -176,6 +177,7 @@ export default async function SpeedCompanionPage({
           </Link>
         </MobileSection>
       </div>
+      <DriverDevelopmentPanel compact />
     </PageShell>
   );
 }

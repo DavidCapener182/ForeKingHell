@@ -1846,6 +1846,10 @@ export const sessions = pgTable(
       }>()
       .notNull()
       .default({}),
+    dataConfidenceJson: jsonb("data_confidence_json")
+      .$type<import("@/lib/session-data-confidence").SessionDataConfidence>()
+      .notNull()
+      .default({}),
     equipmentNotes: text("equipment_notes"),
     scorecardJson: jsonb("scorecard_json").$type<
       Array<{

@@ -1,4 +1,5 @@
 import "server-only";
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -193,7 +194,7 @@ export async function buildFeatureIdeasDataForUser(userId: string) {
         shotAt: shots.shotAt,
         carryYd: shots.carryYd,
         totalYd: shots.totalYd,
-        sideCarryYd: shots.sideCarryYd,
+        sideCarryYd: directionalMetricSql(shots.sideCarryYd),
         ballSpeedMph: shots.ballSpeedMph,
         launchAngleDeg: shots.launchAngleDeg,
         shotCategory: shots.shotCategory,

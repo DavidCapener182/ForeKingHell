@@ -1,3 +1,4 @@
+import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import { PracticePlannerClient } from "@/app/practice/practice-planner-client";
 import { PageShell } from "@/components/premium";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -56,6 +57,7 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
         latestSessionReview={latestSessionReview}
         initialOptions={initialOptions}
       />
+      <DriverDevelopmentPanel compact />
     </PageShell>
   );
 }

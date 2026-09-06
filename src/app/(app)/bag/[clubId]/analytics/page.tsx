@@ -1,3 +1,4 @@
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -756,7 +757,7 @@ async function getClubAnalyticsData(clubId: string) {
         shotAt: shots.shotAt,
         carryYd: shots.carryYd,
         totalYd: shots.totalYd,
-        sideCarryYd: shots.sideCarryYd,
+        sideCarryYd: directionalMetricSql(shots.sideCarryYd),
         ballSpeedMph: shots.ballSpeedMph,
         launchAngleDeg: shots.launchAngleDeg,
         reviewStatus: shots.reviewStatus,
@@ -818,15 +819,15 @@ function analyticsShotSelection() {
     shotAt: shots.shotAt,
     carryYd: shots.carryYd,
     totalYd: shots.totalYd,
-    sideCarryYd: shots.sideCarryYd,
+    sideCarryYd: directionalMetricSql(shots.sideCarryYd),
     ballSpeedMph: shots.ballSpeedMph,
     clubSpeedMph: shots.clubSpeedMph,
     launchAngleDeg: shots.launchAngleDeg,
-    launchDirectionDeg: shots.launchDirectionDeg,
+    launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
     apexFt: shots.apexFt,
     attackAngleDeg: shots.attackAngleDeg,
-    clubPathDeg: shots.clubPathDeg,
-    faceAngleDeg: shots.faceAngleDeg,
+    clubPathDeg: directionalMetricSql(shots.clubPathDeg),
+    faceAngleDeg: directionalMetricSql(shots.faceAngleDeg),
     descentAngleDeg: shots.descentAngleDeg,
     smashFactor: shots.smashFactor,
     spinRate: shots.spinRate,

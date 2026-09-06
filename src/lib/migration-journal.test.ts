@@ -15,6 +15,6 @@ describe("Drizzle migration journal", () => {
       expect(existsSync(resolve(root, `drizzle/${entry.tag}.sql`))).toBe(true);
     }
 
-    expect(journal.entries.at(-1)?.tag).toBe("0058_shot_mutation_security_boundary");
+    expect(journal.entries.at(-1)?.tag).toBe("0059_session_data_confidence");
   });
 });

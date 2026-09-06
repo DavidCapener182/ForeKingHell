@@ -1,5 +1,7 @@
 "use server";
 
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
+
 import { redirect } from "next/navigation";
 import { readMobileSpeedSaveReceipt } from "@/lib/mobile-speed-save-receipt";
 import { revalidatePath } from "next/cache";
@@ -378,7 +380,7 @@ export async function saveSpeedTransferTestAction(formData: FormData) {
       reviewStatus: shots.reviewStatus,
       qualityTag: shots.qualityTag,
       shotCategory: shots.shotCategory,
-      sideCarryYd: shots.sideCarryYd,
+      sideCarryYd: directionalMetricSql(shots.sideCarryYd),
     })
     .from(shots)
     .innerJoin(practiceSessions, eq(shots.sessionId, practiceSessions.id))
@@ -418,7 +420,7 @@ export async function saveSpeedTransferTestAction(formData: FormData) {
   );
   const priorDriverRows = await db
     .select({
-      sideCarryYd: shots.sideCarryYd,
+      sideCarryYd: directionalMetricSql(shots.sideCarryYd),
       reviewStatus: shots.reviewStatus,
       qualityTag: shots.qualityTag,
       shotCategory: shots.shotCategory,

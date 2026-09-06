@@ -1,3 +1,4 @@
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 
 import { QuickBagClient, type QuickBagClub } from "@/app/quick-bag/quick-bag-client";
@@ -86,7 +87,7 @@ async function getQuickBag(userId: string): Promise<QuickBagClub[]> {
             clubId: shots.clubId,
             clubType: shots.clubType,
             carryYd: shots.carryYd,
-            sideCarryYd: shots.sideCarryYd,
+            sideCarryYd: directionalMetricSql(shots.sideCarryYd),
             apexFt: shots.apexFt,
             shotAt: shots.shotAt,
             reviewStatus: shots.reviewStatus,

@@ -1,3 +1,4 @@
+import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import { ProgressCompanion } from "@/app/progress/progress-companion";
 import { getUserHandicapProfile } from "@/lib/handicap-data";
 import Link from "next/link";
@@ -101,6 +102,7 @@ export default async function ProgressPage() {
           handicap={handicap}
           latestReview={reviews[0] ?? null}
         />
+        <DriverDevelopmentPanel compact />
       </PageShell>
     );
   }
@@ -221,6 +223,7 @@ export default async function ProgressPage() {
           </Tabs>
         )}
       </main>
+      <DriverDevelopmentPanel compact />
     </PageShell>
   );
 }
