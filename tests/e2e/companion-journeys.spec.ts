@@ -143,7 +143,7 @@ test.describe("phone companion journeys", () => {
     await expect(page.getByRole("link", { name: /Bag confidence|Shot rows/i })).toHaveCount(0);
 
     await page.goto("/sessions", { waitUntil: "commit" });
-    await expectPageReady(page, /Your golf history/i);
+    await expectPageReady(page, /Sessions/i);
     await page.getByRole("button", { name: "Practice", exact: true }).click();
     const measuredReview = page.locator(`a[href="/sessions/${savedSessionId}"]`).first();
     await expect(measuredReview).toBeVisible();
@@ -215,7 +215,7 @@ test.describe("phone companion journeys", () => {
   });
 
   test("local companion controls preserve the current document", async ({ page }) => {
-    await openCompanion(page, "/sessions", /Your golf history/i);
+    await openCompanion(page, "/sessions", /Sessions/i);
     const sessionsDocument = await markCurrentDocument(page);
     const sessionsUrl = page.url();
     await page.getByRole("radio", { name: "Practice", exact: true }).click();

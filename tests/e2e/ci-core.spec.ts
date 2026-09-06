@@ -19,16 +19,16 @@ test.describe("clean-database companion smoke", () => {
     await expect(primaryNavigation).toBeVisible();
     await expect(primaryNavigation.getByRole("link")).toHaveText([
       "Today",
+      "Sessions",
       "Practice",
       "Play",
-      "Progress",
       "Bag",
     ]);
 
     for (const destination of [
       { navigationLabel: "Practice", routeLabel: "Practice", path: /\/practice(?:\?|$)/ },
       { navigationLabel: "Play", routeLabel: "Play", path: /\/play(?:\?|$)/ },
-      { navigationLabel: "Progress", routeLabel: "Progress", path: /\/progress(?:\?|$)/ },
+      { navigationLabel: "Sessions", routeLabel: "Sessions", path: /\/sessions(?:\?|$)/ },
       { navigationLabel: "Bag", routeLabel: "Bag", path: /\/bag(?:\?|$)/ },
     ]) {
       await primaryNavigation
@@ -43,7 +43,7 @@ test.describe("clean-database companion smoke", () => {
         .or(page.getByRole("tablist", { name: "Bag views" })),
     ).toBeVisible();
 
-    await page.getByRole("button", { name: /Open profile and navigation/ }).click();
+    await page.getByRole("button", { name: /Open more tools and profile/ }).click();
     await page
       .getByRole("dialog")
       .getByRole("link", { name: "Import & Sync", exact: true })

@@ -143,11 +143,11 @@ test.describe("authenticated app flows", () => {
     await expectPageReady(page, /Shot explorer/i);
     const navigation = page.getByRole("navigation", { name: "Mobile primary" });
     await expect(navigation).toBeVisible();
-    await expect(navigation.getByRole("link", { name: "Review" })).toHaveAttribute(
+    await expect(navigation.getByRole("link", { name: "Sessions" })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    await expect(page.getByRole("button", { name: /Open profile and navigation/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Open more tools and profile/i })).toBeVisible();
     await expect(page.getByRole("link", { name: "Open Full Site" })).toBeVisible();
   });
 

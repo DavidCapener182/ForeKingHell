@@ -81,7 +81,7 @@ test.describe("companion and workbench density contract", () => {
       {
         name: "sessions",
         route: "/sessions",
-        ready: /Your golf history/i,
+        ready: /Sessions/i,
         answer: '[role="radiogroup"][aria-label="Session type"]',
       },
     ];
