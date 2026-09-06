@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, MoreHorizontal, Search, Upload, UserRound, X } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Search, Upload, X } from "lucide-react";
 
 import {
   mobileMoreGroups,
@@ -176,9 +176,9 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                   variant="ghost"
                   size="icon"
                   className="ios-nav-button focus-aaa relative z-10 size-11"
-                  aria-label={`Open profile and navigation for ${profileLabel}`}
+                  aria-label={`Open more tools and profile for ${profileLabel}`}
                 >
-                  <UserRound className="size-5" aria-hidden />
+                  <MoreHorizontal className="size-5" aria-hidden />
                 </Button>
               </SheetTrigger>
             )}
@@ -195,7 +195,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
               <SheetHeader className="ios-sheet-header border-b px-4 pb-3 pt-2 text-left">
                 <div className="min-w-0 pr-10">
                   <SheetTitle className="text-[1.375rem] font-bold tracking-tight">
-                    Profile &amp; tools
+                    Your golf
                   </SheetTitle>
                   <SheetDescription className="mt-0.5 truncate">
                     {profileLabel} · Level {level} · {xpFormatter.format(totalXp)} XP
@@ -223,7 +223,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                     type="search"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Search companion actions"
+                    placeholder="Find a page or tool"
                     className="ios-sheet-search focus-aaa min-h-11 w-full py-2.5 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground"
                   />
                 </label>

@@ -1,5 +1,5 @@
 const prefix = "fkh:mobile-tab-scroll:";
-const roots = new Set(["/today", "/practice", "/play", "/progress", "/bag"]);
+const roots = new Set(["/today", "/sessions", "/practice", "/play", "/bag"]);
 const historyField = "__fkhMobileScroll";
 
 /** Match useSearchParams serialization, including spaces in mobile search deep links. */
@@ -17,7 +17,13 @@ export function mobileHistoryScrollKey(location: string, state = window.history.
 }
 
 export function createMobileHistoryEntry(location: string) {
-  const id = crypto.randomUUID();
+  // History markers also run on local HTTP previews, where randomUUID is unavailable.
+  const id =
+    typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+          byte.toString(16).padStart(2, "0"),
+        ).join("");
   const key = `${prefix}history:${id}`;
   preserveMobileHistoryEntry(location, key);
   return key;

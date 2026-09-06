@@ -39,7 +39,7 @@ export function MobileSessionStory({
               onChange={(event) => {
                 const url = new URL(window.location.href);
                 url.searchParams.set("club", event.target.value);
-                window.history.replaceState(null, "", url);
+                window.history.replaceState(window.history.state, "", url);
               }}
             >
               {groups.map((candidate) => (
@@ -83,11 +83,13 @@ export function MobileSessionStory({
 export function MobileSessionPattern({
   points,
   preferredClub,
+  initiallyOpen = false,
 }: {
   points: ShotPatternPoint[];
   preferredClub: string | null;
+  initiallyOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
   const id = useId();
   const query = useSearchParams();
   const requested = query.get("club");

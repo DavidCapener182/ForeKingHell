@@ -107,7 +107,7 @@ describe("SessionTimeline golf history", () => {
   });
 
   it("keeps URL-backed All, Practice and Rounds controls on both surfaces", () => {
-    expect(companionListSource).toContain("Your golf history");
+    expect(companionListSource).toContain('title="Sessions"');
     expect(timelineSource).toContain("<Tabs");
     expect(timelineSource).toContain("<TabsList");
     expect(timelineSource).toContain('<TabsTrigger value="all">All</TabsTrigger>');
@@ -117,7 +117,7 @@ describe("SessionTimeline golf history", () => {
     expect(companionListSource).toContain('{ value: "all", label: "All" }');
     expect(companionListSource).toContain('{ value: "practice", label: "Practice" }');
     expect(companionListSource).toContain('{ value: "round", label: "Rounds" }');
-    expect(companionListSource).toContain("<StatusTimeline");
+    expect(companionListSource).toContain('aria-label="Session history"');
     expect(timelineSource).toContain("useSessionHistoryUrlState");
     expect(companionListSource).toContain("useSessionHistoryUrlState");
     expect(companionListSource).toContain("filters.sessionId");
@@ -177,9 +177,7 @@ describe("SessionTimeline golf history", () => {
     expect(workbenchMarkup).toContain('aria-pressed="true"');
     expect(companionMarkup).toContain("Focused · 21 shots");
     expect(
-      companionMarkup.match(
-        /<article[^>]*data-timeline-featured="true"[^>]*>[\s\S]*?<\/article>/,
-      )?.[0],
+      companionMarkup.match(/<a[^>]*data-session-focused="true"[^>]*>[\s\S]*?<\/a>/)?.[0],
     ).toContain("A deliberately long session name 1");
   });
 

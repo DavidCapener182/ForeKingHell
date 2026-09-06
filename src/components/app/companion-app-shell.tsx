@@ -53,7 +53,7 @@ export function CompanionAppShell({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      for (const href of ["/today", "/practice", "/play", "/progress", "/bag"]) {
+      for (const href of ["/today", "/sessions", "/practice", "/play", "/bag"]) {
         router.prefetch(href);
       }
     }, 450);

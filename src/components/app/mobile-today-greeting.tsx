@@ -13,16 +13,6 @@ export function MobileTodayGreeting({ initialNow }: { initialNow: string }) {
       clearInterval(interval);
     };
   }, []);
-  const hour = Number(
-    new Intl.DateTimeFormat("en-GB", {
-      hour: "numeric",
-      hourCycle: "h23",
-      timeZone: "Europe/London",
-    })
-      .formatToParts(now)
-      .find((part) => part.type === "hour")?.value,
-  );
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   return (
     <MobileLargeTitle
       title="Today"
@@ -32,7 +22,6 @@ export function MobileTodayGreeting({ initialNow }: { initialNow: string }) {
         month: "long",
         timeZone: "Europe/London",
       }).format(now)}
-      detail={greeting}
     />
   );
 }

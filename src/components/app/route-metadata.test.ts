@@ -48,6 +48,11 @@ describe("central route metadata", () => {
   });
 
   it("keeps pushed mobile detail screens on a single logical back hierarchy", () => {
+    expect(mobileBackNavigation("/sessions")).toBeNull();
+    expect(mobileBackNavigation("/sessions/session-1")).toEqual({
+      href: "/sessions",
+      label: "Sessions",
+    });
     expect(mobileBackNavigation("/challenges/challenge-1")).toEqual({
       href: "/challenges",
       label: "Challenges",

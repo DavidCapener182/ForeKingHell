@@ -117,9 +117,9 @@ export function buildDesktopNavGroups(isAdmin: boolean): AppNavGroup[] {
 
 const mobilePrimaryDefinitions = [
   { id: "today", label: "Today", group: "today" },
+  { id: "sessions", label: "Sessions", group: "review" },
   { id: "practice", label: "Practice", group: "practice" },
   { id: "play-companion", label: "Play", group: "strategy" },
-  { id: "progress", label: "Progress", group: "review" },
   { id: "bag", label: "Bag", group: "bag" },
 ] as const;
 
@@ -137,7 +137,7 @@ export const mobilePrimaryItems: AppNavItem[] = mobilePrimaryDefinitions.map(
 const mobileMoreGroupOrder = ["Golf", "Compete", "Account"] as const;
 
 const mobileMoreIds = {
-  Golf: ["import", "sessions", "shots", "speed", "training-load", "handicap", "goals"],
+  Golf: ["import", "progress", "shots", "speed", "training-load", "handicap", "goals"],
   Compete: ["challenges", "tournaments", "leaderboard", "achievements"],
   Account: ["profile", "notifications", "settings"],
 } as const;
