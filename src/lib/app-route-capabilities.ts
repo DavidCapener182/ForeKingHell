@@ -10,7 +10,7 @@ export type MobileRouteCapability = {
 
 export const mobileCapabilities = {
   today: companionPrimary(),
-  dashboard: desktopOnly("Today", "/today", "The dashboard is a full analytical command centre."),
+  dashboard: companionMore(),
   sessions: companionPrimary(),
   rounds: { mobileExperience: "summary" },
   import: companionMore(),
@@ -147,7 +147,6 @@ export const mobileCapabilities = {
 const desktopOnlyPrefixes = [
   "/admin",
   "/partners",
-  "/dashboard",
   "/analyse",
   "/compare",
   "/strokes-gained",

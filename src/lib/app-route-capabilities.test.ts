@@ -26,6 +26,8 @@ describe("companion route capabilities", () => {
 
   it("preserves the approved companion and immersive paths", () => {
     expect(isDesktopOnlyCompanionPath("/today")).toBe(false);
+    expect(isDesktopOnlyCompanionPath("/dashboard")).toBe(false);
+    expect(mobileCapabilities.dashboard.mobileExperience).toBe("companion");
     expect(isDesktopOnlyCompanionPath("/practice")).toBe(false);
     expect(isDesktopOnlyCompanionPath("/play/course-id")).toBe(false);
     expect(isDesktopOnlyCompanionPath("/courses/strategy")).toBe(false);

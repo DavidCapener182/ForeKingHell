@@ -8,7 +8,17 @@ import {
   type FacePathDeliveryDatum,
 } from "@/components/visuals/face-path-delivery-chart";
 import { Badge } from "@/components/ui/badge";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Button } from "@/components/ui/button";
+import { UntitledSelect, UntitledTextField } from "@/components/untitled-ui/form-controls";
+import {
+  Sheet,
+  SheetTrigger,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetClose,
+} from "@/components/ui/sheet";
 import type { PathTrendTracking } from "@/lib/bag-intelligence";
 import { getClubDistanceBenchmark, type ClubBenchmarkLevelKey } from "@/lib/club-benchmarks";
 import { cn } from "@/lib/utils";
@@ -35,6 +45,8 @@ export function FacePathClubSelector({
   const clubs = useMemo(() => buildDeliveryClubOptions(pathTrend), [pathTrend]);
   const [selectedClubId, setSelectedClubId] = useState(clubs[0]?.clubId ?? "");
   const selected = clubs.find((club) => club.clubId === selectedClubId) ?? clubs[0] ?? null;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const targetWindow = selected ? benchmarkDeliveryTargetWindow(selected.clubType) : null;
 
   if (!selected) {
@@ -89,33 +101,84 @@ export function FacePathClubSelector({
             </div>
           </div>
 
-          {clubs.length > 1 ? (
-            <ToggleGroup
-              type="single"
+          <div className="hidden lg:block">
+            <UntitledSelect
+              label="Selected club"
+              name="deliveryClub"
               value={selected.clubId}
-              onValueChange={(value) => value && setSelectedClubId(value)}
-              variant="outline"
-              size="sm"
-              aria-label="Club delivery"
-              className="-mx-0.5 w-auto justify-start overflow-x-auto px-0.5 pb-1"
-            >
-              {clubs.map((club) => (
-                <ToggleGroupItem
-                  key={club.clubId}
-                  value={club.clubId}
-                  className="shrink-0 rounded-full px-3 text-xs font-bold leading-4"
-                >
-                  {club.label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          ) : null}
+              onValueChange={setSelectedClubId}
+              options={clubs.map((club) => ({
+                value: club.clubId,
+                label: `${club.label} · ${club.sampleSize} shots`,
+              }))}
+            />
+          </div>
+          <div className="lg:hidden">
+            <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="min-h-11 w-full justify-between">
+                  {selected.label}
+                  <span>Change club</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="bottom"
+                className="max-h-[85dvh] overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]"
+                showCloseButton={false}
+              >
+                <SheetHeader>
+                  <SheetTitle>Choose a club</SheetTitle>
+                  <SheetDescription>
+                    Update the chart, measurements and diagnosis together.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="grid gap-2 px-4">
+                  <UntitledTextField
+                    label="Search clubs"
+                    name="deliverySearch"
+                    type="search"
+                    value={search}
+                    onValueChange={setSearch}
+                  />
+                  {clubs
+                    .filter((club) => club.label.toLowerCase().includes(search.toLowerCase()))
+                    .map((club) => (
+                      <Button
+                        key={club.clubId}
+                        variant={club.clubId === selected.clubId ? "default" : "outline"}
+                        aria-pressed={club.clubId === selected.clubId}
+                        className="h-auto min-h-11 justify-between whitespace-normal text-left"
+                        onClick={() => {
+                          setSelectedClubId(club.clubId);
+                          setPickerOpen(false);
+                        }}
+                      >
+                        <span>{club.label}</span>
+                        <span>{club.sampleSize} shots</span>
+                      </Button>
+                    ))}
+                  {!clubs.some((club) =>
+                    club.label.toLowerCase().includes(search.toLowerCase()),
+                  ) ? (
+                    <p role="status" className="py-4 text-sm">
+                      No matching clubs. Clear the search to see every club.
+                    </p>
+                  ) : null}
+                  <SheetClose asChild>
+                    <Button variant="outline" className="min-h-11">
+                      Close
+                    </Button>
+                  </SheetClose>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
 
-          <div className="grid grid-cols-3 gap-1.5 text-xs font-bold leading-4">
+          <div className="grid gap-2 text-sm sm:grid-cols-3">
             <MetricPill label="Path" value={formatSignedDegrees(selected.pathDeg)} />
             <MetricPill label="Face" value={formatSignedDegrees(selected.faceDeg)} />
             <MetricPill
-              label="F-P"
+              label="Face to path"
               value={formatSignedDegrees(selected.faceToPathDeg)}
               tone="green"
             />
@@ -138,7 +201,7 @@ export function FacePathClubSelector({
           idPrefix={`dashboard-${selected.clubId}`}
           compact={compact}
           chartClassName="bg-background"
-          showAccessibleFallback={!compact}
+          showAccessibleFallback
           showMetricPills={!compact}
           targetWindow={targetWindow ?? undefined}
         />

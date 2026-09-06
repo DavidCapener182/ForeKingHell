@@ -136,10 +136,6 @@ async function refreshSessionAndProtect(request: NextRequest) {
 function protectedAppResponse(request: NextRequest) {
   const deviceType = userAgent(request).device.type;
 
-  if (deviceType === "mobile" && request.nextUrl.pathname === "/dashboard") {
-    return mobileDashboardCompanionResponse(request);
-  }
-
   const surface = resolveAppSurface({
     storedPreference: request.cookies.get(APP_SURFACE_COOKIE)?.value,
     deviceType,
@@ -186,22 +182,6 @@ function companionRuntimePathFor(pathname: string, importSource: string | null) 
   if (pathname === "/import") return "/companion-runtime/import";
   if (pathname === "/rapsodo") return "/companion-runtime/rapsodo";
   return null;
-}
-
-function mobileDashboardCompanionResponse(request: NextRequest) {
-  const todayUrl = request.nextUrl.clone();
-  todayUrl.pathname = "/today";
-  todayUrl.search = "";
-
-  const response = noStore(NextResponse.redirect(todayUrl));
-  response.cookies.set(APP_SURFACE_COOKIE, "companion", {
-    httpOnly: true,
-    maxAge: 60 * 60 * 24 * 365,
-    path: "/",
-    sameSite: "lax",
-    secure: request.nextUrl.protocol === "https:",
-  });
-  return response;
 }
 
 function unauthenticatedResponse(request: NextRequest) {
