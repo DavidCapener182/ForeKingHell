@@ -152,7 +152,9 @@ describe("Clubhouse Manager theme contract", () => {
   });
 
   it("keeps dark hero copy colours out of nested paper metric tiles", () => {
-    expect(premium).toContain("data-page-header-copy");
+    const header = readFileSync(join(root, "src/components/untitled-ui/headers.tsx"), "utf8");
+    expect(premium).toContain("UntitledPageHeader as PageHeader");
+    expect(header).not.toContain("desktop-page-header");
     expect(globals).toMatch(/\.desktop-page-header\s+\[data-page-header-copy\]/);
     expect(globals).toContain(':where(p, .text-muted-foreground):not([data-tone-role="surface"])');
     expect(globals).not.toContain(".desktop-page-header :where(p, .text-muted-foreground)");

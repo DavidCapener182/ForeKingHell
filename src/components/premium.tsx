@@ -13,14 +13,7 @@ import { EmptyState as AppEmptyState } from "@/components/app/empty-state";
 import { IOSDisclosureGroup } from "@/components/app/ios-mobile";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Drawer,
@@ -78,170 +71,8 @@ export function PageShell({
   );
 }
 
-type PageHeaderMetric = {
-  label: string;
-  value: ReactNode;
-  detail?: ReactNode;
-  className?: string;
-};
-
-type PageHeaderProps = {
-  eyebrow?: ReactNode;
-  title: ReactNode;
-  description?: ReactNode;
-  actions?: ReactNode;
-  metrics?: PageHeaderMetric[];
-  visual?: ReactNode;
-  visualSize?: "compact" | "wide";
-  className?: string;
-};
-
-export function PageHeader({
-  eyebrow,
-  title,
-  description,
-  actions,
-  metrics,
-  visual,
-  visualSize = "compact",
-  className,
-}: PageHeaderProps) {
-  const primaryMetric = metrics?.[0];
-  const hasWideVisual = Boolean(visual) && visualSize === "wide";
-
-  return (
-    <>
-      <header className={cn("ios-page-header grid gap-3 lg:hidden", className)}>
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-          <div className="min-w-0">
-            {eyebrow ? <div className="mb-2">{eyebrow}</div> : null}
-            <h1 className="text-balance text-foreground">{title}</h1>
-            {description ? (
-              <p className="mt-1 line-clamp-2 text-[15px] leading-5 text-muted-foreground">
-                {description}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        {primaryMetric ? (
-          <div
-            className={cn(
-              "ios-page-header-action grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-3",
-              primaryMetric?.className,
-            )}
-          >
-            <div className="min-w-0">
-              <p className="truncate text-[13px] text-muted-foreground">{primaryMetric.label}</p>
-              <p
-                data-operational-value
-                className="mt-0.5 truncate text-xl font-semibold tracking-tight tabular-nums"
-              >
-                {primaryMetric.value}
-              </p>
-              {primaryMetric.detail ? (
-                <p className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">
-                  {primaryMetric.detail}
-                </p>
-              ) : null}
-            </div>
-            {actions ? (
-              <div
-                data-primary-action
-                className="flex max-w-40 shrink-0 gap-2 [&>*:not(:first-child)]:hidden [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:px-3.5"
-              >
-                {actions}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-        {!primaryMetric && actions ? (
-          <div
-            data-primary-action
-            className="ios-page-header-actions flex gap-2 [&>*:not(:first-child)]:hidden [&_[data-slot=button]]:min-h-11 [&_[data-slot=button]]:w-full"
-          >
-            {actions}
-          </div>
-        ) : null}
-      </header>
-
-      <header className={cn("desktop-page-header hidden lg:block", className)}>
-        <div
-          className={cn(
-            "grid gap-4",
-            visual && !hasWideVisual ? "lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center" : "",
-            hasWideVisual
-              ? "lg:grid-cols-[minmax(0,0.72fr)_minmax(420px,0.58fr)] lg:items-center"
-              : "",
-          )}
-        >
-          <div
-            data-page-header-copy
-            className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"
-          >
-            <div className="max-w-3xl space-y-1.5">
-              {eyebrow ? <div>{eyebrow}</div> : null}
-              <div className="space-y-1.5">
-                <h1 className="text-3xl font-semibold leading-tight tracking-normal text-balance text-foreground">
-                  {title}
-                </h1>
-                {description ? (
-                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
-                ) : null}
-              </div>
-            </div>
-            {actions ? (
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                {actions}
-              </div>
-            ) : null}
-          </div>
-          {visual ? (
-            <div
-              className={cn(
-                "hidden overflow-hidden rounded-lg ring-1 ring-border/80 lg:block",
-                hasWideVisual ? "h-44" : "h-28",
-              )}
-              data-compact-media
-            >
-              {visual}
-            </div>
-          ) : null}
-        </div>
-        {metrics?.length ? (
-          <div
-            className={cn(
-              "mt-4 grid auto-cols-[minmax(9.5rem,1fr)] grid-flow-col gap-3 overflow-x-auto sm:grid-flow-row sm:grid-cols-2 sm:overflow-visible lg:grid-cols-4",
-              metrics.length >= 5 ? "xl:grid-cols-5" : "xl:grid-cols-4",
-            )}
-          >
-            {metrics.map((metric) => (
-              <div
-                key={metric.label}
-                className={cn(
-                  "metric-tile desktop-metric-tile luxury-metric-card",
-                  metric.className,
-                )}
-              >
-                <p className="truncate text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  {metric.label}
-                </p>
-                <p
-                  data-operational-value
-                  className="mt-1 truncate text-2xl font-semibold tracking-normal text-foreground sm:text-[1.5rem]"
-                >
-                  {metric.value}
-                </p>
-                {metric.detail ? (
-                  <p className="mt-1 text-sm leading-5 text-muted-foreground">{metric.detail}</p>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </header>
-    </>
-  );
-}
+// Compatibility names retain every existing route import and action contract.
+export { UntitledPageHeader as PageHeader } from "@/components/untitled-ui/headers";
 
 export function MobileCompactPageHeader({
   eyebrow,
@@ -1029,27 +860,7 @@ export function DataPanel({
   );
 }
 
-export function SectionHeader({
-  title,
-  description,
-  action,
-}: {
-  title: ReactNode;
-  description?: ReactNode;
-  action?: ReactNode;
-}) {
-  return (
-    <CardHeader className="gap-1 border-b border-border/70 bg-card/35 px-4 py-3">
-      <div>
-        <CardTitle className="text-lg font-semibold tracking-normal text-foreground sm:text-xl">
-          {title}
-        </CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
-      </div>
-      {action ? <CardAction>{action}</CardAction> : null}
-    </CardHeader>
-  );
-}
+export { UntitledSectionHeader as SectionHeader } from "@/components/untitled-ui/headers";
 
 export function StatusPill({
   children,

@@ -26,6 +26,7 @@ import { MobileTabBar as SharedMobileTabBar, type MobileTab } from "@/components
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { appRouteMetadata } from "@/components/app/route-metadata";
+import surfaceStyles from "@/components/app/surface-visibility.module.css";
 
 type MobileAppShellProps = ComponentProps<"section">;
 
@@ -34,7 +35,8 @@ export function MobileAppShell({ children, className, ...props }: MobileAppShell
     <section
       {...props}
       className={cn(
-        "ios-mobile-screen -mx-4 -mt-4 grid min-h-0 content-start overflow-x-clip px-4 pb-0 pt-3 text-foreground sm:-mx-6 sm:px-6 lg:hidden [&>*]:min-w-0",
+        "ios-mobile-screen -mx-4 -mt-4 min-h-0 content-start overflow-x-clip px-4 pb-0 pt-3 text-foreground sm:-mx-6 sm:px-6 [&>*]:min-w-0",
+        surfaceStyles.companionScreen,
         className,
       )}
     >

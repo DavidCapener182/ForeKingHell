@@ -1,6 +1,6 @@
 # ForeKingHell UI upgrade checkpoint
 
-Updated 6 September 2026. Branch: `upgrade/untitled-ui-migration`.
+Updated 6 September 2026. Specifications/checkpoint commit: `ab8ca3f9`. Branch: `upgrade/untitled-ui-migration`.
 Do not merge into main or deploy. Scope remains **98 routes / 492 component IDs**.
 
 ## Completion and current work
@@ -42,7 +42,7 @@ Other active thread: `01a077ea-7dd8-7ef2-979b-944425998882`, **Redesign ForeKing
 
 This thread owns shared premium headers, globals, companion/private/workbench shells, MobileNav, nav-items and associated tests, mobile-sports/mobile-primitives, app-surface-link, app-route-capabilities when needed, new Untitled UI namespace, new navigation helper, root specs/tracker/checkpoint and docs/ui-upgrade. The other agent granted these paths and agreed not to stage them.
 
-Other agent owns rounds, course strategy, post-round review, their helpers/tests, docs/redesign and scripts/generate-redesign-ledger.mjs. Earlier dirty Today/Practice/Bag/shared primitive changes are also theirs. Do not stage or revert their changes. Read `docs/redesign/UNTITLED_HANDOFF.md` before touching P44/P45/P51. Their verified lifecycle covers rejected creation, score retry/reload, exact-once completion, note-save failure/retry, desktop parity and foreign-round rejection; full component/viewport acceptance is still incomplete.
+Other agent owns rounds, course strategy, post-round review, their helpers/tests, docs/redesign and scripts/generate-redesign-ledger.mjs. Earlier dirty Today/Practice/Bag/shared primitive changes are also theirs. Do not stage or revert their changes. Read `docs/redesign/UNTITLED_HANDOFF.md` before touching P44/P45/P51. Their verified lifecycle covers rejected creation, score retry/reload, exact-once completion, note-save failure/retry, desktop parity and foreign-round rejection. Latest `post-round-evidence-browser-verified.log` passed 8.4s: companion390/workbench1440 empty/measured outcomes, native picker, sourceSessionId+club Practice handoff, Enter disclosure, 96px textarea, scoped axe/overflow. Full prescribed-drill persistence and full component/viewport acceptance remain incomplete.
 
 ## Changed implementation files
 
@@ -60,7 +60,7 @@ Other agent owns rounds, course strategy, post-round review, their helpers/tests
 
 Evidence directory: `output/playwright/ui-upgrade/` (local, gitignored).
 
-- **59 tests in 10 files passed**, `unit-final.log`.
+- **59 tests in 10 files passed**, `unit-final.log`. The same 59 checks also passed against an isolated snapshot of the staged source, excluding the other agent's uncommitted changes (`staged-unit-final.log`).
 - **TypeScript passed**, `typecheck-final.log`; scoped **ESLint passed**, `lint-final.log`.
 - Browser matrix **3 tests passed (25.3s)**, `browser-final.log`.
 - More screenshot readback initially caught an in-progress opening animation; captures now wait for full opacity. Focus/search/empty-state matrix rerun **1 passed (8.0s)**, `browser-menu.log`.
@@ -69,6 +69,7 @@ Evidence directory: `output/playwright/ui-upgrade/` (local, gitignored).
 - G05 covers one visible main/content tree at all sizes and companion → workbench → companion query-preserving navigation after hydration.
 - G06 covers searchable Billing destination, no-match recovery, Escape focus restoration, viewport-bounded drawer and 44px bottom-tab targets. Unit tests verify player/admin directory membership and no duplicates.
 - Initial localhost:3000 saved session was expired; both attempts stopped at login and are not UI evidence. Passing checks used the existing disposable localhost:3116 fixture and local-auth helper.
+- Checks above run against the integrated working tree. The two palette-assertion updates in `src/lib/clubhouse-theme-contract.test.ts` are intentionally left unstaged with the other agent's palette changes; this migration commit contains only its header-adapter assertion change.
 - No production build was run: avoid overwriting either running server's dist directory. Full repository suite/build, route-wide QA and remote CI remain outstanding.
 
 ## Outstanding acceptance and blockers
@@ -76,6 +77,7 @@ Evidence directory: `output/playwright/ui-upgrade/` (local, gitignored).
 - G01: 200% zoom, browser long-name/content fixtures, dynamic loading/error/empty caller combinations, full screen-reader/contrast and theme matrix.
 - G05: unsaved drafts on routes without DirtyFormBar, long account identity/avatar-error fixtures, complete account action outcomes and screen-reader/zoom/theme checks. Native beforeunload support alone is not draft recovery.
 - G06: every documented route/destination and redirect, completion of currently gated mobile tasks, physical keyboard/safe-area, screen-reader/zoom/theme checks. Menu discoverability is only a shared navigation improvement.
+- G10: existing unlayered mobile `textarea { min-height: 44px; }` can override a larger utility minimum. The other agent verified a scoped 96px post-round workaround; preserve it while fixing the shared form adapter.
 - G10 and remaining shared components not implemented. React Aria is not installed; current interactive primitives remain Radix. Do not blindly translate Radix props.
 - Paid Simple page-header / section-header examples were unavailable; no entitlement established and no paid code copied. Accessible local composition and exact official references are recorded in `docs/ui-upgrade/untitled-ui-register.md`.
 - No real-account live viewport verification, physical Safari/PWA, complete offline recovery, performance benchmark or mutation fixture matrix is claimed.

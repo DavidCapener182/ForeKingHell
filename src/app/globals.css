@@ -10,8 +10,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-heading:
-    var(--font-display-source), var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   --font-score: var(--font-display-source), var(--font-ui-source), sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -167,13 +166,13 @@ html[data-theme="clubhouse"]
 html[data-theme="clubhouse"]
   :where(.premium-card, .desktop-data-panel, .apple-panel, .apple-panel-strong)
   [data-slot="card-title"] {
-  font-family: var(--font-editorial-source), Georgia, "Times New Roman", serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: -0.025em;
 }
 
 html[data-theme="clubhouse"] :where(.font-score, .tabular-nums) {
-  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
@@ -911,13 +910,13 @@ html[data-theme="range-night"] body {
 
 html[data-theme="range-night"] :where(.font-score, .tabular-nums),
 html[data-theme="tour-broadcast"] :where(.font-score, .tabular-nums) {
-  font-family: var(--font-display-source), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums lining-nums;
 }
 
 html[data-theme="tour-broadcast"]
   :where(h1, h2, h3, [data-slot="card-title"], [data-slot="sidebar-group-label"]) {
-  font-family: var(--font-display-source), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   letter-spacing: 0.035em;
   text-transform: uppercase;
 }
@@ -1217,7 +1216,7 @@ html[data-theme="clubhouse"] .data-table-scroll tbody tr:focus-within {
 
 html[data-theme="clubhouse"] .data-table-scroll td.text-right {
   color: var(--clubhouse-cobalt);
-  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-size: 1.02em;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1290,7 +1289,7 @@ html[data-theme="clubhouse"] [data-slot="chart"] .recharts-cartesian-grid line {
 
 html[data-theme="clubhouse"] [data-slot="chart"] .recharts-cartesian-axis-tick text {
   fill: var(--chart-axis);
-  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1304,7 +1303,7 @@ html[data-theme="clubhouse"] [data-slot="chart-tooltip"] {
 
 html[data-theme="clubhouse"] [data-slot="chart-tooltip"] .tabular-nums {
   color: var(--clubhouse-cobalt);
-  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-size: 1.05em;
 }
 
@@ -1348,7 +1347,7 @@ html[data-theme="clubhouse"] [data-target-tone="slate"] {
 }
 
 html[data-theme="clubhouse"] [data-operational-value] {
-  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 

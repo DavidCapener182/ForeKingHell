@@ -18,7 +18,9 @@ describe("application surface switches", () => {
       source("src/app/(app)/companion/summary/page.tsx"),
     ];
 
-    expect(sources[0]).toContain("return <a href={href}");
+    expect(sources[0]).toContain("<a");
+    expect(sources[0]).toContain("href={href}");
+    expect(sources[0]).not.toContain('from "next/link"');
     expect(sources.join("\n")).toContain("AppSurfaceLink");
     expect(sources.join("\n")).not.toContain("reloadDocument");
     expect(sources.join("\n")).toContain('href="/surface/companion?next=%2Ftoday"');

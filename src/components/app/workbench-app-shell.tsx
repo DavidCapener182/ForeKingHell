@@ -372,7 +372,13 @@ export function WorkbenchAppShell({
         )}
       >
         {isMobileImmersive || surface !== "companion" ? null : (
-          <MobileNav pathname={pathname} totalXp={totalXp} level={level.level} profile={profile} />
+          <MobileNav
+            pathname={pathname}
+            totalXp={totalXp}
+            level={level.level}
+            profile={profile}
+            isAdmin={isAdmin}
+          />
         )}
         {surface === "workbench" ? (
           <DesktopWorkbenchChrome
@@ -393,6 +399,7 @@ export function WorkbenchAppShell({
         {surface === "workbench" && !isMobileImmersive ? (
           <AppSurfaceLink
             href="/surface/companion?next=%2Ftoday"
+            preserveLocation
             data-phone-companion-return
             className="mx-4 mt-3 hidden min-h-12 shrink-0 items-center justify-center gap-2 rounded-2xl border border-white/15 bg-[#071a11] px-4 text-sm font-semibold text-white shadow-lg max-md:inline-flex"
           >
@@ -687,7 +694,7 @@ function ProfileDropdown({
       <DropdownMenuContent side={isTopbar ? "bottom" : "right"} align="end" className="w-64">
         <DropdownMenuLabel>
           <div className="grid gap-1">
-            <span className="truncate text-sm text-foreground">{profileLabel}</span>
+            <span className="break-words text-sm text-foreground">{profileLabel}</span>
             <span>{xpFormatter.format(xpToNextLevel)} XP to next level</span>
           </div>
         </DropdownMenuLabel>
@@ -714,7 +721,7 @@ function ProfileDropdown({
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <AppSurfaceLink href="/surface/companion?next=%2Ftoday">
+          <AppSurfaceLink href="/surface/companion?next=%2Ftoday" preserveLocation>
             <PanelLeftIcon className="size-4" />
             Open companion app
           </AppSurfaceLink>

@@ -47,7 +47,11 @@ async function renderCompanionShell(data: AppShellData, children: React.ReactNod
   const { CompanionAppShell } = await import("@/components/app/companion-app-shell");
 
   return (
-    <CompanionAppShell totalXp={data.totalXp} profile={data.mobileNavProfile}>
+    <CompanionAppShell
+      totalXp={data.totalXp}
+      profile={data.mobileNavProfile}
+      isAdmin={data.isAdmin}
+    >
       {children}
     </CompanionAppShell>
   );

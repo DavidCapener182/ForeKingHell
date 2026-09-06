@@ -1,0 +1,57 @@
+/* Explicit wide companion mode uses the same spacing roles as the phone UI.
+ * Colours resolve from the selected semantic theme; no phone-only stylesheet
+ * or user-agent assumption is required for a usable preview.
+ */
+@media (min-width: 64rem) {
+  .shell {
+    --mobile-space-compact: 0.5rem;
+    --mobile-space-standard: 1rem;
+    --mobile-space-large: 1.5rem;
+    --mobile-navigation-height: calc(3.25rem + 12px);
+    --mobile-tab-height: 4rem;
+    --mobile-safe-top: env(safe-area-inset-top, 0px);
+    --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --mobile-radius-sm: 0.625rem;
+    --mobile-radius-md: 0.875rem;
+    --mobile-radius-lg: 1.25rem;
+    --mobile-radius-pill: 9999px;
+    --mobile-label: var(--foreground);
+    --mobile-secondary-label: var(--muted-foreground);
+    --mobile-tint: var(--primary);
+    --mobile-separator: var(--border);
+    --mobile-surface: var(--card);
+    --mobile-elevated-material: var(--card);
+  }
+
+  .shell :global(main#main-content) {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .shell :global(.ios-app-header) {
+    background: var(--background);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .shell :global(.ios-tab-bar) {
+    min-height: var(--mobile-tab-height);
+    background: var(--card);
+    border-top: 1px solid var(--border);
+  }
+
+  .shell :global(.ios-tab-bar a) {
+    min-height: 2.75rem;
+  }
+
+  .shell :global(.ios-large-title h1),
+  .shell :global(.mobile-large-title h1) {
+    font-size: 1.75rem;
+    line-height: 1.2;
+    font-weight: 600;
+  }
+
+  .navigationSheet {
+    height: min(48rem, calc(100dvh - 1rem));
+    max-height: calc(100dvh - max(1rem, env(safe-area-inset-top, 0px)));
+    overflow: hidden;
+  }
+}
