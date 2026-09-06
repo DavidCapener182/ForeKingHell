@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { UntitledSelect } from "@/components/untitled-ui/form-controls";
 import { Flag, MapPinned } from "lucide-react";
 
 import {
@@ -36,6 +38,7 @@ export function CourseOverlay({
   onReset: () => void;
   onUpdateHole: (holeNumber: number, patch: HoleReviewState[number]) => void;
 }) {
+  const [selectedHole, setSelectedHole] = useState(1);
   if (!inference) {
     return (
       <div className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-xl border border-dashed bg-card p-6 text-center">
@@ -50,6 +53,10 @@ export function CourseOverlay({
     );
   }
 
+  const activeHole =
+    inference.holes.find((hole) => hole.holeNumber === selectedHole)?.holeNumber ??
+    inference.holes[0]?.holeNumber;
+  const activeIndex = inference.holes.findIndex((hole) => hole.holeNumber === activeHole);
   const assignedText = `${inference.assignedShotCount}/${inference.assignedShotCount + inference.unassignedShotCount}`;
   const assignmentMatches = assignedShotCount === totalShotCount;
 
@@ -73,18 +80,54 @@ export function CourseOverlay({
           Edit CSV shots to move the boundary between holes. Enter score and penalties to calculate
           putts.
         </p>
-        <Button type="button" variant="outline" size="sm" onClick={onReset}>
+        <Button type="button" variant="outline" size="sm" className="min-h-11" onClick={onReset}>
           Reset auto splits
         </Button>
       </div>
+      <div className="grid gap-2 md:hidden">
+        <UntitledSelect
+          label="Review hole"
+          name="import-hole"
+          value={String(activeHole ?? 1)}
+          onValueChange={(value) => setSelectedHole(Number(value))}
+          options={inference.holes.map((hole) => ({
+            value: String(hole.holeNumber),
+            label: `Hole ${hole.holeNumber}${hole.name ? ` · ${hole.name}` : ""}`,
+          }))}
+        />
+        <div className="flex justify-between gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            disabled={activeIndex <= 0}
+            onClick={() => setSelectedHole(inference.holes[activeIndex - 1].holeNumber)}
+          >
+            Previous hole
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            disabled={activeIndex >= inference.holes.length - 1}
+            onClick={() => setSelectedHole(inference.holes[activeIndex + 1].holeNumber)}
+          >
+            Next hole
+          </Button>
+        </div>
+      </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {inference.holes.map((hole) => (
-          <HoleOverlay
+          <div
             key={hole.holeNumber}
-            hole={hole}
-            review={holeReview[hole.holeNumber]}
-            onUpdate={(patch) => onUpdateHole(hole.holeNumber, patch)}
-          />
+            className={hole.holeNumber === activeHole ? "min-w-0" : "hidden min-w-0 md:block"}
+          >
+            <HoleOverlay
+              hole={hole}
+              review={holeReview[hole.holeNumber]}
+              onUpdate={(patch) => onUpdateHole(hole.holeNumber, patch)}
+            />
+          </div>
         ))}
       </div>
     </div>
@@ -142,7 +185,7 @@ function HoleOverlay({
     <div className="apple-panel-strong overflow-hidden">
       <div className="flex items-start justify-between gap-3 border-b bg-muted/50 px-3 py-2">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">
+          <p className="break-words text-sm font-medium">
             Hole {hole.holeNumber}
             {hole.name ? ` - ${hole.name}` : ""}
           </p>
@@ -336,7 +379,7 @@ function NumberField({
             Number.isFinite(nextValue) ? Math.max(min, Math.min(max, Math.floor(nextValue))) : null,
           );
         }}
-        className="mt-1 h-8 border-0 bg-transparent px-0 text-lg font-semibold shadow-none focus-visible:ring-0"
+        className="mt-1 min-h-11 bg-background px-2 text-base font-semibold focus-visible:ring-2"
       />
     </label>
   );

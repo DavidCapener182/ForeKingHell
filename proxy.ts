@@ -180,7 +180,7 @@ function protectedAppResponse(request: NextRequest) {
 
 function companionRuntimePathFor(pathname: string, importSource: string | null) {
   if (pathname === "/import/result") return "/companion-runtime/import/result";
-  if (pathname === "/import" && importSource === "csv") {
+  if (pathname === "/import" && (importSource === "csv" || importSource === "sample")) {
     return "/companion-runtime/import/csv";
   }
   if (pathname === "/import") return "/companion-runtime/import";

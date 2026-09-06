@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { ImportResultRecovery, ImportPracticeReview } from "@/app/import/import-result-sections";
+import { UntitledPageHeader } from "@/components/untitled-ui/headers";
 import { ArrowRight, CheckCircle2, Target } from "lucide-react";
 
 import { MobileSessionPattern } from "@/app/sessions/mobile-session-story";
-import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
+import { MobileSection } from "@/components/app/mobile-screen";
 import {
   MobileDisclosure,
   MobileGroupedList,
@@ -13,7 +14,6 @@ import {
 import { MobileAppShell } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { getCompanionImportResult } from "@/lib/companion-import-result";
 
 export default async function ImportResultCompanionPage({
@@ -22,18 +22,22 @@ export default async function ImportResultCompanionPage({
   searchParams?: Promise<{ sessionId?: string }>;
 }) {
   const sessionId = (await searchParams)?.sessionId;
-  if (!sessionId) notFound();
+  if (
+    !sessionId ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)
+  )
+    return <ImportResultRecovery />;
   const result = await getCompanionImportResult(sessionId);
-  if (!result) notFound();
+  if (!result) return <ImportResultRecovery />;
   const needsConfirmation = result.triage.confirmationCount > 0;
   const needsBaseline = !result.needsWork || result.needsWork.verdict === "new";
 
   return (
     <PageShell>
       <MobileAppShell className="gap-6" data-companion-import-result>
-        <MobileLargeTitle
+        <UntitledPageHeader
           title={result.isRound ? "Round saved" : "Session saved"}
-          detail={`${result.shotCount} shots saved · ${result.clubCount} clubs`}
+          description={`${result.shotCount} shots saved · ${result.clubCount} clubs · ${result.session.source}`}
         />
         <section className="grid gap-3" data-session-verdict aria-label="Import result">
           <MobileStatus
@@ -124,20 +128,13 @@ export default async function ImportResultCompanionPage({
         ) : null}
 
         {result.practiceReview ? (
-          <MobileSection title="Your practice plan">
-            <div className="grid gap-3" data-plan-versus-actual>
-              <p className="mobile-type-headline">{result.practiceReview.verdict}</p>
-              <Progress
-                value={result.practiceReview.score}
-                aria-label={`Practice plan score: ${result.practiceReview.score} out of 100`}
-              />
-              <p className="mobile-type-footnote text-muted-foreground">
-                Plan versus actual · {result.practiceReview.score}/100
-              </p>
-              <p className="mobile-type-callout">{result.practiceReview.nextAction}</p>
-            </div>
-          </MobileSection>
-        ) : null}
+          <ImportPracticeReview review={result.practiceReview} sessionId={result.session.id} />
+        ) : (
+          <p className="rounded-xl border border-border p-3 text-sm text-muted-foreground">
+            No matched practice review was found. This import does not automatically complete a
+            plan.
+          </p>
+        )}
 
         {!result.isRound && result.patternPoints.length > 0 ? (
           <MobileSessionPattern

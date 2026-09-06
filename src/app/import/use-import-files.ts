@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 import type { UploadedCsv } from "@/app/import/import-types";
 import { type DistanceUnit, type RapsodoColumnMapping } from "@/lib/rapsodo/parser";
@@ -14,6 +14,12 @@ export type ParsedImportFile = UploadedCsv & {
 };
 
 export function useImportFiles(distanceUnit: DistanceUnit, columnMapping: RapsodoColumnMapping) {
+  const [fileErrors, setFileErrors] = useState<Array<{ id: string; file: File; message: string }>>(
+    [],
+  );
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
+  const generation = useRef(0);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedCsv[]>([]);
   const [parsedFiles, setParsedFiles] = useState<ParsedImportFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -27,20 +33,35 @@ export function useImportFiles(distanceUnit: DistanceUnit, columnMapping: Rapsod
     let cancelled = false;
 
     async function parseFiles() {
-      const nextFiles = await Promise.all(
-        uploadedFiles.map(async (file) => ({
-          ...file,
-          parsed: await parseLaunchMonitorImportCsv({
-            rawCsvText: file.rawCsvText,
-            fileName: file.fileName,
-            fallbackDistanceUnit: distanceUnit,
-            columnMapping,
-          }),
-        })),
-      );
+      setIsParsing(true);
+      setParseError(null);
+      try {
+        const nextFiles = await Promise.all(
+          uploadedFiles.map(async (file) => ({
+            ...file,
+            parsed: await parseLaunchMonitorImportCsv({
+              rawCsvText: file.rawCsvText,
+              fileName: file.fileName,
+              fallbackDistanceUnit: distanceUnit,
+              columnMapping,
+            }),
+          })),
+        );
 
-      if (!cancelled) {
-        setParsedFiles(nextFiles);
+        if (!cancelled) {
+          setParsedFiles(nextFiles);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setParsedFiles([]);
+          setParseError(
+            error instanceof Error
+              ? error.message
+              : "Could not parse the selected files. Review mappings or choose the files again.",
+          );
+        }
+      } finally {
+        if (!cancelled) setIsParsing(false);
       }
     }
 
@@ -52,38 +73,54 @@ export function useImportFiles(distanceUnit: DistanceUnit, columnMapping: Rapsod
   }, [columnMapping, distanceUnit, uploadedFiles]);
 
   async function readSelectedFiles(files: FileList | File[]) {
-    const csvFiles = Array.from(files).filter((file) => {
-      const name = file.name.toLowerCase();
-      return (
-        name.endsWith(".csv") ||
-        file.type === "text/csv" ||
-        file.type === "application/vnd.ms-excel"
-      );
-    });
-
-    if (csvFiles.length === 0) {
-      return;
-    }
-
+    const currentGeneration = generation.current;
+    const csvFiles = Array.from(files);
     const nextFiles: UploadedCsv[] = [];
 
     try {
-      for (const [index, file] of csvFiles.entries()) {
-        const rawCsvText = await readFileAsTextWithProgress(file, (loaded, total) => {
-          setReadProgress({ fileName: file.name, loaded, total });
-        });
+      for (const file of csvFiles) {
+        const id = `${file.name}-${file.size}-${file.lastModified}`;
+        setFileErrors((current) => current.filter((error) => error.id !== id));
+        if (!file.name.toLowerCase().endsWith(".csv")) {
+          setFileErrors((current) => [
+            ...current,
+            {
+              id,
+              file,
+              message:
+                "Unsupported file. Choose a CSV export; scorecard images belong in the scorecard picker.",
+            },
+          ]);
+          continue;
+        }
+        try {
+          const rawCsvText = await readFileAsTextWithProgress(file, (loaded, total) => {
+            setReadProgress({ fileName: file.name, loaded, total });
+          });
 
-        nextFiles.push({
-          id: `${file.name}-${file.size}-${file.lastModified}-${index}`,
-          fileName: file.name,
-          fileSizeBytes: file.size,
-          rawCsvText,
-        });
+          nextFiles.push({
+            id,
+            fileName: file.name,
+            fileSizeBytes: file.size,
+            rawCsvText,
+          });
+        } catch (error) {
+          setFileErrors((current) => [
+            ...current,
+            {
+              id,
+              file,
+              message:
+                error instanceof Error ? error.message : "File could not be read. Try again.",
+            },
+          ]);
+        }
       }
     } finally {
       setReadProgress(null);
     }
 
+    if (currentGeneration !== generation.current) return;
     setUploadedFiles((currentFiles) => {
       const existingIds = new Set(currentFiles.map((file) => file.id));
       return [...currentFiles, ...nextFiles.filter((file) => !existingIds.has(file.id))];
@@ -95,12 +132,20 @@ export function useImportFiles(distanceUnit: DistanceUnit, columnMapping: Rapsod
   }
 
   function clearFiles() {
+    generation.current += 1;
+    setFileErrors([]);
     setUploadedFiles([]);
+    setParsedFiles([]);
   }
 
   return {
     uploadedFiles,
     parsedFiles,
+    fileErrors,
+    parseError,
+    isParsing,
+    dismissFileError: (id: string) =>
+      setFileErrors((current) => current.filter((error) => error.id !== id)),
     isDragging,
     readProgress,
     setIsDragging,

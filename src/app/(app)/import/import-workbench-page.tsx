@@ -1,18 +1,10 @@
 import Link from "next/link";
-import {
-  Archive,
-  Cloud,
-  FileUp,
-  FileClock,
-  FlaskConical,
-  PenLine,
-  RefreshCw,
-  ShieldCheck,
-  Upload,
-} from "lucide-react";
+import { Archive, FileClock, RefreshCw, ShieldCheck, Upload } from "lucide-react";
 import { desc, eq } from "drizzle-orm";
 
 import { archiveImportFileAction } from "@/app/import/actions";
+import { UntitledPageHeader } from "@/components/untitled-ui/headers";
+import { ImportSourceChooser } from "@/app/import/import-source-chooser";
 import { ImportForm } from "@/app/import/import-form";
 import { getRapsodoConnectionStatusAction } from "@/app/rapsodo/actions";
 import { AppEmptyState } from "@/components/app/app-empty-state";
@@ -24,20 +16,10 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemMedia,
-  ItemTitle,
-} from "@/components/ui/item";
-import {
   DesktopTableWorkbenchControls,
-  DesktopWorkflowLayout,
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
   type DesktopWorkflowHelpItem,
-  type DesktopWorkflowStep,
 } from "@/components/app/desktop-workbench";
 import {
   Table,
@@ -118,8 +100,6 @@ export default async function ImportWorkbenchPage({ searchParams }: ImportPagePr
   ]);
   const startWithSampleData = params?.source === "sample";
   const visibleFiles = library.files.filter((file) => file.status !== "archived");
-  const duplicateFiles = visibleFiles.filter((file) => file.status === "duplicate").length;
-  const savedFiles = visibleFiles.filter((file) => file.status === "saved").length;
   const connectionStatus = rapsodoStatus.ok
     ? rapsodoStatus.data
     : {
@@ -127,177 +107,55 @@ export default async function ImportWorkbenchPage({ searchParams }: ImportPagePr
         expiresAt: null,
         profile: null,
       };
-  const importWorkflowSteps = buildImportWorkflowSteps({
-    connected: connectionStatus.connected,
-    duplicateFiles,
-    fileCount: visibleFiles.length,
-    savedFiles,
-  });
-
   return (
     <PageShell>
-      <DesktopWorkflowLayout
-        steps={importWorkflowSteps}
-        helpTitle="Import centre help"
-        helpDescription="Keep launch-monitor data trustworthy"
-        helpItems={importWorkflowHelpItems}
-      >
-        <ImportSourceChooser connected={connectionStatus.connected} />
-        <FirstRunRapsodoOnboarding
+      <UntitledPageHeader
+        title="Import"
+        description="Choose a source, review the current batch and save your session."
+        actions={
+          <Button asChild variant="outline">
+            <a href="#import-library">Recent imports</a>
+          </Button>
+        }
+      />
+      <div className="grid min-w-0 gap-5">
+        <ImportSourceChooser
           connected={connectionStatus.connected}
-          fileCount={visibleFiles.length}
+          initialSource={startWithSampleData ? "sample" : "csv"}
         />
+
         <div id="csv-import" className="min-w-0 scroll-mt-28">
           <ImportForm
             defaultDistanceUnit={library.preferredDistanceUnit}
             startWithSampleData={startWithSampleData}
           />
         </div>
-        <div id="import-quality" className="min-w-0 scroll-mt-28">
-          <ImportQualityFeaturePanel data={featureData} />
-        </div>
+        <details className="rounded-xl border border-border p-4">
+          <summary className="min-h-11 cursor-pointer py-2 font-semibold">
+            Import help and data quality
+          </summary>
+          <div className="grid gap-3 pt-3">
+            {importWorkflowHelpItems.map((item) => (
+              <div key={item.title}>
+                <h2 className="text-sm font-semibold">{item.title}</h2>
+                <p className="text-sm text-muted-foreground">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+          <FirstRunRapsodoOnboarding
+            connected={connectionStatus.connected}
+            fileCount={visibleFiles.length}
+          />
+          <div id="import-quality" className="mt-4 scroll-mt-28">
+            <ImportQualityFeaturePanel data={featureData} />
+          </div>
+        </details>
         <div id="import-library" className="min-w-0 scroll-mt-28">
           <ImportFileLibrary files={visibleFiles} />
         </div>
-      </DesktopWorkflowLayout>
+      </div>
     </PageShell>
   );
-}
-
-function ImportSourceChooser({ connected }: { connected: boolean }) {
-  const sources = [
-    {
-      title: connected ? "Rapsodo connected" : "Connect Rapsodo",
-      detail: connected
-        ? "Open R-Cloud and choose a measured session."
-        : "Connect R-Cloud and choose a measured session.",
-      href: "/rapsodo",
-      icon: Cloud,
-      status: connected ? "Ready" : "Best source",
-    },
-    {
-      title: "Upload CSV",
-      detail: "Use an export from Rapsodo or another supported launch monitor.",
-      href: "/import?source=csv#csv-import",
-      icon: FileUp,
-      status: "Measured data",
-    },
-    {
-      title: "Try sample data",
-      detail: "Preview the complete workflow with a small, clearly labelled demo session.",
-      href: "/import?source=sample#csv-import",
-      icon: FlaskConical,
-      status: "Demo session",
-    },
-  ];
-
-  return (
-    <Card aria-labelledby="source-heading" className="shadow-sm" data-import-source-card>
-      <CardHeader className="flex-row flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-            Step 1 of 4
-          </p>
-          <CardTitle id="source-heading" className="mt-1 font-display text-2xl tracking-tight">
-            Choose your source
-          </CardTitle>
-          <CardDescription className="mt-1 text-sm leading-6">
-            Measured session data gives the most useful analysis. Manual entry stays available for
-            rounds.
-          </CardDescription>
-        </div>
-        <StatusPill tone="sky">Private by default</StatusPill>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-3 lg:grid-cols-3">
-          {sources.map(({ title, detail, href, icon: Icon, status }) => (
-            <Link
-              key={title}
-              href={href}
-              prefetch={false}
-              className="group rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Item variant="muted" className="h-full items-start p-4 group-hover:bg-muted">
-                <ItemMedia className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
-                  <Icon className="size-5" aria-hidden />
-                </ItemMedia>
-                <ItemContent>
-                  <ItemTitle>{title}</ItemTitle>
-                  <ItemDescription className="whitespace-normal">{detail}</ItemDescription>
-                </ItemContent>
-                <ItemActions>
-                  <Badge variant="secondary">{status}</Badge>
-                </ItemActions>
-              </Item>
-            </Link>
-          ))}
-        </div>
-        <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-dashed border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <span className="flex items-center gap-3 text-sm text-muted-foreground">
-            <PenLine className="size-4 shrink-0" aria-hidden />
-            Only recording a score? Add the round manually and attach proof later.
-          </span>
-          <Button asChild variant="ghost" className="min-h-11 justify-start sm:justify-center">
-            <Link href="/rounds/new" prefetch={false}>
-              Add manual round
-            </Link>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function buildImportWorkflowSteps({
-  connected,
-  duplicateFiles,
-  fileCount,
-  savedFiles,
-}: {
-  connected: boolean;
-  duplicateFiles: number;
-  fileCount: number;
-  savedFiles: number;
-}): DesktopWorkflowStep[] {
-  const hasFiles = fileCount > 0;
-  const hasSavedFiles = savedFiles > 0;
-
-  return [
-    {
-      title: "Choose source",
-      detail: "Start with R-Cloud or a Rapsodo CSV before scorecard proof or manual entry.",
-      status: connected || hasFiles ? "complete" : "current",
-      value: connected ? "R-Cloud ready" : hasFiles ? `${fileCount} files` : "Start here",
-    },
-    {
-      title: "Preview data",
-      detail:
-        "Inspect accepted rows, excluded shots, units and parse warnings before changing data.",
-      status: hasFiles ? "complete" : connected ? "current" : "upcoming",
-      value: hasFiles ? `${fileCount} files` : undefined,
-    },
-    {
-      title: "Confirm club mapping",
-      detail: "Confirm club names and session context before stock yardages are updated.",
-      status: hasSavedFiles ? "complete" : hasFiles ? "current" : "upcoming",
-      value:
-        duplicateFiles > 0
-          ? `${duplicateFiles} duplicates`
-          : hasFiles
-            ? "Quality check"
-            : undefined,
-    },
-    {
-      title: "Review and import",
-      detail: "Check duplicates and warnings, then save trusted rows into analysis and practice.",
-      status: hasSavedFiles
-        ? "complete"
-        : hasFiles && duplicateFiles === 0
-          ? "current"
-          : "upcoming",
-      value: hasSavedFiles ? `${savedFiles} saved` : undefined,
-    },
-  ];
 }
 
 function FirstRunRapsodoOnboarding({
@@ -389,7 +247,7 @@ function ImportFileLibrary({
         <div>
           <CardTitle>File library</CardTitle>
           <CardDescription>
-            Recent imported files, duplicate status, parse version, and linked sessions.
+            History of up to 50 recent files. These outcomes do not change the current upload steps.
           </CardDescription>
         </div>
         <FileClock className="size-5 text-primary" />
@@ -406,7 +264,73 @@ function ImportFileLibrary({
           exportFileName="forekinghell-import-library.csv"
           className="mb-3"
         />
-        <DataTableFrame mainTable mainTableLabel="Import file library table" stickyFirstColumn>
+        <DataTableFrame
+          mainTable
+          mainTableLabel="Import file library table"
+          stickyFirstColumn
+          mobile={
+            <div className="divide-y divide-border rounded-xl border border-border bg-card">
+              {files.length ? (
+                files.map((file) => (
+                  <details key={file.id} className="p-3">
+                    <summary className="min-h-12 cursor-pointer py-1">
+                      <span className="block break-words text-sm font-semibold">
+                        {file.fileName}
+                      </span>
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        {formatDate(file.createdAt)} · {file.status}
+                      </span>
+                    </summary>
+                    <div className="grid gap-3 pt-3">
+                      <dl className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <dt className="text-xs text-muted-foreground">Size</dt>
+                          <dd>{formatBytes(file.fileSizeBytes)}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs text-muted-foreground">Parser</dt>
+                          <dd>{file.parseVersion}</dd>
+                        </div>
+                        <div className="col-span-2">
+                          <dt className="text-xs text-muted-foreground">Source fingerprint</dt>
+                          <dd className="break-all">{file.rawCsvHash}</dd>
+                        </div>
+                      </dl>
+                      {file.sessionId ? (
+                        <Button asChild variant="outline" className="min-h-11">
+                          <Link
+                            href={`/${file.sessionType === "round" || file.sessionType === "simulated_course" ? "rounds" : "sessions"}/${file.sessionId}`}
+                          >
+                            Open {file.sessionType ?? "session"}
+                          </Link>
+                        </Button>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No linked session</p>
+                      )}
+                      <form action={archiveImportFileAction}>
+                        <input type="hidden" name="importFileId" value={file.id} />
+                        <ConfirmSubmitButton
+                          type="submit"
+                          variant="ghost"
+                          className="min-h-11"
+                          confirmTitle="Archive import file"
+                          confirmMessage={`Archive ${file.fileName}? Linked session evidence is retained.`}
+                          confirmActionLabel="Archive file"
+                        >
+                          Archive file
+                        </ConfirmSubmitButton>
+                      </form>
+                    </div>
+                  </details>
+                ))
+              ) : (
+                <p className="p-4 text-sm text-muted-foreground">
+                  No import files yet. Choose a source above.
+                </p>
+              )}
+            </div>
+          }
+        >
           <Table
             data-workbench-scope="import"
             data-workbench-export-table="import-library"
@@ -441,7 +365,9 @@ function ImportFileLibrary({
                       className="sticky left-0 z-10 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                     >
                       <div className="min-w-0">
-                        <p className="truncate font-medium">{file.fileName}</p>
+                        <p className="max-w-72 whitespace-normal break-words font-medium">
+                          {file.fileName}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {formatDate(file.createdAt)} - {formatBytes(file.fileSizeBytes)} -{" "}
                           {file.rawCsvHash.slice(0, 12)}
@@ -454,7 +380,7 @@ function ImportFileLibrary({
                     <TableCell data-column="session">
                       {file.sessionId ? (
                         <Link
-                          href={`/rounds/${file.sessionId}`}
+                          href={`/${file.sessionType === "round" || file.sessionType === "simulated_course" ? "rounds" : "sessions"}/${file.sessionId}`}
                           className="text-sm font-medium text-primary hover:underline"
                         >
                           {file.sessionType ?? "Session"}{" "}

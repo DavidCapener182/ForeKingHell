@@ -19,6 +19,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CourseOverlay } from "@/app/import/course-overlay";
+import { ImportStepper } from "@/app/import/import-stepper";
 import { SaveChecklistCard } from "@/app/import/save-checklist-card";
 import { ScorecardExtractionPanel } from "@/app/import/scorecard-extraction-panel";
 import { SessionSettings } from "@/app/import/session-settings";
@@ -50,7 +51,11 @@ import {
   parseScorecardText,
 } from "@/lib/course-scorecard";
 import { ColumnMappingPanel } from "@/app/import/column-mapping-panel";
-import { type DistanceUnit, type RapsodoColumnMapping } from "@/lib/rapsodo/parser";
+import {
+  analyzeRapsodoCsvColumns,
+  type DistanceUnit,
+  type RapsodoColumnMapping,
+} from "@/lib/rapsodo/parser";
 import type {
   LongestShotNotification,
   SaveRapsodoImportInput,
@@ -106,26 +111,38 @@ const SAMPLE_IMPORT_CSV = [
 export function ImportForm({
   defaultDistanceUnit = "yards",
   startWithSampleData = false,
+  practicePlanId = null,
 }: {
   defaultDistanceUnit?: DistanceUnit;
   startWithSampleData?: boolean;
+  practicePlanId?: string | null;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scorecardImageInputRef = useRef<HTMLInputElement>(null);
   const sampleLoadedRef = useRef(false);
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>(defaultDistanceUnit);
+  const [clubCorrections, setClubCorrections] = useState<Record<string, Record<number, string>>>(
+    {},
+  );
   const [columnMapping, setColumnMapping] = useState<RapsodoColumnMapping>({});
   const {
     uploadedFiles,
     parsedFiles,
     isDragging,
     readProgress,
+    fileErrors,
+    parseError,
+    isParsing,
+    dismissFileError,
     setIsDragging,
     readSelectedFiles: readImportFiles,
     removeFile: removeImportFile,
     clearFiles,
   } = useImportFiles(distanceUnit, columnMapping);
+  const [scorecardReviewed, setScorecardReviewed] = useState(false);
+  const [settingsConfirmed, setSettingsConfirmed] = useState(false);
+  const [warningsReviewed, setWarningsReviewed] = useState(false);
   const [sessionType, setSessionType] = useState<SessionType>("range");
   const [sessionDate, setSessionDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [courseName, setCourseName] = useState("");
@@ -328,22 +345,49 @@ export function ImportForm({
     [courseInference],
   );
 
-  const previewShots = parsedFiles
-    .flatMap((file) =>
-      file.parsed.shots.map((shot, index) => ({
-        ...shot,
-        fileName: file.fileName,
-        fileShotNumber: shot.shotNumber ?? index + 1,
-        courseShot: courseShotByRowNumber.get(shot.rowNumber) ?? null,
-      })),
-    )
-    .slice(0, 12);
+  const previewShots = parsedFiles.flatMap((file) =>
+    file.parsed.shots.map((shot, index) => ({
+      ...shot,
+      fileName: file.fileName,
+      fileId: file.id,
+      correctedClub: clubCorrections[file.id]?.[shot.rowNumber],
+      fileShotNumber: shot.shotNumber ?? index + 1,
+      courseShot: courseShotByRowNumber.get(shot.rowNumber) ?? null,
+    })),
+  );
 
   const detectedUnits = [...new Set(parsedFiles.map((file) => file.parsed.detectedDistanceUnit))];
   const detectedSessionDateIso =
     parsedFiles.find((file) => file.parsed.exportedAtIso)?.parsed.exportedAtIso ?? null;
+  const mappingValues = Object.values(columnMapping).filter(Boolean);
+  const invalidMappings =
+    new Set(mappingValues).size !== mappingValues.length ||
+    parsedFiles.some(
+      (file) =>
+        file.parsed.source === "rapsodo" &&
+        analyzeRapsodoCsvColumns(file.rawCsvText, { columnMapping }).needsManualMapping,
+    );
+  const unresolvedClubs = parsedFiles.some((file) =>
+    file.parsed.shots.some(
+      (shot) =>
+        (shot.clubType === "unknown" || shot.clubType === "other" ||
+          shot.clubIdentityProvenance === "unknown" ||
+          shot.clubIdentityProvenance === "inferred") &&
+        !clubCorrections[file.id]?.[shot.rowNumber],
+    ),
+  );
   const canSave =
     !startWithSampleData &&
+    !isParsing &&
+    !readProgress &&
+    !parseError &&
+    !invalidMappings &&
+    !unresolvedClubs &&
+    settingsConfirmed &&
+    (scorecardExtractState.status !== "success" || !isCourseUpload || scorecardReviewed) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(sessionDate) &&
+    Number.isFinite(Date.parse(sessionDate)) &&
+    (aggregate.warnings.length === 0 || warningsReviewed) &&
     uploadedFiles.length > 0 &&
     uploadedFiles.length <= MAX_IMPORT_FILES_PER_BATCH &&
     uploadedFiles.every(
@@ -358,6 +402,8 @@ export function ImportForm({
     !isPending;
 
   async function readSelectedFiles(files: FileList | File[]) {
+    setSettingsConfirmed(false);
+    setWarningsReviewed(false);
     setSaveState({ status: "idle" });
     const selectedFiles = Array.from(files);
     const oversizedFiles = selectedFiles.filter((file) => file.size > MAX_IMPORT_CSV_BYTES);
@@ -409,6 +455,7 @@ export function ImportForm({
     }
 
     setSaveState({ status: "idle" });
+    setScorecardReviewed(false);
     setScorecardExtractState({ status: "loading", fileName: file.name });
 
     try {
@@ -583,7 +630,15 @@ export function ImportForm({
       fileSizeBytes: file.fileSizeBytes,
       source: file.parsed.source,
       sessionType,
-      sessionDate: file.parsed.exportedAtIso ?? sessionDate,
+      sessionDate,
+      practicePlanId: practicePlanId ?? undefined,
+      shotOverrides: Object.entries(clubCorrections[file.id] ?? {}).map(
+        ([rowNumber, clubType]) => ({
+          rowNumber: Number(rowNumber),
+          clubType,
+          clubSelectionOrigin: "user" as const,
+        }),
+      ),
       distanceUnit,
       columnMapping:
         file.parsed.source === "rapsodo" && hasColumnMapping(columnMapping)
@@ -631,18 +686,18 @@ export function ImportForm({
   return (
     <section className="min-w-0" data-import-ready={isHydrated ? "true" : "false"}>
       <div className="mx-auto flex w-full max-w-none flex-col gap-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-foreground">CSV import workspace</p>
-            <p className="text-sm text-muted-foreground">
-              Choose files, review mappings and save trusted rows.
-            </p>
-          </div>
-          <Badge variant="secondary">
-            {isCourseUpload ? "Simulated course CSV" : "Launch monitor CSV"}
-          </Badge>
-        </div>
-
+        <ImportStepper
+          isCourseUpload={isCourseUpload}
+          hasFiles={uploadedFiles.length > 0}
+          hasShots={aggregate.shotCount > 0}
+          hasCourseMapping={!isCourseUpload || courseAssignedShotCount === aggregate.shotCount}
+          hasWarnings={aggregate.warnings.length > 0 && !warningsReviewed}
+          canSave={canSave}
+          settingsConfirmed={settingsConfirmed}
+          isPending={isPending}
+          saved={saveState.status === "success"}
+          error={saveState.status === "error"}
+        />
         {startWithSampleData ? (
           <Alert>
             <FlaskConical className="size-4" />
@@ -799,11 +854,14 @@ export function ImportForm({
             </p>
           </header>
           <div className="grid gap-5 xl:grid-cols-2">
-            <div className="grid min-w-0 content-start gap-5">
+            <div id="import-files" className="grid min-w-0 scroll-mt-28 content-start gap-5">
               <UploadDropzone
                 fileInputRef={fileInputRef}
                 isDragging={isDragging}
                 readProgress={readProgress}
+                errors={fileErrors}
+                onRetry={(file) => readSelectedFiles([file])}
+                onDismissError={dismissFileError}
                 files={parsedFiles}
                 setIsDragging={setIsDragging}
                 onFilesSelected={readSelectedFiles}
@@ -818,15 +876,39 @@ export function ImportForm({
                 distanceUnit={distanceUnit}
                 detectedUnits={detectedUnits}
                 detectedSessionDateIso={detectedSessionDateIso}
-                onSessionDateChange={setSessionDate}
-                onSessionTypeChange={setSessionType}
-                onDistanceUnitChange={setDistanceUnit}
+                onSessionDateChange={(value) => {
+                  setSessionDate(value);
+                  setSettingsConfirmed(false);
+                }}
+                onSessionTypeChange={(value) => {
+                  setSessionType(value);
+                  setSettingsConfirmed(false);
+                }}
+                onDistanceUnitChange={(value) => {
+                  setDistanceUnit(value);
+                  setSettingsConfirmed(false);
+                  setWarningsReviewed(false);
+                }}
+                confirmed={settingsConfirmed}
+                onConfirm={() => setSettingsConfirmed(true)}
               />
 
               <ColumnMappingPanel
                 files={uploadedFiles}
+                samples={Object.fromEntries(
+                  (parsedFiles[0]?.parsed.headers ?? []).map((header) => [
+                    header,
+                    (parsedFiles[0]?.parsed.shots ?? [])
+                      .slice(0, 3)
+                      .map((shot) => shot.sourceRawJson[header])
+                      .filter(Boolean),
+                  ]),
+                )}
                 columnMapping={columnMapping}
-                onColumnMappingChange={setColumnMapping}
+                onColumnMappingChange={(value) => {
+                  setColumnMapping(value);
+                  setWarningsReviewed(false);
+                }}
               />
               {isCourseUpload ? (
                 <ScorecardExtractionPanel
@@ -842,15 +924,56 @@ export function ImportForm({
                   onScorecardTextChange={setScorecardText}
                 />
               ) : null}
+              {isCourseUpload && scorecardExtractState.status === "success" ? (
+                <label className="flex min-h-11 items-start gap-2 rounded-xl border border-border p-3 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-1 size-5 shrink-0 accent-primary"
+                    checked={scorecardReviewed}
+                    onChange={(event) => setScorecardReviewed(event.target.checked)}
+                  />
+                  <span>
+                    I have checked the extracted scorecard values, course details and hole mapping.
+                  </span>
+                </label>
+              ) : null}
             </div>
           </div>
         </section>
 
+        {isParsing ? (
+          <p role="status" className="text-sm text-muted-foreground">
+            Parsing source data…
+          </p>
+        ) : null}
+        {parseError ? (
+          <Alert variant="destructive">
+            <AlertTitle>Could not parse files</AlertTitle>
+            <AlertDescription>{parseError}</AlertDescription>
+          </Alert>
+        ) : null}
         {uploadedFiles.length > 0 && aggregate.warnings.length > 0 ? (
           <Alert>
             <AlertCircle className="size-4" />
             <AlertTitle>Review import settings</AlertTitle>
-            <AlertDescription>{aggregate.warnings.join(" ")}</AlertDescription>
+            <AlertDescription>
+              <ul className="list-disc space-y-1 pl-4">
+                {aggregate.warnings.map((warning, index) => (
+                  <li key={`${warning}-${index}`}>{warning}</li>
+                ))}
+              </ul>
+              <label className="mt-3 flex min-h-11 cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  className="mt-1 size-5 shrink-0 accent-primary"
+                  checked={warningsReviewed}
+                  onChange={(event) => setWarningsReviewed(event.target.checked)}
+                />
+                <span>
+                  I have reviewed these warnings and confirmed the source units and club mappings.
+                </span>
+              </label>
+            </AlertDescription>
           </Alert>
         ) : null}
 
@@ -880,20 +1003,48 @@ export function ImportForm({
           </Card>
         ) : null}
 
+        <div id="import-preview" className="scroll-mt-28">
+          <ShotPreview
+            shots={previewShots}
+            isCourseUpload={isCourseUpload}
+            onClubChange={(fileId, rowNumber, value) => {
+              setClubCorrections((current) => ({
+                ...current,
+                [fileId]: { ...current[fileId], [rowNumber]: value },
+              }));
+              setWarningsReviewed(false);
+            }}
+          />
+        </div>
+        {invalidMappings || unresolvedClubs ? (
+          <Alert variant="destructive">
+            <AlertTitle>Review mappings before saving</AlertTitle>
+            <AlertDescription>
+              {invalidMappings
+                ? "Complete required column mappings and resolve duplicate source columns. "
+                : ""}
+              {unresolvedClubs
+                ? "Choose a club for each unknown or inferred shot in the preview."
+                : ""}
+            </AlertDescription>
+          </Alert>
+        ) : null}
         <SaveChecklistCard
           hasFiles={uploadedFiles.length > 0}
           hasShots={aggregate.shotCount > 0}
           hasCompleteCourseMapping={
             !isCourseUpload || courseAssignedShotCount === aggregate.shotCount
           }
-          hasNoWarnings={aggregate.warnings.length === 0}
+          hasNoWarnings={aggregate.warnings.length === 0 || warningsReviewed}
+          settingsConfirmed={settingsConfirmed}
+          fileCount={uploadedFiles.length}
+          shotCount={aggregate.shotCount}
+          sessionSummary={`${sessionType.replaceAll("_", " ")} · ${sessionDate} · fallback ${distanceUnit}`}
           isOnline={isOnline}
           isPending={isPending}
           canSave={canSave}
           onSave={saveImportBatch}
         />
-
-        <ShotPreview shots={previewShots} isCourseUpload={isCourseUpload} />
       </div>
     </section>
   );
