@@ -310,10 +310,10 @@
     padding-right: max(0.75rem, env(safe-area-inset-right)) !important;
     border: 0 !important;
     border-bottom: 0.5px solid var(--ios-separator) !important;
-    background: var(--ios-material) !important;
+    background: var(--ios-background) !important;
     box-shadow: none !important;
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .ios-app-header::after {
@@ -329,27 +329,10 @@
 
   .ios-app-header[data-companion-hero-header="true"][data-hero-collapsed="false"] {
     border-bottom-color: transparent !important;
-    background: transparent !important;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
 
   .ios-app-header[data-companion-hero-header="true"][data-hero-collapsed="false"]::after {
     display: none;
-  }
-
-  .ios-app-header[data-companion-hero-header="true"][data-hero-collapsed="false"] .ios-nav-button {
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    background: rgba(15, 23, 20, 0.36) !important;
-    color: #fff !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
-    backdrop-filter: blur(16px) saturate(150%);
-    -webkit-backdrop-filter: blur(16px) saturate(150%);
-  }
-
-  .ios-app-header[data-companion-hero-header="true"][data-hero-collapsed="false"]
-    .ios-inline-title {
-    color: #fff !important;
   }
 
   .ios-nav-button {
@@ -1076,7 +1059,7 @@
     --mobile-space-compact: 0.5rem;
     --mobile-space-standard: 1rem;
     --mobile-space-large: 1.5rem;
-    --mobile-navigation-height: 3.25rem;
+    --mobile-navigation-height: calc(3.25rem + 12px);
     --mobile-tab-height: 4rem;
     --mobile-safe-top: env(safe-area-inset-top, 0px);
     --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -1345,16 +1328,8 @@
   [data-app-surface="companion"] .ios-app-header {
     border-bottom: 0 !important;
   }
-  [data-app-surface="companion"] .ios-app-header[data-hero-collapsed="true"] {
-    background: var(--ios-material-strong) !important;
-  }
   [data-app-surface="companion"] .ios-app-header::after {
     display: none;
-  }
-  [data-app-surface="companion"] .ios-app-header[data-hero-collapsed="false"] {
-    background: var(--ios-background) !important;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
   [data-app-surface="companion"] .ios-grouped-row {
     padding-top: 1rem;
@@ -1380,9 +1355,7 @@
 
   [data-app-surface="companion"]
     .ios-app-header[data-mobile-root="true"][data-hero-collapsed="false"] {
-    background: transparent !important;
     pointer-events: none;
-    padding-top: calc(1.25rem + env(safe-area-inset-top)) !important;
   }
   [data-app-surface="companion"]
     .ios-app-header[data-mobile-root="true"]

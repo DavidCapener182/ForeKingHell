@@ -147,7 +147,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
         data-companion-hero-header={heroRoute ? "true" : undefined}
         data-hero-collapsed={compactTitleVisible ? "true" : "false"}
         data-mobile-root={!backNavigation ? "true" : undefined}
-        className="ios-app-header fixed left-0 top-0 z-[60] h-[calc(3.25rem+env(safe-area-inset-top))] w-dvw max-w-full px-3 pt-[env(safe-area-inset-top)]"
+        className="ios-app-header fixed left-0 top-0 z-[60] h-[calc(3.25rem+12px+env(safe-area-inset-top,0px))] w-dvw max-w-full px-3 pt-[calc(env(safe-area-inset-top,0px)+12px)]"
       >
         <div className="grid h-[3.25rem] grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
           <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
