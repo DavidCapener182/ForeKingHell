@@ -2,12 +2,12 @@
 
 import { useEffect } from "react";
 
-/** An activity owns the screen only while it is running. */
-export function useMobileActivity(active: boolean) {
+/** Keep a running activity awake; immersive activities can also own the navigation. */
+export function useMobileActivity(active: boolean, { keepNavigation = false } = {}) {
   useEffect(() => {
     if (!active) return;
     const shell = document.querySelector<HTMLElement>("[data-app-surface='companion']");
-    if (shell) shell.dataset.mobileFlow = "immersive";
+    if (shell && !keepNavigation) shell.dataset.mobileFlow = "immersive";
     let cancelled = false;
     let lock: WakeLockSentinel | null = null;
     let acquiring = false;
@@ -49,11 +49,11 @@ export function useMobileActivity(active: boolean) {
     document.addEventListener("visibilitychange", visibility);
     return () => {
       cancelled = true;
-      if (shell) delete shell.dataset.mobileFlow;
+      if (shell && !keepNavigation) delete shell.dataset.mobileFlow;
       document.removeEventListener("visibilitychange", visibility);
       void lock?.release().catch(() => undefined);
     };
-  }, [active]);
+  }, [active, keepNavigation]);
 }
 
 export function activityHaptic() {

@@ -33,6 +33,20 @@ afterEach(() => {
 });
 
 describe("immersive screen-awake lifecycle", () => {
+  it("keeps navigation available during practice while acquiring and releasing the wake lock", async () => {
+    const lock = sentinel();
+    const request = vi.fn().mockResolvedValue(lock);
+    const { shell } = environment(request);
+    useMobileActivity(true, { keepNavigation: true });
+    await settle();
+    expect(request).toHaveBeenCalledWith("screen");
+    expect(shell.dataset.mobileFlow).toBeUndefined();
+    effects.cleanup?.();
+    effects.cleanup = undefined;
+    expect(lock.release).toHaveBeenCalledOnce();
+    expect(shell.dataset.mobileFlow).toBeUndefined();
+  });
+
   it("permits one pending request and reacquires after the OS releases it", async () => {
     let resolve!: (lock: ReturnType<typeof sentinel>) => void;
     const request = vi.fn(

@@ -442,6 +442,18 @@
     max(var(--mobile-space-standard), env(safe-area-inset-bottom));
   background: var(--ios-background, var(--background));
 }
+
+/* Practice keeps the shared safe-area header and tabs while a range session is active. */
+:global([data-practice-companion]) .rangeStage {
+  min-height: calc(
+    100svh - var(--mobile-navigation-height) - var(--mobile-safe-top) - var(--mobile-tab-height) -
+      var(--mobile-safe-bottom) - 2 * var(--mobile-space-standard)
+  );
+}
+:global([data-practice-companion]) .rangeActions {
+  bottom: calc(var(--mobile-tab-height) + var(--mobile-safe-bottom) + var(--mobile-space-compact));
+  padding-bottom: var(--mobile-space-standard);
+}
 .rangeStepButton {
   width: 2.75rem;
   height: 3.25rem;

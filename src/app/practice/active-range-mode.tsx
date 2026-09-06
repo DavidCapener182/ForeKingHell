@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -81,6 +81,11 @@ export function ActiveRangeMode({
   const completeButtonRef = useRef<HTMLButtonElement>(null);
   const nextButtonRef = useRef<HTMLButtonElement>(null);
   const navigationFocusRef = useRef<"previous" | "next" | null>(null);
+
+  useLayoutEffect(() => {
+    // Resume may be below the fold in the plan; reveal the session below the shared header.
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
 
   useEffect(() => {
     const navigatedButton =
