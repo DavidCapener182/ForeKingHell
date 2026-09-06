@@ -4,10 +4,10 @@ import { CalendarDays, Upload } from "lucide-react";
 
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { Button } from "@/components/ui/button";
-import { PageHeader, PageShell, StatusPill } from "@/components/premium";
+import { PageHeader, PageShell } from "@/components/premium";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { UrlBackedSessionTimeline } from "@/app/sessions/session-timeline";
-import { getRecentSessionHistory } from "@/lib/session-history";
+import { loadHistoryPage, HistoryLoadMore } from "@/app/sessions/history-page-data";
 import {
   resolveSessionHistorySearchParams,
   sessionHistoryHref,
@@ -22,7 +22,7 @@ export default async function SessionsPage({
   searchParams: SessionHistorySearchParamsInput;
 }) {
   const userId = await requireCurrentUserId();
-  const rows = await getRecentSessionHistory(userId);
+  const { rows, total } = await loadHistoryPage(userId, searchParams, true);
   const resolved = resolveSessionHistorySearchParams(searchParams, rows);
 
   if (resolved.changed) redirect(sessionHistoryHref(resolved.query));
@@ -30,8 +30,7 @@ export default async function SessionsPage({
   return (
     <PageShell>
       <PageHeader
-        eyebrow={<StatusPill tone="green">Review history</StatusPill>}
-        title="Your golf history"
+        title="History"
         description="Move through practice, simulator sessions and rounds chronologically. Select any entry for its evidence-led preview."
         actions={
           <Button asChild className="premium-action min-h-11 rounded-xl">
@@ -62,6 +61,7 @@ export default async function SessionsPage({
           }
         />
       )}
+      <HistoryLoadMore loaded={rows.length} total={total} query={resolved.query} />
     </PageShell>
   );
 }

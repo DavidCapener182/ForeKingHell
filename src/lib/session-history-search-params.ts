@@ -7,12 +7,15 @@ export type SessionHistoryFilters = {
   club: string;
   date: SessionDateFilter;
   sessionId: string | null;
+  search?: string;
 };
 
 export type SessionHistoryFilterPatch = Partial<SessionHistoryFilters>;
 
 export type SessionHistoryFilterSession = {
   id: string;
+  title?: string;
+  typeLabel?: string;
   isRound: boolean;
   sourceLabel: string;
   clubs: readonly string[];
@@ -29,7 +32,7 @@ export const DEFAULT_SESSION_HISTORY_FILTERS: Readonly<SessionHistoryFilters> = 
   sessionId: null,
 };
 
-const ownedQueryKeys = ["type", "source", "club", "date", "session"] as const;
+const ownedQueryKeys = ["type", "source", "club", "date", "session", "q"] as const;
 
 export function resolveSessionHistorySearchParams(
   input: SessionHistorySearchParamsInput | string,
@@ -112,7 +115,9 @@ export function resolveSessionHistorySearchParams(
     changed = true;
   }
 
+  const search = (params.get("q") ?? "").slice(0, 200);
   const filtersWithoutSession: SessionHistoryFilters = {
+    ...(search ? { search } : {}),
     type,
     source,
     club,
@@ -152,10 +157,11 @@ export function buildSessionHistoryQuery(
 ) {
   const params = new URLSearchParams(currentQuery);
   const current = resolveSessionHistorySearchParams(currentQuery, sessions).filters;
-  const filterChanged = (["type", "source", "club", "date"] as const).some(
+  const filterChanged = (["type", "source", "club", "date", "search"] as const).some(
     (key) => Object.hasOwn(patch, key) && patch[key] !== current[key],
   );
 
+  if (Object.hasOwn(patch, "search")) setOwnedValue(params, "q", patch.search?.slice(0, 200), "");
   if (Object.hasOwn(patch, "type")) setOwnedValue(params, "type", patch.type, "all");
   if (Object.hasOwn(patch, "source")) setOwnedValue(params, "source", patch.source, "all");
   if (Object.hasOwn(patch, "club")) setOwnedValue(params, "club", patch.club, "all");
@@ -183,6 +189,15 @@ export function sessionMatchesHistoryFilters(
   session: SessionHistoryFilterSession,
   filters: SessionHistoryFilters,
 ) {
+  if (
+    filters.search &&
+    ![session.title, session.typeLabel, session.sourceLabel, ...session.clubs]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(filters.search.toLowerCase())
+  )
+    return false;
   if (filters.type === "round" && !session.isRound) return false;
   if (filters.type === "practice" && session.isRound) return false;
   if (filters.source !== "all" && session.sourceLabel !== filters.source) return false;

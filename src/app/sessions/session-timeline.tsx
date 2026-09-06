@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Check, GitCompareArrows, ListFilter, Target, X } from "lucide-react";
+import { Check, GitCompareArrows, ListFilter, Target } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,20 +18,17 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { SessionHistoryFilterSheet } from "@/app/sessions/session-history-filter-sheet";
+import { HistoryToolbar } from "./history-toolbar";
+import { SessionShotPreview } from "./session-shot-preview";
 import {
   deriveSessionHistoryView,
   pruneSessionComparisonSelection,
 } from "@/app/sessions/session-history-view";
 import { useSessionHistoryUrlState } from "@/app/sessions/use-session-history-url-state";
-import { formatClubType } from "@/lib/club-format";
 import {
   DEFAULT_SESSION_HISTORY_FILTERS,
-  type SessionDateFilter,
   type SessionHistoryFilterPatch,
   type SessionHistoryFilters,
-  type SessionTypeFilter,
 } from "@/lib/session-history-search-params";
 import type { ShotPatternPoint } from "@/lib/shot-pattern-chart-data";
 import { cn } from "@/lib/utils";
@@ -104,18 +101,6 @@ export function SessionTimeline({
   onFiltersChange = noop,
   onClearFilters = noop,
 }: SessionTimelineProps) {
-  const sourceOptions = useMemo(
-    () => uniqueOptions(sessions.map((session) => session.sourceLabel)),
-    [sessions],
-  );
-  const clubOptions = useMemo(
-    () =>
-      uniqueOptions(sessions.flatMap((session) => session.clubs)).map((value) => ({
-        value,
-        label: formatClubType(value),
-      })),
-    [sessions],
-  );
   const { visible, focused: activeSession } = useMemo(
     () => deriveSessionHistoryView(sessions, filters),
     [filters, sessions],
@@ -153,12 +138,6 @@ export function SessionTimeline({
     comparisonTrayIds.length === 2
       ? `/analyse/compare?sessionId=${encodeURIComponent(comparisonTrayIds[0])}&baselineSessionId=${encodeURIComponent(comparisonTrayIds[1])}`
       : null;
-  const activeControlCount =
-    Number(filters.type !== "all") +
-    Number(filters.source !== "all") +
-    Number(filters.club !== "all") +
-    Number(filters.date !== "all") +
-    Number(filters.sessionId !== null);
 
   useEffect(() => {
     if (!accountId) return;
@@ -209,55 +188,13 @@ export function SessionTimeline({
 
   return (
     <div className="grid min-w-0 gap-3" data-sessions-history-workbench>
-      <section
-        className="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border bg-card p-2.5"
-        aria-label="Filter session history"
-        data-session-toolbar
-      >
-        <Tabs
-          value={filters.type}
-          onValueChange={(value) => onFiltersChange({ type: value as SessionTypeFilter })}
-        >
-          <TabsList aria-label="Session type" className="grid grid-cols-3">
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="practice">Practice</TabsTrigger>
-            <TabsTrigger value="round">Rounds</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <div className="h-6 w-px bg-border" aria-hidden />
-        <SessionHistoryFilterSheet
-          label="Source"
-          value={filters.source}
-          options={[{ value: "all", label: "All sources" }, ...sourceOptions.map(asOption)]}
-          onChange={(source) => onFiltersChange({ source })}
-        />
-        <SessionHistoryFilterSheet
-          label="Club"
-          value={filters.club}
-          options={[{ value: "all", label: "All clubs" }, ...clubOptions]}
-          onChange={(club) => onFiltersChange({ club })}
-        />
-        <SessionHistoryFilterSheet
-          label="Date"
-          value={filters.date}
-          options={[
-            { value: "all", label: "Any date" },
-            { value: "today", label: "Today" },
-            { value: "week", label: "This week" },
-            { value: "earlier", label: "Earlier" },
-          ]}
-          onChange={(date) => onFiltersChange({ date: date as SessionDateFilter })}
-        />
-        <span className="ml-auto text-xs text-muted-foreground">
-          {visible.length} of {sessions.length}
-        </span>
-        {activeControlCount > 0 ? (
-          <Button type="button" variant="ghost" size="sm" onClick={onClearFilters}>
-            <X className="size-3.5" aria-hidden />
-            Clear
-          </Button>
-        ) : null}
-      </section>
+      <HistoryToolbar
+        sessions={sessions}
+        filters={filters}
+        count={visible.length}
+        onChange={onFiltersChange}
+        onClear={onClearFilters}
+      />
 
       <div
         className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)] 2xl:grid-cols-[minmax(0,1.2fr)_minmax(25rem,0.8fr)]"
@@ -330,7 +267,7 @@ export function SessionTimeline({
           aria-live={comparisonTrayOpen ? "polite" : "off"}
           aria-hidden={!comparisonTrayOpen}
           inert={!comparisonTrayOpen}
-          className="t-panel-slide sticky bottom-4 z-20 mx-auto flex w-[min(44rem,calc(100%-1rem))] items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-card/95 p-3 shadow-xl backdrop-blur"
+          className="t-panel-slide sticky bottom-4 z-20 mx-auto flex w-[min(44rem,calc(100%-1rem))] flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-card/95 p-3 shadow-xl backdrop-blur"
           data-open={comparisonTrayOpen ? "true" : "false"}
           data-session-compare-tray
           onTransitionEnd={(event) => {
@@ -350,7 +287,7 @@ export function SessionTimeline({
             <p className="font-semibold">
               {comparisonTrayIds.length === 2 ? "Ready to compare" : "Select one more session"}
             </p>
-            <p className="truncate text-xs text-muted-foreground">
+            <p className="break-words text-xs text-muted-foreground">
               {selectedSessions.map((session) => session.title).join(" versus ")}
             </p>
           </div>
@@ -413,7 +350,7 @@ function DesktopSessionRow({
       >
         <span className="block space-y-1">
           <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="max-w-full truncate font-medium leading-5">{session.title}</span>
+            <span className="max-w-full break-words font-medium leading-5">{session.title}</span>
             <Badge variant="outline" className="font-normal">
               {session.typeLabel}
             </Badge>
@@ -422,7 +359,7 @@ function DesktopSessionRow({
             {session.dateLabel} · {session.timeLabel}
             {session.contextLabel !== session.title ? ` · ${session.contextLabel}` : ""}
           </span>
-          <span className="block truncate text-sm font-medium text-foreground">
+          <span className="block whitespace-normal text-sm font-medium text-foreground">
             {session.verdict}
           </span>
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -531,6 +468,13 @@ function SessionPreview({
           </dl>
         </div>
 
+        <details>
+          <summary className="flex min-h-11 cursor-pointer items-center font-medium">
+            Inspect shot measurements and source
+          </summary>
+          <SessionShotPreview key={session.id} sessionId={session.id} />
+        </details>
+
         <div className="flex flex-wrap gap-2">
           <Button asChild className="flex-1">
             <Link href={href}>Open full review</Link>
@@ -598,14 +542,6 @@ function groupSessions(sessions: SessionTimelineItem[]) {
     const matches = sessions.filter((session) => session.dateGroup === group);
     return matches.length ? ([[group, matches]] as const) : [];
   });
-}
-
-function uniqueOptions(values: string[]) {
-  return [...new Set(values)].sort((left, right) => left.localeCompare(right));
-}
-
-function asOption(value: string) {
-  return { value, label: value };
 }
 
 function slug(value: string) {
