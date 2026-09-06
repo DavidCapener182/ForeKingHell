@@ -1,5 +1,7 @@
 import { MobileTodayActivities } from "@/components/app/mobile-today-activities";
 import { MobileTodayChangeDetail } from "@/components/app/mobile-today-change";
+import { MobileTodayPracticeReview } from "@/components/app/mobile-today-review";
+import { buildMobileTodayReview, practiceDateKey } from "@/lib/mobile-today-review";
 import { buildMobileTodayChange } from "@/lib/mobile-today-briefing";
 import { formatCompanionClubType } from "@/lib/club-format";
 import { Flag, Upload, Activity, Trophy, Target } from "lucide-react";
@@ -42,19 +44,25 @@ export default async function TodayCompanionPage() {
   }
 
   const userId = await requireCurrentUserId();
-  const [context, currentPlan, activeRound, recent] = await Promise.all([
+  const now = new Date();
+  const [context, currentPlan, activeRound, recent, todayData] = await Promise.all([
     getPracticePlannerContext(userId, { compactTraining: true, includeSpeed: false }),
     getCurrentPracticePlanSummary(userId),
     getInProgressRound(userId),
     getTodayActivity(userId),
+    getTodayPracticeData({ date: practiceDateKey(now), scope: "day", practiceOnly: true }).catch(
+      () => null,
+    ),
   ]);
   const recommendation = buildTodayRecommendation(context);
-  const latestData = context.latestPractice.sessionId
-    ? await getTodayPracticeData({
-        sessionId: context.latestPractice.sessionId,
-        scope: "day",
-      }).catch(() => null)
-    : null;
+  const latestData = todayData?.rawShots.length
+    ? todayData
+    : context.latestPractice.sessionId
+      ? await getTodayPracticeData({
+          sessionId: context.latestPractice.sessionId,
+          scope: "day",
+        }).catch(() => null)
+      : null;
   const latestShots = latestData?.rawShots ?? [];
   const patternPoints = buildShotPatternPoints(
     (latestData?.comparisonShots ?? []).map((shot) => ({
@@ -68,28 +76,50 @@ export default async function TodayCompanionPage() {
   const confidenceWarning = context.bag.issues.find(
     (issue) => !issue.startsWith("Bag trust is building"),
   );
-  const mainState = resolveTodayPrimaryState({
+  const recommendationState = resolveTodayPrimaryState({
     currentPlan: null,
     activeRound: null,
     recommendation,
     latestData: null,
   });
+  const review = buildMobileTodayReview(todayData, now);
+  const nextPracticeState =
+    recommendation.confidence === "Low"
+      ? {
+          ...recommendationState,
+          href: `/practice?intent=confidence&club=${encodeURIComponent(recommendation.clubType ?? "")}&time=${recommendation.minutes}&source=today`,
+        }
+      : recommendationState;
+  const mainState = review?.state ?? nextPracticeState;
+  const reviewPatternPoints =
+    review && todayData
+      ? buildShotPatternPoints(
+          todayData.rawShots.map((shot) => ({
+            ...shot,
+            clubLabel: formatCompanionClubType(shot.clubType),
+          })),
+          {
+            trustedShotIds: new Set(todayData.comparisonShots.map((shot) => shot.id)),
+          },
+        )
+      : [];
 
   const change = buildMobileTodayChange(latestData);
   return (
     <PageShell>
       <MobileAppShell className="gap-6" data-today-companion>
-        <MobileTodayGreeting initialNow={new Date().toISOString()} />
+        <MobileTodayGreeting initialNow={now.toISOString()} />
+        {!todayData ? (
+          <Alert>
+            <AlertTitle>Today’s review couldn’t load</AlertTitle>
+            <AlertDescription>
+              Reload Today to try again, or <Link href="/sessions">open your saved sessions</Link>.
+            </AlertDescription>
+          </Alert>
+        ) : null}
         <TodayPrimaryAnswer
           accountId={userId}
-          serverState={
-            recommendation.confidence === "Low"
-              ? {
-                  ...mainState,
-                  href: `/practice?intent=confidence&club=${encodeURIComponent(recommendation.clubType ?? "")}&time=${recommendation.minutes}&source=today`,
-                }
-              : mainState
-          }
+          serverState={mainState}
           evidenceDate={
             latestData
               ? new Intl.DateTimeFormat("en-GB", {
@@ -106,17 +136,21 @@ export default async function TodayCompanionPage() {
                 Evidence used
               </p>
               <ul className="grid gap-2 text-sm leading-5 text-foreground">
-                <li>Latest measured practice day · {context.latestPractice.dateLabel}</li>
+                <li>
+                  Latest measured practice day ·{" "}
+                  {latestData?.dateLabel ?? context.latestPractice.dateLabel}
+                </li>
                 <li>
                   {latestShots.length} measured shots across{" "}
                   {uploadLabel(latestData?.sessions.length ?? 0)}
                 </li>
                 <li>
-                  The pattern uses comparable trusted shots; chips and recovery shots are left out.
+                  Comparisons use trusted full shots; chips, recovery shots and excluded readings
+                  are left out.
                 </li>
                 <li>Training load · {context.trainingLoad.statusLabel}</li>
               </ul>
-              {patternPoints.length ? (
+              {!review && patternPoints.length ? (
                 <MobileShotPatternCharts
                   points={patternPoints}
                   preferredClub={recommendation.clubType}
@@ -124,22 +158,47 @@ export default async function TodayCompanionPage() {
                 />
               ) : null}
               <p className="text-xs leading-5 text-muted-foreground">
-                Recommendations use measured golf evidence. Completing a practice activity manually
-                does not count as measured success.
+                {review
+                  ? "Open any session for its full review, or explore today’s club comparisons and shot patterns below."
+                  : "Recommendations use measured golf evidence. Completing a practice activity manually does not count as measured success."}
               </p>
             </div>
           }
-          facts={[
-            { label: "Session", value: `${recommendation.minutes} min` },
-            {
-              label: "Club",
-              value: recommendation.clubType
-                ? formatCompanionClubType(recommendation.clubType)
-                : recommendation.clubLabel,
-            },
-            { label: "Evidence", value: compactEvidenceLabel(recommendation.evidenceLabel) },
-          ]}
+          facts={
+            review
+              ? [{ label: "Evidence", value: review.summary }]
+              : [
+                  { label: "Session", value: `${recommendation.minutes} min` },
+                  {
+                    label: "Club",
+                    value: recommendation.clubType
+                      ? formatCompanionClubType(recommendation.clubType)
+                      : recommendation.clubLabel,
+                  },
+                  { label: "Evidence", value: compactEvidenceLabel(recommendation.evidenceLabel) },
+                ]
+          }
         />
+
+        {review ? (
+          <MobileTodayPracticeReview
+            review={review}
+            pattern={
+              reviewPatternPoints.length ? (
+                <MobileShotPatternCharts
+                  key={reviewPatternPoints.map((point) => point.id).join(",")}
+                  points={reviewPatternPoints}
+                  defaultToAllClubs
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No measured coordinates are available for a shot pattern. Your session reviews
+                  remain available above.
+                </p>
+              )
+            }
+          />
+        ) : null}
 
         <MobileTodayActivities
           accountId={userId}
@@ -153,6 +212,24 @@ export default async function TodayCompanionPage() {
         {change ? (
           <MobileSection title="What changed">
             <MobileTodayChangeDetail change={change} />
+          </MobileSection>
+        ) : null}
+        {review ? (
+          <MobileSection title="For your next practice">
+            <MobileGroupedList>
+              <MobileListRow
+                label={
+                  recommendation.confidence === "Low"
+                    ? recommendation.clubType
+                      ? `${formatCompanionClubType(recommendation.clubType)} baseline`
+                      : "Build your baseline"
+                    : recommendation.title
+                }
+                detail={`${recommendation.minutes} minutes · ${compactEvidenceLabel(recommendation.evidenceLabel)} · ${recommendation.confidence.toLowerCase()} confidence`}
+                href={nextPracticeState.href}
+                icon={Target}
+              />
+            </MobileGroupedList>
           </MobileSection>
         ) : null}
         {recent.length ? (

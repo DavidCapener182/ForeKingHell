@@ -59,6 +59,46 @@ beforeEach(() => {
 });
 
 describe("explicit session evidence scope", () => {
+  it("keeps all round types out of completed practice without changing normal day reviews", async () => {
+    const rounds = ["round", "real_round", "simulator", "simulated_course"].map((sessionType) => ({
+      ...neighbouringShot,
+      id: `${sessionType}-shot`,
+      sessionId: `${sessionType}-session`,
+      sessionType,
+      carryYd: 210,
+    }));
+    const select = vi
+      .fn()
+      .mockReturnValueOnce(query([neighbouringShot, ...rounds]))
+      .mockReturnValue(query([]));
+    vi.mocked(getDb).mockReturnValue({ select } as unknown as ReturnType<typeof getDb>);
+    const data = await getTodayPracticeData({
+      date: "2026-08-22",
+      scope: "day",
+      practiceOnly: true,
+    });
+    expect(data.sessions.map((session) => session.id)).toEqual(["other-session"]);
+    expect(data.rawShots.map((shot) => shot.id)).toEqual(["other-shot"]);
+    expect(data.allTodayShotCount).toBe(1);
+    expect(data.overall.today.carryAverageYd).toBe(140);
+
+    select.mockReset().mockReturnValueOnce(query(rounds)).mockReturnValue(query([]));
+    const roundOnly = await getTodayPracticeData({
+      date: "2026-08-22",
+      scope: "day",
+      practiceOnly: true,
+    });
+    expect(roundOnly.rawShots).toEqual([]);
+    expect(roundOnly.sessions).toEqual([]);
+
+    select
+      .mockReset()
+      .mockReturnValueOnce(query([neighbouringShot, ...rounds]))
+      .mockReturnValue(query([]));
+    const fullDay = await getTodayPracticeData({ date: "2026-08-22", scope: "day" });
+    expect(fullDay.rawShots).toHaveLength(5);
+    expect(fullDay.sessions).toHaveLength(5);
+  });
   it("exposes the exact earlier sample separately from current comparable shots", async () => {
     const older = {
       ...neighbouringShot,
