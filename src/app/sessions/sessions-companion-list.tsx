@@ -109,15 +109,15 @@ export function SessionsCompanionHistory({
         }
       />
       <div className="flex items-center justify-between text-sm">
-        <p className="text-muted-foreground" aria-live="polite">
+        <p className="text-muted-foreground">
           <span className="sr-only" aria-live="polite" aria-atomic="true">
-            {visible.length} of {sessions.length} sessions
+            {visible.length} of {sessions.length} recent sessions
           </span>
           <span aria-hidden="true">
             <span key={visible.length} className="t-number-pop tabular-nums">
               {visible.length}
             </span>{" "}
-            of {sessions.length} sessions
+            of {sessions.length} recent sessions
           </span>
         </p>
         <Link href="/progress" className="flex min-h-11 items-center font-semibold text-primary">
@@ -247,11 +247,15 @@ export function SessionsCompanionHistory({
                       confidence
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground">{session.clubsLabel}</p>
-                  <p className="border-t border-border pt-2 text-sm">
-                    {session.verdict}
-                    {session.planLinked ? " · Practice plan linked" : ""}
-                  </p>
+                  {session.clubsLabel !== session.title ? (
+                    <p className="text-sm text-muted-foreground">{session.clubsLabel}</p>
+                  ) : null}
+                  {session.verdict !== "Measured review ready" || session.planLinked ? (
+                    <p className="border-t border-border pt-2 text-sm">
+                      {session.verdict}
+                      {session.planLinked ? " · Practice plan linked" : ""}
+                    </p>
+                  ) : null}
                 </Link>
               ))}
             </section>
