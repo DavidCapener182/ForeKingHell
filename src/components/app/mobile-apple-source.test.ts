@@ -76,7 +76,7 @@ describe("Apple mobile shell contract", () => {
     expect(appleCssSource).toContain("env(safe-area-inset-left)");
     expect(appleCssSource).toContain("env(safe-area-inset-right)");
     expect(appleCssSource).toContain("env(safe-area-inset-bottom)");
-    expect(mobileNavSource).toContain("env(safe-area-inset-top)");
+    expect(mobileNavSource).toContain("env(safe-area-inset-top,0px)");
     expect(appleCssSource).toContain("--ios-secondary-label: rgba(46, 46, 52, 0.78)");
     expect(appleCssSource).toContain("font-size: 0.6875rem !important;");
     expect(appleCssSource).toContain(".ios-tab-item:focus-visible");

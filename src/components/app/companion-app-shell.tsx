@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { MobileNav, type MobileNavProfile } from "@/components/app/mobile-nav";
 import { CompanionRouteProgress } from "@/components/app/companion-route-progress";
@@ -23,13 +23,9 @@ export function CompanionAppShell({
   profile?: MobileNavProfile;
 }) {
   const pathname = usePathname();
-  const params = useSearchParams();
   const router = useRouter();
   const immersive = isMobileImmersiveRoute(pathname);
   const heroRoute = isMobileCompanionHeroRoute(pathname);
-  const primaryRoot =
-    ["/today", "/practice", "/play", "/progress", "/bag"].includes(pathname) &&
-    !(pathname === "/practice" && params.has("planId"));
   const level = calculateUserLevel(totalXp);
 
   useEffect(() => {
@@ -72,9 +68,8 @@ export function CompanionAppShell({
       data-companion-hero-shell={heroRoute ? "true" : undefined}
       className={cn(
         "relative flex min-h-dvh min-w-0 flex-1 flex-col overflow-x-clip bg-background",
-        immersive || heroRoute || primaryRoot
-          ? "pt-0"
-          : "pt-[calc(3.25rem+env(safe-area-inset-top))]",
+        // Match the 3.25rem controls row + 12px clearance + one safe-area inset before hydration.
+        immersive ? "pt-0" : "pt-[calc(3.25rem+12px+env(safe-area-inset-top,0px))]",
       )}
     >
       <a

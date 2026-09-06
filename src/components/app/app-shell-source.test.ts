@@ -93,7 +93,7 @@ describe("app shell desktop accessibility", () => {
     expect(source).toContain("<DesktopWorkbenchChrome");
     expect(source).toContain('surface === "workbench" ? "overflow-x-auto pt-0"');
     expect(source).toContain('isMobileImmersive || surface === "workbench"');
-    expect(source).toContain("pt-[calc(3.25rem+env(safe-area-inset-top))]");
+    expect(source).toContain("pt-[calc(3.25rem+12px+env(safe-area-inset-top,0px))]");
   });
 
   it("keeps achievement state mounted while exposing mobile-only toast suppression", () => {

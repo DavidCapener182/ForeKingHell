@@ -368,7 +368,7 @@ export function WorkbenchAppShell({
           surface === "workbench" ? "overflow-x-auto pt-0" : "overflow-x-clip",
           isMobileImmersive || surface === "workbench"
             ? "pt-0"
-            : "pt-[calc(3.25rem+env(safe-area-inset-top))]",
+            : "pt-[calc(3.25rem+12px+env(safe-area-inset-top,0px))]",
         )}
       >
         {isMobileImmersive || surface !== "companion" ? null : (
