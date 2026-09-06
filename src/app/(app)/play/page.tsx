@@ -289,15 +289,6 @@ function SelectedCourseMobile({
 }) {
   return (
     <Card className="overflow-hidden pt-0" data-selected-course>
-      {preview ? (
-        <MobileCoursePreview
-          key={preview.url}
-          courseName={course.name}
-          imageUrl={preview.url}
-          attribution={preview.attribution}
-          href={twinHref}
-        />
-      ) : null}
       <div className={styles.courseHeading}>
         <p>Selected course</p>
         <h2>{course.name}</h2>
@@ -365,6 +356,20 @@ function SelectedCourseMobile({
           </Button>
         </div>
       </CardFooter>
+      {preview ? (
+        <details className="border-t border-border">
+          <summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-semibold text-primary">
+            Explore the course map
+          </summary>
+          <MobileCoursePreview
+            key={preview.url}
+            courseName={course.name}
+            imageUrl={preview.url}
+            attribution={preview.attribution}
+            href={twinHref}
+          />
+        </details>
+      ) : null}
     </Card>
   );
 }

@@ -3,15 +3,6 @@
   border-radius: var(--mobile-radius-lg);
   background: var(--mobile-surface);
 }
-.artwork {
-  position: relative;
-  aspect-ratio: 2.2;
-  background: var(--mobile-grouped-background, var(--background));
-}
-.artwork img {
-  object-fit: cover;
-  object-position: 50% 75%;
-}
 .summary {
   display: grid;
   gap: var(--mobile-space-standard);

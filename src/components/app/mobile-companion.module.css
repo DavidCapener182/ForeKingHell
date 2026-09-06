@@ -509,3 +509,40 @@
   min-height: 44px;
   flex: 1;
 }
+
+.reviewBrief {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem 1.125rem;
+  border-radius: 1.25rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+.reviewBrief .focusHeading {
+  gap: 0.5rem;
+}
+.reviewBrief .focusEyebrow {
+  color: var(--primary);
+}
+.reviewBrief .focusIcon {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--primary);
+  background: var(--secondary);
+}
+.reviewBrief .focusTitle {
+  font-size: 1.375rem;
+}
+.reviewBrief .focusReason {
+  margin-top: 0.25rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+.reviewBrief .focusEvidence,
+.reviewBrief .focusEvidence strong {
+  color: var(--muted-foreground);
+}
+.reviewBrief .focusEvidence span > span {
+  display: none;
+}

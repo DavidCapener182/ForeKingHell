@@ -11,9 +11,9 @@ describe("application navigation hierarchy", () => {
   it("keeps five action-first mobile destinations", () => {
     expect(mobilePrimaryItems.map((item) => [item.label, item.href])).toEqual([
       ["Today", "/today"],
+      ["Sessions", "/sessions"],
       ["Practice", "/practice"],
       ["Play", "/play"],
-      ["Progress", "/progress"],
       ["Bag", "/bag"],
     ]);
 
@@ -28,11 +28,11 @@ describe("application navigation hierarchy", () => {
     expect(mobilePrimaryItems.find((item) => item.label === "Play")?.isActive("/play/bootle")).toBe(
       true,
     );
-    expect(mobilePrimaryItems.find((item) => item.label === "Practice")?.isActive("/shots")).toBe(
+    expect(mobilePrimaryItems.find((item) => item.label === "Sessions")?.isActive("/shots")).toBe(
       true,
     );
     expect(
-      mobilePrimaryItems.find((item) => item.label === "Progress")?.isActive("/progress"),
+      mobilePrimaryItems.find((item) => item.label === "Sessions")?.isActive("/progress"),
     ).toBe(true);
     expect(mobilePrimaryItems.find((item) => item.label === "Bag")?.isActive("/quick-bag")).toBe(
       true,

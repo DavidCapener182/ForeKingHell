@@ -507,7 +507,7 @@ const baseAppRouteMetadata = [
 export const appRouteMetadata: AppRouteMetadata[] = baseAppRouteMetadata.map((route) => ({
   ...route,
   ...mobileCapabilities[route.id],
-  ...(["sessions", "shots"].includes(route.id) ? { mobilePrimaryGroup: "practice" as const } : {}),
+  ...(["sessions", "shots"].includes(route.id) ? { mobilePrimaryGroup: "review" as const } : {}),
   ...(["rounds", "challenges", "tournaments", "leaderboard"].includes(route.id)
     ? { mobilePrimaryGroup: "strategy" as const }
     : {}),
@@ -598,8 +598,8 @@ export type MobileBackNavigation = {
  */
 export function mobileBackNavigation(pathname: string): MobileBackNavigation | null {
   const exactParents: Record<string, MobileBackNavigation> = {
-    "/sessions": { href: "/practice", label: "Practice" },
-    "/shots": { href: "/practice", label: "Practice" },
+    "/progress": { href: "/today", label: "Today" },
+    "/shots": { href: "/sessions", label: "Sessions" },
     "/shots/review": { href: "/shots", label: "Shots" },
     "/speed": { href: "/practice", label: "Practice" },
     "/stats/training-over-time": { href: "/progress", label: "Progress" },
@@ -629,6 +629,10 @@ export function mobileBackNavigation(pathname: string): MobileBackNavigation | n
 
   if (exactParents[pathname]) {
     return exactParents[pathname];
+  }
+
+  if (/^\/sessions\/[^/]+\/?$/.test(pathname)) {
+    return { href: "/sessions", label: "Sessions" };
   }
 
   const clubAnalytics = pathname.match(/^\/bag\/([^/]+)\/analytics\/?$/);

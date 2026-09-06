@@ -33,12 +33,14 @@ export function TodayPrimaryAnswer({
   facts,
   evidenceDate,
   evidenceContent,
+  compact = false,
 }: {
   accountId: string;
   serverState: TodayPrimaryState;
   facts: TodayFact[];
   evidenceDate?: string;
   evidenceContent: ReactNode;
+  compact?: boolean;
 }) {
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const isOnline = useSyncExternalStore(subscribeOnline, onlineSnapshot, serverOnlineSnapshot);
@@ -113,7 +115,7 @@ export function TodayPrimaryAnswer({
         </div>
       ) : null}
       <section
-        className={styles.focus}
+        className={compact ? styles.reviewBrief : styles.focus}
         data-primary-recommendation
         aria-label={isReview ? "Today’s practice review" : "Today's focus"}
       >
@@ -130,13 +132,19 @@ export function TodayPrimaryAnswer({
           </span>
         </div>
         <div>
-          <h2 className={styles.focusTitle}>{title}</h2>
-          <p className={styles.focusReason}>{reason}</p>
+          <h2 className={styles.focusTitle}>
+            {compact && reason === "Mixed session" ? "Mixed results today" : title}
+          </h2>
+          {!compact || reason !== "Mixed session" ? (
+            <p className={styles.focusReason}>{reason}</p>
+          ) : null}
         </div>
-        <Link href={serverState.href} className={styles.focusAction} data-today-primary-action>
-          {isRecommendation && duration ? `Build ${duration} practice` : serverState.action}
-          <ArrowRight className="size-4" aria-hidden />
-        </Link>
+        {!compact ? (
+          <Link href={serverState.href} className={styles.focusAction} data-today-primary-action>
+            {isRecommendation && duration ? `Build ${duration} practice` : serverState.action}
+            <ArrowRight className="size-4" aria-hidden />
+          </Link>
+        ) : null}
         <button
           id="today-evidence"
           className={styles.focusEvidence}
@@ -145,7 +153,7 @@ export function TodayPrimaryAnswer({
         >
           <span>
             <strong>
-              {evidence}
+              {compact ? "Saved practice · View evidence" : evidence}
               {isRecommendation ? ` · ${serverState.status} confidence` : ""}
             </strong>
             {evidenceDate ? <span>Latest practice · {evidenceDate}</span> : null}

@@ -298,7 +298,7 @@ export function OfflineCompanion() {
           ? "Play"
           : section === "bag"
             ? "Bag"
-            : "Progress";
+            : "Sessions";
   const hasSavedSection =
     section === "today"
       ? Boolean(rounds.length || quick || practice || bag?.clubs.length || books.length)
@@ -440,14 +440,14 @@ export function OfflineCompanion() {
           {!hasSavedSection ? (
             <MobileSection
               title={
-                section === "progress"
-                  ? "Your progress needs a connection"
+                section === "sessions"
+                  ? "Your session reviews need a connection"
                   : "Nothing saved here yet"
               }
             >
               <p className="mobile-type-body text-muted-foreground">
-                {section === "progress"
-                  ? "Reconnect to see your latest scores, training and goals."
+                {section === "sessions"
+                  ? "Reconnect to see your session reviews, club comparisons and shot patterns."
                   : "Open Quick Bag, a course strategy or start practice while connected to keep it available here."}
               </p>
             </MobileSection>

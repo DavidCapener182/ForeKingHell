@@ -1,4 +1,6 @@
 import { SessionAlignmentPanel } from "@/components/analysis/session-alignment-panel";
+import { mobileComparisonSummary } from "@/lib/mobile-review-copy";
+import { MobilePageTabs } from "@/components/app/mobile-controls";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -260,64 +262,103 @@ export default async function PracticeSessionReviewPage({
               </p>
             </details>
           </section>
-          <MobileSessionStory
-            groups={storyGroups}
-            preferredClub={preferredClub}
-            sessionId={sessionId}
+          <MobilePageTabs
+            className="companion-review-tabs"
+            initialValue="review"
+            mode="local"
+            ariaLabel="Session review sections"
+            tabs={[
+              {
+                value: "review",
+                label: "Review",
+                content: (
+                  <div className="grid gap-5">
+                    {" "}
+                    <MobileSection title="What changed">
+                      <MobileGroupedList>
+                        <MobileListRow
+                          label="Best signal"
+                          value={improved?.clubLabel ?? "Baseline"}
+                          detail={
+                            (improved ? mobileComparisonSummary(improved) : null) ??
+                            "No supported improvement yet. Repeat the same measured block to build a comparison."
+                          }
+                        />
+                        <MobileListRow
+                          label={remaining?.verdict === "worse" ? "Main problem" : "Next focus"}
+                          value={remaining?.clubLabel ?? "Build evidence"}
+                          detail={
+                            (remaining ? mobileComparisonSummary(remaining) : null) ??
+                            "There is not enough comparable evidence to identify a weakness."
+                          }
+                        />
+                      </MobileGroupedList>
+                    </MobileSection>
+                    <MobileSection title="Shot pattern">
+                      <div data-mobile-primary-chart>
+                        <MobileSessionPattern
+                          points={mobilePatternPoints}
+                          initiallyOpen
+                          preferredClub={preferredClub}
+                        />
+                      </div>
+                    </MobileSection>
+                  </div>
+                ),
+              },
+              {
+                value: "clubs",
+                label: "Clubs & shots",
+                content: (
+                  <>
+                    {" "}
+                    <MobileSessionStory
+                      groups={storyGroups}
+                      preferredClub={preferredClub}
+                      sessionId={sessionId}
+                    />
+                  </>
+                ),
+              },
+              {
+                value: "next",
+                label: "Next practice",
+                content: (
+                  <>
+                    {" "}
+                    <MobileSection title="Next practice">
+                      <p className="mobile-type-callout text-muted-foreground">
+                        {remaining
+                          ? remaining.verdict === "new"
+                            ? `Record another measured ${remaining.clubLabel} block to build a comparable baseline.`
+                            : `Work on ${remaining.clubLabel} control, then import measured shots to check the result.`
+                          : "Repeat a measured session before choosing a new focus."}
+                      </p>
+                      <Button asChild className="min-h-12">
+                        <Link href={sessionPractice}>
+                          {remaining
+                            ? remaining.verdict === "new"
+                              ? `Build ${remaining.clubLabel} baseline`
+                              : `Practise ${remaining.clubLabel}`
+                            : "Choose practice"}
+                          <ArrowRight className="size-4" aria-hidden />
+                        </Link>
+                      </Button>
+                      {plan ? (
+                        <MobileGroupedList>
+                          <MobileListRow
+                            label="Linked practice"
+                            detail={plan.title}
+                            href={`/practice?planId=${plan.id}`}
+                          />
+                        </MobileGroupedList>
+                      ) : null}
+                    </MobileSection>
+                  </>
+                ),
+              },
+            ]}
           />
-          <MobileSection title="What changed">
-            <MobileGroupedList>
-              <MobileListRow
-                label="Best signal"
-                value={improved?.clubLabel ?? "Baseline"}
-                detail={
-                  improved?.summary ??
-                  "No supported improvement yet. Repeat the same measured block to build a comparison."
-                }
-              />
-              <MobileListRow
-                label={remaining?.verdict === "worse" ? "Main problem" : "Next focus"}
-                value={remaining?.clubLabel ?? "Build evidence"}
-                detail={
-                  remaining?.summary ??
-                  "There is not enough comparable evidence to identify a weakness."
-                }
-              />
-            </MobileGroupedList>
-          </MobileSection>
-          <MobileSection title="Next practice">
-            <p className="mobile-type-callout text-muted-foreground">
-              {remaining
-                ? remaining.verdict === "new"
-                  ? `Record another measured ${remaining.clubLabel} block to build a comparable baseline.`
-                  : `Work on ${remaining.clubLabel} control, then import measured shots to check the result.`
-                : "Repeat a measured session before choosing a new focus."}
-            </p>
-            <Button asChild className="min-h-12">
-              <Link href={sessionPractice}>
-                {remaining
-                  ? remaining.verdict === "new"
-                    ? `Build ${remaining.clubLabel} baseline`
-                    : `Practise ${remaining.clubLabel}`
-                  : "Choose practice"}
-                <ArrowRight className="size-4" aria-hidden />
-              </Link>
-            </Button>
-            {plan ? (
-              <MobileGroupedList>
-                <MobileListRow
-                  label="Linked practice"
-                  detail={plan.title}
-                  href={`/practice?planId=${plan.id}`}
-                />
-              </MobileGroupedList>
-            ) : null}
-          </MobileSection>
-          <MobileSection title="Shot pattern">
-            <div data-mobile-primary-chart>
-              <MobileSessionPattern points={mobilePatternPoints} preferredClub={preferredClub} />
-            </div>
-          </MobileSection>
         </MobileAppShell>
       ) : null}
       <SessionAlignmentPanel sessionId={sessionId} />

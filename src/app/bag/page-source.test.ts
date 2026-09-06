@@ -24,7 +24,7 @@ describe("bag desktop workbench source", () => {
   it("keeps Yardages and Target primary while moving Benchmarks to secondary disclosure", () => {
     expect(source).toContain("data-bag-mobile-full");
     expect(source).not.toContain("data-bag-mobile-quick-only");
-    expect(source).toContain('title="Your bag"');
+    expect(source).toContain('title="Bag"');
     expect(source).toContain("<MobilePageTabs");
     expect(source).toContain('label: "Yardages"');
     expect(source).toContain('label: "Target"');

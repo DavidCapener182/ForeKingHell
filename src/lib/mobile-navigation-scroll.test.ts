@@ -104,6 +104,21 @@ describe("mobile navigation restoration", () => {
     expect(mobileHistoryScrollKey("/today")).toBe(second);
   });
 
+  it("keeps navigation usable on an iPhone HTTP dev preview without randomUUID", () => {
+    const getRandomValues = crypto.getRandomValues.bind(crypto);
+    vi.stubGlobal("crypto", { getRandomValues });
+    const history = { state: { __NA: true } as Record<string, unknown>, replaceState: vi.fn() };
+    history.replaceState.mockImplementation((state) => {
+      history.state = state;
+    });
+    Object.assign(browser, { history });
+    const first = createMobileHistoryEntry("/sessions");
+    const second = createMobileHistoryEntry("/sessions");
+    expect(first).not.toBe(second);
+    expect(mobileHistoryScrollKey("/sessions")).toBe(second);
+    expect(history.state.__NA).toBe(true);
+  });
+
   it("waits for streamed content to reach the saved position instead of clamping it to zero", () => {
     const finished = vi.fn();
     restoreMobileScroll(500, finished);

@@ -82,7 +82,7 @@ describe("Apple mobile shell contract", () => {
     expect(appleCssSource).toContain(".ios-tab-item:focus-visible");
     expect(appleCssSource).toContain("outline: 3px solid var(--ios-tint) !important;");
     expect(appleCssSource).toContain('body[data-mobile-platform="apple"]');
-    expect(mobileNavSource).toContain("Search companion actions");
+    expect(mobileNavSource).toContain("Find a page or tool");
     expect(mobileNavSource).toContain('aria-label="Close navigation"');
     expect(mobileNavSource).toContain("event.preventDefault()");
     expect(mobileNavSource).toContain("moreCloseRef.current?.focus({ preventScroll: true })");
@@ -203,7 +203,7 @@ describe("Apple mobile shell contract", () => {
     expect(mobileNavSource).toContain("<Separator");
     expect(mobileNavSource).toContain("<AlertDialog");
     expect(mobileNavSource).toContain("Open full desktop site");
-    expect(mobileNavSource).toContain("Profile &amp; tools");
+    expect(mobileNavSource).toContain("Your golf");
   });
 
   it("gives portalled controls and data surfaces the same mobile material contract", () => {

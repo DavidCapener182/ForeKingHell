@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MobileLargeTitle } from "@/components/app/mobile-screen";
 import { desc, eq } from "drizzle-orm";
 import { ChevronRight, Cloud, FileClock, FileUp, PenLine, PlugZap, Settings2 } from "lucide-react";
 
@@ -6,7 +7,7 @@ import { getRapsodoConnectionStatusAction } from "@/app/rapsodo/actions";
 import { CompanionSyncStatus } from "@/components/app/companion-sync-status";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { StatusTimeline } from "@/components/app/status-timeline";
-import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
+import { MobileAppShell } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -76,7 +77,10 @@ export default async function ImportCompanionPage({
   return (
     <PageShell>
       <MobileAppShell className="gap-4" data-import-companion-home>
-        <MobileTopBar title="Import & Sync" />
+        <MobileLargeTitle
+          title="Add sessions"
+          detail="Upload your practice and review it here on your phone."
+        />
         <CompanionSyncStatus accountId={userId} />
 
         <section className="grid gap-2.5">
@@ -93,7 +97,7 @@ export default async function ImportCompanionPage({
                 <CardTitle>Rapsodo R-Cloud</CardTitle>
                 <CardDescription>
                   {connected
-                    ? "Recent unimported sessions are ready to load."
+                    ? "Check R-Cloud for sessions to import."
                     : "Connect and import your newest measured session."}
                 </CardDescription>
                 <CardAction>
@@ -126,24 +130,29 @@ export default async function ImportCompanionPage({
               </CardContent>
             </Card>
           </div>
-          <Alert>
-            <PlugZap aria-hidden />
-            <AlertTitle>
-              Connection status · R-Cloud {connected ? "connected" : "is not connected"}
-            </AlertTitle>
-            <AlertDescription className="grid gap-2">
-              <span>
-                {connected
-                  ? "Recent provider sessions can be checked without uploading another file."
-                  : "Connect R-Cloud, or continue with a CSV without changing your provider settings."}
-              </span>
-              <Button asChild size="sm" variant="outline" className="w-fit">
-                <Link href={`/rapsodo${planQuery}`}>
-                  {connected ? "Review connection" : "Connect R-Cloud"}
-                </Link>
-              </Button>
-            </AlertDescription>
-          </Alert>
+          <details className="rounded-2xl bg-card p-3">
+            <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">
+              R-Cloud connection · {connected ? "Connected" : "Not connected"}
+            </summary>
+            <Alert>
+              <PlugZap aria-hidden />
+              <AlertTitle>
+                Connection status · R-Cloud {connected ? "connected" : "is not connected"}
+              </AlertTitle>
+              <AlertDescription className="grid gap-2">
+                <span>
+                  {connected
+                    ? "Recent provider sessions can be checked without uploading another file."
+                    : "Connect R-Cloud, or continue with a CSV without changing your provider settings."}
+                </span>
+                <Button asChild size="sm" variant="outline" className="w-fit">
+                  <Link href={`/rapsodo${planQuery}`}>
+                    {connected ? "Review connection" : "Connect R-Cloud"}
+                  </Link>
+                </Button>
+              </AlertDescription>
+            </Alert>
+          </details>
         </section>
 
         <Card size="sm" data-import-other-actions>

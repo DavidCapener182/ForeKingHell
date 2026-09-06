@@ -70,6 +70,16 @@ export default async function ImportResultCompanionPage({
           </Link>
         </section>
 
+        {!result.isRound ? (
+          <MobileGroupedList>
+            <MobileListRow
+              label="Review today’s full practice"
+              detail="See all of today’s uploads, club comparisons and shot patterns together."
+              href="/today"
+            />
+          </MobileGroupedList>
+        ) : null}
+
         {result.fieldIssueCount > 0 ? (
           <MobileStatus
             tone="attention"

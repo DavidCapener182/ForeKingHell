@@ -585,8 +585,8 @@ function MobileBagPage({
   return (
     <section className="grid gap-5" data-bag-mobile-full>
       <MobileLargeTitle
-        title="Your bag"
-        detail="Trusted numbers, ready to play."
+        title="Bag"
+        detail="Your carry distances, ready when you need them."
         action={
           <Button asChild variant="ghost">
             <Link href="/quick-bag">Quick Bag</Link>
@@ -622,8 +622,8 @@ function MobileBagPage({
               href: "/bag?view=yardages#bag-yardages",
               content: (
                 <div id="bag-yardages" className="min-w-0">
-                  <MobileBagDistanceExplorer clubs={quickBagClubs} />
                   <MobileBagLadder clubs={quickBagClubs} />
+                  <MobileBagDistanceExplorer clubs={quickBagClubs} />
                 </div>
               ),
             },

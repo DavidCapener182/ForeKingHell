@@ -1292,6 +1292,7 @@
   [data-app-surface="companion"] {
     --ios-background: #f5f6f3;
     --ios-radius: 1.25rem;
+    --radius: 0.75rem;
   }
   [data-app-surface="companion"] .mobile-large-title {
     gap: 0.25rem;
@@ -1359,7 +1360,7 @@
   }
   [data-app-surface="companion"]
     .ios-app-header[data-mobile-root="true"]
-    button[aria-label^="Open profile"] {
+    button[aria-label^="Open more tools"] {
     grid-column: 3;
     grid-row: 1;
     pointer-events: auto;
@@ -1378,10 +1379,11 @@
   [data-app-surface="companion"]
     .ios-app-header[data-mobile-root="true"][data-hero-collapsed="false"]
     a[aria-label="Import launch-monitor data"] {
-    visibility: hidden;
+    visibility: visible;
+    pointer-events: auto;
   }
   [data-app-surface="companion"] .mobile-large-title {
-    padding-right: 3rem;
+    padding-right: 0;
   }
 
   [data-app-surface="companion"] .mobile-yardage-row {
@@ -1630,5 +1632,11 @@
   [data-route-error-state] [data-slot="alert-description"] {
     color: var(--mobile-secondary-label);
     font-size: 15px;
+  }
+  [data-app-surface="companion"] .companion-review-tabs > [role="tablist"] {
+    position: sticky;
+    top: calc(3.25rem + 12px + env(safe-area-inset-top, 0px));
+    z-index: 30;
+    background: var(--ios-background);
   }
 }
