@@ -1,3 +1,4 @@
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import { revalidatePath } from "next/cache";
 import { and, count, desc, eq, gte, inArray, like, lt, sql } from "drizzle-orm";
 
@@ -609,11 +610,11 @@ async function loadAchievementSourceMaps(
             ballSpeedMph: shots.ballSpeedMph,
             clubSpeedMph: shots.clubSpeedMph,
             launchAngleDeg: shots.launchAngleDeg,
-            launchDirectionDeg: shots.launchDirectionDeg,
+            launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
             apexFt: shots.apexFt,
-            sideCarryYd: shots.sideCarryYd,
+            sideCarryYd: directionalMetricSql(shots.sideCarryYd),
             attackAngleDeg: shots.attackAngleDeg,
-            clubPathDeg: shots.clubPathDeg,
+            clubPathDeg: directionalMetricSql(shots.clubPathDeg),
             descentAngleDeg: shots.descentAngleDeg,
             smashFactor: shots.smashFactor,
             courseHoleNumber: shots.courseHoleNumber,
@@ -1071,12 +1072,12 @@ async function loadAchievementContext(userId: string) {
           ballSpeedMph: shots.ballSpeedMph,
           clubSpeedMph: shots.clubSpeedMph,
           launchAngleDeg: shots.launchAngleDeg,
-          launchDirectionDeg: shots.launchDirectionDeg,
+          launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
           apexFt: shots.apexFt,
-          sideCarryYd: shots.sideCarryYd,
+          sideCarryYd: directionalMetricSql(shots.sideCarryYd),
           courseHoleNumber: shots.courseHoleNumber,
           attackAngleDeg: shots.attackAngleDeg,
-          clubPathDeg: shots.clubPathDeg,
+          clubPathDeg: directionalMetricSql(shots.clubPathDeg),
           descentAngleDeg: shots.descentAngleDeg,
           smashFactor: shots.smashFactor,
           shotCategory: shots.shotCategory,

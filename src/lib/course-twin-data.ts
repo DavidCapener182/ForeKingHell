@@ -1,5 +1,7 @@
 import "server-only";
 
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
+
 import { and, asc, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 
 import {
@@ -372,7 +374,7 @@ export async function getCourseTwinReplay({
       clubType: shots.clubType,
       carryYd: shots.carryYd,
       totalYd: shots.totalYd,
-      sideCarryYd: shots.sideCarryYd,
+      sideCarryYd: directionalMetricSql(shots.sideCarryYd),
       apexFt: shots.apexFt,
       ballSpeedMph: shots.ballSpeedMph,
       launchAngleDeg: shots.launchAngleDeg,
@@ -434,7 +436,7 @@ export async function getCourseTwinBagProfiles(userId: string): Promise<CourseTw
         clubId: shots.clubId,
         shotAt: shots.shotAt,
         carryYd: shots.carryYd,
-        sideCarryYd: shots.sideCarryYd,
+        sideCarryYd: directionalMetricSql(shots.sideCarryYd),
         ballSpeedMph: shots.ballSpeedMph,
         launchAngleDeg: shots.launchAngleDeg,
         spinRate: shots.spinRate,

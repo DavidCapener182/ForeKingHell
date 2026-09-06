@@ -1,3 +1,5 @@
+import { getDriverDevelopmentSnapshot } from "@/lib/driver-development-data";
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 
 import {
@@ -82,7 +84,7 @@ export async function buildCoachSqlContext(
         shotNumber: shots.shotNumber,
         carryYd: shots.carryYd,
         totalYd: shots.totalYd,
-        sideCarryYd: shots.sideCarryYd,
+        sideCarryYd: directionalMetricSql(shots.sideCarryYd),
         launchAngleDeg: shots.launchAngleDeg,
         clubSpeedMph: shots.clubSpeedMph,
         ballSpeedMph: shots.ballSpeedMph,
@@ -274,12 +276,14 @@ export async function buildCoachSqlContext(
     });
   }
 
+  const driverDevelopment = await getDriverDevelopmentSnapshot(userId);
   return {
     question,
     citations: dedupeCitations(citations).slice(0, 12),
     contextText: [
       "LM World Tour SQL context. Use only these cited personal-data facts. If the data is insufficient, say exactly what is missing.",
       `Question: ${question}`,
+      `Shared Driver Development evidence: ${JSON.stringify(driverDevelopment)}. Explain these deterministic comparisons; do not invent causes, personal bests, optimal launch windows or speed transfer. Source-reported endpoints are not proof of measured landing positions.`,
       stockLines.length
         ? `Stock yardages:\n${stockLines.join("\n")}`
         : "Stock yardages: none available.",

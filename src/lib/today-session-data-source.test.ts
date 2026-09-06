@@ -21,8 +21,8 @@ describe("today session data cleaning source", () => {
     expect(source).toContain("shotEvidenceSqlPredicate()");
     expect(source).toContain("${shots.reviewStatus} = 'restored'");
     expect(source).toContain('shot.reviewStatus === "restored"');
-    expect(source).toContain(
-      "const cleanTodayRows = filteredTodayRows.filter(isCleanPracticeShot)",
+    expect(source).toMatch(
+      /const cleanTodayRows = filteredTodayRows\s*\.filter\(isCleanPracticeShot\)\s*\.map\(withDirectionalConfidence\)/,
     );
     expect(source).toContain("shots: cleanTodayRows");
     expect(source).toContain("rawShots: filteredTodayRows");

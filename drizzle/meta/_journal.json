@@ -414,6 +414,13 @@
       "when": 1787180462000,
       "tag": "0058_shot_mutation_security_boundary",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1788714377075,
+      "tag": "0059_session_data_confidence",
+      "breakpoints": true
     }
   ]
 }

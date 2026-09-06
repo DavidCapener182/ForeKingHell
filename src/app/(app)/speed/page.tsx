@@ -1,3 +1,4 @@
+import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import Link from "next/link";
 import {
@@ -1025,6 +1026,7 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
           </div>
         </div>
       </DesktopWorkbenchLayout>
+      <DriverDevelopmentPanel compact />
     </PageShell>
   );
 }

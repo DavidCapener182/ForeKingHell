@@ -1,5 +1,7 @@
 "use server";
 
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
+
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -118,7 +120,7 @@ export async function createCoachReportAction(formData: FormData) {
             club: shots.clubType,
             shotNumber: shots.shotNumber,
             carryYd: shots.carryYd,
-            sideCarryYd: shots.sideCarryYd,
+            sideCarryYd: directionalMetricSql(shots.sideCarryYd),
             ballSpeedMph: shots.ballSpeedMph,
             launchAngleDeg: shots.launchAngleDeg,
             quality: shots.qualityTag,

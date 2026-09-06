@@ -1,4 +1,5 @@
 import "server-only";
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 
 import { and, asc, count, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 
@@ -973,8 +974,8 @@ async function buildShotFormSnapshot(userId: string, session: TrainingSessionLis
     .select({
       carryYd: shots.carryYd,
       ballSpeedMph: shots.ballSpeedMph,
-      sideCarryYd: shots.sideCarryYd,
-      launchDirectionDeg: shots.launchDirectionDeg,
+      sideCarryYd: directionalMetricSql(shots.sideCarryYd),
+      launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
       reviewStatus: shots.reviewStatus,
       shotCategory: shots.shotCategory,
       qualityTag: shots.qualityTag,

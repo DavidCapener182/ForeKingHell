@@ -1,3 +1,4 @@
+import { SessionAlignmentPanel } from "@/components/analysis/session-alignment-panel";
 import { mobileComparisonSummary } from "@/lib/mobile-review-copy";
 import { MobilePageTabs } from "@/components/app/mobile-controls";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
@@ -162,7 +163,7 @@ export default async function PracticeSessionReviewPage({
             verdict={verdict}
             title={data.overall.title}
             summary={data.overall.summary}
-            confidence={`${sessionConfidence.label} confidence`}
+            confidence={`${sessionConfidence.label} sample coverage`}
             date={data.dateLabel}
             source={source}
             clubs={clubList}
@@ -231,7 +232,7 @@ export default async function PracticeSessionReviewPage({
             importedCount={rawShots.length}
             trustedCount={shots.length}
             excludedCount={Math.max(0, rawShots.length - shots.length)}
-            confidence={`${sessionConfidence.label} confidence`}
+            confidence={`${sessionConfidence.label} sample coverage`}
           />
         </div>
       ) : null}
@@ -247,7 +248,7 @@ export default async function PracticeSessionReviewPage({
             <p className="mobile-type-footnote text-muted-foreground">Session verdict</p>
             <h2 className="mobile-type-title2">{mobileSessionVerdict(comparisons)}</h2>
             <MobileStatus
-              label={`${mobileConfidence.label} confidence · ${shots.length} trusted shots`}
+              label={`${mobileConfidence.label} sample coverage · ${shots.length} included shots`}
               tone={mobileConfidence.label === "Low" ? "attention" : "neutral"}
             />
             <details>
@@ -360,6 +361,7 @@ export default async function PracticeSessionReviewPage({
           />
         </MobileAppShell>
       ) : null}
+      <SessionAlignmentPanel sessionId={sessionId} />
     </PageShell>
   );
 }

@@ -1,6 +1,8 @@
+import { directionIsUsable, type SessionDataConfidence } from "@/lib/session-data-confidence";
 import { bigMissOfflineLimitYd } from "@/lib/today-club-scoring";
 
 export type ShotPatternInput = {
+  dataConfidence?: SessionDataConfidence;
   id: string;
   clubType: string;
   clubLabel?: string | null;
@@ -77,10 +79,12 @@ export function buildShotPatternPoints(
           : null,
     // A service's reviewed selection takes precedence, including explicit restores.
     // Keep every raw point available to the chart's All shots view.
-    trusted: options.trustedShotIds
-      ? options.trustedShotIds.has(shot.id)
-      : !shot.dataIntegrityIssue &&
-        !excludedQualityTags.has((shot.qualityTag ?? "").trim().toLowerCase()),
+    trusted:
+      directionIsUsable(shot.dataConfidence, shot.id) &&
+      (options.trustedShotIds
+        ? options.trustedShotIds.has(shot.id)
+        : !shot.dataIntegrityIssue &&
+          !excludedQualityTags.has((shot.qualityTag ?? "").trim().toLowerCase())),
   }));
 }
 

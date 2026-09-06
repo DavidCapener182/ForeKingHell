@@ -1,5 +1,7 @@
 import "server-only";
 
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
+
 import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import {
@@ -156,12 +158,12 @@ export async function getDashboardData() {
         shotAt: shots.shotAt,
         carryYd: shots.carryYd,
         totalYd: shots.totalYd,
-        sideCarryYd: shots.sideCarryYd,
+        sideCarryYd: directionalMetricSql(shots.sideCarryYd),
         ballSpeedMph: shots.ballSpeedMph,
         launchAngleDeg: shots.launchAngleDeg,
-        launchDirectionDeg: shots.launchDirectionDeg,
-        clubPathDeg: shots.clubPathDeg,
-        faceAngleDeg: shots.faceAngleDeg,
+        launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
+        clubPathDeg: directionalMetricSql(shots.clubPathDeg),
+        faceAngleDeg: directionalMetricSql(shots.faceAngleDeg),
         clubDataEstType: shots.clubDataEstType,
         courseHoleNumber: shots.courseHoleNumber,
         sessionType: sessions.type,

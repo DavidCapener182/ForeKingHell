@@ -60,6 +60,7 @@ export async function getTodayShotDetailRows(input: { userId: string; shotIds: s
             reviewedAt: shots.reviewedAt,
             clubDataEstType: shots.clubDataEstType,
             sourceRawJson: shots.sourceRawJson,
+            dataConfidence: sessions.dataConfidenceJson,
           })
           .from(shots)
           .innerJoin(

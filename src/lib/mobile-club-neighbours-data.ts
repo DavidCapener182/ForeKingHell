@@ -1,4 +1,6 @@
 import "server-only";
+
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { clubs, sessions, shots } from "@/db/schema";
@@ -14,7 +16,7 @@ export async function getMobileClubNeighbours() {
       type: clubs.type,
       carryYd: shots.carryYd,
       totalYd: shots.totalYd,
-      sideCarryYd: shots.sideCarryYd,
+      sideCarryYd: directionalMetricSql(shots.sideCarryYd),
       shotAt: shots.shotAt,
       reviewStatus: shots.reviewStatus,
       qualityTag: shots.qualityTag,

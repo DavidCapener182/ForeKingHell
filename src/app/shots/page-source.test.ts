@@ -104,7 +104,8 @@ describe("Shot Explorer analytics workbench", () => {
     expect(tableSource).toContain('value="source"');
     expect(tableSource).toContain('value="history"');
     expect(tableSource).toContain("Key launch numbers");
-    expect(tableSource).toContain("Ball flight");
+    expect(tableSource).toContain("Illustrative flight");
+    expect(tableSource).toContain("<ShotFlightEvidence");
     expect(tableSource).toContain("Source record");
     expect(tableSource).toContain("Evidence read");
     expect(tableSource).toContain("Correction history");

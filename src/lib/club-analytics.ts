@@ -322,17 +322,24 @@ export function calculateClubAnalytics({
     stockPlayNumberYd: stock.coursePlayCarryYd,
     doNotForceOverYd: roundOne(percentile(carryValues, 0.75)),
   };
+  const directionalStockShots = stockShots.filter((shot) => isNumber(shot.sideCarryYd));
   const accuracy = {
     averageSideCarryYd: roundOne(meanOrNull(sideValues)),
     absoluteOfflineAverageYd: roundOne(meanOrNull(sideValues.map(Math.abs))),
-    leftMissRate: rate(stockShots, (shot) => isNumber(shot.sideCarryYd) && shot.sideCarryYd < -5),
-    rightMissRate: rate(stockShots, (shot) => isNumber(shot.sideCarryYd) && shot.sideCarryYd > 5),
+    leftMissRate: rate(
+      directionalStockShots,
+      (shot) => isNumber(shot.sideCarryYd) && shot.sideCarryYd < -5,
+    ),
+    rightMissRate: rate(
+      directionalStockShots,
+      (shot) => isNumber(shot.sideCarryYd) && shot.sideCarryYd > 5,
+    ),
     bigMissRate: rate(
-      stockShots,
+      directionalStockShots,
       (shot) => isNumber(shot.sideCarryYd) && Math.abs(shot.sideCarryYd) > bigMissLimit,
     ),
     playableShotRate: rate(
-      stockShots,
+      directionalStockShots,
       (shot) =>
         isNumber(shot.sideCarryYd) &&
         Math.abs(shot.sideCarryYd) <= playableLimit &&

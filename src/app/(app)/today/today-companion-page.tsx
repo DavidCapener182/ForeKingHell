@@ -1,3 +1,4 @@
+import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import { MobileTodayActivities } from "@/components/app/mobile-today-activities";
 import { MobileTodayChangeDetail } from "@/components/app/mobile-today-change";
 import { MobileTodayPracticeReview } from "@/components/app/mobile-today-review";
@@ -180,6 +181,8 @@ export default async function TodayCompanionPage() {
                 ]
           }
         />
+
+        <DriverDevelopmentPanel date={latestData?.dateKey} compact />
 
         {review ? (
           <MobileTodayPracticeReview

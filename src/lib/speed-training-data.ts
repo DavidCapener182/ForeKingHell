@@ -1,3 +1,5 @@
+import { clubSpeedMeasurementTrust } from "@/lib/club-speed-evidence";
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import { readMobileSpeedSaveReceipt } from "./mobile-speed-save-receipt";
 import "server-only";
 
@@ -417,7 +419,7 @@ export async function getSpeedCentrePageData(userId: string): Promise<SpeedCentr
         smashFactor: shots.smashFactor,
         carryYd: shots.carryYd,
         launchAngleDeg: shots.launchAngleDeg,
-        sideCarryYd: shots.sideCarryYd,
+        sideCarryYd: directionalMetricSql(shots.sideCarryYd),
         qualityTag: shots.qualityTag,
         clubDataEstType: shots.clubDataEstType,
         sourceRawJson: shots.sourceRawJson,
@@ -658,7 +660,7 @@ export async function getSpeedCoachCardData(userId: string) {
         smashFactor: shots.smashFactor,
         carryYd: shots.carryYd,
         launchAngleDeg: shots.launchAngleDeg,
-        sideCarryYd: shots.sideCarryYd,
+        sideCarryYd: directionalMetricSql(shots.sideCarryYd),
         qualityTag: shots.qualityTag,
         clubDataEstType: shots.clubDataEstType,
         sourceRawJson: shots.sourceRawJson,
@@ -881,7 +883,7 @@ export async function getSpeedSessionDetailPageData(
           shotNumber: shots.shotNumber,
           shotAt: shots.shotAt,
           clubSpeedMph: shots.clubSpeedMph,
-          sideCarryYd: shots.sideCarryYd,
+          sideCarryYd: directionalMetricSql(shots.sideCarryYd),
         })
         .from(shots)
         .innerJoin(practiceSessions, eq(shots.sessionId, practiceSessions.id))
@@ -906,7 +908,7 @@ export async function getSpeedSessionDetailPageData(
               shotAt: shots.shotAt,
               clubSpeedMph: shots.clubSpeedMph,
               ballSpeedMph: shots.ballSpeedMph,
-              sideCarryYd: shots.sideCarryYd,
+              sideCarryYd: directionalMetricSql(shots.sideCarryYd),
             })
             .from(shots)
             .where(
@@ -965,7 +967,7 @@ export async function getSpeedSessionDetailPageData(
       const legacyCorridorRows =
         transferMetadata.corridor === undefined
           ? await db
-              .select({ sideCarryYd: shots.sideCarryYd })
+              .select({ sideCarryYd: directionalMetricSql(shots.sideCarryYd) })
               .from(shots)
               .where(
                 and(
@@ -2179,29 +2181,6 @@ function speedReadingFingerprint(reading: SpeedPbReading) {
   return sourceEntries.length > 0
     ? `raw:${JSON.stringify(sourceEntries)}`
     : `shot:${reading.shotAt.toISOString()}:${reading.id}`;
-}
-
-function clubSpeedMeasurementTrust(value: string | null): ClubSpeedMeasurementTrust {
-  const normalized = value?.trim().toLowerCase() ?? "";
-
-  if (
-    value === null ||
-    /^0(?:\.0+)?$/.test(normalized) ||
-    ["false", "measured", "direct"].includes(normalized)
-  ) {
-    return "measured";
-  }
-
-  if (
-    /^1(?:\.0+)?$/.test(normalized) ||
-    normalized === "true" ||
-    normalized.includes("est") ||
-    normalized.includes("model")
-  ) {
-    return "estimated";
-  }
-
-  return "unknown";
 }
 
 function corroboratingReadings(

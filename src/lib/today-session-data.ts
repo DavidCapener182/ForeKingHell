@@ -1,3 +1,7 @@
+import {
+  withDirectionalConfidence,
+  type SessionDataConfidence,
+} from "@/lib/session-data-confidence";
 import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
 
 import { clubs, sessions, shots } from "@/db/schema";
@@ -26,6 +30,7 @@ export type TodayPracticeFilters = {
 };
 
 export type TodayPracticeShot = {
+  dataConfidence?: SessionDataConfidence;
   id: string;
   sessionId: string;
   source: string;
@@ -217,6 +222,7 @@ const practiceShotSelect = {
   shotCategory: shots.shotCategory,
   carryYd: shots.carryYd,
   totalYd: shots.totalYd,
+  dataConfidence: sessions.dataConfidenceJson,
   sideCarryYd: shots.sideCarryYd,
   launchDirectionDeg: shots.launchDirectionDeg,
   launchAngleDeg: shots.launchAngleDeg,
@@ -362,6 +368,7 @@ async function fetchPreviousPracticeRows(
       shotCategory: rankedPreviousShots.shotCategory,
       carryYd: rankedPreviousShots.carryYd,
       totalYd: rankedPreviousShots.totalYd,
+      dataConfidence: rankedPreviousShots.dataConfidence,
       sideCarryYd: rankedPreviousShots.sideCarryYd,
       launchDirectionDeg: rankedPreviousShots.launchDirectionDeg,
       launchAngleDeg: rankedPreviousShots.launchAngleDeg,
@@ -445,10 +452,13 @@ function buildTodayPracticeData({
   previousRows: ShotRow[];
   filters: { sessionId: string; club: string };
 }): TodayPracticeData {
+  previousRows = previousRows.map(withDirectionalConfidence);
   const sessions = sessionOptions(allTodayRows);
   const clubsForFilter = clubOptions(allTodayRows);
-  const cleanTodayRows = filteredTodayRows.filter(isCleanPracticeShot);
-  const cleanAllTodayRows = allTodayRows.filter(isCleanPracticeShot);
+  const cleanTodayRows = filteredTodayRows
+    .filter(isCleanPracticeShot)
+    .map(withDirectionalConfidence);
+  const cleanAllTodayRows = allTodayRows.filter(isCleanPracticeShot).map(withDirectionalConfidence);
   const comparisonShots = cleanTodayRows.filter(isComparisonShot);
   const rawComparisonShots = filteredTodayRows.filter(isRawComparisonShot);
   const previousByClub = groupBy(previousRows.filter(isComparisonShot), (shot) => shot.clubType);

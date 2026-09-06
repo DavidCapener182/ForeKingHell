@@ -1,3 +1,4 @@
+import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
@@ -110,6 +111,7 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachS
           monthlyRemaining={dataChatEntitlement.monthlyRemaining}
         />
       )}
+      <DriverDevelopmentPanel compact />
     </PageShell>
   );
 }

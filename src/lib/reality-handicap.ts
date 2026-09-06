@@ -1,5 +1,7 @@
 import "server-only";
 
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
+
 import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
@@ -169,10 +171,10 @@ export async function getRangeRealityHandicapData(
       source: sessions.source,
       carryYd: shots.carryYd,
       totalYd: shots.totalYd,
-      sideCarryYd: shots.sideCarryYd,
+      sideCarryYd: directionalMetricSql(shots.sideCarryYd),
       ballSpeedMph: shots.ballSpeedMph,
       launchAngleDeg: shots.launchAngleDeg,
-      launchDirectionDeg: shots.launchDirectionDeg,
+      launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
       spinAxis: shots.spinAxis,
       reviewStatus: shots.reviewStatus,
       shotCategory: shots.shotCategory,

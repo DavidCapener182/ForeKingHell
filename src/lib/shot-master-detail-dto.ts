@@ -1,3 +1,4 @@
+import { assessFlightEvidence, type SessionDataConfidence } from "@/lib/session-data-confidence";
 import type { ShotMasterDetailRow } from "@/app/shots/shots-master-detail-table";
 import { formatClubModelName, formatClubType } from "@/lib/club-format";
 import { isPermanentShotDeletionRestricted } from "@/lib/shot-deletion";
@@ -22,6 +23,7 @@ export type ShotMasterDetailReviewEventSource = {
 };
 
 export type ShotMasterDetailSource = {
+  dataConfidence?: SessionDataConfidence;
   id: string;
   sessionId: string;
   sessionSource: string;
@@ -90,6 +92,7 @@ export function buildShotMasterDetailDto(shot: ShotMasterDetailSource): ShotMast
   });
 
   return {
+    flightEvidence: assessFlightEvidence(shot),
     id: shot.id,
     sessionId: shot.sessionId,
     shotAtLabel: formatDate(shot.shotAt),

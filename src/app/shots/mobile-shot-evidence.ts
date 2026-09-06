@@ -16,7 +16,11 @@ export function mobileShotMetrics(shot: ShotMasterDetailRow) {
     ["Launch", shot.launchLabel, "°"],
     ["Launch direction", shot.launchDirectionLabel, "°"],
     ["Path", shot.pathLabel, "°"],
-    ["Face", shot.faceLabel, "°"],
+    [
+      shot.flightEvidence?.faceSource === "modelled" ? "Modelled face" : "Face",
+      shot.faceLabel,
+      "°",
+    ],
     ["Attack", shot.attackLabel, "°"],
     ["Apex", shot.apexLabel, "ft"],
     [

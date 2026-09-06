@@ -1,3 +1,8 @@
+import {
+  assessFlightEvidence,
+  directionIsUsable,
+  type SessionDataConfidence,
+} from "@/lib/session-data-confidence";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { MobileShotExplorer } from "@/app/shots/mobile-shot-explorer";
 import { shotReviewStatuses } from "@/lib/shot-review";
@@ -188,12 +193,20 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
     activeFilterChips.length > 0 ? activeFilterChips.join(" + ") : "All shots · newest first";
   const desktopShotRows = savedShots.map(serializeShotForMasterDetail);
   const desktopShotSorts = buildShotTableSorts(filters);
-  const dispersionPoints = dispersionShots
-    .filter(
-      (shot): shot is typeof shot & { carryYd: number; sideCarryYd: number } =>
-        isFiniteShotMetric(shot.carryYd) && isFiniteShotMetric(shot.sideCarryYd),
-    )
-    .map(serializeMiniDispersionPoint);
+  const dispersionPoints = dispersionShots.flatMap((shot) =>
+    typeof shot.carryYd === "number" &&
+    Number.isFinite(shot.carryYd) &&
+    typeof shot.sideCarryYd === "number" &&
+    Number.isFinite(shot.sideCarryYd)
+      ? [
+          serializeMiniDispersionPoint({
+            ...shot,
+            carryYd: shot.carryYd,
+            sideCarryYd: shot.sideCarryYd,
+          }),
+        ]
+      : [],
+  );
 
   return (
     <PageShell contentClassName="gap-4 lg:gap-4">
@@ -538,6 +551,7 @@ async function getLiveShotDatabase(filters: ShotFilters) {
         reviewedAt: shots.reviewedAt,
         clubDataEstType: shots.clubDataEstType,
         sourceRawJson: shots.sourceRawJson,
+        dataConfidence: sessions.dataConfidenceJson,
       })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
@@ -556,6 +570,7 @@ async function getLiveShotDatabase(filters: ShotFilters) {
         reviewStatus: shots.reviewStatus,
         shotCategory: shots.shotCategory,
         sessionSource: sessions.source,
+        dataConfidence: sessions.dataConfidenceJson,
       })
       .from(shots)
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
@@ -842,6 +857,7 @@ function serializeShotForMasterDetail(shot: SavedShotRow): ShotMasterDetailRow {
     sessionSource: shot.sessionSource,
   });
   return {
+    flightEvidence: assessFlightEvidence(shot),
     id: shot.id,
     sessionId: shot.sessionId,
     shotAtLabel: formatDate(shot.shotAt),
@@ -927,12 +943,14 @@ function serializeMiniDispersionPoint(shot: {
   reviewStatus: ShotReviewStatus;
   shotCategory: string;
   sessionSource: string;
+  dataConfidence?: SessionDataConfidence | null;
 }): ShotMiniDispersionPoint {
   return {
     id: shot.id,
     carryYd: shot.carryYd,
     sideCarryYd: shot.sideCarryYd,
-    trusted: recordEligibility(shot).trustedEligible,
+    trusted:
+      recordEligibility(shot).trustedEligible && directionIsUsable(shot.dataConfidence, shot.id),
   };
 }
 
@@ -1024,10 +1042,6 @@ function formatSessionType(value: string) {
 function formatHole(holeNumber: number | null, holeShotNumber: number | null) {
   if (!holeNumber) return "--";
   return holeShotNumber ? `${holeNumber}.${holeShotNumber}` : holeNumber.toString();
-}
-
-function isFiniteShotMetric(value: number | null): value is number {
-  return typeof value === "number" && Number.isFinite(value);
 }
 
 function isShotSortMetric(value: string): value is ShotSortMetric {

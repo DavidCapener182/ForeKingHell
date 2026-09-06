@@ -1,3 +1,4 @@
+import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import { PracticeCompanionClient } from "@/app/practice/practice-companion-client";
 import { notFound } from "next/navigation";
 import { MobileSavedPracticeReview } from "@/app/practice/mobile-saved-practice-review";
@@ -81,6 +82,7 @@ export default async function PracticeCompanionPage({
           measuredResult={selectedPlan?.result ?? null}
         />
       </MobileAppShell>
+      <DriverDevelopmentPanel compact />
     </PageShell>
   );
 }

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
+
 import { and, asc, desc, eq, gte, inArray, lt, ne, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
@@ -608,7 +610,7 @@ async function fetchLabShots(
       shotAt: shots.shotAt,
       carryYd: shots.carryYd,
       totalYd: shots.totalYd,
-      sideCarryYd: shots.sideCarryYd,
+      sideCarryYd: directionalMetricSql(shots.sideCarryYd),
       ballSpeedMph: shots.ballSpeedMph,
       clubSpeedMph: shots.clubSpeedMph,
       launchAngleDeg: shots.launchAngleDeg,

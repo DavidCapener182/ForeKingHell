@@ -1,4 +1,6 @@
 import "server-only";
+
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import { unstable_cache } from "next/cache";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
@@ -37,7 +39,7 @@ async function calculateMobileBagEvidence(userId: string) {
         clubId: clubs.id,
         carryYd: shots.carryYd,
         totalYd: shots.totalYd,
-        sideCarryYd: shots.sideCarryYd,
+        sideCarryYd: directionalMetricSql(shots.sideCarryYd),
         ballSpeedMph: shots.ballSpeedMph,
         launchAngleDeg: shots.launchAngleDeg,
         spinRate: shots.spinRate,

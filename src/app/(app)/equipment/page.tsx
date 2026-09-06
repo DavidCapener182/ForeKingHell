@@ -1,3 +1,4 @@
+import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { and, count, desc, eq, sql } from "drizzle-orm";
@@ -934,7 +935,7 @@ async function getEquipmentData() {
           shotAt: shots.shotAt,
           carryYd: shots.carryYd,
           totalYd: shots.totalYd,
-          sideCarryYd: shots.sideCarryYd,
+          sideCarryYd: directionalMetricSql(shots.sideCarryYd),
           ballSpeedMph: shots.ballSpeedMph,
           launchAngleDeg: shots.launchAngleDeg,
           shotCategory: shots.shotCategory,
