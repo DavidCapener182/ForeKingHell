@@ -69,6 +69,7 @@
     "qrcode": "^1.5.4",
     "radix-ui": "^1.4.3",
     "react": "19.2.8",
+    "react-aria-components": "1.21.1",
     "react-day-picker": "^10.0.1",
     "react-dom": "19.2.8",
     "react-resizable-panels": "^4.12.2",

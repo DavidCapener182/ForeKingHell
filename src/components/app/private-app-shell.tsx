@@ -17,6 +17,7 @@ export async function PrivateAppShell({
 }) {
   const achievementContent = (
     <AchievementNotificationProvider initialNotifications={data.achievementNotifications}>
+      <PwaRegister activeUserId={data.userId} />
       {children}
     </AchievementNotificationProvider>
   );
@@ -35,7 +36,6 @@ export async function PrivateAppShell({
         scriptId="fkh-app-theme-bootstrap"
       />
       <TooltipProvider delayDuration={200}>
-        <PwaRegister activeUserId={data.userId} />
         {shellContent}
         {surface === "workbench" ? <SocialFeedRail /> : null}
       </TooltipProvider>

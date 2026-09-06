@@ -36,6 +36,7 @@ import {
 import { resolveVisibleColumnIds } from "@/components/app/desktop-workbench-columns";
 import { csvCell } from "@/lib/csv";
 import { cn } from "@/lib/utils";
+import styles from "@/components/untitled-ui/workbench-controls.module.css";
 
 export type DesktopWorkbenchColumn = {
   id: string;
@@ -360,7 +361,8 @@ export function DesktopWorkbenchControls({
     <>
       <div
         className={cn(
-          "hidden min-w-0 flex-wrap items-center justify-start gap-3 rounded-lg border border-primary/10 bg-card/88 px-3 py-2 shadow-sm sm:flex",
+          "flex min-w-0 flex-wrap items-center justify-start gap-3 rounded-lg border border-primary/10 bg-card/88 px-3 py-2 shadow-sm",
+          styles.toolbar,
           className,
         )}
         data-desktop-workbench-toolbar
@@ -371,7 +373,7 @@ export function DesktopWorkbenchControls({
           <div className="flex min-w-0 items-center gap-2">
             <LayoutDashboard className="size-4 text-primary" aria-hidden />
             <p className="truncate text-sm font-semibold text-foreground">{currentViewLabel}</p>
-            <Badge variant="secondary" className="hidden lg:inline-flex">
+            <Badge variant="secondary" className="whitespace-normal">
               {resultLabel}
             </Badge>
           </div>

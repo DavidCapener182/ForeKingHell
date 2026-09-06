@@ -78,6 +78,7 @@ import { NotificationCentre } from "@/components/app/workbench/notification-cent
 import { WorkspaceSwitcher } from "@/components/app/workbench/workspace-switcher";
 import { cn } from "@/lib/utils";
 import { commandRoutes, productAreaLabel } from "@/navigation/route-registry";
+import chromeStyles from "@/components/untitled-ui/workbench-controls.module.css";
 
 const DesktopCommandPalette = dynamic(
   () =>
@@ -91,6 +92,8 @@ type DesktopWorkbenchChromeProps = {
   navGroups: AppNavGroup[];
   isAdmin: boolean;
   accountMenu?: ReactNode;
+  commandOnly?: boolean;
+  enableKeyboardShortcut?: boolean;
 };
 
 export type WorkbenchLink = {
@@ -299,6 +302,8 @@ export function DesktopWorkbenchChrome({
   navGroups,
   isAdmin,
   accountMenu,
+  commandOnly = false,
+  enableKeyboardShortcut = true,
 }: DesktopWorkbenchChromeProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -313,6 +318,7 @@ export function DesktopWorkbenchChrome({
   const [savedViewCommands, setSavedViewCommands] = useState<SavedViewCommandItem[]>([]);
   const [workspaceCommands, setWorkspaceCommands] = useState<WorkspaceCommandItem[]>([]);
   const [workspaceCommandsLoaded, setWorkspaceCommandsLoaded] = useState(false);
+  const [workspaceCommandsError, setWorkspaceCommandsError] = useState(false);
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
   const [hydrated, setHydrated] = useState(false);
   const commandInputRef = useRef<HTMLInputElement>(null);
@@ -439,17 +445,20 @@ export function DesktopWorkbenchChrome({
         });
 
         if (!response.ok) {
+          setWorkspaceCommandsError(true);
           setWorkspaceCommandsLoaded(true);
           return;
         }
 
         const payload: unknown = await response.json();
         if (!controller.signal.aborted) {
+          setWorkspaceCommandsError(false);
           setWorkspaceCommands(normalizeWorkspaceCommands(payload));
           setWorkspaceCommandsLoaded(true);
         }
       } catch {
         if (!controller.signal.aborted) {
+          setWorkspaceCommandsError(true);
           setWorkspaceCommands([]);
           setWorkspaceCommandsLoaded(true);
         }
@@ -494,6 +503,7 @@ export function DesktopWorkbenchChrome({
   }, [commandOpen]);
 
   useEffect(() => {
+    if (!enableKeyboardShortcut) return;
     function handleKeyDown(event: KeyboardEvent) {
       if (isEditableTarget(event.target)) {
         return;
@@ -504,6 +514,14 @@ export function DesktopWorkbenchChrome({
       if ((event.metaKey || event.ctrlKey) && key === "k") {
         event.preventDefault();
         openCommandPalette();
+        return;
+      }
+
+      if (commandOnly) {
+        if (key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          event.preventDefault();
+          openCommandPalette();
+        }
         return;
       }
 
@@ -607,6 +625,8 @@ export function DesktopWorkbenchChrome({
       }
     };
   }, [
+    commandOnly,
+    enableKeyboardShortcut,
     assistantContext,
     closeCommandAndNavigate,
     commandOpen,
@@ -723,13 +743,14 @@ export function DesktopWorkbenchChrome({
 
   return (
     <>
-      <header
+      <span hidden data-command-centre-ready={hydrated ? "true" : "false"} />
+      {!commandOnly ? <header
         className="sticky top-0 z-40 hidden min-h-14 border-b border-border bg-background/92 px-4 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/82 lg:block"
         data-desktop-workbench-hydrated={hydrated ? "true" : "false"}
         inert={!hydrated}
         aria-busy={hydrated ? undefined : true}
       >
-        <div className="flex min-w-0 items-center gap-2 2xl:gap-3">
+        <div className={cn("flex min-w-0 items-center gap-2 2xl:gap-3", chromeStyles.chrome)}>
           <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">
             <Link
               href="/dashboard"
@@ -827,7 +848,7 @@ export function DesktopWorkbenchChrome({
 
           {accountMenu}
         </div>
-      </header>
+      </header> : null}
 
       <DesktopCommandPalette
         open={commandOpen}
@@ -840,6 +861,9 @@ export function DesktopWorkbenchChrome({
         }}
         onInputKeyDown={handleCommandInputKeyDown}
         commands={filteredCommands}
+        loading={shouldLoadWorkspaceCommands && !workspaceCommandsLoaded}
+        loadError={workspaceCommandsError}
+        onRetry={() => { setWorkspaceCommandsError(false); setWorkspaceCommandsLoaded(false); }}
         activeIndex={safeActiveCommandIndex}
         pinnedLinks={pinnedLinks}
         savedViewLinks={savedViewCommands}

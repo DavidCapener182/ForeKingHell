@@ -15,6 +15,8 @@ export function AppLoadingSkeleton({
       <section
         className={cn("grid gap-4 rounded-2xl border bg-card p-5", className)}
         aria-label="Loading answer"
+        role="status"
+        aria-busy="true"
       >
         <Skeleton className="h-3 w-28" />
         <Skeleton className="h-8 w-3/4" />
@@ -30,6 +32,8 @@ export function AppLoadingSkeleton({
       <section
         className={cn("overflow-hidden rounded-xl border bg-card", className)}
         aria-label="Loading table"
+        role="status"
+        aria-busy="true"
       >
         <div className="flex gap-3 border-b p-3">
           <Skeleton className="h-9 flex-1" />
@@ -38,7 +42,7 @@ export function AppLoadingSkeleton({
         {Array.from({ length: rows }, (_, index) => (
           <div
             key={index}
-            className="grid grid-cols-[1fr_7rem_7rem] gap-4 border-b p-3 last:border-b-0"
+            className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4 border-b p-3 last:border-b-0"
           >
             <Skeleton className="h-5 w-3/4" />
             <Skeleton className="h-5 w-full" />
@@ -57,6 +61,8 @@ export function AppLoadingSkeleton({
         className,
       )}
       aria-label="Loading content"
+      role="status"
+      aria-busy="true"
     >
       {Array.from({ length: rows }, (_, index) => (
         <div key={index} className="flex items-center gap-3 rounded-xl border bg-card p-3">

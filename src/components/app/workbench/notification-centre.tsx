@@ -6,12 +6,7 @@ import { ArrowRight, Bell } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 type NotificationTone = "green" | "amber" | "blue" | "slate";
@@ -23,165 +18,83 @@ type NotificationItem = {
   href: string;
   tone: NotificationTone;
   unread: boolean;
+  createdAt?: string;
 };
-
-const notificationReadStorageKey = "fkh:desktop-notification-read-ids";
 
 export function NotificationCentre({ embedded = false }: { embedded?: boolean }) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [badgeCount, setBadgeCount] = useState(0);
-  const readNotificationIdsRef = useRef<Set<string>>(new Set());
-  const unreadCount = notifications.filter((notification) => notification.unread).length;
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [reload, setReload] = useState(0);
+  const pendingWrite = useRef(false);
+  const unreadCount = notifications.filter((item) => item.unread).length;
 
   useEffect(() => {
     const controller = new AbortController();
-    const storedReadIds = readNotificationReadIds();
-    readNotificationIdsRef.current = storedReadIds;
-
-    async function loadNotifications() {
+    async function load() {
       try {
-        const response = await fetch("/api/desktop-workbench/notifications", {
-          headers: { Accept: "application/json" },
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          if (!controller.signal.aborted) {
-            setNotifications([]);
-            setLoaded(true);
-          }
-          return;
-        }
-
+        const response = await fetch("/api/desktop-workbench/notifications", {headers: {Accept: "application/json"}, signal: controller.signal});
+        if (!response.ok) throw new Error("unavailable");
         const payload: unknown = await response.json();
-        if (!controller.signal.aborted) {
-          const nextNotifications = applyNotificationReadIds(
-            normalizeNotificationItems(payload),
-            storedReadIds,
-          );
-          setNotifications(nextNotifications);
-          const nextUnreadCount = nextNotifications.filter(
-            (notification) => notification.unread,
-          ).length;
-          if (nextUnreadCount > 0) setBadgeCount(nextUnreadCount);
-          setLoaded(true);
-        }
+        if (!controller.signal.aborted) { setNotifications(normalizeNotificationItems(payload)); setError(null); setLoaded(true); }
       } catch {
-        if (!controller.signal.aborted) {
-          setNotifications([]);
-          setLoaded(true);
-        }
+        if (!controller.signal.aborted) { setError("Notifications could not be loaded. Try again."); setLoaded(true); }
       }
     }
-
-    void loadNotifications();
-
+    void load();
     return () => controller.abort();
-  }, []);
+  }, [reload]);
 
-  function markNotificationRead(id: string) {
-    const nextNotifications = notifications.map((notification) =>
-      notification.id === id ? { ...notification, unread: false } : notification,
-    );
-    setNotifications(nextNotifications);
-    const nextUnreadCount = nextNotifications.filter((notification) => notification.unread).length;
-    if (nextUnreadCount > 0) setBadgeCount(nextUnreadCount);
-    const next = new Set(readNotificationIdsRef.current);
-    next.add(id);
-    readNotificationIdsRef.current = next;
-    writeNotificationReadIds(next);
+  async function markRead(ids: string[]) {
+    if (pendingWrite.current || !ids.length) return;
+    pendingWrite.current = true;
+    setSaving(true);
+    try {
+      const response = await fetch("/api/desktop-workbench/notifications", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({ids})});
+      if (!response.ok) throw new Error("save failed");
+      const payload: unknown = await response.json();
+      if (!isRecord(payload) || !Array.isArray(payload.readIds)) throw new Error("invalid read state");
+      const readIds = new Set(payload.readIds);
+      setNotifications((items) => items.map((item) => readIds.has(item.id) ? {...item, unread: false} : item));
+      setError(null);
+    } catch { setError("Read status could not be saved. Your notifications remain unread; try again."); }
+    finally { pendingWrite.current = false; setSaving(false); }
   }
 
-  function markAllNotificationsRead() {
-    if (notifications.length === 0) return;
-
-    setNotifications((items) => items.map((notification) => ({ ...notification, unread: false })));
-    const next = new Set(readNotificationIdsRef.current);
-
-    for (const notification of notifications) next.add(notification.id);
-
-    readNotificationIdsRef.current = next;
-    writeNotificationReadIds(next);
-  }
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant={embedded ? "ghost" : "outline"}
-          size={embedded ? "default" : "icon"}
-          className={cn("relative", embedded && "w-full justify-start")}
-          aria-label={
-            unreadCount > 0 ? `Open notifications, ${unreadCount} unread` : "Open notifications"
-          }
-        >
-          <Bell className="size-4" />
-          {embedded ? <span>Notifications</span> : null}
-          <span
-            className="t-badge absolute -right-1 -top-1"
-            data-open={unreadCount > 0 ? "true" : "false"}
-            aria-hidden="true"
-          >
-            <span className="t-badge-dot !grid min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground">
-              {badgeCount > 9 ? "9+" : badgeCount}
-            </span>
-          </span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 p-2">
-        <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-          <p className="text-sm font-semibold">Notifications</p>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-              {unreadCount > 0 ? `${unreadCount} unread` : "All clear"}
-            </Badge>
-            {unreadCount > 0 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  markAllNotificationsRead();
-                }}
-              >
-                Mark all read
-              </Button>
-            ) : null}
-          </div>
-        </div>
-        <DropdownMenuSeparator />
-        <div className="grid gap-2 p-1">
-          {!loaded ? (
-            <NotificationStatus title="Checking updates" detail="Loading golf workspace signals." />
-          ) : notifications.length > 0 ? (
-            notifications.map((notification) => (
-              <NotificationRow
-                key={notification.id}
-                notification={notification}
-                onMarkRead={markNotificationRead}
-              />
-            ))
-          ) : (
-            <NotificationStatus
-              title="No new alerts"
-              detail="Friend requests, challenge invites, imports and data warnings will appear here."
-            />
-          )}
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+  return <Sheet>
+    <SheetTrigger asChild>
+      <Button type="button" variant={embedded ? "ghost" : "outline"} size={embedded ? "default" : "icon"} className={cn("relative min-h-11", embedded && "w-full justify-start")}
+        aria-label={unreadCount > 0 ? `Open notifications, ${unreadCount} unread` : "Open notifications"}>
+        <Bell className="size-4" aria-hidden />{embedded ? <span>Notifications</span> : null}
+        <span className="t-badge absolute -right-1 -top-1" data-open={unreadCount > 0 ? "true" : "false"} aria-hidden="true"><span className="t-badge-dot rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">{unreadCount > 99 ? "99+" : unreadCount}</span></span>
+      </Button>
+    </SheetTrigger>
+    <SheetContent className="w-full gap-0 sm:max-w-lg" aria-busy={saving}>
+      <SheetHeader className="border-b pr-14">
+        <SheetTitle>Notifications</SheetTitle>
+        <SheetDescription>{!loaded ? "Checking updates…" : error ? "Some updates need attention." : `${unreadCount} unread`}</SheetDescription>
+      </SheetHeader>
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">
+        {error ? <div role="alert" className="grid gap-2 rounded-lg border border-destructive p-3 text-sm"><p>{error}</p><Button variant="outline" onClick={() => setReload((value) => value + 1)}>Retry notifications</Button></div> : null}
+        {!loaded ? <p role="status">Loading your updates…</p> : notifications.length ? notifications.map((notification) => <NotificationRow key={notification.id} notification={notification} saving={saving} onMarkRead={(id) => void markRead([id])} />) : !error ? <NotificationStatus title="No new alerts" detail="Friend requests, challenge invites, imports and data warnings will appear here." /> : null}
+      </div>
+      <SheetFooter className="shrink-0 border-t pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <Button type="button" disabled={saving || !unreadCount} onClick={() => void markRead(notifications.filter((item) => item.unread).map((item) => item.id))}>{saving ? "Saving read status…" : "Mark all read"}</Button>
+        <Button asChild variant="outline"><Link href="/settings">Notification preferences</Link></Button>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>;
 }
 
 function NotificationRow({
   notification,
   onMarkRead,
+  saving,
 }: {
   notification: NotificationItem;
   onMarkRead: (id: string) => void;
+  saving: boolean;
 }) {
   return (
     <div
@@ -207,7 +120,7 @@ function NotificationRow({
         />
         <span className="min-w-0">
           <span className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-sm font-semibold">{notification.title}</span>
+            <span className="break-words text-sm font-semibold">{notification.title}</span>
             {notification.unread ? (
               <Badge variant="secondary" className="h-5 shrink-0 px-1.5 text-[10px]">
                 New
@@ -218,6 +131,7 @@ function NotificationRow({
             {notification.detail}
           </span>
         </span>
+        {notification.createdAt && Number.isFinite(Date.parse(notification.createdAt)) ? <time dateTime={notification.createdAt} className="col-start-2 text-xs text-muted-foreground">{new Intl.DateTimeFormat("en-GB", {day:"numeric",month:"short",year:"numeric"}).format(new Date(notification.createdAt))}</time> : null}
         <ArrowRight className="mt-0.5 size-4 text-muted-foreground" aria-hidden />
       </Link>
       <div className="grid min-w-[4.25rem] place-items-center border-l border-border px-2">
@@ -225,7 +139,9 @@ function NotificationRow({
           <Button
             type="button"
             variant="ghost"
-            size="xs"
+            size="sm"
+            className="min-h-11"
+            disabled={saving}
             onClick={() => onMarkRead(notification.id)}
           >
             Mark read
@@ -258,38 +174,6 @@ function normalizeNotificationItems(payload: unknown): NotificationItem[] {
     .slice(0, 8);
 }
 
-function applyNotificationReadIds(notifications: NotificationItem[], readIds: Set<string>) {
-  if (readIds.size === 0) return notifications;
-  return notifications.map((notification) =>
-    readIds.has(notification.id) ? { ...notification, unread: false } : notification,
-  );
-}
-
-function readNotificationReadIds() {
-  if (typeof window === "undefined") return new Set<string>();
-
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(notificationReadStorageKey) ?? "[]");
-    if (!Array.isArray(parsed)) return new Set<string>();
-    return new Set(
-      parsed.filter((item): item is string => typeof item === "string" && item.length > 0),
-    );
-  } catch {
-    return new Set<string>();
-  }
-}
-
-function writeNotificationReadIds(readIds: Set<string>) {
-  try {
-    window.localStorage.setItem(
-      notificationReadStorageKey,
-      JSON.stringify(Array.from(readIds).slice(-80)),
-    );
-  } catch {
-    // Local storage is optional desktop polish; ignore private-mode failures.
-  }
-}
-
 function normalizeNotificationItem(value: unknown): NotificationItem | null {
   if (!isRecord(value)) return null;
 
@@ -300,7 +184,7 @@ function normalizeNotificationItem(value: unknown): NotificationItem | null {
   const tone = isNotificationTone(value.tone) ? value.tone : "slate";
 
   if (!id || !title || !detail || !href) return null;
-  return { id, title, detail, href, tone, unread: value.unread === true };
+  return { id, title, detail, href, tone, unread: value.unread === true, createdAt: typeof value.createdAt === "string" ? value.createdAt : undefined };
 }
 
 function cleanText(value: unknown, maxLength: number) {

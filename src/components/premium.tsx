@@ -877,7 +877,7 @@ export function StatusPill({
       data-tone-role="surface"
       variant="outline"
       className={cn(
-        "w-fit border-0 px-2.5 py-1 text-xs font-medium ring-1 hover:bg-transparent",
+        "h-auto max-w-full w-fit whitespace-normal break-words border-0 px-2.5 py-1 text-xs font-medium tabular-nums ring-1 hover:bg-transparent",
         toneClasses[tone],
         className,
       )}

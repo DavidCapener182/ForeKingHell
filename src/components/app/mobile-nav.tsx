@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, MoreHorizontal, Search, Upload, X } from "lucide-react";
+import { NotificationCentre } from "@/components/app/workbench/notification-centre";
 
 import {
   buildMobileMoreGroups,
@@ -252,6 +253,14 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin = false }
                 </div>
               </ScrollArea>
               <div className="ios-sheet-footer mt-auto grid gap-3 border-t px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3">
+                <NotificationCentre embedded />
+                <Button type="button" variant="outline" className="min-h-12 justify-start" onClick={() => {
+                  setMoreOpen(false);
+                  window.setTimeout(() => window.dispatchEvent(new Event("fkh:open-command-centre")), 180);
+                }}>
+                  <Search className="size-4" aria-hidden />
+                  Search clubs, rounds and people
+                </Button>
                 <Button asChild variant="outline" className="min-h-12 justify-start">
                   <SheetClose asChild>
                     <AppSurfaceLink href={appSurfaceHref("workbench", location)} preserveLocation>

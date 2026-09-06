@@ -33,7 +33,7 @@ describe("authenticated app state motion hooks", () => {
       "setBadgeCount(nextCount)",
     );
     expect(readSource("src/components/app/workbench/notification-centre.tsx")).toContain(
-      "setBadgeCount(nextUnreadCount)",
+      "data-open={unreadCount > 0 ? \"true\" : \"false\"}",
     );
   });
 

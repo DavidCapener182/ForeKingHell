@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { MobileNav, type MobileNavProfile } from "@/components/app/mobile-nav";
+import { AppCommandMenu } from "@/components/app/app-command-menu";
 import { CompanionRouteProgress } from "@/components/app/companion-route-progress";
 import {
   isMobileCompanionHeroRoute,
@@ -91,6 +92,7 @@ export function CompanionAppShell({
           isAdmin={isAdmin}
         />
       )}
+      <AppCommandMenu isAdmin={isAdmin} />
       <CompanionRouteProgress />
       {children}
     </div>

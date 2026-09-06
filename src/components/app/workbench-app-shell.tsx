@@ -16,6 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 
+import { NavigationSection } from "@/components/untitled-ui/navigation-section";
 import { BrandMark } from "@/components/brand-mark";
 import { AppSurfaceLink } from "@/components/app/app-surface-link";
 import { AppCommandTrigger } from "@/components/app/app-command-trigger";
@@ -42,7 +43,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuBadge,
@@ -278,9 +278,7 @@ export function WorkbenchAppShell({
             </SidebarMenu>
             {desktopNavGroups.map((group) => (
               <SidebarGroup key={group.label} className={cn(isCompactSidebar && "p-1")}>
-                <SidebarGroupLabel className={cn(isCompactSidebar && "h-6 px-1.5 text-[11px]")}>
-                  {group.label}
-                </SidebarGroupLabel>
+                <NavigationSection label={group.label} iconMode={sidebarDensity === "icon"} activeLabel={group.items.find((item) => item.isActive(pathname))?.label}>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {group.items.map((item) => {
@@ -323,6 +321,7 @@ export function WorkbenchAppShell({
                     })}
                   </SidebarMenu>
                 </SidebarGroupContent>
+                </NavigationSection>
               </SidebarGroup>
             ))}
           </SidebarContent>

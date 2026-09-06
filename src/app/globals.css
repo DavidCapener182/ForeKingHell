@@ -1810,8 +1810,7 @@ html[data-theme="clubhouse"] [data-current="true"] {
   }
 
   @media (pointer: coarse) {
-    select,
-    textarea {
+    select {
       min-height: 2.75rem;
     }
   }
@@ -2130,8 +2129,7 @@ html[data-theme="clubhouse"] [data-current="true"] {
     [role="button"],
     summary,
     input,
-    select,
-    textarea {
+    select {
       min-height: 44px;
     }
 

@@ -38,13 +38,10 @@ export function SegmentErrorState({
               >
                 Reload page
               </Button>
-              <Button asChild variant="ghost" className="min-h-11 lg:hidden">
+              <Button asChild variant="ghost" className="min-h-11">
                 <a href="/today">Back to Today</a>
               </Button>
-              <Button asChild variant="ghost" className="hidden min-h-11 lg:inline-flex">
-                <a href="/dashboard">Back to dashboard</a>
-              </Button>
-              <Button asChild variant="ghost" className="min-h-11 lg:hidden">
+              <Button asChild variant="ghost" className="min-h-11">
                 <a href="/offline">Open saved golf</a>
               </Button>
             </div>

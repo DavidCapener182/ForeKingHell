@@ -40,19 +40,27 @@ function CommandDialog({
   className?: string;
   showCloseButton?: boolean;
 }) {
+  const returnFocus = React.useRef<HTMLElement | null>(null);
   return (
     <Dialog {...props}>
-      <DialogHeader className="sr-only">
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>{description}</DialogDescription>
-      </DialogHeader>
       <DialogContent
+        onOpenAutoFocus={() => {
+          returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          if (returnFocus.current?.isConnected) returnFocus.current.focus();
+        }}
         className={cn(
           "top-[min(12rem,28dvh)] max-h-[calc(100dvh_-_min(12rem,28dvh)_-_0.75rem)] translate-y-0 overflow-hidden rounded-xl p-0 sm:max-w-[46rem]",
           className,
         )}
         showCloseButton={showCloseButton}
       >
+        <DialogHeader className="sr-only">
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
         {children}
       </DialogContent>
     </Dialog>

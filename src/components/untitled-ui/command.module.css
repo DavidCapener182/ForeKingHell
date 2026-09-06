@@ -1,0 +1,19 @@
+.dialog {
+  display: flex;
+  flex-direction: column;
+  top: max(1rem, env(safe-area-inset-top));
+  translate: -50% 0;
+  transform: none;
+  max-height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  scroll-padding: 0;
+}
+.dialog [data-slot="command"] { min-height: 0; }
+.dialog [data-slot="command-list"] { min-height: 0; max-height: 100%; }
+.dialog [data-slot="command-item"] { min-height: 2.75rem; }
+.dialog [data-slot="command-item"] :global(.truncate) { white-space: normal; overflow-wrap: anywhere; }
+.body { overflow: auto; }
+.status { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; font-size: 0.875rem; }
+.status button { text-decoration: underline; }
+@media (max-width: 63.999rem) {
+  .dialog { height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+}

@@ -52,9 +52,10 @@ describe("Apple mobile shell contract", () => {
 
   it("lets PageShell own tab-bar clearance instead of padding every mobile page twice", () => {
     expect(mobileSportsSource).toContain(
-      '"ios-mobile-screen -mx-4 -mt-4 grid min-h-0 content-start overflow-x-clip px-4 pb-0',
+      '"ios-mobile-screen -mx-4 -mt-4 min-h-0 content-start overflow-x-clip px-4 pb-0',
     );
     expect(mobileSportsSource).not.toContain("ios-mobile-screen -mx-4 -mt-4 grid min-h-dvh");
+    expect(mobileSportsSource).toContain("surfaceStyles.companionScreen");
     expect(premiumSource).toContain("lg:px-8 lg:pb-8");
     expect(premiumSource).not.toContain("sm:pb-8");
   });

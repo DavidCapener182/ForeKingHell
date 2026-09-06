@@ -14,10 +14,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { csvCell } from "@/lib/csv";
 
 export type ChartFallbackColumn = {
   key: string;
   label: string;
+  numeric?: boolean;
+  unit?: string;
 };
 
 export type ChartFallbackRow = Record<string, string>;
@@ -46,13 +49,13 @@ export function ChartAccessibleFallback({
   const controls = (
     <>
       <ButtonGroup className="flex-wrap">
-        <Button asChild size="sm" variant="outline">
+        <Button asChild size="sm" variant="outline" className="min-h-11">
           <Link href={aiExplainHref} prefetch={false} aria-label={`Explain ${title} chart`}>
             <Sparkles className="size-4" aria-hidden />
             Explain this chart
           </Link>
         </Button>
-        <Button asChild size="sm" variant="outline">
+        <Button asChild size="sm" variant="outline" className="min-h-11">
           <a
             href={csvHref}
             download={`${fileName(title)}.csv`}
@@ -69,7 +72,7 @@ export function ChartAccessibleFallback({
           className={buttonVariants({
             variant: "ghost",
             size: "sm",
-            className: "w-full justify-between whitespace-normal",
+            className: "min-h-11 w-full justify-between whitespace-normal",
           })}
         >
           View {title} chart data table
@@ -80,7 +83,7 @@ export function ChartAccessibleFallback({
             <TableHeader className="text-[10px] uppercase tracking-[0.12em]">
               <TableRow>
                 {columns.map((column) => (
-                  <TableHead key={column.key}>{column.label}</TableHead>
+                  <TableHead key={column.key} scope="col" className={column.numeric ? "text-right" : undefined}>{column.label}{column.unit ? ` (${column.unit})` : ""}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>
@@ -89,7 +92,7 @@ export function ChartAccessibleFallback({
                 rows.map((row) => (
                   <TableRow key={row._key ?? columns.map((column) => row[column.key]).join("-")}>
                     {columns.map((column) => (
-                      <TableCell key={column.key} className="tabular-nums text-foreground">
+                      <TableCell key={column.key} className={cn("tabular-nums text-foreground", column.numeric && "text-right")}>
                         {row[column.key] ?? "-"}
                       </TableCell>
                     ))}
@@ -149,14 +152,10 @@ export function ChartAccessibleFallback({
 
 function buildCsvHref(columns: ChartFallbackColumn[], rows: ChartFallbackRow[]) {
   const csv = [
-    columns.map((column) => csvCell(column.label)).join(","),
+    columns.map((column) => csvCell(column.unit ? `${column.label} (${column.unit})` : column.label)).join(","),
     ...rows.map((row) => columns.map((column) => csvCell(row[column.key] ?? "")).join(",")),
   ].join("\n");
   return `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
-}
-
-function csvCell(value: string) {
-  return `"${value.replace(/"/g, '""')}"`;
 }
 
 function fileName(value: string) {

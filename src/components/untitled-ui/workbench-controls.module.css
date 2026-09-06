@@ -1,0 +1,7 @@
+.toolbar { display: flex; min-width: 0; flex-wrap: wrap; }
+.toolbar :is(button, a) { min-height: 2.75rem; height: auto; white-space: normal; overflow-wrap: anywhere; }
+.toolbar p { white-space: normal; overflow-wrap: anywhere; }
+.chrome { flex-wrap: wrap; }
+.chrome nav { flex: 1 1 18rem; flex-wrap: wrap; }
+.chrome nav :is(a, span) { white-space: normal; overflow-wrap: anywhere; }
+.chrome button { min-height: 2.75rem; }
