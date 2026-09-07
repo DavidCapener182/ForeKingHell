@@ -750,3 +750,14 @@ Next/current: restore saved views, columns and filtered CSV controls to SharedSe
 - Combined billing/round/sidebar/mobile-theme source tests33PASS99ms; scoped types/lint passed. Publishing runtime, browser, source-test and tracker batch to PR59; overall upgrade still partial and main protected. Next: remaining admin challenge/Partners/moderation retained controls, remaining source contracts and route budgets.
 
 - Fresh full suite after billing batch: 2710 passed, 74 failed, 149 pending of 2933. /tmp/fkh-main-unit-billing.json; main remains blocked until required checks pass.
+
+## Challenge register retained controls — in verification
+
+- P80-C03 runtime now uses scoped saved views and optional columns with query/status/sort/direction in URL. Full board identity, owner/template, visibility/state, counts and timestamps exported from filtered rows. Both surfaces retain diagnostics and template operations; table scroll region is focusable.
+- Scoped lint/types passed. Authorised browser /tmp/fkh-challenge-register-restored.log running; do not mark accepted before terminal result. Runtime and test remain unpublished until this batch finishes.
+
+## Challenge register functional verification passed
+
+- P80-C03 browserPASS1.4m,12surface/sizevariants, scoped full-field CSV and excluded-board check, optionalOwner hidden fromUI/CSV, saved query/columns restored through reload, Showallreachable, boardidentity/templatecancel/auditpreserved.3source testsPASS75ms independently.
+- Companion390screenshot inspected but caught menu closing transition; clean settled visual acceptance outstanding. Test now waits menu removal before screenshot, not rerun solely for screenshot. No runtime defect inferred from transition frame.
+- Publishing challenge runtime/test/tracker batch to PR59. Nextactualcontrols: moderation reports/events andPartners; main remains protected pending required checks.

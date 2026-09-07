@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { DesktopWorkbenchControls } from "@/components/app/desktop-workbench-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
@@ -20,12 +22,41 @@ export type AdminBoard = {
   ends: string;
   created: string;
 };
+const boardColumns: { id: keyof AdminBoard; label: string; locked?: boolean }[] = [
+  { id: "title", label: "Board", locked: true },
+  { id: "id", label: "Board ID" },
+  { id: "owner", label: "Owner" },
+  { id: "template", label: "Template" },
+  { id: "status", label: "State", locked: true },
+  { id: "visibility", label: "Visibility" },
+  { id: "entries", label: "Entries" },
+  { id: "attempts", label: "Attempts" },
+  { id: "results", label: "Results" },
+  { id: "starts", label: "Starts" },
+  { id: "ends", label: "Ends" },
+  { id: "created", label: "Created" },
+];
 export function AdminChallengeBoardRegister({ rows }: { rows: AdminBoard[] }) {
   const ready = useClientReady();
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("all");
-  const [sort, setSort] = useState("created");
-  const [dir, setDir] = useState("desc");
+  const params = useSearchParams();
+  const query = params.get("board-query") ?? "";
+  const status = params.get("board-status") ?? "all";
+  const requestedSort = params.get("board-sort") ?? "created";
+  const sort = ["created", "title", "owner", "status", "entries", "attempts", "ends"].includes(
+    requestedSort,
+  )
+    ? requestedSort
+    : "created";
+  const dir = params.get("board-dir") === "asc" ? "asc" : "desc";
+  const update = (values: Record<string, string>) => {
+    const url = new URL(window.location.href);
+    for (const [key, value] of Object.entries(values)) url.searchParams.set(`board-${key}`, value);
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  };
+  const setQuery = (value: string) => update({ query: value });
+  const setStatus = (value: string) => update({ status: value });
+  const setSort = (value: string) => update({ sort: value });
+  const setDir = (value: string) => update({ dir: value });
   const [id, setId] = useState<string | null>(null);
   const selected = rows.find((row) => row.id === id);
   const shown = useMemo(
@@ -52,12 +83,26 @@ export function AdminChallengeBoardRegister({ rows }: { rows: AdminBoard[] }) {
     [rows, query, status, sort, dir],
   );
   return (
-    <section id="boards" aria-label="Challenge boards" className="grid min-w-0 gap-3">
+    <section
+      data-workbench-scope="admin-challenge-boards"
+      id="boards"
+      aria-label="Challenge boards"
+      className="grid min-w-0 gap-3"
+    >
       <h2 className="text-xl font-semibold">Challenge boards</h2>
       <p className="text-sm text-muted-foreground">
         Latest 80 boards at most. Counts include only these loaded boards; filters do not search
         older records.
       </p>
+      <DesktopWorkbenchControls
+        viewKey="admin-challenge-boards"
+        scope="admin-challenge-boards"
+        currentViewLabel="Challenge boards"
+        resultLabel={`${shown.length} matching loaded boards`}
+        exportFileName="admin-challenge-boards-filtered.csv"
+        localView={{ state: { query, status, sort, dir }, restore: update }}
+        columns={[...boardColumns, { id: "details", label: "Details", locked: true }]}
+      />
       <div className="flex flex-wrap gap-3">
         <label className="grid min-w-0 flex-1 basis-full gap-1 text-sm sm:basis-auto">
           Search boards
@@ -117,69 +162,62 @@ export function AdminChallengeBoardRegister({ rows }: { rows: AdminBoard[] }) {
       ) : (
         <>
           <div className={layout.desktop}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+            <div
+              className="overflow-x-auto"
+              role="region"
+              aria-label="Challenge boards table"
+              tabIndex={0}
+            >
+              <table
+                data-workbench-export-table="admin-challenge-boards"
+                className="w-full text-left text-sm"
+              >
                 <caption className="sr-only">
                   Challenge boards ordered by {sort}, {dir}
                 </caption>
                 <thead>
                   <tr>
-                    {[
-                      "Board",
-                      "Owner",
-                      "State",
-                      "Entries",
-                      "Attempts",
-                      "Results",
-                      "Ends",
-                      "Details",
-                    ].map((h) => (
+                    {boardColumns.map((column) => (
                       <th
-                        key={h}
+                        key={column.id}
+                        data-column={column.id}
                         scope="col"
                         className="p-3"
                         aria-sort={
-                          (
-                            {
-                              Board: "title",
-                              Owner: "owner",
-                              State: "status",
-                              Entries: "entries",
-                              Attempts: "attempts",
-                              Ends: "ends",
-                            } as Record<string, string>
-                          )[h] === sort
+                          column.id === sort
                             ? dir === "asc"
                               ? "ascending"
                               : "descending"
                             : undefined
                         }
                       >
-                        {h}
+                        {column.label}
                       </th>
                     ))}
+                    <th data-column="details" scope="col" className="p-3">
+                      Details
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {shown.map((row) => (
                     <tr key={row.id} className="border-t">
-                      <th scope="row" className="p-3">
-                        {row.title}
-                        <span className="block font-normal text-muted-foreground">
-                          {row.template}
-                        </span>
-                      </th>
-                      <td className="p-3">{row.owner}</td>
-                      <td className="p-3">
-                        {row.status} · {row.visibility}
-                      </td>
-                      {[row.entries, row.attempts, row.results].map((v, i) => (
-                        <td key={i} className="p-3 text-right tabular-nums">
-                          {v}
-                        </td>
-                      ))}
-                      <td className="p-3">{row.ends}</td>
-                      <td className="p-3">
+                      {boardColumns.map((column) =>
+                        column.id === "title" ? (
+                          <th key={column.id} scope="row" data-column={column.id} className="p-3">
+                            {row.title}
+                          </th>
+                        ) : (
+                          <td
+                            key={column.id}
+                            data-column={column.id}
+                            className={`p-3 ${typeof row[column.id] === "number" ? "text-right tabular-nums" : ""}`}
+                          >
+                            {row[column.id]}
+                          </td>
+                        ),
+                      )}
+                      <td data-column="details" className="p-3">
                         <Button
                           variant="outline"
                           disabled={!ready}
@@ -207,9 +245,17 @@ export function AdminChallengeBoardRegister({ rows }: { rows: AdminBoard[] }) {
               >
                 <span className="min-w-0 break-words">
                   {row.title}
-                  <span className="block font-normal text-xs">
-                    {row.status} · {row.entries} entries · {row.attempts} attempts
-                  </span>
+                  {boardColumns
+                    .filter((column) => column.id !== "title")
+                    .map((column) => (
+                      <span
+                        key={column.id}
+                        data-column={column.id}
+                        className="block font-normal text-xs"
+                      >
+                        {column.label}: {row[column.id]}
+                      </span>
+                    ))}
                 </span>
                 <span className="ml-2 shrink-0">Inspect</span>
               </Button>

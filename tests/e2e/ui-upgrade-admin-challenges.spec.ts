@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 test("Challenge administration preserves board identity and reviews template edits on both surfaces", async ({
   page,
   context,
@@ -38,6 +39,9 @@ test("Challenge administration preserves board identity and reviews template edi
     templateIds.push(template);
     const board = (
       await db`insert into fkh_challenges(template_id,creator_user_id,title,visibility) values(${template},${users[1]},'Synthetic full board','private') returning id`
+    )[0].id;
+    const excludedBoard = (
+      await db`insert into fkh_challenges(template_id,creator_user_id,title,visibility) values(${template},${users[1]},'Synthetic excluded board','private') returning id`
     )[0].id;
     const enc = (v: unknown) => Buffer.from(JSON.stringify(v)).toString("base64url");
     await context.clearCookies();
@@ -77,6 +81,49 @@ test("Challenge administration preserves board identity and reviews template edi
         const search = page.getByRole("textbox", { name: "Search boards", exact: true });
         await expect(search).toBeEnabled({ timeout: 60000 });
         await search.fill("Synthetic full board");
+        const register = page.getByRole("region", { name: "Challenge boards", exact: true });
+        const downloadReady = page.waitForEvent("download");
+        await register.locator("[data-export-table-id]").click();
+        const download = await downloadReady;
+        const csv = await readFile((await download.path())!, "utf8");
+        expect(csv).toContain(board);
+        expect(csv).toContain("Synthetic full board");
+        expect(csv).toContain("private");
+        expect(csv).not.toContain(excludedBoard);
+        expect(csv).not.toContain("Synthetic excluded board");
+        await register.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitemcheckbox", { name: "Owner", exact: true }).click();
+        await page.keyboard.press("Escape");
+        await expect(
+          register.locator('[data-column="owner"]').filter({ visible: true }),
+        ).toHaveCount(0);
+        const viewName = `Board ${surface} ${width}`;
+        await register.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.getByRole("menuitem", { name: "Save current view", exact: true }).click();
+        const saveView = page.getByRole("dialog", { name: "Save table view" });
+        await saveView.getByRole("textbox", { name: "View name" }).fill(viewName);
+        await saveView.getByRole("button", { name: "Save view", exact: true }).click();
+        await search.fill("no-matching-board");
+        await expect(register).toContainText("No boards match this view.");
+        await register.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.getByRole("menuitem", { name: new RegExp(`^${viewName} `) }).click();
+        await expect(search).toHaveValue("Synthetic full board");
+        await page.reload();
+        await expect(search).toHaveValue("Synthetic full board");
+        await expect(
+          register.locator('[data-column="owner"]').filter({ visible: true }),
+        ).toHaveCount(0);
+        const hiddenDownloadReady = page.waitForEvent("download");
+        await register.locator("[data-export-table-id]").click();
+        const hiddenDownload = await hiddenDownloadReady;
+        const hiddenCsv = await readFile((await hiddenDownload.path())!, "utf8");
+        expect(hiddenCsv).toContain(board);
+        expect(hiddenCsv).not.toContain("Synthetic resolved billing player");
+        await register.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitem", { name: "Show all columns", exact: true }).click();
+        await expect(page.getByRole("menu")).toHaveCount(0);
+        await register.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: info.outputPath(`P80-register-${surface}-${width}.png`) });
         await page
           .getByRole("button", { name: "Inspect Synthetic full board", exact: true })
           .click();
