@@ -36,6 +36,7 @@ import {
 
 export function RapsodoCompanionPreview({
   preview,
+  open = true,
   practicePlanId,
   hydrated,
   message,
@@ -43,6 +44,7 @@ export function RapsodoCompanionPreview({
   onClose,
 }: {
   preview: RapsodoSessionPreview;
+  open?: boolean;
   practicePlanId: string | null;
   hydrated: boolean;
   message: string | null;
@@ -79,44 +81,52 @@ export function RapsodoCompanionPreview({
       excludedShotRowNumbers,
     );
     startTransition(async () => {
-      const result = await importRapsodoSessionAction({
-        session: preview.session,
-        importInput: {
-          rawCsvText: preview.rawCsvText,
-          fileName: preview.fileName,
-          fileSizeBytes: preview.fileSizeBytes,
-          source: "rapsodo",
-          sessionType: preview.sessionType,
-          sessionDate: preview.sessionDate,
-          distanceUnit: preview.distanceUnit,
-          excludedShotRowNumbers,
-          shotOverrides,
-          practicePlanId: practicePlanId ?? undefined,
-        },
-      });
-      if (!result.ok) {
+      try {
+        const result = await importRapsodoSessionAction({
+          session: preview.session,
+          importInput: {
+            rawCsvText: preview.rawCsvText,
+            fileName: preview.fileName,
+            fileSizeBytes: preview.fileSizeBytes,
+            source: "rapsodo",
+            sessionType: preview.sessionType,
+            sessionDate: preview.sessionDate,
+            distanceUnit: preview.distanceUnit,
+            excludedShotRowNumbers,
+            shotOverrides,
+            practicePlanId: practicePlanId ?? undefined,
+          },
+        });
+        if (!result.ok) {
+          setLoading(null);
+          onMessageChange(result.message);
+          return;
+        }
+        if (!result.data.ok) {
+          setLoading(null);
+          onMessageChange(result.data.message);
+          return;
+        }
+        const destination = new URL(
+          companionRapsodoResultHref(result.data.sessionId),
+          window.location.origin,
+        );
+        window.location.assign(destination);
+      } catch {
+        onMessageChange(
+          "This import could not be confirmed. Your selected clubs and excluded shots are retained; retry when connected.",
+        );
+      } finally {
         setLoading(null);
-        onMessageChange(result.message);
-        return;
       }
-      if (!result.data.ok) {
-        setLoading(null);
-        onMessageChange(result.data.message);
-        return;
-      }
-      const destination = new URL(
-        companionRapsodoResultHref(result.data.sessionId),
-        window.location.origin,
-      );
-      window.location.assign(destination);
     });
   }
 
   return (
     <Drawer
-      open
+      open={open}
       onOpenChange={(open) => {
-        if (!open) onClose();
+        if (!open && !pending) onClose();
       }}
       data-rapsodo-companion-preview
     >

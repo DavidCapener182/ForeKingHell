@@ -196,14 +196,21 @@ const rapsodoWorkflowHelpItems = [
 
 export function RapsodoSyncClient({
   initialStatus,
+  initialPreview = null,
+  practicePlanId = null,
+  embedded = false,
   children,
 }: {
   initialStatus: ConnectionStatus;
+  initialPreview?: RapsodoSessionPreview | null;
+  practicePlanId?: string | null;
+  embedded?: boolean;
   children?: ReactNode;
 }) {
+  const TitleTag = embedded ? "h2" : "h1";
   const router = useRouter();
   const ready = useClientReady();
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(Boolean(initialPreview));
   const [sessionQuery, setSessionQuery] = useState("");
   const operationBusy = useRef(false);
   const loadBusy = useRef(false);
@@ -216,17 +223,27 @@ export function RapsodoSyncClient({
   const [sessions, setSessions] = useState<RapsodoSessionListItem[]>([]);
   const [sessionFilter, setSessionFilter] = useState<"all" | "range" | "course">("all");
   const [dateFilter, setDateFilter] = useState({ startDate: "", endDate: "" });
-  const [preview, setPreview] = useState<RapsodoSessionPreview | null>(null);
+  const [preview, setPreview] = useState<RapsodoSessionPreview | null>(initialPreview);
   const [disconnectConfirmationOpen, setDisconnectConfirmationOpen] = useState(false);
-  const [selectedClubByRow, setSelectedClubByRow] = useState<Record<number, string>>({});
+  const [selectedClubByRow, setSelectedClubByRow] = useState<Record<number, string>>(
+    initialPreview ? selectionByMode(initialPreview, "recommendations") : {},
+  );
   const [clubSelectionOriginByRow, setClubSelectionOriginByRow] = useState<
     Record<number, RapsodoClubSelectionOrigin>
-  >({});
+  >(initialPreview ? selectionOriginsByMode(initialPreview, "recommendations") : {});
   const [clubSelectionMode, setClubSelectionMode] = useState<ClubSelectionMode>("recommendations");
   const [updateRapsodoClubs, setUpdateRapsodoClubs] = useState(false);
-  const [courseImportMode, setCourseImportMode] = useState<CourseImportMode>("shot_only");
-  const [courseName, setCourseName] = useState("");
-  const [scorecardText, setScorecardText] = useState("");
+  const [courseImportMode, setCourseImportMode] = useState<CourseImportMode>(
+    initialPreview?.courseScorecard.length ? "scored_round" : "shot_only",
+  );
+  const [courseName, setCourseName] = useState(
+    initialPreview?.courseName || initialPreview?.session.title || "",
+  );
+  const [scorecardText, setScorecardText] = useState(
+    initialPreview?.courseScorecard.length
+      ? formatCourseScorecardText(initialPreview.courseScorecard)
+      : "",
+  );
   const [holeReview, setHoleReview] = useState<HoleReviewState>({});
   const detectedPermission = useSyncExternalStore<BrowserNotificationState>(
     () => () => {},
@@ -759,6 +776,7 @@ export function RapsodoSyncClient({
           fileName: preview.fileName,
           fileSizeBytes: preview.fileSizeBytes,
           source: "rapsodo",
+          practicePlanId: practicePlanId ?? undefined,
           sessionType: preview.sessionType,
           sessionDate: preview.sessionDate,
           distanceUnit: preview.distanceUnit,
@@ -870,9 +888,9 @@ export function RapsodoSyncClient({
                   <Badge variant="secondary" className="w-fit">
                     Experimental R-Cloud connector
                   </Badge>
-                  <h1 className="text-3xl font-semibold tracking-normal text-balance">
+                  <TitleTag className="text-3xl font-semibold tracking-normal text-balance">
                     Rapsodo cloud sync
-                  </h1>
+                  </TitleTag>
                   <p className="text-sm leading-6 text-muted-foreground">
                     Pull R-Cloud CSV exports, review club matches, use recommendations, and save
                     trusted shots into LM World Tour. Historical imported files do not establish a

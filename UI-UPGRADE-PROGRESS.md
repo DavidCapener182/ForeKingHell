@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-240 desktop / 240 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P42 Companion R-Cloud, in progress. Next: P43 Rounds. P34 wrapped actual-app matrix passed 21.9s and P37 mocked-provider matrix passed 19.9s across both surfaces and all six requested sizes. P35/P36 earlier UI preserved. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
+243 desktop / 243 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P43 Rounds. Next: P44 Add round. P34 wrapped actual-app matrix passed 21.9s and P37 mocked-provider matrix passed 19.9s across both surfaces and all six requested sizes. P35/P36 earlier UI preserved. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
 
 # UI upgrade progress
 
@@ -260,3 +260,6 @@ P39-C01–C02 and P40-C01–C03 reconciled with canonical importer and marked im
 ## Current exact checkpoint: P42
 
 240 desktop/mobile UI entries implemented partial, zero fully accepted. P38 final health PASS25.1s, committed ee3eace5. P39/P40 PASS22s. P41-C01/C02 PASS25.9s, new permission-bound ImportResultShotReview exposes existing keep/exclude and evidence/club correction in the saved result. Actual review mutation not claimed. P42 companion client and preview currently dirty: preview stays mounted with open state and Resume action; failed login uses onSubmit to retain fields; guarded transitions catch thrown errors. Types passed, browser not run. Critical remaining P42: non-range preview still has desktop-only scored-course restriction. Must provide canonical full scorecard/holes choices on mobile, preserving practicePlanId/exclusions; do not count complete. Read /tmp/fkh-p41-prompts.txt and P42 prompts lines13521–13710, then implement/test P42 before P43. Preserve all other dirty work. No runtime browser active after P41 and Providers final terminal passes.
+
+
+P42-C01–C03 now UI implemented partial. Course selections route internally to the existing canonical RapsodoSyncClient seeded with the exact preview, owned validated practicePlanId and initial scorecard/matching states. No desktop handoff. Companion quick-range preview remains mounted when closed, exposes Resume, catches thrown save errors; failed connection retains fields. Mocked course fixture PASS19.7s on12views checks exact session/plan, retained club and saved warning; final types clean. Quick-range catch follow-up not browser-exercised. CurrentP43 prompts read, current rounds-scoring-index/mobile-list inspected but not edited; coordinate ownership then implement URL-preserved filters and source-scoped trend while preserving previous redesign. NextP44.
