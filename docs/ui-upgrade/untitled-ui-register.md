@@ -161,3 +161,6 @@ Previously checked official page/section headers, content dividers, badges and b
 
 ## P87 Offline saved golf
 Checked official alerts/notifications, progress, golf-visual toolbar, forms and navigation references reused. Paid advanced examples unavailable. Local accessible alternative: normal-flow saved-copy alert, semantic full-width resource groups, searchable focus-managed panel, five existing primary buttons and complete existing offline task renderers. No specialist visual replacement or paid installation.
+
+## P88 Shared round
+Checked official headers, tables/pagination and empty/loading/alerts reused. Paid advanced examples unavailable. Accessible alternatives: shared semantic pinned scorecard, recorded-evidence summary, native public navigation and dedicated route recovery boundaries. Existing export adapter retained; local exports typechecked.

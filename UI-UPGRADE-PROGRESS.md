@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-466 desktop / 466 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P88 Shared round**, next P89 Shared Course Twin. 26 UI entries remain. Continue the UI pass with acceptance gaps retained.
+469 desktop / 469 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P89 Shared Course Twin**, next P90 Shared coach report. 23 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P88 Shared round**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P89 Shared Course Twin**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -472,3 +472,7 @@ P86-C01–C03 UI implemented on both viewports. One semantic title/right action,
 ## P87 Offline saved golf UI pass, 7 September
 
 P87-C01–C05 UI implemented with partial verification; existing complete specialist renderers reused. Changed offline-companion.tsx/offline.module.css and ui-upgrade-offline.spec.ts. Local-only banner remains visible during activities; source dates/unknown legacy freshness, searchable saved-resource panel, wide-screen grouping/navigation and existing five phone destinations. Quick Range menu now uses its real parser so invalid copies are not offered. Local practice writes add actual savedAt without changing conflict/sync semantics. offline-browser-final.log1PASS6.1s all6 sizes search/close/failure recovery/owned resources/no overflow; exact round reload retains score and dirty state, account switch clears private view. Types/lint clean;390 screenshot reviewed. Initial browser run interrupted to correct blocked connection-probe fixture URL; no mutation API allowed. Broader task/device/offline-sync acceptance explicitly remains per CSV. Next P88 wrappers/boundaries; suppress display of differential for incomplete scorecard without changing golf calculation.
+
+## P88 Shared round UI pass, 7 September
+
+P88-C01–C03 UI implemented with partial verification. Full shared Workbench scorecard now serves both surfaces; semantic pinned row headings/totals, partial score and putt counts, manual putt source, public identity/scope, complete allowed details. Existing roundCompletionIssue plus9/18gate suppresses incomplete differential display; loader/calculation unchanged and backend defect retained. Added route-local loading/error/not-found. shared-round-browser.log1PASS6.5s all12 sizes/surfaces using synthetic owner/link/card, revocation removes scorecard, noedit/delete/noindex/nooverflow/pageerrors. Types/lint clean and390 capture inspected. Access test separately covers revoked/expired/mismatched owner. Full native and all state acceptance outstanding. Next P89, preserve canonical renderer and token scoping.
