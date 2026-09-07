@@ -2,10 +2,14 @@ import { AdminCheckHistoryPages } from "@/app/admin/admin-check-history-pages";
 import { AdminNav, formatDateTime } from "@/app/admin/admin-components";
 import { AdminRetryButton } from "@/app/admin/admin-retry-button";
 import { AdminSystemRegister } from "@/app/admin/admin-system-register";
-import { buildHealthRows, buildSystemCheckRows } from "@/app/admin/admin-system-data";
+import {
+  buildHealthRows,
+  buildSystemCheckRows,
+  type SystemCheckTableRow,
+} from "@/app/admin/admin-system-data";
 import { PageHeader, PageShell } from "@/components/premium";
 import { getAdminOperationsSnapshot } from "@/lib/admin";
-import { getAdminSystemCheckHistory } from "@/lib/admin-system-checks";
+import { getAdminSystemCheckHistory, getLatestAdminSystemChecks } from "@/lib/admin-system-checks";
 export const dynamic = "force-dynamic";
 export default async function AdminSystemChecksPage({
   searchParams,
@@ -14,11 +18,41 @@ export default async function AdminSystemChecksPage({
 }) {
   const query = await searchParams;
   const requestedPage = Array.isArray(query.checkPage) ? query.checkPage[0] : query.checkPage;
-  const [operations, history] = await Promise.all([
+  const [operations, history, latest] = await Promise.all([
     getAdminOperationsSnapshot(),
     getAdminSystemCheckHistory(requestedPage),
+    getLatestAdminSystemChecks(),
   ]);
-  const rows = buildSystemCheckRows(operations);
+  const savedChecks = latest?.metadataJson?.liveChecks;
+  const liveChecks = Array.isArray(savedChecks)
+    ? savedChecks.filter(
+        (check) =>
+          check &&
+          typeof check === "object" &&
+          "id" in check &&
+          "state" in check &&
+          "detail" in check,
+      )
+    : [];
+  const rows: SystemCheckTableRow[] = buildSystemCheckRows(operations);
+  for (const check of liveChecks)
+    rows.push({
+      id: `live-${String(check.id)}`,
+      label: String(check.label ?? check.id),
+      detail: String(check.detail),
+      area: "Read-only probes",
+      status:
+        check.state === "passed"
+          ? "Probe passed"
+          : check.state === "failed"
+            ? "Probe failed"
+            : "Unavailable",
+      state:
+        check.state === "passed" ? "quiet" : check.state === "failed" ? "failure" : "unverified",
+      lastCheck: String(check.checkedAt),
+      evidence: `${String(check.durationMs)} ms · saved endpoint response`,
+      impact: String(check.detail),
+    });
   const health = buildHealthRows(operations);
   const failures = rows.filter((r) => r.state === "failure");
   const unknown = rows.filter((r) => r.state === "unverified");
@@ -51,6 +85,40 @@ export default async function AdminSystemChecksPage({
           </div>
         </dl>
         <AdminRetryButton />
+        <section className="grid gap-3 rounded-xl border p-4" aria-label="Read-only live probes">
+          <h2 className="text-xl font-semibold">Read-only live probes</h2>
+          <p className="text-sm">
+            Latest saved probe run
+            {latest ? `: ${formatDateTime(latest.createdAt)}` : " unavailable"}. Results describe
+            that moment and the exact endpoint checked; they are not continuous monitoring or full
+            service health.
+          </p>
+          {!liveChecks.length ? (
+            <p>No read-only probe results yet. Refresh recorded checks to run configured probes.</p>
+          ) : (
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {liveChecks.map((check, index) => (
+                <li key={index} className="rounded-lg border p-3">
+                  <h3 className="font-semibold">{String(check.label ?? check.id)}</h3>
+                  <p className="font-medium">
+                    {check.state === "passed"
+                      ? "Probe passed"
+                      : check.state === "failed"
+                        ? "Probe failed"
+                        : "Unavailable"}
+                  </p>
+                  <p className="mt-2 text-sm">{String(check.detail)}</p>
+                  <p className="mt-2 text-xs">
+                    Checked: {String(check.checkedAt)} ·{" "}
+                    <span data-probe-latency className="whitespace-nowrap">
+                      {String(check.durationMs)} ms
+                    </span>
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
         <section className="grid gap-3" aria-label="Service summary">
           <h2 className="text-xl font-semibold">Service summary</h2>
           <div className="grid gap-3 md:grid-cols-2">
@@ -74,7 +142,8 @@ export default async function AdminSystemChecksPage({
           <p className="text-sm">
             {history.total.toLocaleString("en-GB")} recorded-check snapshots, newest first. Each
             entry preserves its own counts; a later refresh does not erase an earlier failure. Live
-            provider checks are not performed.
+            transactional provider checks are not performed. Read-only probe outcomes are retained
+            with each new snapshot.
           </p>
           {!history.records.length ? (
             <p>

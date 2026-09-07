@@ -13,7 +13,7 @@ type HealthSummaryRow = {
   action?: string;
 };
 
-type SystemCheckTableRow = {
+export type SystemCheckTableRow = {
   id: string;
   label: string;
   detail: string;

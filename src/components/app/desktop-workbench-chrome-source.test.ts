@@ -297,9 +297,9 @@ describe("desktop workbench chrome source", () => {
     expect(source).toContain(
       "const shouldLoadWorkspaceCommands = commandOpen || workspaceLinksOpen",
     );
-    expect(source).toContain("if (!shouldLoadWorkspaceCommands || workspaceCommandsLoaded)");
+    expect(source).toContain("if (!shouldLoadWorkspaceCommands) return;");
     expect(source).toContain("setWorkspaceCommandsLoaded(true)");
-    expect(source).toContain("[shouldLoadWorkspaceCommands, workspaceCommandsLoaded]");
+    expect(source).toContain("[shouldLoadWorkspaceCommands, query, workspaceCommandsRetry]");
   });
 
   it("keeps the desktop workspace switcher role-aware", () => {

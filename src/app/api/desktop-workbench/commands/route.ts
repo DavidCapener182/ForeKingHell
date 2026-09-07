@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, asc, desc, eq, inArray, ne, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, notInArray, or, sql, type SQL } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { clubs, courses, sessions, userProfiles } from "@/db/schema";
@@ -28,7 +28,18 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
-export async function GET() {
+// Literal, bounded terms: `%` and `_` are text, never SQL wildcards.
+function matchesQuery(query: string, fields: SQL) {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  return and(...terms.map((term) => sql`strpos(lower(${fields}), ${term}) > 0`));
+}
+
+export async function GET(request: Request) {
+  const query = new URL(request.url).searchParams.get("q")?.trim().slice(0, 120) ?? "";
+  const sessionSearch = matchesQuery(
+    query,
+    sql`concat_ws(' ', ${sessions.courseName}, ${sessions.location}, ${sessions.fileName}, ${sessions.source}, ${sessions.type}, ${sessions.playContext}, ${sessions.date}::text, to_char(${sessions.date}, 'DD Mon YYYY'), 'session', case when ${inArray(sessions.type, [...roundSessionTypes])} then 'round scorecard' else 'practice range' end)`,
+  );
   const user = await getCurrentUser();
 
   if (!user) {
@@ -53,9 +64,18 @@ export async function GET() {
           bagPosition: clubs.bagPosition,
         })
         .from(clubs)
-        .where(and(eq(clubs.userId, user.id), eq(clubs.active, true)))
+        .where(
+          and(
+            eq(clubs.userId, user.id),
+            eq(clubs.active, true),
+            matchesQuery(
+              query,
+              sql`concat_ws(' ', ${clubs.type}, ${clubs.brand}, ${clubs.model}, 'club bag analytics')`,
+            ),
+          ),
+        )
         .orderBy(asc(clubs.bagPosition), asc(clubs.type))
-        .limit(16),
+        .limit(query ? 6 : 16),
       db
         .select({
           id: sessions.id,
@@ -68,9 +88,15 @@ export async function GET() {
           fileName: sessions.fileName,
         })
         .from(sessions)
-        .where(and(eq(sessions.userId, user.id), inArray(sessions.type, [...roundSessionTypes])))
-        .orderBy(desc(sessions.date))
-        .limit(8),
+        .where(
+          and(
+            eq(sessions.userId, user.id),
+            inArray(sessions.type, [...roundSessionTypes]),
+            sessionSearch,
+          ),
+        )
+        .orderBy(desc(sessions.date), desc(sessions.id))
+        .limit(query ? 6 : 8),
       db
         .select({
           id: sessions.id,
@@ -83,9 +109,15 @@ export async function GET() {
           fileName: sessions.fileName,
         })
         .from(sessions)
-        .where(eq(sessions.userId, user.id))
-        .orderBy(desc(sessions.date))
-        .limit(16),
+        .where(
+          and(
+            eq(sessions.userId, user.id),
+            notInArray(sessions.type, [...roundSessionTypes]),
+            sessionSearch,
+          ),
+        )
+        .orderBy(desc(sessions.date), desc(sessions.id))
+        .limit(6),
       db
         .select({
           id: courses.id,
@@ -97,9 +129,17 @@ export async function GET() {
           updatedAt: courses.updatedAt,
         })
         .from(courses)
-        .where(or(eq(courses.createdByUserId, user.id), ne(courses.visibility, "private")))
-        .orderBy(desc(courses.updatedAt), asc(courses.name))
-        .limit(10),
+        .where(
+          and(
+            or(eq(courses.createdByUserId, user.id), ne(courses.visibility, "private")),
+            matchesQuery(
+              query,
+              sql`concat_ws(' ', ${courses.name}, ${courses.country}, ${courses.address}, ${courses.provider}, 'course records')`,
+            ),
+          ),
+        )
+        .orderBy(desc(courses.updatedAt), asc(courses.name), asc(courses.id))
+        .limit(query ? 6 : 10),
       friendIds.length > 0
         ? db
             .select({
@@ -110,9 +150,17 @@ export async function GET() {
               handicapBand: userProfiles.handicapBand,
             })
             .from(userProfiles)
-            .where(inArray(userProfiles.userId, friendIds))
+            .where(
+              and(
+                inArray(userProfiles.userId, friendIds),
+                matchesQuery(
+                  query,
+                  sql`concat_ws(' ', ${userProfiles.username}, ${userProfiles.displayName}, ${userProfiles.homeCourse}, 'friend profile')`,
+                ),
+              ),
+            )
             .orderBy(asc(userProfiles.displayName))
-            .limit(10)
+            .limit(query ? 6 : 10)
         : Promise.resolve([]),
     ]);
 

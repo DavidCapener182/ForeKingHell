@@ -3,9 +3,11 @@ import { count, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { adminAuditLog, users } from "@/db/schema";
 import { getAdminOperationsSnapshot, requireAdminUser } from "@/lib/admin";
+import { runReadOnlySystemChecks } from "@/lib/admin-live-system-checks";
 export async function recordAdminSystemSnapshot() {
   const actor = await requireAdminUser();
   const operations = await getAdminOperationsSnapshot();
+  const liveChecks = await runReadOnlySystemChecks();
   const checkedAt = new Date();
   const [record] = await getDb()
     .insert(adminAuditLog)
@@ -19,10 +21,11 @@ export async function recordAdminSystemSnapshot() {
         scope: "stored operational records",
         operations,
         liveProvidersChecked: false,
+        liveChecks,
       },
     })
     .returning({ id: adminAuditLog.id });
-  return { id: record.id, checkedAt: checkedAt.toISOString(), operations };
+  return { id: record.id, checkedAt: checkedAt.toISOString(), operations, liveChecks };
 }
 export async function getAdminSystemCheckHistory(requestedPage: string | number = 1) {
   await requireAdminUser();
@@ -51,4 +54,15 @@ export async function getAdminSystemCheckHistory(requestedPage: string | number 
     .limit(pageSize)
     .offset((page - 1) * pageSize);
   return { records, total, page, pages };
+}
+
+export async function getLatestAdminSystemChecks() {
+  await requireAdminUser();
+  const [record] = await getDb()
+    .select({ metadataJson: adminAuditLog.metadataJson, createdAt: adminAuditLog.createdAt })
+    .from(adminAuditLog)
+    .where(eq(adminAuditLog.action, "system_snapshot_checked"))
+    .orderBy(desc(adminAuditLog.createdAt), desc(adminAuditLog.id))
+    .limit(1);
+  return record ?? null;
 }

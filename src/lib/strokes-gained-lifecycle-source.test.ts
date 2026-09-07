@@ -30,7 +30,8 @@ describe("strokes-gained lifecycle evidence", () => {
     const consumer =
       source(path) +
       (path === "src/app/(app)/strokes-gained/page.tsx"
-        ? source("src/lib/strokes-gained-practice-data.ts")
+        ? source("src/lib/strokes-gained-history.ts") +
+          source("src/lib/strokes-gained-practice-data.ts")
         : "");
 
     const link = consumer.indexOf("eq(shots.id, strokesGainedShotEvents.shotId)");

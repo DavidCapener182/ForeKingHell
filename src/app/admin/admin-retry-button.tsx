@@ -37,12 +37,12 @@ export function AdminRetryButton() {
           if (!pending) setOpen(value);
         }}
         title="Refresh recorded checks"
-        description="Read current operational database records and save a dated snapshot in the administrative history. This does not retry imports, charge payments or test live external services."
+        description="Read current operational database records and save a dated snapshot in the administrative history. Also run configured read-only database, auth-settings and storage-metadata probes. This does not retry imports, charge payments or make AI requests."
       >
         <div className="grid gap-4">
           <p className="text-sm">
-            Provider, sign-in, storage and AI availability remain unverified. Recorded failure
-            counts can change only when their source records change.
+            Each probe reports its own result and timestamp. Sign-in, uploads, user access policies
+            and AI generation are not exercised. Recorded failure counts remain separate.
           </p>
           {error ? <p role="alert">{error}</p> : null}
           <Button variant="outline" disabled={pending} onClick={() => setOpen(false)}>
@@ -63,7 +63,8 @@ export function AdminRetryButton() {
                     return;
                   }
                   setMessage(
-                    `Recorded checks refreshed${result.checkedAt ? ` at ${result.checkedAt}` : ""}. Live services remain unverified.`,
+                    result.message ??
+                      "Check results saved. Open their diagnostics for the exact scope.",
                   );
                   setOpen(false);
                   router.refresh();

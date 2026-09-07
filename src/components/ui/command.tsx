@@ -33,12 +33,14 @@ function CommandDialog({
   children,
   className,
   showCloseButton = true,
+  restoreFocusRef,
   ...props
 }: React.ComponentProps<typeof Dialog> & {
   title?: string;
   description?: string;
   className?: string;
   showCloseButton?: boolean;
+  restoreFocusRef?: React.RefObject<HTMLElement | null>;
 }) {
   const returnFocus = React.useRef<HTMLElement | null>(null);
   return (
@@ -50,7 +52,11 @@ function CommandDialog({
         }}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
-          if (returnFocus.current?.isConnected) returnFocus.current.focus();
+          if (restoreFocusRef?.current?.isConnected) {
+            restoreFocusRef.current.focus({ preventScroll: true });
+          } else if (returnFocus.current?.isConnected) {
+            returnFocus.current.focus();
+          }
         }}
         className={cn(
           "top-[min(12rem,28dvh)] max-h-[calc(100dvh_-_min(12rem,28dvh)_-_0.75rem)] translate-y-0 overflow-hidden rounded-xl p-0 sm:max-w-[46rem]",

@@ -90,7 +90,7 @@ describe("admin system checks desktop console source", () => {
   it("keeps admin recommendations tied to visible evidence", () => {
     expect(source).toContain("Live health remains unverified");
     expect(retrySource).toContain(
-      "This does not retry imports, charge payments or test live external services.",
+      "This does not retry imports, charge payments or make AI requests.",
     );
     expect(source).toContain("snapshot, not a live provider check.");
     expect(source).not.toContain("DesktopInsightRail");

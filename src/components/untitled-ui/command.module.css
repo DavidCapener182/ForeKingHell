@@ -1,4 +1,6 @@
 .dialog {
+  /* Above the companion header (60) and its More sheet (70). */
+  z-index: 80;
   display: flex;
   flex-direction: column;
   top: max(1rem, env(safe-area-inset-top));

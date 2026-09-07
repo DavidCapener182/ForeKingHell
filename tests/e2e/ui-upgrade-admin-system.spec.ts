@@ -39,6 +39,33 @@ test("System checks preserve unknown health and dated recorded failures across b
       select ${users[0]}, 'system_snapshot_checked', 'system_snapshot', 'stored-operational-records',
       '2090-01-01'::timestamptz, '{"scope":"stored operational records","operations":{"billingFailures":0},"liveProvidersChecked":false}'::jsonb
       from generate_series(1,82)`;
+    const syntheticProbes = [
+      {
+        id: "database-read",
+        label: "Database read connection",
+        state: "passed",
+        checkedAt: "2090-01-01T00:00:00.000Z",
+        durationMs: 12,
+        detail: "Synthetic read-only database response; not a user-policy check.",
+      },
+      {
+        id: "auth-settings",
+        label: "Auth settings endpoint",
+        state: "failed",
+        checkedAt: "2090-01-01T00:00:00.000Z",
+        durationMs: 5000,
+        detail: "Synthetic endpoint timeout; sign-in not exercised.",
+      },
+      {
+        id: "storage-buckets",
+        label: "Storage bucket metadata",
+        state: "unavailable",
+        checkedAt: "2090-01-01T00:00:00.000Z",
+        durationMs: 0,
+        detail: "Synthetic unconfigured credential; no request sent.",
+      },
+    ];
+    await db`update fkh_admin_audit_log set metadata_json = metadata_json || ${db.json({ liveChecks: syntheticProbes })}::jsonb where actor_user_id=${users[0]} and created_at='2090-01-01'`;
     const enc = (v: unknown) => Buffer.from(JSON.stringify(v)).toString("base64url");
     await context.clearCookies();
     await context.addCookies([
@@ -66,6 +93,7 @@ test("System checks preserve unknown health and dated recorded failures across b
         [1023, 800],
         [1024, 800],
       ]) {
+        if (process.env.ADMIN_PROBE_VISUAL_ONLY === "1" && ![360, 390].includes(width)) continue;
         await page.setViewportSize({ width, height });
         await page.goto(`/surface/${surface}?next=%2Fadmin%2Fsystem-checks`, {
           waitUntil: "domcontentloaded",
@@ -74,6 +102,23 @@ test("System checks preserve unknown health and dated recorded failures across b
           page.getByRole("heading", { name: "System health console", level: 1, exact: true }),
         ).toBeVisible({ timeout: 60000 });
         await page.addStyleTag({ content: "nextjs-portal{pointer-events:none!important;}" });
+        const probes = page.getByRole("region", { name: "Read-only live probes", exact: true });
+        await expect(probes).toContainText("Probe passed");
+        await expect(probes).toContainText("Probe failed");
+        await expect(probes).toContainText("Unavailable");
+        await expect(probes).toContainText("5000 ms");
+        await probes.screenshot({ path: info.outputPath(`P81-probes-${surface}-${width}.png`) });
+        for (const latency of await probes.locator("[data-probe-latency]").all()) {
+          await expect(latency).toHaveCSS("white-space", "nowrap");
+          const box = await latency.boundingBox();
+          expect(box?.height).toBeLessThan(20);
+        }
+        if (process.env.ADMIN_PROBE_VISUAL_ONLY === "1") {
+          expect(
+            await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+          ).toBe(true);
+          continue;
+        }
         const search = page.getByRole("textbox", { name: "Search checks", exact: true });
         await expect(search).toBeEnabled({ timeout: 60000 });
         await search.fill("Authentication");
@@ -125,10 +170,14 @@ test("System checks preserve unknown health and dated recorded failures across b
         await expect(panel).toHaveCount(0);
         await page.getByRole("button", { name: "Refresh recorded checks", exact: true }).click();
         const refresh = page.getByRole("dialog", { name: "Refresh recorded checks", exact: true });
-        await expect(refresh).toContainText("remain unverified");
+        await expect(refresh).toContainText("are not exercised");
         await refresh.getByRole("button", { name: "Cancel refresh", exact: true }).click();
         await expect(refresh).toHaveCount(0);
-        if (surface === "workbench" && width === 1440) {
+        if (
+          surface === "workbench" &&
+          width === 1440 &&
+          process.env.SKIP_ADMIN_PROBE_REQUESTS !== "1"
+        ) {
           expect(
             await db`select id from fkh_admin_audit_log where actor_user_id=${users[0]}`,
           ).toHaveLength(83);
@@ -138,7 +187,7 @@ test("System checks preserve unknown health and dated recorded failures across b
             .click();
           await expect(refresh).toHaveCount(0, { timeout: 60000 });
           await expect(
-            page.getByRole("status").filter({ hasText: "Recorded checks refreshed" }),
+            page.getByRole("status").filter({ hasText: "Checks saved at" }),
           ).toBeVisible();
           expect(
             await db`select id from fkh_admin_audit_log where actor_user_id=${users[0]}`,
@@ -178,7 +227,7 @@ test("System checks preserve unknown health and dated recorded failures across b
       }
     expect(
       await db`select id from fkh_admin_audit_log where actor_user_id=${users[0]}`,
-    ).toHaveLength(84);
+    ).toHaveLength(process.env.SKIP_ADMIN_PROBE_REQUESTS === "1" ? 83 : 84);
     expect(errors).toEqual([]);
   } finally {
     if (users.length) {

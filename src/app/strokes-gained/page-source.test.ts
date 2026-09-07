@@ -95,7 +95,9 @@ describe("strokes gained desktop workbench", () => {
     expect(leakBlock).toContain("aspect-[3/2] min-h-44");
     expect(source).toContain('className: "object-center"');
     expect(roundBlock).toContain('className="grid gap-3 md:grid-cols-2"');
-    expect(roundBlock).toContain("const displayedRounds = rounds.slice(0, 6)");
+    expect(roundBlock).toContain("const displayedRounds = rounds.slice((page - 1) * 6, page * 6)");
+    expect(roundBlock).toContain('kind="round"');
+    expect(roundBlock).toContain("not necessarily whole-round SG");
   });
 
   it("eager-loads the above-the-fold scoring leak artwork", () => {
@@ -158,5 +160,12 @@ describe("strokes gained desktop workbench", () => {
       expect(block).not.toMatch(/#(?:111827|667085|B42318|087A3D|E5E7EB)/i);
     }
     expect(source).toContain('const fill = value >= 0 ? "#087A3D" : "#DC2626"');
+  });
+  it("describes negative SG without claiming gains and keeps the page scope explicit", () => {
+    expect(source).not.toContain("You gained ${formatSg");
+    expect(source).not.toContain("is carrying your scoring");
+    expect(source).toContain("Net SG is ${formatSg(analysis.totals.total");
+    expect(source).toContain("calculated events on this page");
+    expect(source).toContain("not a complete-round total");
   });
 });

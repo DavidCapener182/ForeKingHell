@@ -1,5 +1,6 @@
 "use client";
 
+import { useTodayRouteCommitted } from "./today-hydration-boundary";
 import { WorkbenchBreadcrumbs } from "./workbench-breadcrumbs";
 
 import Link from "next/link";
@@ -305,6 +306,8 @@ export function DesktopWorkbenchChrome({
 }: DesktopWorkbenchChromeProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const todayRouteCommitted = useTodayRouteCommitted();
+  const commandRouteReady = pathname !== "/today" || todayRouteCommitted;
   const [commandOpen, setCommandOpen] = useState(false);
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -316,10 +319,13 @@ export function DesktopWorkbenchChrome({
   const [savedViewCommands, setSavedViewCommands] = useState<SavedViewCommandItem[]>([]);
   const [workspaceCommands, setWorkspaceCommands] = useState<WorkspaceCommandItem[]>([]);
   const [workspaceCommandsLoaded, setWorkspaceCommandsLoaded] = useState(false);
+  const [workspaceCommandsQuery, setWorkspaceCommandsQuery] = useState<string | null>(null);
+  const [workspaceCommandsRetry, setWorkspaceCommandsRetry] = useState(0);
   const [workspaceCommandsError, setWorkspaceCommandsError] = useState(false);
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
   const [hydrated, setHydrated] = useState(false);
   const commandInputRef = useRef<HTMLInputElement>(null);
+  const commandReturnFocusRef = useRef<HTMLElement | null>(null);
   const gSequenceTimerRef = useRef<number | null>(null);
   const awaitingGoRef = useRef(false);
   const previousPathnameRef = useRef(pathname);
@@ -337,10 +343,23 @@ export function DesktopWorkbenchChrome({
   const pageAction = getPrimaryAction(pathname);
   const PageActionIcon = pageAction.icon;
   const commands = useMemo(
-    () => buildCommandItems(isAdmin, workspaceCommands, savedViewCommands),
-    [isAdmin, workspaceCommands, savedViewCommands],
+    () =>
+      buildCommandItems(
+        isAdmin,
+        workspaceCommandsQuery === query.trim() ? workspaceCommands : [],
+        savedViewCommands,
+      ),
+    [isAdmin, workspaceCommands, workspaceCommandsQuery, query, savedViewCommands],
   );
-  const filteredCommands = useMemo(() => filterCommands(commands, query), [commands, query]);
+  const filteredCommands = useMemo(
+    () =>
+      filterCommands(
+        commands,
+        query,
+        workspaceCommandsQuery === query.trim() ? workspaceCommands.map((item) => item.href) : [],
+      ),
+    [commands, query, workspaceCommands, workspaceCommandsQuery],
+  );
   const safeActiveCommandIndex =
     filteredCommands.length === 0 ? 0 : Math.min(activeCommandIndex, filteredCommands.length - 1);
   const activeCommand = filteredCommands[safeActiveCommandIndex] ?? null;
@@ -375,6 +394,8 @@ export function DesktopWorkbenchChrome({
   const assistantSheetOpen = assistantOpen && Boolean(assistantContext);
 
   const openCommandPalette = useCallback(() => {
+    commandReturnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setSavedViewCommands(readSavedViewCommands());
     setSavedInsightLinks(readStoredLinks(savedInsightStorageKey));
     setQuery("");
@@ -433,44 +454,43 @@ export function DesktopWorkbenchChrome({
   }, []);
 
   useEffect(() => {
-    if (!shouldLoadWorkspaceCommands || workspaceCommandsLoaded) {
-      return;
-    }
-
+    if (!shouldLoadWorkspaceCommands) return;
     const controller = new AbortController();
-
+    const search = query.trim().slice(0, 120);
     async function loadWorkspaceCommands() {
+      setWorkspaceCommandsLoaded(false);
+      setWorkspaceCommandsError(false);
       try {
-        const response = await fetch("/api/desktop-workbench/commands", {
-          headers: { Accept: "application/json" },
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          setWorkspaceCommandsError(true);
-          setWorkspaceCommandsLoaded(true);
-          return;
-        }
-
+        const response = await fetch(
+          `/api/desktop-workbench/commands?q=${encodeURIComponent(search)}`,
+          {
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+            signal: controller.signal,
+          },
+        );
+        if (!response.ok) throw new Error("Command search unavailable");
         const payload: unknown = await response.json();
         if (!controller.signal.aborted) {
-          setWorkspaceCommandsError(false);
           setWorkspaceCommands(normalizeWorkspaceCommands(payload));
+          setWorkspaceCommandsQuery(query.trim());
           setWorkspaceCommandsLoaded(true);
         }
       } catch {
         if (!controller.signal.aborted) {
           setWorkspaceCommandsError(true);
           setWorkspaceCommands([]);
+          setWorkspaceCommandsQuery(query.trim());
           setWorkspaceCommandsLoaded(true);
         }
       }
     }
-
-    void loadWorkspaceCommands();
-
-    return () => controller.abort();
-  }, [shouldLoadWorkspaceCommands, workspaceCommandsLoaded]);
+    const timer = window.setTimeout(() => void loadWorkspaceCommands(), search ? 200 : 0);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [shouldLoadWorkspaceCommands, query, workspaceCommandsRetry]);
 
   useEffect(() => {
     const current =
@@ -496,17 +516,23 @@ export function DesktopWorkbenchChrome({
   }, [activeItem, addRecentLink, pathname, workspaceCommands]);
 
   useEffect(() => {
-    if (!commandOpen) {
+    if (!commandOpen || !commandRouteReady) {
       return;
     }
 
     const timer = window.setTimeout(() => commandInputRef.current?.focus(), 30);
     return () => window.clearTimeout(timer);
-  }, [commandOpen]);
+  }, [commandOpen, commandRouteReady]);
 
   useEffect(() => {
     if (!enableKeyboardShortcut) return;
     function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" && commandOpen && !commandRouteReady) {
+        event.preventDefault();
+        setCommandOpen(false);
+        commandReturnFocusRef.current?.focus({ preventScroll: true });
+        return;
+      }
       if (isEditableTarget(event.target)) {
         return;
       }
@@ -632,6 +658,7 @@ export function DesktopWorkbenchChrome({
     assistantContext,
     closeCommandAndNavigate,
     commandOpen,
+    commandRouteReady,
     openCommandPalette,
     shortcutsOpen,
     workspaceLinksOpen,
@@ -818,22 +845,44 @@ export function DesktopWorkbenchChrome({
         </header>
       ) : null}
 
+      {commandOpen && !commandRouteReady ? (
+        <div
+          role="status"
+          className="fixed left-4 right-4 top-4 z-[80] flex items-center justify-between gap-3 rounded-lg border bg-popover p-4 text-popover-foreground shadow-md"
+        >
+          <span>Loading search…</span>
+          <button
+            type="button"
+            className="min-h-11 px-3 underline"
+            onClick={() => {
+              setCommandOpen(false);
+              commandReturnFocusRef.current?.focus({ preventScroll: true });
+            }}
+          >
+            Cancel search
+          </button>
+        </div>
+      ) : null}
       <DesktopCommandPalette
-        open={commandOpen}
+        open={commandOpen && commandRouteReady}
         onOpenChange={setCommandOpen}
         inputRef={commandInputRef}
+        restoreFocusRef={commandReturnFocusRef}
         query={query}
         onQueryChange={(value) => {
-          setQuery(value);
+          setQuery(value.slice(0, 120));
           setActiveCommandIndex(0);
         }}
         onInputKeyDown={handleCommandInputKeyDown}
         commands={filteredCommands}
-        loading={shouldLoadWorkspaceCommands && !workspaceCommandsLoaded}
-        loadError={workspaceCommandsError}
+        loading={
+          shouldLoadWorkspaceCommands &&
+          (!workspaceCommandsLoaded || workspaceCommandsQuery !== query.trim())
+        }
+        loadError={workspaceCommandsError && workspaceCommandsQuery === query.trim()}
         onRetry={() => {
           setWorkspaceCommandsError(false);
-          setWorkspaceCommandsLoaded(false);
+          setWorkspaceCommandsRetry((value) => value + 1);
         }}
         activeIndex={safeActiveCommandIndex}
         pinnedLinks={pinnedLinks}
@@ -1290,7 +1339,7 @@ function currentPathWithSearch(fallbackPathname: string) {
   return `${window.location.pathname}${window.location.search}`;
 }
 
-function filterCommands(commands: CommandItem[], query: string) {
+function filterCommands(commands: CommandItem[], query: string, serverMatches: string[] = []) {
   const normalized = query.trim().toLowerCase();
 
   if (!normalized) {
@@ -1300,7 +1349,10 @@ function filterCommands(commands: CommandItem[], query: string) {
   return commands
     .map((command) => ({
       command,
-      score: scoreCommand(command, normalized),
+      score: Math.max(
+        scoreCommand(command, normalized),
+        command.href && serverMatches.includes(command.href) ? 1 : 0,
+      ),
     }))
     .filter((entry) => entry.score > 0)
     .sort((left, right) => right.score - left.score)

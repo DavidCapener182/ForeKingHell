@@ -9,21 +9,25 @@ test("G02/G03: collapsible sections and one search on both surfaces", async ({ p
   test.setTimeout(180_000);
   page.setDefaultTimeout(15_000);
   let fail = true;
-  await page.route("**/api/desktop-workbench/commands", async (route) => {
+  await page.route("**/api/desktop-workbench/commands*", async (route) => {
     if (fail) return route.fulfill({ status: 503, json: { items: [] } });
     return route.fulfill({
       json: {
-        items: [
-          {
-            title: "Coastal fixture session",
-            href: "/sessions/00000000-0000-4000-8000-000000000123",
-            detail:
-              "Authorised synthetic session with a long source description retained across both surfaces",
-            group: "Sessions",
-            keywords: "coastal fixture session",
-            type: "session",
-          },
-        ],
+        items:
+          !new URL(route.request().url()).searchParams.get("q") ||
+          /coastal|session/i.test(new URL(route.request().url()).searchParams.get("q")!)
+            ? [
+                {
+                  title: "Coastal fixture session",
+                  href: "/sessions/00000000-0000-4000-8000-000000000123",
+                  detail:
+                    "Authorised synthetic session with a long source description retained across both surfaces",
+                  group: "Sessions",
+                  keywords: "coastal fixture session",
+                  type: "session",
+                },
+              ]
+            : [],
       },
     });
   });
