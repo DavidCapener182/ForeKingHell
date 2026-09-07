@@ -14,7 +14,7 @@ import { AnalyseProvenancePanel } from "@/app/analyse/analyse-provenance-panel";
 import { AppCommandContentTrigger } from "@/components/app/app-command-trigger";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
-import { PageShell } from "@/components/premium";
+import { PageHeader, PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getDb } from "@/db/client";
@@ -37,6 +37,10 @@ export default async function AnalysePage() {
   if (data.totalShots === 0) {
     return (
       <PageShell>
+        <PageHeader
+          title="Analysis"
+          description="Choose a measured question, then inspect the records behind it."
+        />
         <AppEmptyState
           icon={<Database className="size-6" aria-hidden />}
           title="Import measured evidence to start analysis"
@@ -95,7 +99,7 @@ export default async function AnalysePage() {
           >
             {[
               ["Overview", "/analyse"],
-              ["Compare", "/analyse/compare"],
+              ["Compare", data.comparisonHref],
               ["Shots", data.insight.shotsHref],
               ["Conditions", "/analyse/conditions"],
               ["Data Quality", "/analyse/workspace"],
@@ -104,7 +108,7 @@ export default async function AnalysePage() {
                 key={label}
                 href={href}
                 aria-current={label === "Overview" ? "page" : undefined}
-                className={`focus-aaa relative min-h-9 shrink-0 rounded-sm px-1 outline-none transition-colors hover:text-foreground ${
+                className={`focus-aaa relative min-h-11 shrink-0 rounded-sm px-1 outline-none transition-colors hover:text-foreground ${
                   label === "Overview"
                     ? "text-foreground after:absolute after:inset-x-0 after:-bottom-[0.8rem] after:h-0.5 after:bg-primary"
                     : "text-muted-foreground"
@@ -118,7 +122,7 @@ export default async function AnalysePage() {
         </div>
 
         <section
-          className="grid min-w-0 gap-4 xl:grid-cols-12 xl:grid-rows-[minmax(16rem,1fr)_minmax(13rem,0.78fr)]"
+          className="grid min-w-0 gap-4 xl:grid-cols-12"
           aria-label="Performance Lab analysis entry points"
         >
           <CompareFeature data={data} className="xl:col-span-7 xl:row-span-2" />
@@ -134,125 +138,49 @@ export default async function AnalysePage() {
 
 function InsightHero({ data }: { data: AnalyseOverview }) {
   return (
-    <section className="relative isolate overflow-hidden rounded-[1.75rem] border border-emerald-950/20 bg-[#0a2318] px-5 py-6 text-white shadow-[0_24px_70px_rgba(4,30,18,0.18)] sm:px-7 sm:py-7 lg:px-9 lg:py-8">
-      <HeroFieldGraphic />
-      <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.55fr)] lg:items-end">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/80">
-            Performance Lab · Analyse
-          </p>
-          <h1 className="mt-2 font-heading text-3xl font-semibold tracking-tight text-balance sm:text-4xl lg:text-5xl">
-            What does the data say?
-          </h1>
-          <div className="mt-8 max-w-4xl border-l-2 border-emerald-300/80 pl-4 sm:pl-5">
-            <p className="text-xl font-semibold leading-tight text-balance sm:text-2xl lg:text-[2rem]">
-              {data.insight.title}
-            </p>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-emerald-50/72 sm:text-base">
-              {data.insight.detail}
-            </p>
-            <div className="mt-5">
-              <AnalyseProvenancePanel
-                trustedShots={data.trustedShots}
-                sessions={data.sessionCount}
-                usefulSessions={data.usefulSessions}
-                activeClubs={data.clubCount}
-                coveredClubs={data.coveredClubs}
-                excludedShots={data.excludedShots}
-                dateRange={data.dateRange}
-                explanation={confidenceExplanation(data.confidence.label)}
-                components={data.confidence.components}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid gap-4 rounded-2xl border border-white/12 bg-[#17372a] p-4 shadow-inner">
-          <div className="grid grid-cols-2 gap-3">
-            <HeroMetric label="Confidence" value={confidenceDisplayLabel(data.confidence.label)} />
-            <HeroMetric label="Evidence" value={`${data.insight.evidenceCount} shots`} />
-            <HeroMetric
-              label="Affected area"
-              value={data.insight.scoringArea}
-              className="col-span-2"
-            />
-          </div>
-          <Button
-            asChild
-            className="min-h-11 bg-white text-emerald-950 shadow-none hover:bg-emerald-50"
-          >
+    <section className="grid min-w-0 gap-4">
+      <PageHeader
+        title="Analysis"
+        description="Choose a measured question, then inspect the records behind it."
+        actions={
+          <Button asChild>
             <Link href={data.insight.shotsHref}>
               {data.insight.actionLabel}
               <ArrowRight className="size-4" aria-hidden />
             </Link>
           </Button>
+        }
+      />
+      <div className="grid gap-4 rounded-xl border bg-card p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="min-w-0">
+          <h2 className="text-xl font-semibold">{data.insight.title}</h2>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{data.insight.detail}</p>
+          <p className="mt-2 text-sm">
+            {confidenceDisplayLabel(data.confidence.label)} confidence ·{" "}
+            {data.insight.evidenceCount} trusted shots · {data.insight.scoringArea}
+          </p>
         </div>
+        <AnalyseProvenancePanel
+          trustedShots={data.trustedShots}
+          sessions={data.sessionCount}
+          usefulSessions={data.usefulSessions}
+          activeClubs={data.clubCount}
+          coveredClubs={data.coveredClubs}
+          excludedShots={data.excludedShots}
+          dateRange={data.dateRange}
+          explanation={confidenceExplanation(data.confidence.label)}
+          components={data.confidence.components}
+        />
       </div>
     </section>
-  );
-}
-
-function HeroMetric({
-  label,
-  value,
-  className = "",
-}: {
-  label: string;
-  value: string;
-  className?: string;
-}) {
-  return (
-    <div className={className}>
-      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-emerald-100/55">
-        {label}
-      </p>
-      <p className="mt-1 text-sm font-semibold text-white">{value}</p>
-    </div>
-  );
-}
-
-function HeroFieldGraphic() {
-  return (
-    <svg
-      className="pointer-events-none absolute inset-y-0 right-0 h-full w-[62%] opacity-30"
-      viewBox="0 0 700 360"
-      preserveAspectRatio="none"
-      aria-hidden
-    >
-      <defs>
-        <linearGradient id="analyse-field-fade" x1="0" x2="1">
-          <stop offset="0" stopColor="white" stopOpacity="0" />
-          <stop offset="1" stopColor="#6ee7b7" stopOpacity=".24" />
-        </linearGradient>
-      </defs>
-      <path d="M700 55C540 90 390 170 270 360H700Z" fill="url(#analyse-field-fade)" />
-      {[90, 150, 215, 280].map((y) => (
-        <path
-          key={y}
-          d={`M260 ${y} C430 ${y - 70} 560 ${y - 55} 700 ${y - 35}`}
-          fill="none"
-          stroke="white"
-          strokeOpacity=".16"
-        />
-      ))}
-      <path
-        d="M522 330C525 235 555 150 630 55"
-        fill="none"
-        stroke="#6ee7b7"
-        strokeOpacity=".55"
-        strokeWidth="2"
-        strokeDasharray="6 8"
-      />
-      <circle cx="630" cy="55" r="6" fill="#a7f3d0" />
-    </svg>
   );
 }
 
 function CompareFeature({ data, className }: { data: AnalyseOverview; className?: string }) {
   return (
     <Link
-      href="/analyse/compare"
-      className={`group focus-aaa relative flex min-h-[27rem] flex-col overflow-hidden rounded-[1.5rem] bg-foreground p-5 text-background shadow-sm outline-none transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:transition-none sm:p-7 ${className ?? ""}`}
+      href={data.comparisonHref}
+      className={`group focus-aaa relative flex min-h-0 flex-col overflow-hidden rounded-[1.5rem] bg-foreground p-5 text-background shadow-sm outline-none transition-transform duration-200 hover:-translate-y-0.5 motion-reduce:transition-none sm:p-7 ${className ?? ""}`}
     >
       <FeatureHeading
         icon={<BarChart3 className="size-4" aria-hidden />}
@@ -263,7 +191,7 @@ function CompareFeature({ data, className }: { data: AnalyseOverview; className?
       <p className="mt-3 max-w-md text-sm leading-6 text-background/65">
         Put like-for-like sessions beside each other, then judge the movement against the evidence.
       </p>
-      <div className="my-auto py-7">
+      <div className="py-5">
         <ComparisonGraphic comparison={data.comparison} />
       </div>
       <FeatureAction inverse>Open comparison lab</FeatureAction>
@@ -284,8 +212,8 @@ function ShotPatternsFeature({ data, className }: { data: AnalyseOverview; class
           title="Find your real dispersion and miss"
         />
         <p className="mt-3 text-sm leading-6 text-emerald-950/65 dark:text-emerald-100/65">
-          Start with {data.insight.clubLabel}: {data.insight.evidenceCount} trusted shots shape this
-          pattern.
+          Start with {data.insight.clubLabel}: {data.insight.evidenceCount} trusted shots inform
+          this overview. The sketch is illustrative; open the explorer for measured coordinates.
         </p>
         <FeatureAction className="mt-auto pt-6">Inspect the pattern</FeatureAction>
       </div>
@@ -305,6 +233,10 @@ function ConditionsFeature({ data, className }: { data: AnalyseOverview; classNa
         eyebrow="Conditions"
         title="See how environment changes your numbers"
       />
+      <p className="mt-3 text-sm text-muted-foreground">
+        Recorded categories from {data.conditionSessionCount} latest trusted sessions (up to 8).
+        Missing conditions are not inferred.
+      </p>
       <ConditionTagCloud tags={data.conditionTags} />
       <FeatureAction className="mt-auto pt-5">Separate the conditions</FeatureAction>
     </Link>
@@ -412,7 +344,7 @@ function ComparisonGraphic({
           <div className="h-9 overflow-hidden rounded-sm bg-current/10 p-1">
             <div
               className={`h-full rounded-[2px] ${index === 0 ? "bg-emerald-400" : "bg-current/40"}`}
-              style={{ width: `${Math.max(18, ((row.carryYd ?? 0) / maximum) * 100)}%` }}
+              style={{ width: `${row.carryYd === null ? 0 : (row.carryYd / maximum) * 100}%` }}
             />
           </div>
           <span className="text-right font-semibold tabular-nums">
@@ -458,7 +390,7 @@ function DispersionGraphic({
         className="absolute inset-0 size-full"
         viewBox="0 0 120 100"
         role="img"
-        aria-label={`${insight.clubLabel} miniature dispersion preview`}
+        aria-label={`${insight.clubLabel} illustrative miss-direction sketch, not measured shot coordinates`}
       >
         <path d="M60 96V5" stroke="currentColor" strokeOpacity=".22" strokeDasharray="2 3" />
         <path
@@ -722,6 +654,7 @@ async function getAnalyseOverview() {
   const comparisonRows = strongestPattern
     ? await db
         .select({
+          id: sessions.id,
           date: sessions.date,
           carryYd: sql<number | null>`avg(${shots.carryYd})::float`,
           avgAbsSideYd: sql<number | null>`avg(abs(${shots.sideCarryYd}))::float`,
@@ -762,6 +695,10 @@ async function getAnalyseOverview() {
     confidence,
     insight,
     comparison,
+    comparisonHref: comparisonRows.length
+      ? `/analyse/compare?${new URLSearchParams({ sessionId: comparisonRows[0].id, ...(comparisonRows[1] ? { baselineSessionId: comparisonRows[1].id } : {}), ...(strongestPattern ? { clubId: strongestPattern.clubId } : {}) }).toString()}`
+      : "/analyse/compare",
+    conditionSessionCount: latestSessions.length,
     conditionTags: buildConditionTags(latestSessions),
     dataHealth:
       excludedRate <= 0.05

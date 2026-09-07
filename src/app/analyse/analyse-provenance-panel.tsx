@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Database } from "lucide-react";
 
@@ -54,12 +55,18 @@ export function AnalyseProvenancePanel({
       onOpenChange={setOpen}
       title="Evidence and calculation details"
       description="The measured coverage and confidence inputs behind this Performance Lab read."
+      footer={
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link href="/analyse/workspace">Review data quality</Link>
+          </Button>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Close details
+          </Button>
+        </div>
+      }
       trigger={
-        <Button
-          type="button"
-          variant="outline"
-          className="min-h-11 border-emerald-100/20 bg-[#0b2a1d] text-white shadow-none hover:border-emerald-100/35 hover:bg-[#123c2b] hover:text-white"
-        >
+        <Button type="button" variant="outline" className="min-h-11">
           <Database className="size-4" aria-hidden />
           Evidence & calculation
         </Button>
