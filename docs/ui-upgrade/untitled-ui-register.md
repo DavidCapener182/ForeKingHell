@@ -137,3 +137,6 @@ Specified Filter bars/Drawers/Date pickers, Tables/Paginations, Modals/Buttons a
 
 ## P79 Billing administration
 Specified official metrics, inputs/select, tables/paginations and activity feeds reuse previously checked references. Paid advanced examples remain unavailable. Accessible alternatives: semantic loaded-count strip, native labelled search/order fields, desktop table/full mobile detail panel, canonical account lookup and existing review form with pending/error recovery, actual audit definition lists. Current local exports pass TypeScript; no paid vendor installation claimed.
+
+## P80 Challenge administration
+Specified official metrics/tooltips, inputs/select/textarea/buttons, tables/pagination and modals reuse previously checked references. Paid advanced examples unavailable. Explicit alternatives: compact semantic metrics, native labelled fields and validated JSON settings, focus-managed full editor/review panels, sortable semantic desktop table and full mobile board details. Local exports typechecked; no paid source installed.

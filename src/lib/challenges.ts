@@ -312,7 +312,7 @@ export async function createChallenge(input: {
     .limit(1);
   const visibility = parseVisibility(input.visibility, "friends");
 
-  if (!template) {
+  if (!template || !template.active) {
     throw new Error("Challenge template not found.");
   }
 
@@ -332,6 +332,11 @@ export async function createChallenge(input: {
     throw new Error("Challenge dates must be valid, with the end after the start.");
   }
   const [challenge] = await getDb().transaction(async (tx) => {
+    const [currentTemplate] = await tx.select().from(challengeTemplates)
+      .where(eq(challengeTemplates.id, template.id)).limit(1).for("share");
+    if (!currentTemplate?.active || currentTemplate.updatedAt.getTime() !== template.updatedAt.getTime()) {
+      throw new Error("The challenge template changed or is unavailable. Review it and try again.");
+    }
     const [created] = await tx
       .insert(challenges)
       .values({

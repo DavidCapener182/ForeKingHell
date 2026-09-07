@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-425 desktop / 425 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P80 Challenge and tournament administration**, next P81 System checks. 67 UI entries remain. Continue the UI pass with acceptance gaps retained.
+429 desktop / 429 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P81 System checks**, next P82 Sponsors and partner offers. 63 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P80 Challenge and tournament administration**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P81 System checks**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -420,3 +420,11 @@ P79-C01–C04 UI implemented with partial verification. Full shared task, exact 
 Checks: admin-billing-browser.log 2 passed (1.2m): isolated controls at six sizes and actual both surfaces x six sizes; Cancel no writes, full record identity/details, no overflow/pageerrors. TypeScript/scoped lint clean. admin-lifetime-audit.log 3 backend tests passed; resolver contract 2 passed per agent. Companion390 screenshot inspected after overlay removal. No real payment operation. Acceptance gaps remain in CSV.
 
 Resume: P80 prompts fully read. Existing template CRUD absent; other agent implementing supported service/action; root owns full responsive templates/boards UI. Coordinate before shared edits. P79 browser freeze released. Preserve existing dirty work and all previous partial evidence.
+
+## P80 Challenge administration UI pass, 7 September
+
+P80-C01–C04 UI implemented with partial verification. Shared full page, exact newest80 metrics/register with complete mobile board details and participant link. New admin-challenge-templates editor creates/copies/updates supported templates with reviewed identity/rules/availability and retained errors. New admin service/audit preserves linked scoring, immutable keys and optimistic versions; inactive templates rejected by challenge creation with transaction locking. No invented template visibility or unsupported admin board close/publish actions; these gaps remain explicit.
+
+Checks: admin-challenges-types.log and scoped lint clean. First isolated browser test failed short-label selector; corrected to include help-text accessible name. admin-challenges-controls-final.log passed 5.7s across six sizes. Actual all12 passed in combined admin-challenges-browser.log 3.6m (combined exit failed for original isolated selector only), Cancel unchanged and no overflow/pageerrors. Companion390 template list inspected after overlay removal. Backend template plus existing workflows 3 passed; concurrent edits exactlyone commit. Full browser-confirmed save and broad acceptance remain outstanding.
+
+Resume: P81 prompts read and root page/register/retry/data extraction applied; other agent implementing actual recorded-check refresh/audit history. P80 freeze released. P79 commit a19fd319; preserve all unrelated work.

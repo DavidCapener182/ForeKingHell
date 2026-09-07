@@ -479,8 +479,10 @@ export async function getAdminChallengesData() {
   const attemptMap = new Map(attemptCounts.map((row) => [row.key, row.count]));
   const resultMap = new Map(resultCounts.map((row) => [row.key, row.count]));
 
+  const templateCounts = await countBy(challenges.templateId, challenges);
+  const referenceMap = new Map(templateCounts.map(row => [row.key, row.count]));
   return {
-    templates: templateRows,
+    templates: templateRows.map(row => ({...row, referenceCount: referenceMap.get(row.id) ?? 0})),
     challenges: challengeRows.map((row) => ({
       ...row,
       templateName: row.templateName ?? "Custom",
