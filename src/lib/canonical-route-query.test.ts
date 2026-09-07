@@ -28,3 +28,13 @@ it("keeps exact record identity and query through its server alias", async () =>
     }),
   ).rejects.toThrow("/course-records/record%2Fid?attempt=receipt&filter=a&filter=b");
 });
+
+import CourseAlias from "@/app/(app)/courses/[courseId]/tournaments/page";
+it("forces the course identity while preserving tournament filters", async () => {
+  await expect(
+    CourseAlias({
+      params: Promise.resolve({ courseId: "actual course" }),
+      searchParams: Promise.resolve({ courseId: "wrong", tab: "active", q: "Open" }),
+    }),
+  ).rejects.toThrow("/tournaments?courseId=actual+course&tab=active&q=Open");
+});

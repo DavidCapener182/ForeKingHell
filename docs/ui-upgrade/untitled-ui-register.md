@@ -179,3 +179,6 @@ Checked official section/badge/button domain-list references reused. Paid advanc
 
 ## P93 Course record alias
 Official Underline tabs reference applies at the existing P57 destination; server alias preserves its canonical UI and query, with no duplicate page or invented tab. Existing local destination adapters retained; paid advanced examples remain unavailable.
+
+## P94 Course tournament alias
+Official Underline tabs reference remains at canonical P60 tournament index. Query/filter preserved with real selected course; no duplicate page or paid source installed.
