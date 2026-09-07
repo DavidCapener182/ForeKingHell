@@ -18,11 +18,7 @@ export const mobileCapabilities = {
   "course-twins": { mobileExperience: "companion" },
   "course-strategy": companionPrimary(),
   "play-companion": companionPrimary(),
-  analyse: desktopOnly(
-    "Review latest session",
-    "/sessions",
-    "Deep analysis needs detailed filters and comparison workspaces.",
-  ),
+  analyse: companionMore(),
   "session-impact": desktopOnly(
     "Review latest session",
     "/sessions",
@@ -154,7 +150,7 @@ const desktopOnlyPrefixes = [
   "/coach/workspace",
 ] as const;
 
-const companionExactRoutes = ["/analyse/session-impact", "/analyse/conditions", "/analyse/compare", "/data-chat", "/coach/workspace", "/coach/reports", "/coach/diagnosis", "/coach", "/courses", "/equipment", "/equipment/experiments"] as const;
+const companionExactRoutes = ["/analyse", "/analyse/workspace", "/analyse/session-impact", "/analyse/conditions", "/analyse/compare", "/data-chat", "/coach/workspace", "/coach/reports", "/coach/diagnosis", "/coach", "/courses", "/equipment", "/equipment/experiments"] as const;
 const companionExceptions = ["/courses/strategy"] as const;
 const summaryOnlyPrefixes = [
   "/coach",

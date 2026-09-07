@@ -1,27 +1,27 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, BookOpen, Camera, Save, Trash2, Wrench } from "lucide-react";
+import { AlertTriangle, ArrowLeft, BookOpen, Camera, Wrench } from "lucide-react";
 import { and, count, desc, eq, isNotNull, sql } from "drizzle-orm";
 
 import {
-  deleteAnalysisAnnotationAction,
-  deleteAnalysisSnapshotAction,
-  saveAnalysisAnnotationAction,
-  saveAnalysisSnapshotAction,
+  deleteAnalysisAnnotationWithStateAction,
+  deleteAnalysisSnapshotWithStateAction,
+  saveAnalysisAnnotationWithStateAction,
+  saveAnalysisSnapshotWithStateAction,
 } from "@/app/analyse/workspace/actions";
-import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
+import {
+  QualityIssues,
+  WorkspaceFormSheet,
+  WorkspaceDelete,
+  WorkspaceDetails,
+  WorkspaceChoice,
+} from "@/app/analyse/workspace/workspace-controls";
+import { UrlTabs } from "@/components/untitled-ui/url-tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { ConfidenceIndicator, DataHealthStatus } from "@/components/app/evidence-status";
@@ -91,43 +91,47 @@ export default async function AnalysisWorkspacePage() {
       {!data.storageAvailable ? (
         <Alert className="border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-warning-foreground)]">
           <AlertTriangle className="size-4" aria-hidden />
-          <AlertTitle>Analysis storage migration pending</AlertTitle>
+          <AlertTitle>Saving is temporarily unavailable</AlertTitle>
           <AlertDescription>
-            Data-quality and equipment analysis are available. Apply migration 0041 before saving
-            annotations or snapshots.
+            Data-quality and equipment analysis remain available. Please retry later to save notes
+            or snapshots.
           </AlertDescription>
         </Alert>
       ) : null}
 
-      <nav
-        aria-label="Analysis workspace sections"
-        className="flex overflow-x-auto rounded-lg border border-border bg-card p-1"
-      >
-        {[
-          ["Quality", "#data-quality"],
-          ["Notes", "#annotations"],
-          ["Equipment", "#equipment-impact"],
-          ["Snapshots", "#snapshots"],
-        ].map(([label, href], index) => (
-          <a
-            key={href}
-            href={href}
-            aria-current={index === 0 ? "page" : undefined}
-            className="focus-aaa inline-flex min-h-10 min-w-fit flex-1 items-center justify-center rounded-md px-3 text-sm font-medium outline-none aria-[current=page]:bg-secondary"
-          >
-            {label}
-          </a>
-        ))}
-      </nav>
-
-      <DataQualityInbox issues={data.issues} />
-      <AnnotationWorkspace
-        storageAvailable={data.storageAvailable}
-        sessions={data.sessionOptions}
-        annotations={data.annotations}
+      <UrlTabs
+        label="Analysis workspace sections"
+        defaultTabKey="quality"
+        tabs={[
+          { id: "quality", label: "Quality", content: <DataQualityInbox issues={data.issues} /> },
+          {
+            id: "notes",
+            label: "Notes",
+            content: (
+              <AnnotationWorkspace
+                storageAvailable={data.storageAvailable}
+                sessions={data.sessionOptions}
+                annotations={data.annotations}
+              />
+            ),
+          },
+          {
+            id: "equipment",
+            label: "Equipment",
+            content: <EquipmentImpactWorkspace impacts={data.equipmentImpacts} />,
+          },
+          {
+            id: "snapshots",
+            label: "Snapshots",
+            content: (
+              <SnapshotWorkspace
+                storageAvailable={data.storageAvailable}
+                snapshots={data.snapshots}
+              />
+            ),
+          },
+        ]}
       />
-      <EquipmentImpactWorkspace impacts={data.equipmentImpacts} />
-      <SnapshotWorkspace storageAvailable={data.storageAvailable} snapshots={data.snapshots} />
     </PageShell>
   );
 }
@@ -150,28 +154,7 @@ function DataQualityInbox({ issues }: { issues: DataQualityIssue[] }) {
         issueCount={issues.length}
         highPriorityCount={issues.filter((issue) => issue.severity === "high").length}
       />
-      {issues.length > 0 ? (
-        <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
-          {issues.map((issue) => (
-            <Link
-              key={issue.key}
-              href={issue.href}
-              className="focus-aaa grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 outline-none"
-            >
-              <span className={issueSeverityClass(issue.severity)} aria-hidden />
-              <span className="min-w-0">
-                <span className="block font-semibold">
-                  {issue.title} · {issue.count}
-                </span>
-                <span className="mt-0.5 block text-sm leading-5 text-muted-foreground">
-                  {issue.detail}
-                </span>
-              </span>
-              <span className="text-sm font-semibold text-primary">{issue.action}</span>
-            </Link>
-          ))}
-        </div>
-      ) : null}
+      <QualityIssues issues={issues} />
     </section>
   );
 }
@@ -186,6 +169,8 @@ function AnnotationWorkspace({
   annotations: Array<{
     id: string;
     annotationType: string;
+    sessionId: string | null;
+    contextJson: Record<string, unknown>;
     title: string;
     body: string;
     rangeFrom: Date | null;
@@ -216,7 +201,12 @@ function AnnotationWorkspace({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form action={saveAnalysisAnnotationAction} className="grid gap-3">
+            <WorkspaceFormSheet
+              title="Add annotation"
+              actionLabel="Save annotation"
+              action={saveAnalysisAnnotationWithStateAction}
+              disabled={!storageAvailable}
+            >
               <FormLabel label="Type">
                 <AnalysisSelect
                   name="annotationType"
@@ -286,10 +276,7 @@ function AnnotationWorkspace({
                   className="min-h-11"
                 />
               </FormLabel>
-              <Button type="submit" disabled={!storageAvailable} className="min-h-11 rounded-xl">
-                Save annotation
-              </Button>
-            </form>
+            </WorkspaceFormSheet>
           </CardContent>
         </Card>
         <div className="self-start divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
@@ -303,21 +290,30 @@ function AnnotationWorkspace({
                     </p>
                     <h3 className="mt-1 font-semibold">{annotation.title}</h3>
                   </div>
-                  <form action={deleteAnalysisAnnotationAction}>
-                    <input type="hidden" name="annotationId" value={annotation.id} />
-                    <ConfirmSubmitButton
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Delete ${annotation.title}`}
-                      confirmTitle="Delete this annotation?"
-                      confirmMessage="This saved evidence note will be permanently removed."
-                      confirmActionLabel="Delete annotation"
-                    >
-                      <Trash2 className="size-4" aria-hidden />
-                    </ConfirmSubmitButton>
-                  </form>
+                  <WorkspaceDelete
+                    name={annotation.title}
+                    id={annotation.id}
+                    field="annotationId"
+                    action={deleteAnalysisAnnotationWithStateAction}
+                  />
                 </div>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{annotation.body}</p>
+                <WorkspaceDetails
+                  title={annotation.title}
+                  description="Saved annotation and its original evidence scope."
+                >
+                  <p className="whitespace-pre-wrap break-words text-sm leading-6">
+                    {annotation.body}
+                  </p>
+                  <p className="mt-3 text-sm">{formatAnnotationRange(annotation)}</p>
+                  {annotation.sessionId && (
+                    <Button asChild variant="outline" className="mt-3">
+                      <Link href={`/sessions/${annotation.sessionId}`}>
+                        Open associated session
+                      </Link>
+                    </Button>
+                  )}
+                  <EvidenceFields value={annotation.contextJson} />
+                </WorkspaceDetails>
                 <p className="mt-2 text-xs text-muted-foreground">
                   {formatAnnotationRange(annotation)} · saved{" "}
                   {dateFormatter.format(annotation.createdAt)}
@@ -352,41 +348,111 @@ function EquipmentImpactWorkspace({ impacts }: { impacts: EquipmentImpactView[] 
         </p>
       </div>
       {impacts.length > 0 ? (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {impacts.map((impact) => (
-            <Card key={impact.id} className="premium-card">
-              <CardHeader>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm text-primary">{impact.clubLabel}</p>
-                    <CardTitle className="mt-1 text-lg">{impact.changeLabel}</CardTitle>
+        <WorkspaceChoice
+          items={impacts.map((impact) => ({
+            id: impact.id,
+            label: `${impact.clubLabel} · ${impact.changeLabel}`,
+            content: (
+              <Card key={impact.id} className="premium-card">
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm text-primary">{impact.clubLabel}</p>
+                      <CardTitle className="mt-1 text-lg">{impact.changeLabel}</CardTitle>
+                    </div>
+                    <ConfidenceIndicator
+                      label={confidenceDisplayLabel(impact.confidence)}
+                      detail={
+                        impact.comparable ? "Comparable periods" : "More matched shots needed"
+                      }
+                    />
                   </div>
-                  <ConfidenceIndicator
-                    label={confidenceDisplayLabel(impact.confidence)}
-                    detail={impact.comparable ? "Comparable periods" : "More matched shots needed"}
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="grid gap-3">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <Metric label="Before" value={`${impact.beforeSample} shots`} />
-                  <Metric label="After" value={`${impact.afterSample} shots`} />
-                  <Metric label="Carry" value={formatDelta(impact.carryDeltaYd, "yd")} />
-                  <Metric label="Ball speed" value={formatDelta(impact.ballSpeedDeltaMph, "mph")} />
-                  <Metric label="Launch" value={formatDelta(impact.launchDeltaDeg, "deg")} />
-                  <Metric label="Spin" value={formatDelta(impact.spinDeltaRpm, "rpm")} />
-                  <Metric label="Offline" value={formatDelta(impact.offlineDeltaYd, "yd")} />
-                  <Metric
-                    label="Repeatability"
-                    value={formatDelta(impact.repeatabilityDelta, "pts")}
-                  />
-                  <Metric label="Strike" value={formatDelta(impact.strikeDelta, "smash")} />
-                </div>
-                <p className="text-xs leading-5 text-muted-foreground">{impact.caveat}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardHeader>
+                <CardContent className="grid gap-3">
+                  <p className="text-sm">
+                    Change recorded {dateFormatter.format(impact.changeAt)} · {impact.windowDays}
+                    -day windows on each side.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Before: {dateFormatter.format(impact.windowFrom)} to change; after: change to{" "}
+                    {dateFormatter.format(impact.windowTo)}. Latest change per club; source scan
+                    capped at2,000 rows.
+                  </p>
+                  <figure className="grid gap-3 rounded-lg border p-3">
+                    <figcaption className="text-sm font-medium">
+                      Median carry · matching {impact.windowDays}-day windows
+                    </figcaption>
+                    {[
+                      { label: "Before", value: impact.beforeCarry },
+                      { label: "After", value: impact.afterCarry },
+                    ].map((row) => (
+                      <div
+                        key={row.label}
+                        className="grid grid-cols-[4rem_minmax(0,1fr)_5rem] items-center gap-2 text-sm"
+                      >
+                        <span>{row.label}</span>
+                        <span className="h-4 bg-muted" aria-hidden>
+                          <span
+                            className="block h-full bg-primary"
+                            style={{
+                              width: `${row.value === null ? 0 : (Math.max(0, row.value) / Math.max(1, impact.beforeCarry ?? 0, impact.afterCarry ?? 0)) * 100}%`,
+                            }}
+                          />
+                        </span>
+                        <span className="text-right tabular-nums">
+                          {row.value === null ? "—" : `${numberFormatter.format(row.value)} yd`}
+                        </span>
+                      </div>
+                    ))}
+                  </figure>
+                  <dl className="grid grid-cols-2 gap-3 rounded-lg border p-3 text-sm">
+                    <div>
+                      <dt>Before carry median</dt>
+                      <dd>
+                        {impact.beforeCarry === null
+                          ? "Unavailable"
+                          : `${numberFormatter.format(impact.beforeCarry)} yd`}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>After carry median</dt>
+                      <dd>
+                        {impact.afterCarry === null
+                          ? "Unavailable"
+                          : `${numberFormatter.format(impact.afterCarry)} yd`}
+                      </dd>
+                    </div>
+                  </dl>
+                  <Button asChild variant="outline">
+                    <Link
+                      href={`/shots?clubId=${impact.clubId}&from=${impact.windowFrom.toISOString().slice(0, 10)}&to=${impact.windowTo.toISOString().slice(0, 10)}`}
+                    >
+                      Inspect club and window evidence
+                    </Link>
+                  </Button>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <Metric label="Before" value={`${impact.beforeSample} shots`} />
+                    <Metric label="After" value={`${impact.afterSample} shots`} />
+                    <Metric label="Carry" value={formatDelta(impact.carryDeltaYd, "yd")} />
+                    <Metric
+                      label="Ball speed"
+                      value={formatDelta(impact.ballSpeedDeltaMph, "mph")}
+                    />
+                    <Metric label="Launch" value={formatDelta(impact.launchDeltaDeg, "deg")} />
+                    <Metric label="Spin" value={formatDelta(impact.spinDeltaRpm, "rpm")} />
+                    <Metric label="Offline" value={formatDelta(impact.offlineDeltaYd, "yd")} />
+                    <Metric
+                      label="Repeatability"
+                      value={formatDelta(impact.repeatabilityDelta, "pts")}
+                    />
+                    <Metric label="Strike" value={formatDelta(impact.strikeDelta, "smash")} />
+                  </div>
+                  <p className="text-xs leading-5 text-muted-foreground">{impact.caveat}</p>
+                </CardContent>
+              </Card>
+            ),
+          }))}
+        />
       ) : (
         <Card className="premium-card">
           <CardContent className="flex items-center gap-3 py-5">
@@ -410,6 +476,7 @@ function SnapshotWorkspace({
     id: string;
     name: string;
     filtersJson: Record<string, unknown>;
+    chartStateJson: Record<string, unknown>;
     selectedMetricsJson: string[];
     notes: string | null;
     summaryJson: Record<string, unknown>;
@@ -436,7 +503,12 @@ function SnapshotWorkspace({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form action={saveAnalysisSnapshotAction} className="grid gap-3">
+            <WorkspaceFormSheet
+              title="Create snapshot"
+              actionLabel="Save snapshot"
+              action={saveAnalysisSnapshotWithStateAction}
+              disabled={!storageAvailable}
+            >
               <FormLabel label="Snapshot name">
                 <Input
                   name="name"
@@ -446,7 +518,7 @@ function SnapshotWorkspace({
                   className="min-h-11"
                 />
               </FormLabel>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid gap-2 sm:grid-cols-3">
                 <FormLabel label="Club">
                   <Input
                     name="club"
@@ -503,11 +575,7 @@ function SnapshotWorkspace({
                   className="min-h-11"
                 />
               </FormLabel>
-              <Button type="submit" disabled={!storageAvailable} className="min-h-11 rounded-xl">
-                <Save className="size-4" aria-hidden />
-                Save snapshot
-              </Button>
-            </form>
+            </WorkspaceFormSheet>
           </CardContent>
         </Card>
         <div className="self-start divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card">
@@ -521,22 +589,15 @@ function SnapshotWorkspace({
                       Captured {dateFormatter.format(snapshot.capturedAt)} · data through{" "}
                       {snapshot.sourceDataThrough
                         ? dateFormatter.format(snapshot.sourceDataThrough)
-                        : "no shots"}
+                        : "not stored"}
                     </p>
                   </div>
-                  <form action={deleteAnalysisSnapshotAction}>
-                    <input type="hidden" name="snapshotId" value={snapshot.id} />
-                    <ConfirmSubmitButton
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Delete ${snapshot.name}`}
-                      confirmTitle="Delete this snapshot?"
-                      confirmMessage="This frozen analysis snapshot will be permanently removed."
-                      confirmActionLabel="Delete snapshot"
-                    >
-                      <Trash2 className="size-4" aria-hidden />
-                    </ConfirmSubmitButton>
-                  </form>
+                  <WorkspaceDelete
+                    name={snapshot.name}
+                    id={snapshot.id}
+                    field="snapshotId"
+                    action={deleteAnalysisSnapshotWithStateAction}
+                  />
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                   <Metric label="Shots" value={summaryValue(snapshot.summaryJson, "shotCount")} />
@@ -556,7 +617,18 @@ function SnapshotWorkspace({
                 <p className="mt-2 text-xs text-muted-foreground">
                   Metrics: {snapshot.selectedMetricsJson.join(", ") || "none selected"}
                 </p>
-                {snapshot.notes ? <p className="mt-2 text-sm leading-5">{snapshot.notes}</p> : null}
+                <WorkspaceDetails
+                  title={snapshot.name}
+                  description="Values saved at capture time; this view does not recalculate current evidence."
+                >
+                  <h4 className="font-semibold">Saved summary</h4>
+                  <EvidenceFields value={snapshot.summaryJson} />
+                  <h4 className="mt-4 font-semibold">Saved filters</h4>
+                  <EvidenceFields value={snapshot.filtersJson} />
+                  <h4 className="mt-4 font-semibold">Saved chart scope</h4>
+                  <EvidenceFields value={snapshot.chartStateJson} />
+                  <p className="mt-3 whitespace-pre-wrap break-words text-sm">{snapshot.notes}</p>
+                </WorkspaceDetails>
               </article>
             ))
           ) : (
@@ -735,6 +807,13 @@ async function getAnalysisWorkspaceData() {
     return [
       {
         id: change.id,
+        clubId: change.clubId,
+        changeAt: change.effectiveFrom,
+        windowDays: analysis.windowDays,
+        windowFrom: new Date(change.effectiveFrom.getTime() - analysis.windowDays * 86400000),
+        windowTo: new Date(change.effectiveFrom.getTime() + analysis.windowDays * 86400000),
+        beforeCarry: analysis.before.carryMedianYd,
+        afterCarry: analysis.after.carryMedianYd,
         clubLabel: formatClubType(change.clubType),
         changeLabel:
           [change.clubBrand, change.clubModel, change.shaft, change.notes]
@@ -829,23 +908,19 @@ function AnalysisSelect({
   options: Array<{ value: string; label: string }>;
 }) {
   return (
-    <Select
+    <select
       name={name}
-      defaultValue={placeholder ? "__none__" : options[0]?.value}
+      defaultValue={placeholder ? "" : options[0]?.value}
       disabled={disabled}
+      className="min-h-11 w-full rounded-lg border bg-background px-3"
     >
-      <SelectTrigger className="min-h-11 w-full">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {placeholder ? <SelectItem value="__none__">{placeholder}</SelectItem> : null}
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      {placeholder && <option value="">{placeholder}</option>}
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -856,16 +931,6 @@ function Metric({ label, value }: { label: string; value: string }) {
       <p className="mt-1 font-semibold tabular-nums">{value}</p>
     </div>
   );
-}
-
-function issueSeverityClass(severity: DataQualityIssue["severity"]) {
-  return `size-2.5 rounded-full ${
-    severity === "high"
-      ? "bg-destructive"
-      : severity === "medium"
-        ? "bg-[var(--status-warning-foreground)]"
-        : "bg-[var(--status-information-foreground)]"
-  }`;
 }
 
 function formatDelta(value: number | null, unit: string) {
@@ -891,4 +956,37 @@ function summaryValue(summary: Record<string, unknown>, key: string) {
 function summaryMetric(summary: Record<string, unknown>, key: string, unit: string) {
   const value = summary[key];
   return typeof value === "number" ? `${numberFormatter.format(value)} ${unit}` : "--";
+}
+
+function EvidenceFields({ value }: { value: Record<string, unknown> }) {
+  return (
+    <dl className="mt-3 grid gap-3 text-sm">
+      {Object.entries(value).map(([key, item]) => (
+        <div key={key}>
+          <dt className="font-medium">{formatLabel(key.replace(/([a-z])([A-Z])/g, "$1 $2"))}</dt>
+          <dd className="mt-1 break-words text-muted-foreground">
+            {item === null || item === undefined ? (
+              "Not stored"
+            ) : typeof item === "object" && !Array.isArray(item) ? (
+              <EvidenceFields value={item as Record<string, unknown>} />
+            ) : Array.isArray(item) ? (
+              <ol className="grid gap-2">
+                {item.map((entry, index) => (
+                  <li key={index}>
+                    {entry && typeof entry === "object" ? (
+                      <EvidenceFields value={entry as Record<string, unknown>} />
+                    ) : (
+                      String(entry ?? "Not stored")
+                    )}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              String(item)
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
 }

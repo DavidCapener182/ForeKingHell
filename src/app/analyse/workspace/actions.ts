@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { unstable_rethrow } from "next/navigation";
+import { reportServerFailure } from "@/lib/server-observability";
 import { and, count, eq, gte, lte, max, sql } from "drizzle-orm";
 
 import { analysisAnnotations, analysisSnapshots, sessions, shots } from "@/db/schema";
@@ -50,7 +52,7 @@ export async function saveAnalysisAnnotationAction(formData: FormData) {
       updatedAt: new Date(),
     });
 
-  revalidatePath("/analyse/workspace");
+  refreshWorkspaceAfterCommit();
 }
 
 export async function deleteAnalysisAnnotationAction(formData: FormData) {
@@ -58,10 +60,12 @@ export async function deleteAnalysisAnnotationAction(formData: FormData) {
   const annotationId = cleanUuid(formData.get("annotationId"));
   if (!annotationId) throw new Error("Invalid annotation.");
 
-  await getDb()
+  const deleted = await getDb()
     .delete(analysisAnnotations)
-    .where(and(eq(analysisAnnotations.id, annotationId), eq(analysisAnnotations.userId, userId)));
-  revalidatePath("/analyse/workspace");
+    .where(and(eq(analysisAnnotations.id, annotationId), eq(analysisAnnotations.userId, userId)))
+    .returning({ id: analysisAnnotations.id });
+  if (!deleted.length) throw new Error("Annotation unavailable or already deleted.");
+  refreshWorkspaceAfterCommit();
 }
 
 export async function saveAnalysisSnapshotAction(formData: FormData) {
@@ -112,7 +116,7 @@ export async function saveAnalysisSnapshotAction(formData: FormData) {
   await getDb()
     .insert(analysisSnapshots)
     .values({ userId, ...snapshot });
-  revalidatePath("/analyse/workspace");
+  refreshWorkspaceAfterCommit();
 }
 
 export async function deleteAnalysisSnapshotAction(formData: FormData) {
@@ -120,10 +124,12 @@ export async function deleteAnalysisSnapshotAction(formData: FormData) {
   const snapshotId = cleanUuid(formData.get("snapshotId"));
   if (!snapshotId) throw new Error("Invalid snapshot.");
 
-  await getDb()
+  const deleted = await getDb()
     .delete(analysisSnapshots)
-    .where(and(eq(analysisSnapshots.id, snapshotId), eq(analysisSnapshots.userId, userId)));
-  revalidatePath("/analyse/workspace");
+    .where(and(eq(analysisSnapshots.id, snapshotId), eq(analysisSnapshots.userId, userId)))
+    .returning({ id: analysisSnapshots.id });
+  if (!deleted.length) throw new Error("Snapshot unavailable or already deleted.");
+  refreshWorkspaceAfterCommit();
 }
 
 function textValue(value: FormDataEntryValue | null) {
@@ -136,7 +142,8 @@ function cleanText(value: FormDataEntryValue | null, maxLength: number) {
 
 function cleanUuid(value: FormDataEntryValue | null) {
   const text = textValue(value).trim();
-  return uuidPattern.test(text) ? text : null;
+  if (text && !uuidPattern.test(text)) throw new Error("Invalid record ID.");
+  return text || null;
 }
 
 function cleanChoice(value: FormDataEntryValue | null, choices: string[]) {
@@ -146,9 +153,12 @@ function cleanChoice(value: FormDataEntryValue | null, choices: string[]) {
 
 function parseDate(value: FormDataEntryValue | null, endOfDay = false) {
   const text = textValue(value).trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+  if (!text) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) throw new Error("Enter a valid date.");
   const parsed = new Date(`${text}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== text)
+    throw new Error("Enter a valid date.");
+  return parsed;
 }
 
 function dateInputValue(value: Date | null) {
@@ -175,4 +185,50 @@ function shotEvidenceSqlPredicate() {
       )
     )
   )`;
+}
+
+export type WorkspaceFormResult = { ok: true } | { ok: false; error: string };
+async function workspaceResult(action: () => Promise<void>): Promise<WorkspaceFormResult> {
+  try {
+    await action();
+    return { ok: true };
+  } catch (error) {
+    unstable_rethrow(error);
+    const message = error instanceof Error ? error.message : "";
+    const validation =
+      /^(Session not found for this account\.|Invalid (annotation|snapshot|record ID)\.|Enter a valid date\.|(Annotation|Snapshot) unavailable or already deleted\.|Snapshot end date cannot precede start date\.|Choose a supported annotation type\.|Annotation title and note are required\.|Annotation end date cannot be before its start date\.|Snapshot name is required\.)$/;
+    if (validation.test(message)) return { ok: false, error: message };
+    reportServerFailure("analysis_workspace_save_failed", error);
+    return {
+      ok: false,
+      error: "We could not confirm this change. Your entries are still here; please try again.",
+    };
+  }
+}
+function refreshWorkspaceAfterCommit() {
+  try {
+    revalidatePath("/analyse/workspace");
+  } catch (error) {
+    reportServerFailure("analysis_workspace_refresh_after_commit_failed", error);
+  }
+}
+export async function saveAnalysisAnnotationWithStateAction(
+  formData: FormData,
+): Promise<WorkspaceFormResult> {
+  return workspaceResult(() => saveAnalysisAnnotationAction(formData));
+}
+export async function deleteAnalysisAnnotationWithStateAction(
+  formData: FormData,
+): Promise<WorkspaceFormResult> {
+  return workspaceResult(() => deleteAnalysisAnnotationAction(formData));
+}
+export async function saveAnalysisSnapshotWithStateAction(
+  formData: FormData,
+): Promise<WorkspaceFormResult> {
+  return workspaceResult(() => saveAnalysisSnapshotAction(formData));
+}
+export async function deleteAnalysisSnapshotWithStateAction(
+  formData: FormData,
+): Promise<WorkspaceFormResult> {
+  return workspaceResult(() => deleteAnalysisSnapshotAction(formData));
 }
