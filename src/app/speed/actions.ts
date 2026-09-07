@@ -378,6 +378,7 @@ async function updateSpeedSession(formData: FormData, userId: string) {
   const [existingSession] = await db
     .select({
       id: speedTrainingSessions.id,
+      source: speedTrainingSessions.source,
       clubId: speedTrainingSessions.clubId,
       swingCount: speedTrainingSessions.swingCount,
       minSpeedMph: speedTrainingSessions.minSpeedMph,
@@ -424,6 +425,30 @@ async function updateSpeedSession(formData: FormData, userId: string) {
       : withSpeedTransferMetadata(existingSession.rawMetadataJson, null);
 
   await db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select({ metadata: speedTrainingSessions.rawMetadataJson })
+      .from(speedTrainingSessions)
+      .where(and(eq(speedTrainingSessions.id, sessionId), eq(speedTrainingSessions.userId, userId)))
+      .for("update");
+    if (!locked) rejectSpeedForm("That speed session was not found.");
+    const originalImportedSwings =
+      locked.metadata.originalImportedSwings ??
+      (existingSession.source !== "manual" && readings.length > 0
+        ? await tx
+            .select({
+              swingNumber: speedTrainingSwings.swingNumber,
+              clubSpeedMph: speedTrainingSwings.clubSpeedMph,
+              sourceRawJson: speedTrainingSwings.sourceRawJson,
+            })
+            .from(speedTrainingSwings)
+            .where(
+              and(
+                eq(speedTrainingSwings.speedSessionId, sessionId),
+                eq(speedTrainingSwings.userId, userId),
+              ),
+            )
+            .orderBy(speedTrainingSwings.swingNumber)
+        : undefined);
     await tx
       .update(speedTrainingSessions)
       .set({
@@ -442,6 +467,7 @@ async function updateSpeedSession(formData: FormData, userId: string) {
         notes: sessionFields.notes,
         rawMetadataJson: {
           ...retainedMetadata,
+          ...(originalImportedSwings ? { originalImportedSwings } : {}),
           entryMode: readings.length > 0 ? "readings" : "summary",
           readingsProvided: readings.length,
           editedFromSpeedCentre: true,

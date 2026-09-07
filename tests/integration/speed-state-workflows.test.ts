@@ -109,6 +109,10 @@ describe.skipIf(!enabled)("speed state workflows", () => {
           await db`select max_speed_mph from fkh_speed_training_sessions where id=${saved.sessionId}`
         )[0].max_speed_mph,
       ).toBe(102);
+      await db`update fkh_speed_training_sessions set source='rapsodo' where id=${saved.sessionId}`;
+      await db`update fkh_speed_training_swings set source_raw_json='{"providerReading":"original"}' where speed_session_id=${saved.sessionId}`;
+      const providerOriginal =
+        await db`select swing_number,club_speed_mph,source_raw_json from fkh_speed_training_swings where speed_session_id=${saved.sessionId} order by swing_number`;
       edit.set("sessionDate", "2026-09-07");
       expect(await updateSpeedSessionWithStateAction(edit)).toEqual({
         ok: true,
@@ -122,6 +126,32 @@ describe.skipIf(!enabled)("speed state workflows", () => {
       expect(
         await db`select id from fkh_speed_training_swings where speed_session_id=${saved.sessionId}`,
       ).toHaveLength(2);
+      const editedMetadata = (
+        await db`select raw_metadata_json from fkh_speed_training_sessions where id=${saved.sessionId}`
+      )[0].raw_metadata_json;
+      expect(editedMetadata.originalImportedSwings).toEqual(
+        providerOriginal.map((row) => ({
+          swingNumber: row.swing_number,
+          clubSpeedMph: row.club_speed_mph,
+          sourceRawJson: row.source_raw_json,
+        })),
+      );
+
+      edit.set("speedReadings", "108\n110");
+      expect(await updateSpeedSessionWithStateAction(edit)).toEqual({
+        ok: true,
+        sessionId: saved.sessionId,
+      });
+      expect(
+        (
+          await db`select raw_metadata_json from fkh_speed_training_sessions where id=${saved.sessionId}`
+        )[0].raw_metadata_json.originalImportedSwings,
+      ).toEqual(editedMetadata.originalImportedSwings);
+      expect(
+        (
+          await db`select max_speed_mph from fkh_speed_training_sessions where id=${saved.sessionId}`
+        )[0].max_speed_mph,
+      ).toBe(110);
       const practiceId = (
         await db`insert into fkh_sessions(user_id,source,type,date,raw_csv_text) values(${actor.id},'csv','range','2026-09-07T12:00:00Z','Synthetic transfer') returning id`
       )[0].id;

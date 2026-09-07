@@ -174,6 +174,29 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
                       action={<StatusPill tone="green">{peakSummary.trendLabel}</StatusPill>}
                     />
                     <div className="grid gap-4 p-4">
+                      {Boolean(data.originalImportedSwings?.length) && (
+                        <details className="rounded-lg border p-3">
+                          <summary className="min-h-11 cursor-pointer font-medium">
+                            Original imported readings
+                          </summary>
+                          <p className="text-sm text-muted-foreground">
+                            Current readings below include manual corrections. These original
+                            provider readings were retained before the first recorded edit; they do
+                            not replace current calculations.
+                          </p>
+                          <ol className="max-h-72 overflow-y-auto divide-y">
+                            {data.originalImportedSwings!.map((reading) => (
+                              <li
+                                key={reading.swingNumber}
+                                className="flex justify-between gap-3 py-3 text-sm"
+                              >
+                                <span>Original swing {reading.swingNumber}</span>
+                                <span>{formatSpeed(reading.clubSpeedMph)}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        </details>
+                      )}
                       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                         <MetricCard
                           label="Median"
