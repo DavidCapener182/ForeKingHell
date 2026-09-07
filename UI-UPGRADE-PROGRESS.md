@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-433 desktop / 433 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P82 Sponsors and partner offers**, next P83 Public home page. 59 UI entries remain. Continue the UI pass with acceptance gaps retained.
+438 desktop / 438 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P83 Public home page**, next P84 Sign in or join. 54 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P82 Sponsors and partner offers**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P83 Public home page**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -436,3 +436,11 @@ P81-C01–C04 UI implemented partial: current service evidence distinct from unv
 Checks: admin-system-browser.log1passed35.7s both surfaces/all6sizes; Cancel no write, one confirmed refresh adds one record, old seven-failure fixture retained, unverified auth remains unverified; no overflow/pageerrors. Companion390 inspected. Types/lintclean; service/action3PASS587ms. Native keyboard/screenreader/theme/error matrices and live health execution remain outstanding.
 
 Resume: P82 all5prompts read. Root forms draft /tmp/p82-forms.tsx; other agent implementing canonical click, recoverable sponsor/offer state and all-owned sponsor choices. P81 freeze released. P80 commit6abd93a6. Continue then P83 without resetting tracker.
+
+## P82 Partner workspace UI pass, 7 September
+
+P82-C01–C05 UI implemented partial. Full shared responsive forms with exact sponsor/offer review and recovery; whole sponsored/affiliate terms/context/coupon/destination, actual scoped summaries, searchable complete sponsor register/detail. All-owned sponsors queried independently. Canonical active stored offer URL controls click redirect; rendering previews records no click. Commercial plan/campaign approvals not inferred.
+
+Checks: partners-browser.log isolated six-size test passed; actual failed on sponsor metadata object rendering. Fixed JSON serialization, partners-browser-final.log1PASS53.4s all12, full identity/details/forms Cancel, no previewclick, no overflow/pageerrors. Companion390 inspected. Types/lint clean before small serialization fix; final rerun queued. Backend creation/canonicalclick4PASS600ms; validation4PASS; old-owned-sponsor beyond newest40 regressionPASS547ms. Full browser actual create/destination and broad acceptance outstanding.
+
+Resume: P83 all13prompts read; marketing files clean/owned by root. Preserve existing art/renderers. Concrete gaps: full pricing features/terms, stale FAQ mobile nav, screenshot full-image access, feature links, no-JS FAQ, readable mobile header/hero. Other agent read-only pricing/FAQ audit complete; no marketing edits. P82 freeze released. P81 commit092a8dcc.

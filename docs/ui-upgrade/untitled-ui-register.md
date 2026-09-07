@@ -143,3 +143,6 @@ Specified official metrics/tooltips, inputs/select/textarea/buttons, tables/pagi
 
 ## P81 System checks
 Previously checked official metrics/tooltips, tables/paginations, modals/buttons and activity feeds/dropdowns. Paid advanced examples unavailable. Accessible local alternatives: semantic evidence summaries and tables, native filter controls, full responsive diagnostic/review panel and native dated history disclosures. Current exports pass types; no vendor package/source installation.
+
+## P82 Partners
+Specified official metrics/tooltips, inputs/select/textarea/buttons, section headers/badges/domain lists and tables/pagination use previously checked references. Paid advanced examples unavailable. Accessible local alternatives: labelled native creation fields, focus-managed full review sheets, complete semantic offer articles and responsive searchable sponsor table/details. Local exports checked with types; no paid vendor source installed.

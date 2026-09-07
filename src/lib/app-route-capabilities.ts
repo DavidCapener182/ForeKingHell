@@ -129,7 +129,7 @@ const desktopOnlyPrefixes = [
   "/coach/workspace",
 ] as const;
 
-const companionExactRoutes = ["/admin/system-checks", "/admin/challenges", "/admin/billing", "/admin/moderation", "/admin/users", "/admin", "/billing", "/profile", "/social-intelligence", "/feed", "/groups", "/friends", "/achievements", "/leaderboard", "/course-records", "/simulator-lab", "/strokes-gained", "/compare", "/analyse", "/analyse/workspace", "/analyse/session-impact", "/analyse/conditions", "/analyse/compare", "/data-chat", "/coach/workspace", "/coach/reports", "/coach/diagnosis", "/coach", "/courses", "/courses/new", "/equipment", "/equipment/experiments"] as const;
+const companionExactRoutes = ["/partners", "/admin/system-checks", "/admin/challenges", "/admin/billing", "/admin/moderation", "/admin/users", "/admin", "/billing", "/profile", "/social-intelligence", "/feed", "/groups", "/friends", "/achievements", "/leaderboard", "/course-records", "/simulator-lab", "/strokes-gained", "/compare", "/analyse", "/analyse/workspace", "/analyse/session-impact", "/analyse/conditions", "/analyse/compare", "/data-chat", "/coach/workspace", "/coach/reports", "/coach/diagnosis", "/coach", "/courses", "/courses/new", "/equipment", "/equipment/experiments"] as const;
 const companionExceptions = ["/profile", "/groups", "/courses/strategy"] as const;
 const summaryOnlyPrefixes = [
   "/coach",
