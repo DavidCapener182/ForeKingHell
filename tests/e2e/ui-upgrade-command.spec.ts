@@ -16,7 +16,7 @@ test("G02/G03: collapsible sections and one search on both surfaces", async ({ p
         items: [
           {
             title: "Coastal fixture session",
-            href: "/sessions?selected=coastal-fixture",
+            href: "/sessions/00000000-0000-4000-8000-000000000123",
             detail:
               "Authorised synthetic session with a long source description retained across both surfaces",
             group: "Sessions",
@@ -54,21 +54,67 @@ test("G02/G03: collapsible sections and one search on both surfaces", async ({ p
       const input = dialog.getByRole("combobox", { name: "Search command palette" });
       await input.fill("Coastal");
       await expect(dialog.getByRole("link", { name: /Coastal fixture session/ })).toBeVisible();
+      await expect(dialog.getByRole("link", { name: /Coastal fixture session/ })).toHaveAttribute(
+        "href",
+        "/sessions/00000000-0000-4000-8000-000000000123",
+      );
+      await input.fill("sessions");
+      const active = dialog.locator('[data-command-active="true"]');
+      await input.press("Home");
+      const first = await active.getAttribute("id");
+      await input.press("ArrowDown");
+      await expect(active).not.toHaveAttribute("id", first!);
+      await input.press("ArrowUp");
+      await expect(active).toHaveAttribute("id", first!);
+      await input.fill("Coastal");
       await expect(dialog.getByRole("button", { name: "Close", exact: true })).toBeInViewport();
-      const bounds = await dialog.boundingBox();
-      expect(bounds!.y).toBeGreaterThanOrEqual(0);
-      expect(bounds!.x).toBeGreaterThanOrEqual(0);
-      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height + 1);
+      await expect
+        .poll(async () => {
+          const bounds = await dialog.boundingBox();
+          return Boolean(
+            bounds &&
+            bounds.y >= 0 &&
+            bounds.x >= 0 &&
+            bounds.y + bounds.height <= viewport.height + 1,
+          );
+        })
+        .toBe(true);
       await page.screenshot({ path: info.outputPath(`G03-${surface}-${viewport.width}.png`) });
       await input.fill("No-such-fixture");
       await expect(dialog.getByText(/No matching command/)).toBeVisible();
       await page.keyboard.press("Escape");
       await expect(dialog).toBeHidden();
     }
+    await page.keyboard.press("Control+k");
+    const navigationDialog = page.getByRole("dialog", { name: "Command palette", exact: true });
+    const navigationInput = navigationDialog.getByRole("combobox", {
+      name: "Search command palette",
+    });
+    await navigationInput.fill("handicap");
+    await navigationInput.press("Home");
+    await navigationInput.press("Enter");
+    await expect(page).toHaveURL(/\/handicap(?:\?|$)/);
+    await expect(navigationDialog).toBeHidden();
   }
+  await page.goto("/surface/companion?next=%2Ftoday");
   await page.setViewportSize({ width: 360, height: 800 });
   const more = page.getByRole("button", { name: /Open more tools and profile/ });
   await more.click();
+  const moreSearch = page.getByPlaceholder("Find a page or tool");
+  for (const href of [
+    "/rapsodo",
+    "/achievements",
+    "/feed",
+    "/social-intelligence",
+    "/analyse/session-impact",
+  ]) {
+    await expect(page.getByRole("dialog").locator(`a[href="${href}"]`)).toHaveCount(1);
+  }
+  await moreSearch.fill("recaps");
+  await expect(page.getByRole("dialog").locator('a[href="/social-intelligence"]')).toBeVisible();
+  await moreSearch.fill("No-such-fixture");
+  await expect(page.getByRole("dialog").locator('a[href="/social-intelligence"]')).toHaveCount(0);
+  await moreSearch.fill("");
   await page.getByRole("button", { name: "Search clubs, rounds and people" }).click();
   const palette = page.getByRole("dialog", { name: "Command palette", exact: true });
   await expect(palette).toBeVisible();

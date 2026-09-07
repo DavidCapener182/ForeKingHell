@@ -33,10 +33,10 @@ describe("desktop workbench command search source", () => {
     }
   });
 
-  it("links command results to the correct desktop destinations", () => {
+  it("links command results to exact entities on both surfaces", () => {
     expect(source).toContain("href: `/bag/${club.id}/analytics`");
     expect(source).toContain("href: `/rounds/${round.id}`");
-    expect(source).toContain("href: `/today?session=${session.id}`");
+    expect(source).toContain("href: `/sessions/${session.id}`");
     expect(source).toContain("href: `/courses/${course.id}/records`");
     expect(source).toContain("href: `/profile/${friend.username}`");
 

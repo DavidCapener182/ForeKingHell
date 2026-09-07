@@ -1,7 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, ne, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import {
@@ -28,6 +28,13 @@ import { calculateUserLevel } from "@/lib/achievements/xp";
 import { formatClubType } from "@/lib/club-format";
 import { getUserHandicapProfile } from "@/lib/handicap-data";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
+
+import {
+  decodeFeedCursor,
+  validFeedDate,
+  encodeFeedCursor,
+  type FeedPageOptions,
+} from "@/lib/feed-pagination";
 
 export const socialVisibilityOptions = ["private", "friends", "public"] as const;
 export type SocialVisibility = (typeof socialVisibilityOptions)[number];
@@ -717,7 +724,7 @@ export async function unblockUser(blockedUserId: string) {
   revalidateSocialPaths();
 }
 
-export async function getFeedPageData() {
+export async function getFeedPageData(options: FeedPageOptions = {}) {
   const viewerUserId = await requireCurrentUserId();
   const profile = await ensureSocialProfileForUser(viewerUserId);
   const [friendIds, followingIds, publicProfileCount, totalXp, items] = await Promise.all([
@@ -733,7 +740,7 @@ export async function getFeedPageData() {
       .from(xpLedger)
       .where(eq(xpLedger.userId, viewerUserId))
       .then((rows) => rows[0]?.value ?? 0),
-    getVisibleFeedItemsForViewer(viewerUserId, { limit: 40 }),
+    getVisibleFeedPageForViewer(viewerUserId, options),
   ]);
 
   return {
@@ -744,7 +751,7 @@ export async function getFeedPageData() {
     friendCount: friendIds.length,
     publicProfileCount,
     totalXp,
-    items,
+    ...items,
   };
 }
 
@@ -794,6 +801,105 @@ export async function getVisibleFeedItemsForViewer(
     .slice(0, limit);
 
   return hydrateFeedItems(visible, viewerUserId);
+}
+
+/** Scan chronologically through permission-filtered candidates so hidden rows
+ * cannot starve a page and filters can find activity beyond the first batch. */
+export async function getVisibleFeedPageForViewer(
+  viewerUserId: string,
+  options: FeedPageOptions = {},
+) {
+  const [friendIds, followingIds, blockedIds, hiddenTypes] = await Promise.all([
+    getFriendIds(viewerUserId),
+    getFollowingIds(viewerUserId),
+    getBlockedUserIds(viewerUserId),
+    getHiddenFeedTypes(viewerUserId),
+  ]);
+  const socialIds = new Set([viewerUserId, ...friendIds]);
+  const hiddenTypeSet = new Set(hiddenTypes);
+  const newer = !decodeFeedCursor(options.after) && Boolean(decodeFeedCursor(options.before));
+  let cursor = decodeFeedCursor(options.after) ?? decodeFeedCursor(options.before);
+  const hadCursor = Boolean(cursor);
+  const selected: Array<FeedItemRow & { cursorCreatedAt: string }> = [];
+  const query = options.query?.trim().toLowerCase() ?? "";
+  const from = validFeedDate(options.from);
+  const to = validFeedDate(options.to);
+  while (selected.length < 41) {
+    const rows = await getDb()
+      .select({ item: feedItems, cursorCreatedAt: sql<string>`${feedItems.createdAt}::text` })
+      .from(feedItems)
+      .where(
+        and(
+          ne(feedItems.itemType, "import_summary"),
+          or(inArray(feedItems.userId, [...socialIds]), eq(feedItems.visibility, "public")),
+          cursor
+            ? newer
+              ? sql`(${feedItems.createdAt}, ${feedItems.id}) > (${cursor.createdAt}::timestamptz, ${cursor.id}::uuid)`
+              : sql`(${feedItems.createdAt}, ${feedItems.id}) < (${cursor.createdAt}::timestamptz, ${cursor.id}::uuid)`
+            : undefined,
+          from ? sql`${feedItems.createdAt} >= (${from}::timestamp AT TIME ZONE 'UTC')` : undefined,
+          to
+            ? sql`${feedItems.createdAt} < ((${to}::date + interval '1 day') AT TIME ZONE 'UTC')`
+            : undefined,
+        ),
+      )
+      .orderBy(
+        newer ? asc(feedItems.createdAt) : desc(feedItems.createdAt),
+        newer ? asc(feedItems.id) : desc(feedItems.id),
+      )
+      .limit(120);
+    if (!rows.length) break;
+    const owners = await profilesByUserId([...new Set(rows.map((row) => row.item.userId))]);
+    for (const { item, cursorCreatedAt } of rows) {
+      const profile = owners.get(item.userId);
+      if (
+        !profile ||
+        !canViewFeedItem(
+          item,
+          viewerUserId,
+          socialIds,
+          blockedIds,
+          hiddenTypeSet,
+          profile.visibilitySettingsJson,
+        )
+      )
+        continue;
+      const scope = options.filter ?? "all";
+      if (
+        scope === "following" &&
+        item.userId !== viewerUserId &&
+        !followingIds.includes(item.userId)
+      )
+        continue;
+      if (scope === "friends" && !friendIds.includes(item.userId)) continue;
+      if (scope === "me" && item.userId !== viewerUserId) continue;
+      if (scope === "groups" && !item.itemType.startsWith("group_")) continue;
+      if (scope === "achievements" && !["achievement_unlock", "level_up"].includes(item.itemType))
+        continue;
+      if (
+        query &&
+        !`${profile.displayName} ${profile.username} ${item.headline} ${item.context ?? ""} ${item.metricLabel ?? ""} ${item.metricValue ?? ""}`
+          .toLowerCase()
+          .includes(query)
+      )
+        continue;
+      selected.push({ ...item, cursorCreatedAt });
+      if (selected.length === 41) break;
+    }
+    const last = rows.at(-1)!;
+    cursor = { createdAt: last.cursorCreatedAt, id: last.item.id };
+    if (rows.length < 120) break;
+  }
+  const hasMore = selected.length > 40;
+  const page = selected.slice(0, 40);
+  if (newer) page.reverse();
+  const token = (item: (typeof page)[number]) =>
+    encodeFeedCursor({ createdAt: item.cursorCreatedAt, id: item.id });
+  return {
+    items: await hydrateFeedItems(page, viewerUserId),
+    olderCursor: page.length && (newer ? hadCursor : hasMore) ? token(page.at(-1)!) : null,
+    newerCursor: page.length && (newer ? hasMore : hadCursor) ? token(page[0]) : null,
+  };
 }
 
 export async function getPublicFeedItemsForProfile(ownerUserId: string, limit = 6) {

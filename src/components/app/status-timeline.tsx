@@ -39,7 +39,10 @@ export function StatusTimeline({
     <ScrollArea
       role="region"
       aria-label={label}
-      className={cn("max-h-[36rem] min-w-0", className)}
+      className={cn(
+        "max-h-[36rem] min-w-0 overflow-hidden [&>[data-slot=scroll-area-viewport]]:max-h-[inherit]",
+        className,
+      )}
       data-status-timeline
     >
       <div className="grid min-w-0 gap-0 pr-3">

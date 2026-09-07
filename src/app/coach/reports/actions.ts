@@ -21,7 +21,11 @@ import {
   users,
 } from "@/db/schema";
 import { buildCoachSummary } from "@/lib/coach";
-import { coachReportTemplates, hashReportPassword } from "@/lib/coach-report-access";
+import {
+  coachReportTemplates,
+  hashReportPassword,
+  verifyReportPassword,
+} from "@/lib/coach-report-access";
 import {
   buildCoachReportSnapshot,
   parseCoachReportSections,
@@ -52,7 +56,7 @@ async function persistCoachReport(formData: FormData) {
     .update(
       JSON.stringify(
         [...formData.entries()]
-          .filter(([key]) => key !== "requestId")
+          .filter(([key]) => key !== "requestId" && key !== "password")
           .sort(([a, av], [b, bv]) => a.localeCompare(b) || String(av).localeCompare(String(bv))),
       ),
     )
@@ -342,7 +346,15 @@ async function persistCoachReport(formData: FormData) {
       )
       .limit(1);
     if (existing) {
-      if (record(existing.config).requestFingerprint !== requestFingerprint) {
+      const existingConfig = record(existing.config);
+      const passwordMatches =
+        typeof existingConfig.passwordHash === "string"
+          ? verifyReportPassword(
+              String(formData.get("password") ?? ""),
+              existingConfig.passwordHash,
+            )
+          : String(formData.get("password") ?? "") === "";
+      if (existingConfig.requestFingerprint !== requestFingerprint || !passwordMatches) {
         throw new ReportInputError(
           "This attempt already saved a different draft. Start a new report to change its scope.",
         );

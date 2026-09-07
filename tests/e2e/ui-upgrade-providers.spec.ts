@@ -16,10 +16,14 @@ test("Providers retain full connection diagnostics on both surfaces", async ({
     "Designated fixture only",
   );
   test.skip(info.project.name !== "chromium");
-  test.setTimeout(180000);
+  test.setTimeout(360000);
   page.setDefaultNavigationTimeout(60000);
   page.setDefaultTimeout(15000);
-  page.on("pageerror", (error) => console.log("PAGE ERROR", error.stack));
+  const errors: string[] = [];
+  page.on("pageerror", (error) => {
+    errors.push(error.message);
+    console.log("PAGE ERROR", error.stack);
+  });
   page.on("response", async (response) => {
     if (!response.url().includes("/_next/") || !response.url().split("?")[0].endsWith(".js"))
       return;
@@ -61,6 +65,9 @@ test("Providers retain full connection diagnostics on both surfaces", async ({
     ]);
     await db`insert into fkh_provider_sessions(user_id,provider_kind,provider_session_id,title,imported_session_id,imported_at) values(${owner!},'rapsodo','synthetic-remote-123','Synthetic provider session',${session.id},now())`;
     await db`insert into fkh_import_jobs(user_id,provider_kind,status,error_message) values(${owner!},'rapsodo','failed','Synthetic provider failure')`;
+    await db`insert into fkh_provider_sessions(user_id,provider_kind,provider_session_id,title,last_seen_at) select ${owner!},'rapsodo','older-'||n,'Older provider session '||n,'2026-01-01'::timestamptz from generate_series(1,24) n`;
+    await db`insert into fkh_import_jobs(user_id,provider_kind,status,created_at) select ${owner!},'rapsodo','completed','2026-01-01'::timestamptz from generate_series(1,24)`;
+    await db`insert into fkh_import_source_files(user_id,provider_kind,file_name,raw_hash,created_at) select ${owner!},'rapsodo','Older file '||n,lpad(n::text,64,'0'),'2026-01-01'::timestamptz from generate_series(1,25) n`;
     for (const surface of ["workbench", "companion"]) {
       await page.goto(`/surface/${surface}?next=/providers`);
       await expect(page.locator('[data-url-tabs][data-ready="true"]')).toBeVisible({
@@ -95,10 +102,52 @@ test("Providers retain full connection diagnostics on both surfaces", async ({
           page.getByRole("dialog").getByRole("link", { name: session.id, exact: true }),
         ).toHaveAttribute("href", `/sessions/${session.id}`);
         await page.getByRole("button", { name: "Close details", exact: true }).click();
+        await page.getByRole("link", { name: "Next sessions", exact: true }).click();
+        await expect(
+          page.getByRole("navigation", { name: "Provider sessions pages" }),
+        ).toContainText("Page 2 of 2");
+        await expect(page.getByRole("button", { name: /Synthetic provider session/ })).toHaveCount(
+          0,
+        );
+        await page.reload();
+        await expect(
+          page.getByRole("navigation", { name: "Provider sessions pages" }),
+        ).toContainText("Page 2 of 2");
+        await page.getByRole("link", { name: "Previous sessions", exact: true }).click();
+        await expect(
+          page.getByRole("navigation", { name: "Provider sessions pages" }),
+        ).toContainText("Page 1 of 2");
         await page.getByRole("tab", { name: "Diagnostics", exact: true }).click();
         await expect(page).toHaveURL(/tab=diagnostics/);
         await expect(page.getByText("Needs review", { exact: true })).toBeVisible();
         await expect(page.getByText(/failed ·/).first()).toBeVisible();
+        const timeline = page.getByRole("region", { name: "Provider import jobs" });
+        await timeline.scrollIntoViewIfNeeded();
+        const viewport = timeline.locator('[data-slot="scroll-area-viewport"]');
+        await viewport.evaluate((node) => {
+          node.scrollTop = node.scrollHeight;
+        });
+        const finalEvent = timeline.locator("article").last();
+        await expect(finalEvent).toBeInViewport();
+        const timelineBox = await timeline.boundingBox();
+        const nextBox = await page
+          .getByRole("link", { name: "Next jobs", exact: true })
+          .boundingBox();
+        expect(timelineBox!.y + timelineBox!.height).toBeLessThanOrEqual(nextBox!.y + 1);
+        for (const kind of ["jobs", "files"]) {
+          await page.getByRole("link", { name: `Next ${kind}`, exact: true }).click();
+          await expect(
+            page.getByRole("navigation", { name: `Provider ${kind} pages` }),
+          ).toContainText("Page 2 of 2");
+          await expect(page.getByRole("tab", { name: "Diagnostics", exact: true })).toHaveAttribute(
+            "aria-selected",
+            "true",
+          );
+          await page.getByRole("link", { name: `Previous ${kind}`, exact: true }).click();
+          await expect(
+            page.getByRole("navigation", { name: `Provider ${kind} pages` }),
+          ).toContainText("Page 1 of 2");
+        }
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
         ).toBeTruthy();
@@ -112,6 +161,7 @@ test("Providers retain full connection diagnostics on both surfaces", async ({
     expect(
       await db`select id,carry_yd,total_yd,side_carry_yd,review_status from fkh_shots where user_id=${owner!} order by id`,
     ).toEqual(original);
+    expect(errors).toEqual([]);
   } finally {
     if (owner) await db`delete from fkh_users where id=${owner}`;
     await db.end();

@@ -1,4 +1,4 @@
-const CACHE_NAME = "forekinghell-pwa-v11";
+const CACHE_NAME = "forekinghell-pwa-v12";
 const PAGE_CACHE_NAME = `${CACHE_NAME}-pages`;
 const OFFLINE_SAFE_PAGE_PATHS = new Set(["/login", "/offline", "/privacy"]);
 const PRECACHE_ASSETS = [
@@ -13,25 +13,23 @@ const PRECACHE_ASSETS = [
   "/icons/lmwt-icon-maskable-512.png",
 ];
 
+// First installs activate naturally. Updates must wait for the page's draft/queue
+// guard to send SKIP_WAITING; activating here would bypass that safety check.
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(CACHE_NAME)
-      .then(async (cache) => {
-        await cache.addAll(PRECACHE_ASSETS);
-        // Cache the static offline shell's scripts and styles, never private page HTML.
-        const offline = await cache.match("/offline");
-        const html = offline ? await offline.text() : "";
-        const assets = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/g)]
-          .map((match) => new URL(match[1], self.location.origin))
-          .filter(
-            (url) =>
-              url.origin === self.location.origin && url.pathname.startsWith("/_next/static/"),
-          )
-          .map((url) => url.href);
-        await cache.addAll([...new Set(assets)]);
-      })
-      .then(() => self.skipWaiting()),
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await cache.addAll(PRECACHE_ASSETS);
+      // Cache the static offline shell's scripts and styles, never private page HTML.
+      const offline = await cache.match("/offline");
+      const html = offline ? await offline.text() : "";
+      const assets = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/g)]
+        .map((match) => new URL(match[1], self.location.origin))
+        .filter(
+          (url) => url.origin === self.location.origin && url.pathname.startsWith("/_next/static/"),
+        )
+        .map((url) => url.href);
+      await cache.addAll([...new Set(assets)]);
+    }),
   );
 });
 

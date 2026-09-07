@@ -69,6 +69,9 @@ describe.skipIf(!enabled)("report state actions", () => {
           1,
         );
         expect(await sql`select id from fkh_share_links where user_id=${ids[0]}`).toHaveLength(1);
+        form.set("password", "Different secret password");
+        expect(await createCoachReportWithStateAction(form)).toMatchObject({ ok: false });
+        form.set("password", "Synthetic password");
         form.set("title", "Changed scope must not overwrite frozen report");
         expect(await createCoachReportWithStateAction(form)).toMatchObject({ ok: false });
         form.set("title", "  My measured review  ");

@@ -23,7 +23,7 @@ describe("clubhouse chronological activity feed", () => {
     expect(source).toContain('<PageShell className="bg-muted/20">');
     expect(source).not.toContain("DesktopWorkbenchLayout");
     expect(source).toContain("data-feed-timeline-first");
-    expect(source).toContain("Newest first · up to 40 loaded visible activities");
+    expect(source).toContain("Newest first · 40 activities per page");
     expect(source.match(/<FeedCardList\b/g)).toHaveLength(1);
     expect(cardSource).toContain("groupItemsByDay(items)");
     expect(cardSource).toContain("data-feed-activity-timeline");
@@ -74,10 +74,10 @@ describe("clubhouse chronological activity feed", () => {
     expect(socialSource).toContain("getFollowingIds(viewerUserId)");
     expect(socialSource).toContain("followingIds,");
     expect(socialSource).toContain("friendIds,");
-    expect(source).toContain("followingIds.has(item.userId)");
-    expect(source).toContain("friendIds.has(item.userId)");
-    expect(source).toContain('item.itemType.startsWith("group_")');
-    expect(source).toContain('item.itemType === "achievement_unlock"');
+    expect(socialSource).toContain("followingIds.includes(item.userId)");
+    expect(socialSource).toContain("friendIds.includes(item.userId)");
+    expect(socialSource).toContain('item.itemType.startsWith("group_")');
+    expect(socialSource).toContain('["achievement_unlock", "level_up"].includes(item.itemType)');
   });
 
   it("uses a restrained template for every requested activity family", () => {

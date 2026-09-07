@@ -107,7 +107,9 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin = false }
       .map((group) => ({
         ...group,
         items: group.items.filter((item) =>
-          `${group.label} ${item.label} ${item.href}`.toLowerCase().includes(normalizedQuery),
+          `${group.label} ${item.label} ${item.href} ${item.searchKeywords?.join(" ") ?? ""}`
+            .toLowerCase()
+            .includes(normalizedQuery),
         ),
       }))
       .filter((group) => group.items.length > 0);

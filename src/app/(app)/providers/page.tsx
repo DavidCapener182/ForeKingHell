@@ -78,7 +78,7 @@ const providerSessionSuggestedViews: DesktopSavedViewSuggestion[] = [
 ];
 
 type ProvidersPageProps = {
-  searchParams?: Promise<{ tab?: string | string[] }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 function parseProviderTab(value: string | string[] | undefined) {
@@ -87,8 +87,53 @@ function parseProviderTab(value: string | string[] | undefined) {
 }
 
 export default async function ProvidersPage({ searchParams }: ProvidersPageProps) {
-  const activeTab = parseProviderTab((await searchParams)?.tab);
-  const data = await getProviderIntegrationsPageData();
+  const params = (await searchParams) ?? {};
+  const activeTab = parseProviderTab(params.tab);
+  const pageNumber = (value: string | string[] | undefined) =>
+    Number(Array.isArray(value) ? value[0] : value);
+  const data = await getProviderIntegrationsPageData({
+    sessionsPage: pageNumber(params.sessionsPage),
+    jobsPage: pageNumber(params.jobsPage),
+    filesPage: pageNumber(params.filesPage),
+  });
+  function ledgerPages(kind: "sessions" | "jobs" | "files") {
+    const pagination = data.pagination[kind];
+    const href = (page: number) => {
+      const query = new URLSearchParams();
+      for (const [key, value] of Object.entries(params))
+        for (const entry of Array.isArray(value) ? value : value ? [value] : [])
+          query.append(key, entry);
+      query.set(`${kind}Page`, String(page));
+      query.set("tab", kind === "sessions" ? "connections" : "diagnostics");
+      return `/providers?${query}#${kind === "sessions" ? "provider-sessions" : "provider-jobs"}`;
+    };
+    return (
+      <nav
+        aria-label={`Provider ${kind} pages`}
+        className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+      >
+        <span>
+          {pagination.total} {kind} · Page {pagination.page} of {pagination.pages}
+        </span>
+        <div className="flex gap-2">
+          {pagination.page > 1 ? (
+            <Button asChild variant="outline">
+              <Link prefetch={false} href={href(pagination.page - 1)}>
+                Previous {kind}
+              </Link>
+            </Button>
+          ) : null}
+          {pagination.page < pagination.pages ? (
+            <Button asChild variant="outline">
+              <Link prefetch={false} href={href(pagination.page + 1)}>
+                Next {kind}
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <PageShell>
@@ -199,7 +244,9 @@ export default async function ProvidersPage({ searchParams }: ProvidersPageProps
                             compact
                             label={`${provider.label} latest recorded operation`}
                             steps={providerWorkflowSteps(
-                              data.jobs.find((job) => job.providerKind === provider.providerKind),
+                              data.latestJobs.find(
+                                (job) => job.providerKind === provider.providerKind,
+                              ),
                             )}
                           />
                           <Button
@@ -244,7 +291,12 @@ export default async function ProvidersPage({ searchParams }: ProvidersPageProps
                     />
                   )}
 
+                  <p className="text-sm text-muted-foreground">
+                    Connection health uses the latest 20 recorded sessions, jobs and files. Browse
+                    complete saved history below.
+                  </p>
                   <ProviderSessionsTable sessions={data.sessions} />
+                  {ledgerPages("sessions")}
                 </div>
               ),
             },
@@ -317,6 +369,7 @@ export default async function ProvidersPage({ searchParams }: ProvidersPageProps
                             />
                           }
                         />
+                        {ledgerPages("files")}
                       </CardContent>
                     </Card>
 
@@ -357,6 +410,7 @@ export default async function ProvidersPage({ searchParams }: ProvidersPageProps
                             />
                           }
                         />
+                        {ledgerPages("jobs")}
                       </CardContent>
                     </Card>
                   </section>
@@ -418,8 +472,8 @@ function ProviderSessionsTable({ sessions }: { sessions: ProviderSession[] }) {
           }))}
         />
         <p className="my-3 text-sm text-muted-foreground">
-          Latest 20 recorded provider sessions. Import history is separate from current connection
-          health.
+          This page of recorded provider sessions. CSV export includes this page only. Import
+          history is separate from current connection health.
         </p>
         <details>
           <summary className="min-h-11 cursor-pointer py-3 font-medium">
