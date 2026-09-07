@@ -35,7 +35,13 @@ export default async function CompanionSummaryPage({
           description={summary.description}
           actions={
             <Button asChild className="h-auto min-h-11 whitespace-normal">
-              <SummaryActionLink href={primary}>{summary.primary.label}</SummaryActionLink>
+              {primary.startsWith("/surface/") ? (
+                <AppSurfaceLink href={primary as `/surface/${string}`}>
+                  {summary.primary.label}
+                </AppSurfaceLink>
+              ) : (
+                <Link href={primary}>{summary.primary.label}</Link>
+              )}
             </Button>
           }
         />
@@ -92,12 +98,5 @@ export default async function CompanionSummaryPage({
         </div>
       </div>
     </PageShell>
-  );
-}
-function SummaryActionLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return href.startsWith("/surface/") ? (
-    <AppSurfaceLink href={href as `/surface/${string}`}>{children}</AppSurfaceLink>
-  ) : (
-    <Link href={href}>{children}</Link>
   );
 }

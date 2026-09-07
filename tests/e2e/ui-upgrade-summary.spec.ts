@@ -77,6 +77,11 @@ test("Summary fallback retains requested context across both surfaces", async ({
         await expect(
           page.getByRole("link", { name: "Build the next practice", exact: true }),
         ).toBeVisible();
+        expect(
+          (await page
+            .getByRole("link", { name: "Build the next practice", exact: true })
+            .boundingBox())!.height,
+        ).toBeGreaterThanOrEqual(44);
         await expect(page.getByText("No current evidence", { exact: true })).toBeVisible();
         await expect(page.getByText("Supporting driver context", { exact: true })).toHaveCount(0);
         expect(
