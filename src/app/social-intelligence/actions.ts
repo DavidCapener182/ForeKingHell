@@ -24,6 +24,36 @@ export async function reportSocialTargetAction(formData: FormData) {
   redirect("/social-intelligence?report=created");
 }
 
+export async function socialIntelligenceFormAction(
+  _previous: { ok: boolean; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    switch (requiredString(formData, "operation")) {
+      case "generate":
+        await generateSocialSummary({
+          summaryType: parseSummaryType(formString(formData, "summaryType")),
+          visibility: parseVisibility(formData.get("visibility"), "private"),
+        });
+        break;
+      case "report":
+        await reportSocialTarget({
+          targetType: requiredString(formData, "targetType"),
+          targetId: requiredString(formData, "targetId"),
+          reason: requiredString(formData, "reason"),
+          details: formString(formData, "details"),
+          reportedUserId: formString(formData, "reportedUserId"),
+        });
+        break;
+      default:
+        throw new Error("Unknown recap or report operation.");
+    }
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not save. Try again." };
+  }
+}
+
 function parseSummaryType(value: string | null) {
   if (
     value === "friend_comparison" ||

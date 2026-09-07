@@ -104,3 +104,6 @@ Official Underline tabs, domain list, Activity feeds/Dropdowns, forms, Tables/Pa
 
 ## P67 Clubhouse feed
 Specified official Filter bars/Drawers/Date pickers, Activity feeds/Dropdowns and form references reuse installed adapters. Paid advanced examples unavailable; explicit accessible alternatives are labelled native scope/date fields in focus-managed filterpanel, dated semantic activity rows, retained review composer, native audience selector, and named confirmation panels. Original local image processing and source data retained. Decorative pseudo-dispersion thumbnail replaced by a truthful source-session link; specialist renderers untouched.
+
+## P68 Recaps and safety
+Specified official forms/select/textarea, section headers, tables/paginations and drawers references reuse installed exports. Paid advanced templates remain unavailable; explicit alternatives are labelled native selectors, retained review forms in focus-managed responsive panels, semantic sortable safety table and complete mobile records. No paid source or entitlement claimed.
