@@ -81,3 +81,5 @@ P55–P57 record workflows: official headers/tables/pagination/tabs/input/select
 P58 Challenges: official Underline tabs use the namespaced React Aria UntitledTabs adapter; paid domain-list/drawer examples remain unavailable. Explicit alternatives are semantic full-field rows, native progress, labelled native Select/Input/Textarea, and existing responsive Sheet/Drawer with review footer. Vendor paid exports are not installed or claimed; existing local exports checked by types.
 
 P59: paid messaging/table/header/modal/drawer examples unavailable; accessible alternatives are retained React Aria tabs, semantic desktop table/mobile proof disclosures, existing responsive confirmation/invite panels and labelled normal-flow composer with server-confirmed receipts. Full exact task access retained without vendor export assumptions.
+
+P60 Tournaments index: official tabs/table/pagination/metrics references use existing React Aria tabs, semantic table and full mobile disclosure alternatives. Paid table/metrics templates unavailable; current adapters and native course/search/order fields checked via types. No paid vendor export/entitlement assumed.

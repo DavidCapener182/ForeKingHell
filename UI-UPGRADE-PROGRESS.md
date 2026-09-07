@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-322 desktop / 322 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P60 Tournaments**, next P61 Tournament detail. 170 UI entries remain. Continue the UI pass with acceptance gaps retained.
+325 desktop / 325 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P61 Tournament detail**, next P62 Tournament management. 167 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P60 Tournaments**, next **P61 Tournament detail**. P59-C01–C07 are implemented with partial verification; acceptance remains outstanding.
+Current: **P61 Tournament detail**, next P62 per route coverage. P60-C01–C03 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -333,3 +333,10 @@ challenge-detail-browser-role.log PASS2.2m both surfaces×six: exact250yd qualif
 Changed detail page, detail-sections, comment-composer, invite-review, membership-dialog and join/leave adapters; actions state wrappers and redirects; narrow invitation closed/expiry guard + tests. No external users contacted: only local synthetic fixture invitations/comments.
 Open: per-rejected-shot ledger absent/current aggregate disclosed, closed results recomputed not immutable, full tie/low-wins/multi-player browser/savedview/export/permission edge cases/idempotent comment retry/AT/zoom/theme/nativekeyboard. Broad unit snapshot now168failed/2462passed/111pending and73files failing assertions; defer reconciliation untilUIpass per user.
 Resume next: read P60 three prompts, implement tournaments index bothsurfaces with real status/scope, fullcards/table/proof detail and create CTA. Other agent owns narrow tournament join guard currently; coordinate freeze before browser. Then P61. Keep branch, trackers and existing completed work; no merge/deploy.
+
+
+## P60 Tournaments index — 7 September
+P60-C01–C03 implemented/partial,325total/0accepted. Sharedfullwidthindex with countedURLstatus/course/search/order, desktop fulltable and fullmobileeventdisclosure. Closed/cancelled events do not imply openentry. Exact /courses/:id/tournaments alias nowpassescompanioncapability and redirectswithcourseId. LongnativecourseSelectintrinsicwidth fixed; fullcourseidentity remains in supportingcopy.
+Browser tournaments-browser-alias.log PASS1.3m all12: aliascourseID,1/0filteredcounts, statuses/reload, search/no-match/resetquery/nameorder, mobileallfields and actualcomponent/documentbounds. Types/lintpass,390 capture inspected. Prior teststrictmatches loading/count and hidden desktopdescription corrected; prior aliasdesktopgate and overflowingselector were realUIdefects fixed.
+Remaining pertracker: latest80global source scope, positive entered/result fixtures, clear/BackForward/unknowncourse/errors/AT/zoom/theme/nativekeyboard. Backend tournament transactions+entry/dateguards currentlydirty/tested, reservedforP61review/commit; indexcommitonlyownsUI+scopedalias.
+Resume:P61 detailedprompts only, full eventdetail/entry/round submission bothsurfaces; coordinate backendowner beforeedits. P62 followscoverage. No mainmerge/deploy; preservecompletedrows and regenerateworkbook.

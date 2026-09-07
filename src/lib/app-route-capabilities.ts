@@ -144,7 +144,7 @@ const summaryOnlyPrefixes = [
 
 export function isDesktopOnlyCompanionPath(pathname: string) {
   if (/^\/course-records\/[^/]+$/.test(pathname)) return false;
-  if (/^\/courses\/[^/]+(?:\/(?:holes|shot-pattern|records))?$/.test(pathname)) return false;
+  if (/^\/courses\/[^/]+(?:\/(?:holes|shot-pattern|records|tournaments))?$/.test(pathname)) return false;
   if (companionExactRoutes.some((route) => pathname === route)) return false;
   if (companionExceptions.some((route) => pathMatches(pathname, route))) return false;
   return desktopOnlyPrefixes.some((route) => pathMatches(pathname, route));
