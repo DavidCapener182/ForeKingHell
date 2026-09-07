@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useClientReady } from "@/hooks/use-client-ready";
 import { MobileTrainingChart } from "./mobile-training-chart";
 import { LabEvidenceList } from "@/app/simulator-lab/lab-evidence";
@@ -13,7 +14,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import dynamic from "next/dynamic";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import {
   AlertTriangle,
   BarChart3,
@@ -36,7 +37,12 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { selectTrainingRangeData } from "@/lib/training/rangeSelection";
-import type { TrainingRangeKey } from "@/lib/training/ranges";
+import {
+  parseTrainingScope,
+  TRAINING_ACTIVITY_OPTIONS,
+  type TrainingScope,
+  type TrainingRangeKey,
+} from "@/lib/training/ranges";
 import type { TrainingEfficiencyCard, TrainingOverTimeData } from "@/lib/training/trainingData";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +75,8 @@ const TrainingLoadBars = dynamic(
 type TrainingLoadRangeViewProps = {
   data: TrainingOverTimeData;
   initialRangeKey: TrainingRangeKey;
+  initialScope?: TrainingScope;
+  scopeError?: string | null;
   sourceLinks?: Record<string, { href: string; label: string }>;
 };
 
@@ -101,20 +109,59 @@ export function TrainingLoadRangeView({
   data,
   initialRangeKey,
   sourceLinks = {},
+  initialScope = { from: "", to: "", activity: "all", q: "" },
+  scopeError = null,
 }: TrainingLoadRangeViewProps) {
   const ready = useClientReady();
+  const router = useRouter();
+  const [draftScope, setDraftScope] = useState(initialScope);
+  const [filterError, setFilterError] = useState(scopeError);
+  const [pending, startScopeTransition] = useTransition();
   const desktop = useSyncExternalStore(subscribeDesktop, desktopSnapshot, serverDesktopSnapshot);
   const [ledgerVisited, setLedgerVisited] = useState(false);
   const [activeRangeKey, setActiveRangeKey] = useState<TrainingRangeKey>(initialRangeKey);
   const [rangeOpen, setRangeOpen] = useState(false);
   const [draftRange, setDraftRange] = useState(initialRangeKey);
+  const scopeKey = JSON.stringify([initialRangeKey, initialScope, scopeError]);
+  const [previousScopeKey, setPreviousScopeKey] = useState(scopeKey);
+  if (previousScopeKey !== scopeKey) {
+    setPreviousScopeKey(scopeKey);
+    setActiveRangeKey(initialRangeKey);
+    setDraftRange(initialRangeKey);
+    setDraftScope(initialScope);
+    setFilterError(scopeError);
+  }
   const displayData = useMemo(
-    () => selectTrainingRangeData(data, activeRangeKey),
-    [activeRangeKey, data],
+    () => selectTrainingRangeData(data, activeRangeKey, initialScope),
+    [activeRangeKey, data, initialScope],
   );
+  function applyScope(rangeKey: TrainingRangeKey, scope: TrainingScope) {
+    const parsed = parseTrainingScope(scope, data.today);
+    if (parsed.error) {
+      setFilterError(parsed.error);
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("range", rangeKey);
+    for (const key of ["from", "to", "activity", "q"] as const) {
+      if (scope[key] && !(key === "activity" && scope[key] === "all"))
+        url.searchParams.set(key, scope[key]);
+      else url.searchParams.delete(key);
+    }
+    url.searchParams.delete("saved");
+    setFilterError(null);
+    if (url.href === window.location.href) {
+      setRangeOpen(false);
+      return;
+    }
+    startScopeTransition(() => {
+      router.push(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
+    });
+    setRangeOpen(false);
+  }
   function handleRangeChange(rangeKey: TrainingRangeKey) {
     setActiveRangeKey(rangeKey);
-    replaceBrowserRange(rangeKey);
+    applyScope(rangeKey, { ...initialScope, from: "", to: "" });
   }
 
   return (
@@ -125,23 +172,66 @@ export function TrainingLoadRangeView({
           disabled={!ready}
           onClick={() => {
             setDraftRange(activeRangeKey);
+            setDraftScope(initialScope);
             setRangeOpen(true);
           }}
         >
           History range:{" "}
-          {READINESS_RANGE_OPTIONS.find((option) => option.key === activeRangeKey)?.label}
+          {initialScope.from
+            ? "Custom dates"
+            : READINESS_RANGE_OPTIONS.find((option) => option.key === activeRangeKey)?.label}{" "}
+          ·{" "}
+          {Number(Boolean(initialScope.from)) +
+            Number(initialScope.activity !== "all") +
+            Number(Boolean(initialScope.q))}{" "}
+          filters
         </Button>
         <p role="status" className="text-sm">
           {displayData.sessions.length} logged entries · {displayData.chartStartDate} to{" "}
-          {displayData.today}
+          {initialScope.to || displayData.today} ·{" "}
+          {Math.round(displayData.sessions.reduce((total, entry) => total + entry.sessionLoad, 0))}{" "}
+          logged load
         </p>
-        <Button variant="ghost" onClick={() => handleRangeChange("4w")}>
-          Clear range
+        <Button
+          variant="ghost"
+          onClick={() => applyScope("4w", { from: "", to: "", activity: "all", q: "" })}
+        >
+          Clear all
         </Button>
       </div>
+      <form
+        className="flex flex-wrap items-end gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          applyScope(activeRangeKey, { ...initialScope, q: draftScope.q });
+        }}
+      >
+        <label className="grid min-w-0 flex-1 gap-1">
+          Search logged entries
+          <input
+            className="min-h-11 rounded-lg border bg-background px-3"
+            disabled={!ready}
+            value={draftScope.q}
+            onChange={(event) => setDraftScope({ ...draftScope, q: event.target.value })}
+          />
+        </label>
+        <Button type="submit" disabled={!ready || pending}>
+          Search
+        </Button>
+      </form>
+      {pending ? <p role="status">Updating training scope…</p> : null}
+      {filterError ? <p role="alert">{filterError}</p> : null}
+      <p className="text-sm">
+        {TRAINING_ACTIVITY_OPTIONS.find((option) => option.key === initialScope.activity)?.label}
+        {initialScope.q ? ` · Search: ${initialScope.q}` : ""}
+      </p>
+      {!displayData.sessions.length ? (
+        <p role="status">No logged entries match this scope. Change the filters or clear all.</p>
+      ) : null}
       <p className="text-sm text-muted-foreground">
         Current readiness uses the existing long-term model. The selected range scopes chart dates
-        and the entry ledger; unlogged activity is unknown, not proof of rest.
+        and the entry ledger. Activity and search scope logged load only; fitness, fatigue and
+        readiness retain all-activity context. Unlogged activity is unknown, not proof of rest.
       </p>
       <Sheet open={rangeOpen} onOpenChange={setRangeOpen}>
         <SheetContent>
@@ -157,7 +247,10 @@ export function TrainingLoadRangeView({
             <select
               className="min-h-11 rounded-lg border bg-background px-3"
               value={draftRange}
-              onChange={(event) => setDraftRange(event.target.value as TrainingRangeKey)}
+              onChange={(event) => {
+                setDraftRange(event.target.value as TrainingRangeKey);
+                setDraftScope({ ...draftScope, from: "", to: "" });
+              }}
             >
               {READINESS_RANGE_OPTIONS.map((option) => (
                 <option key={option.key} value={option.key}>
@@ -166,8 +259,51 @@ export function TrainingLoadRangeView({
               ))}
             </select>
           </label>
+          <div className="grid gap-3 p-4">
+            <p className="text-sm">Optional custom dates override the preset. Dates use UTC.</p>
+            {(["from", "to"] as const).map((key) => (
+              <label className="grid gap-1" key={key}>
+                {key === "from" ? "Start date" : "End date"}
+                <input
+                  type="date"
+                  min="2000-01-01"
+                  max={data.today}
+                  className="min-h-11 min-w-0 rounded-lg border bg-background px-3"
+                  value={draftScope[key]}
+                  onChange={(event) => setDraftScope({ ...draftScope, [key]: event.target.value })}
+                />
+              </label>
+            ))}
+            <label className="grid gap-1">
+              Activity scope
+              <select
+                className="min-h-11 rounded-lg border bg-background px-3"
+                value={draftScope.activity}
+                onChange={(event) =>
+                  setDraftScope({
+                    ...draftScope,
+                    activity: event.target.value as TrainingScope["activity"],
+                  })
+                }
+              >
+                {TRAINING_ACTIVITY_OPTIONS.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {filterError ? <p role="alert">{filterError}</p> : null}
+          </div>
           <div className="flex flex-wrap gap-3 p-4">
-            <Button variant="outline" onClick={() => setDraftRange("4w")}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDraftRange("4w");
+                setDraftScope({ from: "", to: "", activity: "all", q: "" });
+                setFilterError(null);
+              }}
+            >
               Reset
             </Button>
             <SheetClose asChild>
@@ -175,8 +311,7 @@ export function TrainingLoadRangeView({
             </SheetClose>
             <Button
               onClick={() => {
-                handleRangeChange(draftRange);
-                setRangeOpen(false);
+                applyScope(draftRange, draftScope);
               }}
             >
               Apply range
@@ -299,10 +434,7 @@ export function TrainingLoadRangeView({
             <TrainingSessionLedger
               sessions={displayData.sessions}
               rangeKey={activeRangeKey}
-              rangeLabel={
-                READINESS_RANGE_OPTIONS.find((option) => option.key === activeRangeKey)?.label ??
-                activeRangeKey
-              }
+              rangeLabel={`${initialScope.from ? `${initialScope.from} to ${initialScope.to}` : (READINESS_RANGE_OPTIONS.find((option) => option.key === activeRangeKey)?.label ?? activeRangeKey)} · ${TRAINING_ACTIVITY_OPTIONS.find((option) => option.key === initialScope.activity)?.label}${initialScope.q ? ` · ${initialScope.q}` : ""}`}
             />
           ) : null}
         </details>
@@ -1131,15 +1263,4 @@ function balanceTargetLabel(
     case "speed":
       return "10-20%";
   }
-}
-
-function replaceBrowserRange(rangeKey: TrainingRangeKey) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const url = new URL(window.location.href);
-  url.searchParams.set("range", rangeKey);
-  url.searchParams.delete("saved");
-  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }

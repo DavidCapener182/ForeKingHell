@@ -33,6 +33,7 @@ export function DesktopCommandPalette({
   open,
   onOpenChange,
   inputRef,
+  restoreFocusRef,
   query,
   onQueryChange,
   onInputKeyDown,
@@ -54,6 +55,7 @@ export function DesktopCommandPalette({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   inputRef: RefObject<HTMLInputElement | null>;
+  restoreFocusRef?: RefObject<HTMLElement | null>;
   query: string;
   onQueryChange: (value: string) => void;
   onInputKeyDown: KeyboardEventHandler<HTMLInputElement>;
@@ -83,6 +85,7 @@ export function DesktopCommandPalette({
       description="Search LM World Tour pages, clubs, rounds and actions."
       className={cn("sm:max-w-4xl", styles.dialog)}
       showCloseButton
+      restoreFocusRef={restoreFocusRef}
     >
       <Command shouldFilter={false} loop>
         <CommandInput

@@ -195,10 +195,14 @@ const CONFIDENCE_LOOKBACK_DAYS = 28;
 export async function getTrainingOverTimeData(
   userId: string,
   rangeKey: TrainingRangeKey,
+  historyStart?: string,
 ): Promise<TrainingOverTimeData> {
   const db = getDb();
-  const rangeDays = trainingRangeDays(rangeKey);
   const today = toDateKey(new Date());
+  const rangeDays = Math.max(
+    trainingRangeDays(rangeKey),
+    historyStart ? Math.floor((Date.parse(today) - Date.parse(historyStart)) / 86400000) + 1 : 0,
+  );
   const chartStartDate = subtractDays(today, rangeDays - 1);
   const warmupStartDate = subtractDays(chartStartDate, WARMUP_DAYS);
   const suggestionStart = new Date(`${subtractDays(today, SUGGESTION_LOOKBACK_DAYS)}T00:00:00Z`);
@@ -368,6 +372,22 @@ export async function getTrainingOverTimeData(
       ? visibleSeries.reduce((total, point) => total + point.load, 0) / visibleSeries.length
       : 0;
 
+  // Keep every current-readiness input identical when browsing older history.
+  // Only the historical chart and entry payload expand beyond the normal window.
+  const baseline =
+    historyStart && historyStart < subtractDays(today, trainingRangeDays(rangeKey) - 1)
+      ? await getTrainingOverTimeData(userId, rangeKey)
+      : null;
+  if (baseline)
+    return {
+      ...baseline,
+      rangeDays,
+      chartStartDate: visibleStartDate,
+      series: visibleSeries,
+      sessionMarkers: visibleSessionMarkers,
+      sessions: visibleSessions,
+      averageTrainingLoad,
+    };
   return {
     rangeKey,
     rangeDays,

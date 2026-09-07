@@ -10,18 +10,22 @@ export async function runAdminSystemSnapshotAction(
   void _data;
   try {
     const result = await recordAdminSystemSnapshot();
-    revalidatePath("/admin/system-checks");
+    try {
+      revalidatePath("/admin/system-checks");
+    } catch {
+      /* Saved receipt remains valid if refresh fails. */
+    }
     return {
       ok: true,
       checkedAt: result.checkedAt,
-      message: `Stored operational records checked at ${result.checkedAt}. Live provider health was not checked.`,
+      message: `Checks saved at ${result.checkedAt}: ${result.liveChecks.filter((check) => check.state === "passed").length} read-only probes passed, ${result.liveChecks.filter((check) => check.state === "failed").length} failed, ${result.liveChecks.filter((check) => check.state === "unavailable").length} unavailable. Payments, AI and provider sync were not exercised.`,
     };
   } catch (error) {
     unstable_rethrow(error);
     return {
       ok: false,
       error:
-        "The stored-record check could not be saved. Try again. Live provider health has not been checked.",
+        "The check result could not be saved. Try again; no successful result has been confirmed.",
     };
   }
 }

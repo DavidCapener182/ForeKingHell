@@ -28,6 +28,7 @@ describe.skipIf(!enabled)("admin overview access and stored evidence", () => {
     sql = postgres(url!, { max: 1 });
   });
   beforeEach(async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
     trigger = `admin_fixture_${Date.now()}`;
     email = `admin-fixture-${crypto.randomUUID()}@example.invalid`;
     owner = (
@@ -40,6 +41,7 @@ describe.skipIf(!enabled)("admin overview access and stored evidence", () => {
     actor.userId = operator;
   });
   afterEach(async () => {
+    vi.unstubAllEnvs();
     await sql.unsafe(`drop function if exists ${trigger}() cascade`);
     await sql`delete from fkh_admin_audit_log where actor_user_id in ${sql([owner, operator])}`;
     await sql`delete from fkh_moderation_events where actor_user_id in ${sql([owner, operator])}`;
@@ -81,6 +83,12 @@ describe.skipIf(!enabled)("admin overview access and stored evidence", () => {
     const before = await getAdminOperationsSnapshot();
     const result = await recordAdminSystemSnapshot();
     expect(result.operations).toEqual(before);
+    expect(result.liveChecks.map((check) => check.state)).toEqual([
+      "passed",
+      "unavailable",
+      "unavailable",
+      "unavailable",
+    ]);
     const [unrelated] =
       await sql`insert into fkh_admin_audit_log(actor_user_id,action,target_type,target_id) values(${operator},'synthetic_other','user',${owner}) returning id`;
     const { records: history } = await getAdminSystemCheckHistory();
@@ -92,6 +100,7 @@ describe.skipIf(!enabled)("admin overview access and stored evidence", () => {
         checkedAt: result.checkedAt,
         operations: before,
         liveProvidersChecked: false,
+        liveChecks: result.liveChecks,
       },
     });
     await sql`update fkh_admin_users set status='inactive' where user_id=${operator}`;

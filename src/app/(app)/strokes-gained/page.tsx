@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { shotEvidenceSqlPredicate } from "@/lib/strokes-gained-practice-data";
+import {
+  getStrokesGainedHistory,
+  normalizeStrokesGainedFilters,
+  SG_ANALYSIS_PAGE_SIZE,
+  type StrokesGainedFilters as SgHistoryFilters,
+} from "@/lib/strokes-gained-history";
 import {
   sgPracticePrescription,
   sgPracticeFingerprint,
@@ -8,7 +13,6 @@ import { SgPracticeDraftForm } from "@/app/strokes-gained/practice-draft-form";
 import Link from "next/link";
 import styles from "@/app/strokes-gained/strokes-gained.module.css";
 import Image from "next/image";
-import { and, asc, desc, eq, gt, gte, isNull, lt, lte, or, type SQL } from "drizzle-orm";
 import {
   AlertTriangle,
   BarChart3,
@@ -65,8 +69,6 @@ import {
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
-import { sessions, shots, strokesGainedShotEvents } from "@/db/schema";
-import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
   DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
@@ -77,21 +79,9 @@ import { cn } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
-type StrokesGainedEvent = Awaited<ReturnType<typeof getStrokesGainedData>>["events"][number];
+type StrokesGainedEvent = Awaited<ReturnType<typeof getStrokesGainedHistory>>["events"][number];
 type SortMode = "recent" | "gains" | "losses" | "hole" | "category";
 type SgResultFilter = "" | "gain" | "loss" | "pending";
-
-type StrokesGainedFilters = {
-  sessionId: string;
-  category: string;
-  hole: string;
-  startLie: string;
-  endLie: string;
-  from: string;
-  to: string;
-  sg: SgResultFilter;
-  sort: SortMode;
-};
 
 type CategorySummary = {
   category: string;
@@ -127,7 +117,6 @@ type HoleSummary = {
   swing: number;
 };
 
-const ANALYSIS_LIMIT = 200;
 const CATEGORY_DEFINITIONS = [
   { category: "tee", label: "Tee", coachingLabel: "Tee shots" },
   { category: "approach", label: "Approach", coachingLabel: "Approach play" },
@@ -210,8 +199,13 @@ const strokesGainedSuggestedViews: DesktopSavedViewSuggestion[] = [
 ];
 
 export default async function StrokesGainedPage({ searchParams }: { searchParams: SearchParams }) {
-  const filters = parseFilters(await searchParams);
-  const data = await getStrokesGainedData(filters);
+  const params = await searchParams;
+  const filters = normalizeStrokesGainedFilters(parseFilters(params));
+  const data = await getStrokesGainedHistory(
+    await requireCurrentUserId(),
+    filters,
+    Number(first(params.eventPage)) || 1,
+  );
   const analysis = buildStrokesGainedAnalysis(data.events);
   const activeCategory =
     analysis.categories.find((category) => category.category === filters.category) ?? null;
@@ -229,8 +223,8 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
   const scopedLosses = [...scopedFiniteEvents]
     .sort((a, b) => (a.strokesGained ?? 0) - (b.strokesGained ?? 0))
     .slice(0, 3);
-  const filteredEvents = filterEvents(data.events, filters);
-  const filterOptions = buildFilterOptions(data.events);
+  const filteredEvents = data.events;
+  const filterOptions = buildFilterOptions(data.catalog);
   const activeFilterChips = buildActiveFilterChips(filters, filterOptions.sessions);
   const railFocus = activeCategory ?? analysis.weakestCategory ?? analysis.bestCategory;
   const railSampleSize = activeCategory?.sampleSize ?? analysis.totals.sampleSize;
@@ -333,13 +327,45 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
             <StrokesGainedFilterForm filters={filters} options={filterOptions} />
           </StrokesGainedFilters>
           <p className="text-sm text-muted-foreground">
-            {data.events.length} loaded events · maximum {ANALYSIS_LIMIT}; summaries cover this
-            loaded scope
+            {data.events.length} events on analysis page {data.page} of {data.pages} · {data.total}{" "}
+            matching saved events. All summaries, charts, CSV and practice sources use this page
+            only (up to {SG_ANALYSIS_PAGE_SIZE} events), not a complete-round total.
           </p>
           <Button variant="ghost" asChild>
             <Link href="/strokes-gained">Clear all</Link>
           </Button>
         </div>
+        <form
+          action="/strokes-gained"
+          method="get"
+          role="search"
+          aria-label="Search saved SG history"
+          className="flex min-w-0 flex-wrap gap-2"
+        >
+          {Object.entries(filters)
+            .filter(([key, value]) => key !== "q" && value)
+            .map(([key, value]) => (
+              <input key={key} type="hidden" name={key} value={value} />
+            ))}
+          <Input
+            key={filters.q}
+            name="q"
+            aria-label="Search all saved SG events"
+            defaultValue={filters.q}
+            placeholder="Search saved rounds, categories or lies…"
+            className="min-w-0 flex-1"
+          />
+          <Button type="submit" variant="outline" className="min-h-11">
+            Search saved history
+          </Button>
+        </form>
+        <SgHistoryPagination
+          filters={filters}
+          eventPage={data.page}
+          page={data.page}
+          pages={data.pages}
+          kind="event"
+        />
         {activeFilterChips.length > 0 && <ActiveFilterChips items={activeFilterChips} />}
         <CategoryNavTabs
           categories={analysis.categories}
@@ -381,6 +407,9 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
         />
 
         <RoundTrendPanel
+          filters={filters}
+          eventPage={data.page}
+          requestedRoundPage={Number(first(params.roundPage)) || 1}
           rounds={activeCategory ? scopedRounds : analysis.rounds}
           bestCategory={analysis.bestCategory}
           weakestCategory={analysis.weakestCategory}
@@ -399,68 +428,16 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
           filterOptions={filterOptions}
           activeFilterChips={activeFilterChips}
         />
+        <SgHistoryPagination
+          filters={filters}
+          eventPage={data.page}
+          page={data.page}
+          pages={data.pages}
+          kind="event"
+        />
       </DesktopWorkbenchLayout>
     </PageShell>
   );
-}
-
-async function getStrokesGainedData(filters: StrokesGainedFilters) {
-  const userId = await requireCurrentUserId();
-  const db = getDb();
-  const conditions: SQL[] = [eq(strokesGainedShotEvents.userId, userId)];
-
-  if (filters.sessionId) conditions.push(eq(strokesGainedShotEvents.sessionId, filters.sessionId));
-  if (filters.category) conditions.push(eq(strokesGainedShotEvents.category, filters.category));
-  if (filters.hole) conditions.push(eq(strokesGainedShotEvents.holeNumber, Number(filters.hole)));
-  if (filters.startLie) conditions.push(eq(strokesGainedShotEvents.startLie, filters.startLie));
-  if (filters.endLie) conditions.push(eq(strokesGainedShotEvents.endLie, filters.endLie));
-  if (filters.from) conditions.push(gte(sessions.date, new Date(`${filters.from}T00:00:00.000Z`)));
-  if (filters.to) conditions.push(lte(sessions.date, new Date(`${filters.to}T23:59:59.999Z`)));
-  if (filters.sg === "gain") conditions.push(gt(strokesGainedShotEvents.strokesGained, 0));
-  if (filters.sg === "loss") conditions.push(lt(strokesGainedShotEvents.strokesGained, 0));
-  if (filters.sg === "pending") conditions.push(isNull(strokesGainedShotEvents.strokesGained));
-
-  const orderBy =
-    filters.sort === "gains"
-      ? [desc(strokesGainedShotEvents.strokesGained), desc(strokesGainedShotEvents.createdAt)]
-      : filters.sort === "losses"
-        ? [asc(strokesGainedShotEvents.strokesGained), desc(strokesGainedShotEvents.createdAt)]
-        : filters.sort === "hole"
-          ? [
-              asc(strokesGainedShotEvents.holeNumber),
-              asc(strokesGainedShotEvents.strokeNumber),
-              desc(strokesGainedShotEvents.createdAt),
-            ]
-          : filters.sort === "category"
-            ? [asc(strokesGainedShotEvents.category), asc(strokesGainedShotEvents.strokesGained)]
-            : [desc(strokesGainedShotEvents.createdAt)];
-  const events = await db
-    .select({
-      id: strokesGainedShotEvents.id,
-      sessionId: strokesGainedShotEvents.sessionId,
-      courseName: sessions.courseName,
-      sessionDate: sessions.date,
-      holeNumber: strokesGainedShotEvents.holeNumber,
-      strokeNumber: strokesGainedShotEvents.strokeNumber,
-      category: strokesGainedShotEvents.category,
-      startLie: strokesGainedShotEvents.startLie,
-      endLie: strokesGainedShotEvents.endLie,
-      startDistanceYd: strokesGainedShotEvents.startDistanceYd,
-      endDistanceYd: strokesGainedShotEvents.endDistanceYd,
-      penaltyStrokes: strokesGainedShotEvents.penaltyStrokes,
-      strokesGained: strokesGainedShotEvents.strokesGained,
-      createdAt: strokesGainedShotEvents.createdAt,
-    })
-    .from(strokesGainedShotEvents)
-    .innerJoin(sessions, eq(sessions.id, strokesGainedShotEvents.sessionId))
-    .leftJoin(shots, and(eq(shots.id, strokesGainedShotEvents.shotId), eq(shots.userId, userId)))
-    .where(
-      and(...conditions, or(isNull(strokesGainedShotEvents.shotId), shotEvidenceSqlPredicate())),
-    )
-    .orderBy(...orderBy)
-    .limit(ANALYSIS_LIMIT);
-
-  return { events };
 }
 
 function buildStrokesGainedAnalysis(events: StrokesGainedEvent[]) {
@@ -752,7 +729,7 @@ function CategoryNavTabs({
   activeCategory,
   filters,
 }: {
-  filters: StrokesGainedFilters;
+  filters: SgHistoryFilters;
   categories: CategorySummary[];
   activeCategory: CategorySummary | null;
 }) {
@@ -1166,18 +1143,24 @@ function PracticeThisFirstCard({
           />
           <DataPair label="Confidence" value={hasCalculatedSignal ? "Actionable" : "Building"} />
         </div>
-        {prescription && evidence.length ? (
-          <SgPracticeDraftForm
-            category={prescription.category}
-            eventIds={evidence.map((event) => event.id)}
-            fingerprint={sgPracticeFingerprint(prescription.category, evidence)}
-            creationId={randomUUID()}
-          />
-        ) : (
+        <div className="grid min-w-0 gap-2 md:max-w-80">
           <p className="text-sm text-muted-foreground">
-            Map category evidence before saving a focused drill.
+            This draft cites {evidence.length} category events from the current analysis page only.
+            Change analysis page or round scope to choose different evidence.
           </p>
-        )}
+          {prescription && evidence.length ? (
+            <SgPracticeDraftForm
+              category={prescription.category}
+              eventIds={evidence.map((event) => event.id)}
+              fingerprint={sgPracticeFingerprint(prescription.category, evidence)}
+              creationId={randomUUID()}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Map category evidence before saving a focused drill.
+            </p>
+          )}
+        </div>
       </CardContent>
     </DataPanel>
   );
@@ -1511,26 +1494,37 @@ function ShotHighlightPanel({
 }
 
 function RoundTrendPanel({
+  filters,
+  eventPage,
+  requestedRoundPage,
   rounds,
   bestCategory,
   weakestCategory,
   focusCategory,
 }: {
+  filters: SgHistoryFilters;
+  eventPage: number;
+  requestedRoundPage: number;
   rounds: RoundSummary[];
   bestCategory: CategorySummary | null;
   weakestCategory: CategorySummary | null;
   focusCategory: CategorySummary | null;
 }) {
-  const displayedRounds = rounds.slice(0, 6);
+  const pages = Math.max(1, Math.ceil(rounds.length / 6));
+  const page = Math.min(
+    pages,
+    Number.isSafeInteger(requestedRoundPage) && requestedRoundPage > 0 ? requestedRoundPage : 1,
+  );
+  const displayedRounds = rounds.slice((page - 1) * 6, page * 6);
   const maxAbsTotal = Math.max(1, ...displayedRounds.map((round) => Math.abs(round.total ?? 0)));
 
   return (
-    <DataPanel>
+    <DataPanel id="sg-round-history">
       <SectionHeader
         title={focusCategory ? `${focusCategory.label} SG by round` : "SG by round"}
         description={
           rounds.length > 0
-            ? `Latest ${Math.min(6, rounds.length)} of ${integerFormatter.format(rounds.length)} mapped rounds.`
+            ? `Round group ${page} of ${pages} · ${integerFormatter.format(rounds.length)} rounds represented on this analysis page. Values are page subtotals, not necessarily whole-round SG.`
             : "No mapped rounds yet."
         }
         action={<Flag className="size-5 text-[var(--status-success-foreground)]" />}
@@ -1543,6 +1537,7 @@ function RoundTrendPanel({
           {displayedRounds.map((round) => (
             <Link
               key={round.sessionId}
+              data-sg-round={round.sessionId}
               href={`/rounds/${round.sessionId}`}
               prefetch={false}
               className="grid gap-2 rounded-md border border-border bg-card p-3 transition-colors hover:border-primary/60 motion-reduce:transition-none"
@@ -1571,6 +1566,13 @@ function RoundTrendPanel({
             </p>
           ) : null}
         </div>
+        <SgHistoryPagination
+          filters={filters}
+          eventPage={eventPage}
+          page={page}
+          pages={pages}
+          kind="round"
+        />
       </CardContent>
     </DataPanel>
   );
@@ -1750,7 +1752,7 @@ function RecentShotEventsPanel({
 }: {
   events: StrokesGainedEvent[];
   totalEvents: number;
-  filters: StrokesGainedFilters;
+  filters: SgHistoryFilters;
   filterOptions: FilterOptions;
   activeFilterChips: Array<{ label: string; href: string }>;
 }) {
@@ -1764,7 +1766,8 @@ function RecentShotEventsPanel({
             </span>
             <span className="mt-0.5 block text-sm leading-[1.15rem] text-muted-foreground">
               {integerFormatter.format(events.length)} matching rows from{" "}
-              {integerFormatter.format(totalEvents)} mapped events.
+              {integerFormatter.format(totalEvents)} mapped events on this analysis page. CSV
+              exports this page only.
             </span>
           </span>
           <span className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-muted-foreground">
@@ -1833,7 +1836,7 @@ function RecentShotEventsPanel({
 }
 
 function strokesGainedCurrentViewLabel(
-  filters: StrokesGainedFilters,
+  filters: SgHistoryFilters,
   activeFilterChips: Array<{ label: string; href: string }>,
 ) {
   if (activeFilterChips.length > 0) {
@@ -1859,7 +1862,7 @@ function strokesGainedCurrentViewLabel(
   return "Recent strokes-gained events";
 }
 
-function QuickFilters({ filters }: { filters: StrokesGainedFilters }) {
+function QuickFilters({ filters }: { filters: SgHistoryFilters }) {
   const scopedCategory = filters.category || undefined;
   const shortcuts = [
     { label: "All", href: shortcutHref({ ...filters, sg: "" }) },
@@ -1912,7 +1915,7 @@ function StrokesGainedFilterForm({
   filters,
   options,
 }: {
-  filters: StrokesGainedFilters;
+  filters: SgHistoryFilters;
   options: FilterOptions;
 }) {
   const controlClassName = "min-h-11 w-full min-w-0 max-w-full lg:min-h-8";
@@ -1922,6 +1925,7 @@ function StrokesGainedFilterForm({
       method="get"
       className="apple-panel grid min-w-0 grid-cols-2 gap-3 overflow-hidden p-3 sm:grid-cols-2"
     >
+      <input type="hidden" name="q" value={filters.q} />
       <label className="col-span-2 grid min-w-0 gap-1 text-sm font-medium md:col-span-1">
         Round
         <select
@@ -2105,7 +2109,12 @@ function StrokesGainedEventTable({ events }: { events: StrokesGainedEvent[] }) {
           <TableBody>
             {events.length > 0 ? (
               events.map((event) => (
-                <TableRow key={event.id} tabIndex={0} className="focus-aaa outline-none">
+                <TableRow
+                  key={event.id}
+                  data-sg-event={event.id}
+                  tabIndex={0}
+                  className="focus-aaa outline-none"
+                >
                   <TableCell
                     data-column="round"
                     className="sticky left-0 z-10 min-w-48 bg-card shadow-[1px_0_0_color-mix(in_oklab,var(--border)_72%,transparent)]"
@@ -2185,8 +2194,8 @@ function heroDescription(
 
     const categoryResult =
       activeCategory.total !== null && activeCategory.total < 0
-        ? `${activeCategory.label} is costing ${formatSg(activeCategory.total)} strokes.`
-        : `${activeCategory.label} is gaining ${formatSg(activeCategory.total, "0.0")} strokes.`;
+        ? `${activeCategory.label} lost ${Math.abs(activeCategory.total).toFixed(1)} strokes on this analysis page.`
+        : `${activeCategory.label} has net SG of ${formatSg(activeCategory.total, "0.0")} on this analysis page.`;
 
     return `${categoryResult} ${integerFormatter.format(activeCategory.sampleSize)} calculated events are mapped to this category, with ${integerFormatter.format(activeCategory.pendingCount)} pending or unmapped. Positive numbers gained value; negative numbers lost value.`;
   }
@@ -2196,7 +2205,7 @@ function heroDescription(
   }
 
   if (analysis.weakestCategory?.total !== null && analysis.weakestCategory.total < 0) {
-    return `${analysis.bestCategory.label} is carrying your scoring, but ${analysis.weakestCategory.label} is the main leak. You gained ${formatSg(analysis.totals.total, "0.0")} strokes across ${integerFormatter.format(analysis.totals.sampleSize)} calculated events. ${analysis.bestCategory.label} produced most of the gain, while ${analysis.weakestCategory.label} cost ${formatSg(analysis.weakestCategory.total)}. Positive numbers gained value; negative numbers lost value.`;
+    return `${analysis.weakestCategory.label} is the main scoring leak on this analysis page, losing ${Math.abs(analysis.weakestCategory.total).toFixed(1)} strokes. Net SG is ${formatSg(analysis.totals.total, "0.0")} across ${integerFormatter.format(analysis.totals.sampleSize)} calculated events on this page. Positive numbers gained value; negative numbers lost value.`;
   }
 
   return `${analysis.bestCategory.label} is the clearest strength so far. No negative category has separated across ${eventText} and ${roundText}. Positive numbers gained value; negative numbers lost value.`;
@@ -2472,96 +2481,30 @@ function coveragePercentLabel(sampleSize: number, eventCount: number) {
   return `${integerFormatter.format(Math.round((sampleSize / eventCount) * 100))}%`;
 }
 
-function buildFilterOptions(events: StrokesGainedEvent[]): FilterOptions {
-  const sessionMap = new Map<string, { id: string; label: string; date: Date }>();
-
-  for (const event of events) {
-    sessionMap.set(event.sessionId, {
-      id: event.sessionId,
-      label: `${event.courseName ?? "Mapped round"} - ${formatDate(event.sessionDate)}`,
-      date: event.sessionDate,
-    });
-  }
-
-  const categorySet = new Set(events.map((event) => event.category));
-  const categories = [...CATEGORY_DEFINITIONS]
-    .filter(
-      (definition) => categorySet.has(definition.category) || definition.category === "putting",
-    )
-    .map((definition) => ({ value: definition.category, label: definition.label }));
-  const extraCategories = [...categorySet]
-    .filter(
-      (category) => !CATEGORY_DEFINITIONS.some((definition) => definition.category === category),
-    )
-    .sort()
-    .map((category) => ({ value: category, label: titleCase(category) }));
-
+function buildFilterOptions(
+  catalog: Awaited<ReturnType<typeof getStrokesGainedHistory>>["catalog"],
+): FilterOptions {
   return {
-    sessions: [...sessionMap.values()].sort((a, b) => b.date.getTime() - a.date.getTime()),
-    categories: [...categories, ...extraCategories],
-    holes: [...new Set(events.map((event) => event.holeNumber).filter(isFiniteNumber))].sort(
-      (a, b) => a - b,
-    ),
-    startLies: sortLies([...new Set(events.map((event) => event.startLie).filter(Boolean))]),
-    endLies: sortLies([
-      ...new Set(events.map((event) => event.endLie).filter((lie): lie is string => Boolean(lie))),
-    ]),
+    sessions: catalog.rounds.map((round) => ({
+      id: round.id,
+      label: `${round.courseName ?? "Mapped round"} - ${formatDate(round.date)}`,
+    })),
+    categories: [...new Set([...catalog.categories, "putting"])].map((category) => ({
+      value: category,
+      label: titleCase(category),
+    })),
+    holes: catalog.holes.sort((a, b) => a - b),
+    startLies: sortLies(catalog.startLies),
+    endLies: sortLies(catalog.endLies),
   };
 }
 
-function filterEvents(events: StrokesGainedEvent[], filters: StrokesGainedFilters) {
-  const filtered = events.filter((event) => {
-    if (filters.sessionId && event.sessionId !== filters.sessionId) return false;
-    if (filters.category && event.category !== filters.category) return false;
-    if (filters.hole && event.holeNumber?.toString() !== filters.hole) return false;
-    if (filters.startLie && event.startLie !== filters.startLie) return false;
-    if (filters.endLie && event.endLie !== filters.endLie) return false;
-    if (filters.from && event.sessionDate < new Date(`${filters.from}T00:00:00.000Z`)) return false;
-    if (filters.to && event.sessionDate > new Date(`${filters.to}T23:59:59.999Z`)) return false;
-    if (filters.sg === "gain" && (event.strokesGained === null || event.strokesGained <= 0))
-      return false;
-    if (filters.sg === "loss" && (event.strokesGained === null || event.strokesGained >= 0))
-      return false;
-    if (filters.sg === "pending" && event.strokesGained !== null) return false;
-
-    return true;
-  });
-
-  return filtered.sort((a, b) => compareEvents(a, b, filters.sort));
-}
-
-function compareEvents(a: StrokesGainedEvent, b: StrokesGainedEvent, sort: SortMode) {
-  if (sort === "gains") {
-    return nullableDescending(a.strokesGained, b.strokesGained);
-  }
-
-  if (sort === "losses") {
-    return nullableAscending(a.strokesGained, b.strokesGained);
-  }
-
-  if (sort === "hole") {
-    return (
-      (a.holeNumber ?? 99) - (b.holeNumber ?? 99) ||
-      (a.strokeNumber ?? 99) - (b.strokeNumber ?? 99) ||
-      b.sessionDate.getTime() - a.sessionDate.getTime()
-    );
-  }
-
-  if (sort === "category") {
-    return (
-      titleCase(a.category).localeCompare(titleCase(b.category)) ||
-      nullableAscending(a.strokesGained, b.strokesGained)
-    );
-  }
-
-  return b.createdAt.getTime() - a.createdAt.getTime();
-}
-
-function parseFilters(params: Awaited<SearchParams>): StrokesGainedFilters {
+function parseFilters(params: Awaited<SearchParams>): SgHistoryFilters {
   const sort = first(params.sort);
   const sg = optionalFilterParam(first(params.sg));
 
   return {
+    q: first(params.q).trim().slice(0, 160),
     sessionId: uuidParam(optionalFilterParam(first(params.sessionId))),
     category: optionalFilterParam(first(params.category)),
     hole: integerParam(optionalFilterParam(first(params.hole))),
@@ -2578,13 +2521,11 @@ function optionalFilterParam(value: string) {
   return value === "__all__" ? "" : value;
 }
 
-function buildActiveFilterChips(
-  filters: StrokesGainedFilters,
-  sessions: FilterOptions["sessions"],
-) {
+function buildActiveFilterChips(filters: SgHistoryFilters, sessions: FilterOptions["sessions"]) {
   const chips: Array<{ label: string; href: string }> = [];
   const session = sessions.find((option) => option.id === filters.sessionId);
 
+  if (filters.q) chips.push({ label: `Search: ${filters.q} x`, href: filterHref(filters, "q") });
   if (filters.sessionId)
     chips.push({ label: `${session?.label ?? "Round"} x`, href: filterHref(filters, "sessionId") });
   if (filters.category)
@@ -2615,7 +2556,7 @@ function buildActiveFilterChips(
   return chips;
 }
 
-function filterHref(filters: StrokesGainedFilters, omitKey: keyof StrokesGainedFilters) {
+function filterHref(filters: SgHistoryFilters, omitKey: keyof SgHistoryFilters) {
   const params = new URLSearchParams();
 
   for (const [key, value] of Object.entries(filters)) {
@@ -2627,7 +2568,7 @@ function filterHref(filters: StrokesGainedFilters, omitKey: keyof StrokesGainedF
   return query ? `/strokes-gained?${query}#events` : "/strokes-gained#events";
 }
 
-function shortcutHref(filters: Partial<StrokesGainedFilters>) {
+function shortcutHref(filters: Partial<SgHistoryFilters>) {
   const params = new URLSearchParams();
 
   for (const [key, value] of Object.entries(filters)) {
@@ -2852,4 +2793,54 @@ function sortLies(values: string[]) {
     if (indexB === -1) return -1;
     return indexA - indexB;
   });
+}
+
+function SgHistoryPagination({
+  filters,
+  eventPage,
+  page,
+  pages,
+  kind,
+}: {
+  filters: SgHistoryFilters;
+  eventPage: number;
+  page: number;
+  pages: number;
+  kind: "event" | "round";
+}) {
+  const href = (next: number) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters))
+      if (value && !(key === "sort" && value === "recent")) params.set(key, value);
+    if (kind === "event" && next > 1) params.set("eventPage", String(next));
+    if (kind === "round") {
+      if (eventPage > 1) params.set("eventPage", String(eventPage));
+      if (next > 1) params.set("roundPage", String(next));
+    }
+    return `/strokes-gained?${params}${kind === "round" ? "#sg-round-history" : ""}`;
+  };
+  return (
+    <nav
+      aria-label={kind === "event" ? "SG analysis pages" : "SG round groups"}
+      className="flex flex-wrap items-center gap-3"
+    >
+      <p className="text-sm text-muted-foreground">
+        {kind === "event" ? "Analysis page" : "Round group"} {page} of {pages}
+      </p>
+      {page > 1 && (
+        <Button asChild variant="outline" className="min-h-11">
+          <Link href={href(page - 1)} scroll={false}>
+            Previous {kind === "event" ? "analysis page" : "round group"}
+          </Link>
+        </Button>
+      )}
+      {page < pages && (
+        <Button asChild variant="outline" className="min-h-11">
+          <Link href={href(page + 1)} scroll={false}>
+            Next {kind === "event" ? "analysis page" : "round group"}
+          </Link>
+        </Button>
+      )}
+    </nav>
+  );
 }

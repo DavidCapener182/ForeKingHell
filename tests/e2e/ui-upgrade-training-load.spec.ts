@@ -16,10 +16,11 @@ test("Training Load keeps range and complete entry workflow on both surfaces", a
     "Designated fixture only",
   );
   test.skip(info.project.name !== "chromium");
-  test.setTimeout(180000);
+  test.setTimeout(300000);
   page.setDefaultNavigationTimeout(60000);
   page.setDefaultTimeout(15000);
-  page.on("pageerror", (error) => console.log("PAGE ERROR", error.message));
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
   const db = postgres(value!, { max: 1 });
   let owner: string | undefined;
   try {
@@ -124,6 +125,54 @@ test("Training Load keeps range and complete entry workflow on both surfaces", a
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         ).toBeTruthy();
         await page.evaluate(() => window.scrollTo(0, 0));
+        await page.getByRole("button", { name: /History range:/ }).click();
+        await page.getByLabel("Start date", { exact: true }).fill("2026-08-01");
+        await page.getByLabel("End date", { exact: true }).fill("2026-07-01");
+        await page.getByRole("button", { name: "Apply range", exact: true }).click();
+        await expect(page.getByRole("dialog").getByRole("alert")).toContainText("before");
+        await page.getByLabel("End date", { exact: true }).fill("2026-08-01");
+        await page
+          .getByRole("combobox", { name: "Activity scope", exact: true })
+          .selectOption("manual");
+        await page.getByRole("button", { name: "Apply range", exact: true }).click();
+        await expect(page).toHaveURL(/from=2026-08-01/, { timeout: 30000 });
+        await expect(
+          page.getByRole("status").filter({ hasText: "1 logged entries" }),
+        ).toContainText("90 logged load");
+        await expect(page.getByRole("button", { name: "Search", exact: true })).toBeEnabled();
+        await page.locator("[data-training-ledger-disclosure] > summary").click();
+        const customLedger = page.locator('[data-workbench-scope="training-load-sessions"]');
+        const customDownload = page.waitForEvent("download");
+        await customLedger.getByRole("button", { name: /^Export/ }).click();
+        const customCsv = await readFile((await (await customDownload).path())!, "utf8");
+        expect(customCsv).toContain("Older synthetic practice");
+        expect(customCsv).not.toContain("Recent synthetic practice");
+        await page.screenshot({
+          path: info.outputPath(`P32-custom-${surface}-${width}.png`),
+          fullPage: true,
+          animations: "disabled",
+        });
+        await page.reload();
+        await expect(
+          page.getByRole("status").filter({ hasText: "1 logged entries" }),
+        ).toContainText("90 logged load");
+        await page.getByLabel("Search logged entries").fill("absent scope");
+        await page.getByRole("button", { name: "Search", exact: true }).click();
+        await expect(
+          page.getByRole("status").filter({ hasText: "No logged entries match" }),
+        ).toBeVisible();
+        await page.goBack();
+        await expect(
+          page.getByRole("status").filter({ hasText: "1 logged entries" }),
+        ).toContainText("90 logged load");
+        await page.getByRole("button", { name: "Clear all", exact: true }).click();
+        await expect(page).not.toHaveURL(/from=/);
+        // Equivalent parsed scopes must finish navigation instead of stranding Search.
+        await page.getByLabel("Search logged entries").fill("   ");
+        await page.getByRole("button", { name: "Search", exact: true }).click();
+        await expect(page).toHaveURL(/q=/, { timeout: 30000 });
+        await expect(page.getByRole("button", { name: "Search", exact: true })).toBeEnabled();
+        await expect(page.getByText("Updating training scope…", { exact: true })).toHaveCount(0);
         await page.screenshot({
           path: info.outputPath(`P32-${surface}-${width}.png`),
           fullPage: true,
@@ -132,6 +181,9 @@ test("Training Load keeps range and complete entry workflow on both surfaces", a
       }
     }
     await page.locator("#log-training > summary").click();
+    await page
+      .getByRole("textbox", { name: "Title", exact: true })
+      .fill("Preserved training draft");
     await page.getByRole("textbox", { name: "Duration minutes", exact: true }).fill("-1");
     await page.getByRole("button", { name: "Save training load", exact: true }).click();
     await expect(page.locator("form").getByRole("alert")).toBeVisible();
@@ -150,6 +202,7 @@ test("Training Load keeps range and complete entry workflow on both surfaces", a
     expect(
       await db`select id,carry_yd,total_yd,side_carry_yd,review_status from fkh_shots where user_id=${owner!} order by id`,
     ).toEqual(original);
+    expect(errors).toEqual([]);
   } finally {
     if (owner) await db`delete from fkh_users where id=${owner}`;
     await db.end();

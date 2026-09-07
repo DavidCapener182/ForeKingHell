@@ -12,11 +12,17 @@ import type { SpeedDevelopmentSummary } from "@/lib/speed-development";
 import { getSpeedCoachCardData } from "@/lib/speed-training-data";
 import { getTrainingOverTimeData, normalizeTrainingRange } from "@/lib/training/trainingData";
 
+import { parseTrainingScope } from "@/lib/training/ranges";
+
 export const dynamic = "force-dynamic";
 
 type TrainingOverTimePageProps = {
   searchParams?: Promise<{
     range?: string | string[];
+    from?: string | string[];
+    to?: string | string[];
+    activity?: string | string[];
+    q?: string | string[];
     saved?: string | string[];
   }>;
 };
@@ -24,9 +30,13 @@ type TrainingOverTimePageProps = {
 export default async function TrainingOverTimePage({ searchParams }: TrainingOverTimePageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const rangeKey = normalizeTrainingRange(resolvedSearchParams.range);
+  const parsedScope = parseTrainingScope(
+    resolvedSearchParams,
+    new Date().toISOString().slice(0, 10),
+  );
   const userId = await requireCurrentUserId();
   const [data, speedCoachData] = await Promise.all([
-    getTrainingOverTimeData(userId, "1y"),
+    getTrainingOverTimeData(userId, "1y", parsedScope.scope.from || undefined),
     getSpeedCoachCardData(userId),
   ]);
   const sourceLinks = await getMobileTrainingSourceLinks(userId, data.sessions);
@@ -55,7 +65,13 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
 
         <SpeedReadinessPanel development={speedCoachData.development} />
 
-        <TrainingLoadRangeView data={data} initialRangeKey={rangeKey} sourceLinks={sourceLinks} />
+        <TrainingLoadRangeView
+          initialScope={parsedScope.scope}
+          scopeError={parsedScope.error}
+          data={data}
+          initialRangeKey={rangeKey}
+          sourceLinks={sourceLinks}
+        />
       </DesktopWorkbenchLayout>
     </PageShell>
   );

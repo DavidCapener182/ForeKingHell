@@ -1,3 +1,4 @@
+import { TodayHydrationBoundary } from "@/components/app/today-hydration-boundary";
 import { TodayWorkspaceTabs } from "@/app/today/today-workspace-tabs";
 import { TodayDataQuality } from "@/app/today/today-data-quality";
 import { getTodayShotDetailRows } from "@/lib/today-shot-detail-data";
@@ -46,6 +47,7 @@ export default async function TodayCompanionPage() {
             </AlertDescription>
           </Alert>
         </MobileAppShell>
+        <TodayHydrationBoundary />
       </PageShell>
     );
   }
@@ -394,6 +396,7 @@ export default async function TodayCompanionPage() {
           </Alert>
         ) : null}
       </MobileAppShell>
+      <TodayHydrationBoundary />
     </PageShell>
   );
 }

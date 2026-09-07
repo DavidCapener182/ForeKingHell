@@ -1,3 +1,4 @@
+import { TodayHydrationBoundary } from "@/components/app/today-hydration-boundary";
 import { PageShell } from "@/components/app/page-shell";
 import { HighlightCarousel } from "@/components/app/highlight-carousel";
 import { TodayHighlightCard } from "@/components/app/today-highlight-card";
@@ -261,6 +262,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
           title="Latest Practice Review"
           description="Database connection required before the latest practice review can load."
         />
+        <TodayHydrationBoundary />
       </PageShell>
     );
   }
@@ -365,6 +367,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         handicapSource={handicapProfile?.sourceLabel ?? "No eligible score differentials"}
         recentActivity={recentActivity}
       />
+      <TodayHydrationBoundary />
     </PageShell>
   );
 }

@@ -6,11 +6,14 @@ vi.mock("@/lib/admin-system-checks", () => ({ recordAdminSystemSnapshot: mocks.r
 import { runAdminSystemSnapshotAction } from "./admin-system-check-actions";
 beforeEach(() => vi.resetAllMocks());
 it("announces only a recorded check and its actual timestamp", async () => {
-  mocks.record.mockResolvedValue({ checkedAt: "2026-09-07T12:00:00.000Z" });
+  mocks.record.mockResolvedValue({
+    checkedAt: "2026-09-07T12:00:00.000Z",
+    liveChecks: [{ state: "passed" }, { state: "failed" }, { state: "unavailable" }],
+  });
   const result = await runAdminSystemSnapshotAction();
   expect(result.ok).toBe(true);
   expect(result.checkedAt).toBe("2026-09-07T12:00:00.000Z");
-  expect(result.message).toContain("Live provider health was not checked");
+  expect(result.message).toContain("1 read-only probes passed, 1 failed, 1 unavailable");
   expect(mocks.refresh).toHaveBeenCalledExactlyOnceWith("/admin/system-checks");
 });
 it("does not publish success or refresh when the record cannot be saved", async () => {
@@ -21,4 +24,12 @@ it("does not publish success or refresh when the record cannot be saved", async 
   expect(result.message).toBeUndefined();
   expect(result.error).not.toContain("private storage detail");
   expect(mocks.refresh).not.toHaveBeenCalled();
+});
+
+it("retains the saved outcome if revalidation fails", async () => {
+  mocks.record.mockResolvedValue({ checkedAt: "2026-09-07T12:00:00.000Z", liveChecks: [] });
+  mocks.refresh.mockImplementation(() => {
+    throw new Error("refresh failed");
+  });
+  expect((await runAdminSystemSnapshotAction()).ok).toBe(true);
 });
