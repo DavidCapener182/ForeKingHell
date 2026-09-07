@@ -26,7 +26,7 @@ for (const [component, alias, tab, label] of [
     const users: string[] = [];
     const email = `handoff-${randomUUID()}@example.invalid`;
     const errors: string[] = [];
-    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("pageerror", (e) => { errors.push(e.message); console.log("REDIRECT PAGE ERROR", e.stack); });
     try {
       users.push(
         ...(

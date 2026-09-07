@@ -1,3 +1,5 @@
+import { getDirectionAttention } from "@/lib/direction-attention";
+import { DirectionAttention } from "@/app/analyse/workspace/direction-attention";
 import Link from "next/link";
 import { AlertTriangle, ArrowLeft, BookOpen, Camera, Wrench } from "lucide-react";
 import { and, count, desc, eq, isNotNull, sql } from "drizzle-orm";
@@ -60,7 +62,10 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
 
 export default async function AnalysisWorkspacePage() {
-  const data = await getAnalysisWorkspaceData();
+  const [data, directionAttention] = await Promise.all([
+    getAnalysisWorkspaceData(),
+    getDirectionAttention(),
+  ]);
 
   return (
     <PageShell>
@@ -79,6 +84,11 @@ export default async function AnalysisWorkspacePage() {
             label: "Open data issues",
             value: data.issues.length,
             detail: `${data.highPriorityIssues} high priority`,
+          },
+          {
+            label: "Direction review sessions",
+            value: directionAttention.totalSessions,
+            detail: "Alignment and direction flags",
           },
         ]}
         actions={
@@ -103,7 +113,16 @@ export default async function AnalysisWorkspacePage() {
         label="Analysis workspace sections"
         defaultTabKey="quality"
         tabs={[
-          { id: "quality", label: "Quality", content: <DataQualityInbox issues={data.issues} /> },
+          {
+            id: "quality",
+            label: "Quality",
+            content: (
+              <>
+                <DataQualityInbox issues={data.issues} />
+                <DirectionAttention data={directionAttention} />
+              </>
+            ),
+          },
           {
             id: "notes",
             label: "Notes",

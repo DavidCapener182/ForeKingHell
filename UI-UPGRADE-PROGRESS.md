@@ -526,3 +526,11 @@ Exact next steps: release only weekly-change-review-data.ts, activation-journey.
 ### Integration: three deferred evidence defects fixed
 
 Coordinated backend changes filter positive finite carry before personal-best ranking; require positive finite measurement and same-owner active mapped club for activation evidence; suppress differential for incomplete/duplicate-hole shared rounds. Real disposable-DB tests: three-backend-fixes.log 4 passed/2.15s; expanded shared-round-completion-final.log 2 passed/9.67s. Agent full TypeScript and scoped lint pass. Root reviewed source and regression assertions. Existing activation review-label change remains separately owned and is not included in this backend commit. Overall acceptance remains partial; native/browser matrices still open.
+
+### Connected direction review UI — in verification
+
+Analysis workspace now fetches getDirectionAttention with its existing data, shows a separate exact direction-session metric and searchable session links. Labels newest100 scope explicitly, preserves valid carry/speed and existing unrelated issue groups. Six-size component fixture passes3.6s; 390 capture inspected. Types/lint clean. Actual-page owned/foreign fixture passed51.5s in direction-workspace-browser.log, all12surface/viewports, exact session href, no foreign flags, correction→empty, no overflow/errors; 390 companion screenshot inspected. New source helper was provided by coordinated agent and must be staged with UI integration.
+
+P98 instrumented rerun passed3.3m all12contexts; earlier Performance.measure failure was not reproduced, so still intermittent/unresolved. Root should not suppress errors or repeat unchanged reruns. Current unit snapshot: 2479pass/288failed/146pending (112failedfiles); other agent is reconciling obsolete source assertions and test harnesses while retaining functional checks.
+
+Current: integrated test-failure reconciliation (other agent) and remaining acceptance gaps. Direction helper/UI integration is now reviewed and verified within the scope above; no full acceptance claimed. Maintain current branch, tracker and pending dirty redesign changes.
