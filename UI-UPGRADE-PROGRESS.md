@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-358 desktop / 358 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P67 Clubhouse feed**, next P68 Recaps and safety. 134 UI entries remain. Continue the UI pass with acceptance gaps retained.
+362 desktop / 362 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P68 Recaps and safety**, next P69 Your profile. 130 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P67 Clubhouse feed**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P68 Recaps and safety**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -364,3 +364,7 @@ P65-C01–C04 implemented;352partial/0full. Full directorytabs/counts/history, w
 
 ## P66 UI checkpoint
 P66-C01–C06 implemented;358partial/0full. Full retainedclubhousepanels, exactgroupidentity/privacy, completeweeklylist/no0tie fakeleader, datedloadedposts, searchabletable/mobilefullmemberdetails, postreview/draftretention, distinctnamedleave/deleteconfirmedstates. group-detail-browser-final.log PASS3.1m all12: draftacrosstabs, exactpost, Cancelinert, memberleave andownerdeletecascade, zeropageerrors. Realreadiness andfixedsocialfeedlauncheroverlap fixed; initialexpectedno-roundlabelcorrected toexistingDTO;12.1sdevPOSTexceeded10sassertionthen60snavbudgetpassed. Types/lintpass,390inspected. Backend16testsPASS1.41s including publicvisitorrole null ratherthanlastmember role, fullmembercounts unchanged. P65commit80aaa57d. NextP67 fourpromptsread, prepared/tmp/fkh-apply-feed-ui.py plus feedfilter/actionform/itemcontrols/statuscomposer/browserfixture. Rootownstheseandcopy-share-image-button; otheragentnowownsfeedactionsstatedispatcher+tests. No runtimefreeze afterexplicitrelease. Preserveotherchanges, updateeachrow/Excel/scopedcommits; no merge/deploy.
+
+
+## P67 UI checkpoint
+P67-C01–C04 implemented;362partial/0full. Fullsharedfeed/all6actualscopes, loadedsearch/datefilter/count/Clearall/CSV, fullsourcefacts/evidencedates, namedconfirmeditemmenus, reaction/commentpendingerrors, explicitpostreview/nativeaudience/photoexistingprocessing. feed-browser-select.log PASS4.1m all12layouts/filters/date/search/order/originalsourcepreservation;1440/390bothsurfaces4actualprivatepost/kudos/comment/deleteCancel/deletecases; zeropageerrors. Types/lintpass,CSV2testsPASS229ms,actions14PASS202ms. Coldcompilegoto60stimeout first; serveralivefavicon200, retrycompiled withoutrestart. Selectpopupbehindoverlayactualdefectfixednativefield. Hostmemorypressure observed, no unrelatedprocesses touched. Companion390captureinspected. P66commitc1c93629. NextP68 fourpromptsread; draft/tmp/fkh-social-task-form.tsx,saved-recaps,safety-records. OtheragentownsconfirmedSocialIntelligenceFormAction/evidenceFeedByIdownerlookup/tests. Do notactualAIgenerateonserver withunknownAIcredentials; useisolatedmockforgeneration and actualseededrecap/reportfixture. NextP69. PreserveCSV/workbook and scopedupgradecommits; no merge/deploy.

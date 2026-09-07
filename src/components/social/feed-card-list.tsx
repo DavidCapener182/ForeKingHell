@@ -19,14 +19,7 @@ import {
   Users,
 } from "lucide-react";
 
-import {
-  addFeedCommentAction,
-  addFeedCommentReactionAction,
-  addFeedReactionAction,
-  deleteFeedCommentAction,
-  removeFeedCommentReactionAction,
-  removeFeedReactionAction,
-} from "@/app/feed/actions";
+import { FeedActionForm } from "@/components/social/feed-action-form";
 import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { CopyShareImageButton } from "@/components/social/copy-share-image-button";
@@ -49,12 +42,14 @@ import { cn } from "@/lib/utils";
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: "Europe/London",
 });
 
 const dayFormatter = new Intl.DateTimeFormat("en-GB", {
   weekday: "long",
   day: "numeric",
   month: "long",
+  year: "numeric",
   timeZone: "Europe/London",
 });
 
@@ -166,7 +161,7 @@ function FeedActivityRow({ item, compact = false }: { item: FeedItemView; compac
               <Link
                 href={`/profile/${item.profile.username}`}
                 prefetch={false}
-                className="truncate text-sm font-semibold hover:underline"
+                className="break-words text-sm font-semibold hover:underline"
               >
                 {item.profile.displayName}
               </Link>
@@ -175,7 +170,9 @@ function FeedActivityRow({ item, compact = false }: { item: FeedItemView; compac
                 ·
               </span>
               <span className="text-xs text-muted-foreground">
-                {dateFormatter.format(item.createdAt)}
+                <time dateTime={item.createdAt.toISOString()}>
+                  {dateFormatter.format(item.createdAt)} UK
+                </time>
               </span>
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -188,6 +185,7 @@ function FeedActivityRow({ item, compact = false }: { item: FeedItemView; compac
           </div>
           <FeedItemControls
             feedItemId={item.id}
+            headline={item.headline}
             visibility={item.visibility}
             isOwnItem={item.profile.relationship === "self"}
             compact
@@ -195,6 +193,7 @@ function FeedActivityRow({ item, compact = false }: { item: FeedItemView; compac
         </header>
 
         <ActivityTemplate item={item} kind={kind} compact={compact} />
+        <p className="mt-2 text-xs text-muted-foreground">Evidence: {item.verificationLabel}</p>
         <ActivityEngagement item={item} compact={compact} />
       </div>
     </article>
@@ -341,7 +340,9 @@ function ActivityTemplate({
       )}
     >
       <div className="min-w-0">
-        <p className="text-sm font-medium leading-6">{item.context ?? item.headline}</p>
+        <p className="whitespace-pre-wrap break-words text-sm font-medium leading-6">
+          {item.context ?? item.headline}
+        </p>
         {item.context && item.headline !== "Shared a golf update" ? (
           <p className="mt-1 text-xs text-muted-foreground">{item.headline}</p>
         ) : null}
@@ -383,7 +384,7 @@ function ActivityFact({
       <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>
-      <p className={cn("mt-1 truncate text-sm font-medium", strong && "text-xl tabular-nums")}>
+      <p className={cn("mt-1 break-words text-sm font-medium", strong && "text-xl tabular-nums")}>
         {value}
       </p>
     </div>
@@ -391,26 +392,14 @@ function ActivityFact({
 }
 
 function DispersionThumbnail({ href }: { href: string | null }) {
-  const content = (
-    <div
-      className="relative h-16 overflow-hidden rounded-lg border bg-card"
-      aria-label="Dispersion thumbnail"
-    >
-      <span className="absolute left-1/2 top-1/2 size-12 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-primary/35" />
-      <span className="absolute left-1/2 top-1/2 size-7 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/35" />
-      <span className="absolute left-1/2 top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary" />
-      <span className="absolute bottom-1.5 left-2 text-[0.62rem] font-medium text-muted-foreground">
-        Open session plot
-      </span>
-    </div>
-  );
-
   return href ? (
-    <Link href={href} prefetch={false} className="focus-aaa rounded-lg">
-      {content}
-    </Link>
+    <Button asChild variant="outline" className="min-h-11">
+      <Link href={href} prefetch={false}>
+        Open source session
+      </Link>
+    </Button>
   ) : (
-    content
+    <p className="text-sm text-muted-foreground">Source session unavailable</p>
   );
 }
 
@@ -418,13 +407,13 @@ function ActivityEngagement({ item, compact }: { item: FeedItemView; compact: bo
   return (
     <div className="mt-3 border-t pt-2">
       <div className="flex flex-wrap items-center gap-1">
-        <form action={item.viewerReacted ? removeFeedReactionAction : addFeedReactionAction}>
+        <FeedActionForm operation={item.viewerReacted ? "unreact" : "reaction"}>
           <input type="hidden" name="feedItemId" value={item.id} />
           <Button
             type="submit"
             variant={item.viewerReacted ? "secondary" : "ghost"}
             size="xs"
-            className="t-like [--like-color:currentColor]"
+            className="t-like min-h-11 [--like-color:currentColor]"
             data-liked={item.viewerReacted ? "true" : "false"}
             aria-pressed={item.viewerReacted}
           >
@@ -433,13 +422,13 @@ function ActivityEngagement({ item, compact }: { item: FeedItemView; compact: bo
             </span>
             Kudos{item.reactionCount > 0 ? ` ${item.reactionCount}` : ""}
           </Button>
-        </form>
+        </FeedActionForm>
 
         {!compact ? (
           <Collapsible className="contents">
             <CollapsibleTrigger
               type="button"
-              className={buttonVariants({ variant: "ghost", size: "xs" })}
+              className={cn(buttonVariants({ variant: "ghost", size: "xs" }), "min-h-11")}
             >
               <MessageCircle className="size-3.5" />
               Comments{item.commentCount > 0 ? ` ${item.commentCount}` : ""}
@@ -455,17 +444,23 @@ function ActivityEngagement({ item, compact }: { item: FeedItemView; compact: bo
                   ))}
                 </div>
               ) : null}
-              <form action={addFeedCommentAction}>
+              <FeedActionForm operation="comment" reset>
                 <input type="hidden" name="feedItemId" value={item.id} />
-                <InputGroup className="bg-card">
-                  <InputGroupInput name="body" placeholder="Write a comment" />
+                <InputGroup className="min-h-11 bg-card">
+                  <InputGroupInput
+                    name="body"
+                    aria-label="Comment text"
+                    placeholder="Write a comment"
+                    required
+                    maxLength={1200}
+                  />
                   <InputGroupAddon align="inline-end">
-                    <InputGroupButton type="submit" variant="outline">
+                    <InputGroupButton type="submit" variant="outline" className="min-h-11">
                       Post
                     </InputGroupButton>
                   </InputGroupAddon>
                 </InputGroup>
-              </form>
+              </FeedActionForm>
             </CollapsibleContent>
           </Collapsible>
         ) : (
@@ -475,7 +470,7 @@ function ActivityEngagement({ item, compact }: { item: FeedItemView; compact: bo
           </span>
         )}
 
-        <Button asChild variant="ghost" size="xs">
+        <Button asChild variant="ghost" size="xs" className="min-h-11">
           <Link href={`/api/share-cards/feed/${item.id}`} target="_blank" prefetch={false}>
             <Share2 className="size-3.5" />
             Share
@@ -484,7 +479,7 @@ function ActivityEngagement({ item, compact }: { item: FeedItemView; compact: bo
         {!compact ? <CopyShareImageButton href={`/api/share-cards/feed/${item.id}`} /> : null}
         {item.viewerCanManage ? <ReelExportButton feedItemId={item.id} /> : null}
         {item.proofUrl && !isStatusImage(item.proofUrl) ? (
-          <Button asChild variant="ghost" size="xs" className="ml-auto">
+          <Button asChild variant="ghost" size="xs" className="ml-auto min-h-11">
             <Link href={item.proofUrl} prefetch={false}>
               Open activity
             </Link>
@@ -508,17 +503,16 @@ function CommentRow({ comment }: { comment: FeedItemView["comments"][number] }) 
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="font-semibold">{comment.profile.displayName}</span>
-          <form
-            action={
-              comment.viewerLiked ? removeFeedCommentReactionAction : addFeedCommentReactionAction
-            }
-          >
+          <time className="text-muted-foreground" dateTime={comment.createdAt.toISOString()}>
+            {dayFormatter.format(comment.createdAt)} · {dateFormatter.format(comment.createdAt)} UK
+          </time>
+          <FeedActionForm operation={comment.viewerLiked ? "comment-unreact" : "comment-reaction"}>
             <input type="hidden" name="commentId" value={comment.id} />
             <Button
               type="submit"
               variant={comment.viewerLiked ? "secondary" : "ghost"}
               size="xs"
-              className="t-like [--like-color:currentColor]"
+              className="t-like min-h-11 [--like-color:currentColor]"
               data-liked={comment.viewerLiked ? "true" : "false"}
               aria-pressed={comment.viewerLiked}
             >
@@ -527,9 +521,9 @@ function CommentRow({ comment }: { comment: FeedItemView["comments"][number] }) 
               </span>
               {comment.likeCount > 0 ? comment.likeCount : "Like"}
             </Button>
-          </form>
+          </FeedActionForm>
           {comment.viewerCanDelete ? (
-            <form action={deleteFeedCommentAction}>
+            <FeedActionForm operation="delete-comment">
               <input type="hidden" name="commentId" value={comment.id} />
               <ConfirmSubmitButton
                 confirmMessage="Delete this feed comment? This removes it from the conversation."
@@ -538,7 +532,7 @@ function CommentRow({ comment }: { comment: FeedItemView["comments"][number] }) 
               >
                 Delete
               </ConfirmSubmitButton>
-            </form>
+            </FeedActionForm>
           ) : null}
         </div>
         <p className="mt-0.5 leading-5 text-muted-foreground">{comment.body}</p>

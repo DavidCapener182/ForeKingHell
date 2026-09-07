@@ -9,7 +9,11 @@ export function CopyShareImageButton({ href }: { href: string }) {
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const resetTimerRef = useRef<number | null>(null);
   const copied = copyStatus === "copied";
-  const label = copied ? "Copied" : copyStatus === "failed" ? "Copy failed" : "Copy share image";
+  const label = copied
+    ? "Copied"
+    : copyStatus === "failed"
+      ? "Copy failed"
+      : "Copy share image link";
 
   useEffect(
     () => () => {
@@ -41,7 +45,13 @@ export function CopyShareImageButton({ href }: { href: string }) {
 
   return (
     <>
-      <Button type="button" variant="ghost" size="sm" onClick={() => void copyShareImage()}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="min-h-11"
+        onClick={() => void copyShareImage()}
+      >
         <span className="t-icon-swap" data-state={copied ? "b" : "a"} aria-hidden="true">
           <span className="t-icon" data-icon="a">
             <Copy className="size-4" />
