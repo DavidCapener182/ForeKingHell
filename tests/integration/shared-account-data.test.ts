@@ -36,3 +36,18 @@ it.skipIf(!enabled)("shared overview isolates owner data and requires current me
  actor.id=owners[0];expect((await getSharedAccountData(owners[0]))?.accessRole).toBe('owner');
  }finally{if(owners.length){await db`delete from fkh_shots where user_id in ${db(owners)}`;await db`delete from fkh_users where id in ${db(owners)}`;}await db.end();}
 });
+
+it.skipIf(!enabled)("shared longest drive requires a positive finite total without discarding other shot evidence", async () => {
+ const db=postgres(url!,{max:1}); let owner:string|undefined;
+ try {
+  const [user]=await db`insert into fkh_users(name) values('Synthetic finite shared driver') returning id`; owner=user.id; actor.id=user.id;
+  const [club]=await db`insert into fkh_clubs(user_id,type,normalized_club_key) values(${user.id},'driver','finite-shared-driver') returning id`;
+  const [session]=await db`insert into fkh_sessions(user_id,source,type,date,raw_csv_text) values(${user.id},'manual','range',now(),'Synthetic') returning id`;
+  for(const total of ['NaN','Infinity','-Infinity','0','-1']) {
+   await db`insert into fkh_shots(user_id,session_id,club_id,shot_at,club_type,total_yd,source_raw_json) values(${user.id},${session.id},${club.id},now(),'driver',${total}::double precision,'{}')`;
+  }
+  expect(await getSharedAccountData(user.id)).toMatchObject({longestDriveYd:null,shotCount:5});
+  await db`insert into fkh_shots(user_id,session_id,club_id,shot_at,club_type,total_yd,source_raw_json) values(${user.id},${session.id},${club.id},now(),'driver',215.4,'{}')`;
+  expect(await getSharedAccountData(user.id)).toMatchObject({longestDriveYd:215.4,shotCount:6});
+ } finally {if(owner){await db`delete from fkh_shots where user_id=${owner}`;await db`delete from fkh_users where id=${owner}`;}await db.end();}
+});

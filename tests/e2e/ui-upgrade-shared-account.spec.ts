@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { readFile } from "node:fs/promises";
 test("Shared account ledger retains all permitted session fields on both surfaces and fails safely after revocation", async ({
   page,
   context,
@@ -73,6 +74,9 @@ test("Shared account ledger retains all permitted session fields on both surface
             exact: true,
           }),
         ).toBeVisible({ timeout: 60000 });
+        await expect(
+          page.locator('#shared-session-ledger [data-workbench-controls-hydrated="true"]'),
+        ).toBeVisible();
         await page.addStyleTag({ content: "nextjs-portal{pointer-events:none!important;}" });
         await expect(page.getByText("PRIVATE FOREIGN COURSE", { exact: true })).toHaveCount(0);
         await page
@@ -104,10 +108,49 @@ test("Shared account ledger retains all permitted session fields on both surface
         await expect(
           page.getByRole("button", { name: "Date: oldest first", exact: true }),
         ).toBeVisible();
+        const ledger = page.locator("#shared-session-ledger");
+        const search = ledger.getByRole("textbox", { name: "Search recent sessions", exact: true });
+        await search.fill("synthetic complete");
+        await ledger.getByRole("button", { name: /^Columns/ }).click();
+        const column = page.getByRole("menuitemcheckbox", { name: "Type", exact: true });
+        if ((await column.getAttribute("aria-checked")) === "true") await column.click();
+        await page.keyboard.press("Escape");
+        const downloaded = page.waitForEvent("download");
+        await ledger.getByRole("button", { name: "Export", exact: true }).click();
+        const csv = await readFile((await (await downloaded).path())!, "utf8");
+        expect(csv).toContain("synthetic-source.csv");
+        expect(csv).not.toContain("partial-source.csv");
+        expect(csv).not.toContain("foreign.csv");
+        expect(csv.split("\n")[0]).not.toContain("Type");
+        const title = `Shared ${surface} ${width}`;
+        await ledger.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.getByRole("menuitem", { name: "Save current view", exact: true }).click();
+        await page.getByRole("textbox", { name: "View name", exact: true }).fill(title);
+        await page.getByRole("button", { name: "Save view", exact: true }).click();
+        await expect(page.getByRole("dialog")).toBeHidden();
+        await search.fill("no matching sessions");
+        await ledger.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.getByRole("menuitem", { name: new RegExp(`^${title}`) }).click();
+        await expect(search).toHaveValue("synthetic complete");
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await expect(ledger.locator('[data-workbench-controls-hydrated="true"]')).toBeVisible();
+        await expect(search).toHaveValue("synthetic complete");
+        await expect(ledger.locator('[data-column="type"]').first()).toBeHidden();
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         ).toBe(true);
-        await page.evaluate(() => window.scrollTo(0, 0));
+        await ledger.scrollIntoViewIfNeeded();
+        if (surface === "companion") {
+          const title = page.locator(
+            'header[aria-label="Mobile app bar"] [data-mobile-route-label]',
+          );
+          const bounds = await title.boundingBox();
+          if (bounds) {
+            expect(bounds.x).toBeGreaterThanOrEqual(50);
+            expect(bounds.x + bounds.width).toBeLessThanOrEqual(width - 50);
+          }
+        }
+
         await page.screenshot({ path: info.outputPath(`P74-${surface}-${width}.png`) });
       }
     await db`delete from fkh_account_memberships where owner_user_id=${users[0]}`;

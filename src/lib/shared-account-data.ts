@@ -47,7 +47,7 @@ export async function getSharedAccountData(targetUserId: string) {
       .sort((a, b) => b.count - a.count)[0] ?? null;
   const longestDriveYd =
     eligibleShotRows
-      .filter((shot) => shot.clubType === "driver" && typeof shot.totalYd === "number")
+      .filter((shot) => shot.clubType === "driver" && typeof shot.totalYd === "number" && Number.isFinite(shot.totalYd) && shot.totalYd > 0)
       .reduce<number | null>((best, shot) => Math.max(best ?? 0, shot.totalYd ?? 0), null) ?? null;
 
   return {
@@ -88,4 +88,3 @@ function scorecardTotal(scorecard: NonNullable<(typeof sessions.$inferSelect)["s
   if (!scorecard.length || scorecard.some((hole) => typeof hole.score !== "number" || !Number.isFinite(hole.score))) return null;
   return scorecard.reduce((total, hole) => total + (hole.score ?? 0), 0);
 }
-

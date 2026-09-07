@@ -1,5 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { DesktopWorkbenchControls } from "@/components/app/desktop-workbench-controls";
+import { useClientReady } from "@/hooks/use-client-ready";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
@@ -18,8 +21,19 @@ const date = (value: string) =>
     new Date(value),
   );
 export function SharedSessionLedger({ rows, total }: { rows: Row[]; total: number }) {
-  const [query, setQuery] = useState("");
-  const [ascending, setAscending] = useState(false);
+  const ready = useClientReady();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const query = params.get("sharedQuery") ?? "";
+  const ascending = params.get("sharedOrder") === "asc";
+  const update = (key: string, value: string) => {
+    const url = new URL(window.location.href);
+    if (value) url.searchParams.set(key, value);
+    else url.searchParams.delete(key);
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  };
+  const setQuery = (value: string) => update("sharedQuery", value);
+  const setAscending = (value: boolean) => update("sharedOrder", value ? "asc" : "");
   const [selected, setSelected] = useState<Row | null>(null);
   const shown = useMemo(
     () =>
@@ -36,6 +50,7 @@ export function SharedSessionLedger({ rows, total }: { rows: Row[]; total: numbe
   return (
     <section
       id="shared-session-ledger"
+      data-workbench-scope="shared-sessions"
       className="grid min-w-0 gap-3"
       aria-labelledby="shared-sessions-heading"
     >
@@ -47,16 +62,33 @@ export function SharedSessionLedger({ rows, total }: { rows: Row[]; total: numbe
         list. A score appears only when every recorded scorecard hole has a score; a partial card is
         not a complete round.
       </p>
+      <DesktopWorkbenchControls
+        viewKey={`shared-sessions:${pathname}`}
+        scope="shared-sessions"
+        currentViewLabel="Shared recent sessions"
+        resultLabel={`${shown.length} matching loaded sessions`}
+        exportFileName="shared-sessions-filtered.csv"
+        columns={[
+          { id: "session", label: "Session", locked: true },
+          { id: "date", label: "Date" },
+          { id: "type", label: "Type" },
+          { id: "source", label: "Source file" },
+          { id: "score", label: "Scorecard total", locked: true },
+          { id: "holes", label: "Recorded holes", locked: true },
+          { id: "details", label: "Details", locked: true },
+        ]}
+      />
       <div className="flex flex-wrap items-end gap-3">
         <label className="grid min-w-0 flex-1 gap-1 text-sm">
           Search recent sessions
           <Input
+            disabled={!ready}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Course, file, type or date"
           />
         </label>
-        <Button variant="outline" onClick={() => setAscending(!ascending)}>
+        <Button disabled={!ready} variant="outline" onClick={() => setAscending(!ascending)}>
           Date: {ascending ? "oldest first" : "newest first"}
         </Button>
       </div>
@@ -69,7 +101,12 @@ export function SharedSessionLedger({ rows, total }: { rows: Row[]; total: numbe
         </p>
       ) : (
         <>
-          <div className={styles.desktop}>
+          <div
+            className={styles.desktop}
+            role="region"
+            aria-label="Shared session table"
+            tabIndex={0}
+          >
             <table
               className="w-full text-left text-sm"
               data-workbench-export-table="shared-sessions"
@@ -80,33 +117,52 @@ export function SharedSessionLedger({ rows, total }: { rows: Row[]; total: numbe
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Session</th>
-                  <th scope="col" aria-sort={ascending ? "ascending" : "descending"}>
+                  <th scope="col" data-column="session">
+                    Session
+                  </th>
+                  <th
+                    scope="col"
+                    data-column="date"
+                    aria-sort={ascending ? "ascending" : "descending"}
+                  >
                     Date
                   </th>
-                  <th scope="col">Type</th>
-                  <th scope="col" className="text-right">
+                  <th scope="col" data-column="type">
+                    Type
+                  </th>
+                  <th scope="col" data-column="source">
+                    Source file
+                  </th>
+                  <th scope="col" data-column="score" className="text-right">
                     Scorecard total
                   </th>
-                  <th scope="col" className="text-right">
+                  <th scope="col" data-column="holes" className="text-right">
                     Recorded holes
                   </th>
-                  <th scope="col">Details</th>
+                  <th scope="col" data-column="details">
+                    Details
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {shown.map((row) => (
                   <tr key={row.id}>
-                    <th scope="row">{label(row)}</th>
-                    <td>{date(row.date)}</td>
-                    <td>{row.type}</td>
-                    <td className="text-right tabular-nums">
+                    <th scope="row" data-column="session">
+                      {label(row)}
+                    </th>
+                    <td data-column="date">{date(row.date)}</td>
+                    <td data-column="type">{row.type}</td>
+                    <td data-column="source">{row.fileName ?? "Not recorded"}</td>
+                    <td data-column="score" className="text-right tabular-nums">
                       {row.totalScore ?? "Incomplete / unavailable"}
                     </td>
-                    <td className="text-right tabular-nums">{row.holesPlayed}</td>
-                    <td>
+                    <td data-column="holes" className="text-right tabular-nums">
+                      {row.holesPlayed}
+                    </td>
+                    <td data-column="details">
                       <Button
                         variant="outline"
+                        disabled={!ready}
                         onClick={() => setSelected(row)}
                         aria-label={`Details for ${label(row)} on ${date(row.date)}`}
                       >
@@ -124,12 +180,17 @@ export function SharedSessionLedger({ rows, total }: { rows: Row[]; total: numbe
                 key={row.id}
                 variant="outline"
                 className="h-auto min-h-14 justify-between whitespace-normal p-4 text-left"
+                disabled={!ready}
                 onClick={() => setSelected(row)}
               >
                 <span className="min-w-0 break-words">
                   <span className="block">{label(row)}</span>
                   <span className="block text-xs font-normal">
-                    {date(row.date)} · {row.type}
+                    <span data-column="date">{date(row.date)} </span>
+                    <span data-column="type">{row.type}</span>
+                  </span>
+                  <span data-column="source" className="block text-xs font-normal">
+                    {row.fileName ?? "Source file not recorded"}
                   </span>
                 </span>
                 <span className="ml-3 shrink-0">Details</span>

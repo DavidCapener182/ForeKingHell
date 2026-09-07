@@ -42,6 +42,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { BRAND_NAME } from "@/lib/brand";
 import { useMobileNavigationViewport } from "./use-mobile-navigation-viewport";
 import { isSettingsSection, settingsSections } from "@/lib/settings-sections";
 import { isMobileCompanionHeroRoute, mobileBackNavigation } from "@/components/app/route-metadata";
@@ -281,7 +282,7 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin = false }
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Sign out of ForeKingHell?</AlertDialogTitle>
+                      <AlertDialogTitle>Sign out of {BRAND_NAME}?</AlertDialogTitle>
                       <AlertDialogDescription>
                         Private offline golf data will be cleared from this device before the
                         session ends.
@@ -308,7 +309,7 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin = false }
           <div className="relative grid min-w-0 place-items-center">
             <p
               className={cn(
-                "ios-inline-title min-w-0 truncate text-center transition-opacity duration-150 motion-reduce:transition-none",
+                "ios-inline-title w-full max-w-full min-w-0 truncate text-center transition-opacity duration-150 motion-reduce:transition-none",
                 compactTitleVisible ? "opacity-100" : "pointer-events-none opacity-0",
               )}
               data-mobile-route-label
@@ -442,5 +443,5 @@ function mobileGroupDescription(label: string) {
   if (label === "Golf") return "Bag numbers, goals and import";
   if (label === "Compete") return "Current challenges, tournaments and achievements";
   if (label === "Account") return "Profile, notifications and preferences";
-  return "More ForeKingHell tools";
+  return `More ${BRAND_NAME} tools`;
 }
