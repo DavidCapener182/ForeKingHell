@@ -89,3 +89,6 @@ Uses the previously checked official Page headers / Section headers, Progress st
 
 ## P62 Leaderboards
 Reuses checked official Filter bars, Drawers, Date pickers, Tables and Paginations references. Paid advanced examples remain unavailable; explicit local alternatives are labelled native period/scope/source/evidence/sort controls, focus-managed ResponsiveDetailPanel, existing semantic sortable desktop tables and complete mobile detail cards. Period controls expose supported all-time/current-month scopes, not invented arbitrary date ranges. Current installed adapter exports reused; no paid vendor source claimed.
+
+## P63 Achievements
+Official Calendars https://www.untitledui.com/react/components/calendars and Activity feeds https://www.untitledui.com/react/components/activity-feeds checked7September2026. Calendar month/week/day and activity-feed examples use Get the code; no advanced entitlement or local vendor Calendar/ActivityFeed export established. Explicit accessible alternatives: existing date buttons + real unlock event list, native phone date picker, local semantic evidence ledger, and focus-managed detail/share panels. Metrics, section headers, badges, filters and modals reuse previously checked references. Existing artwork and achievement calculations retained; no paid vendor installation claimed.
