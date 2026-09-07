@@ -57,6 +57,9 @@ export function QuickBagClient({
   const triggerRef = useRef<HTMLElement | null>(null);
   const [mode, setMode] = useState<QuickBagMode>("target");
   const [targetDistance, setTargetDistance] = useState("");
+  // Ranking and preset selection use exact canonical yards. Display rounding must
+  // never feed back into the golf calculation when the player changes units.
+  const [targetYd, setTargetYd] = useState<number | null>(null);
   const [clubSearch, setClubSearch] = useState("");
   const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -64,7 +67,7 @@ export function QuickBagClient({
   const [displayUnits, setDisplayUnits] = useState(preferredUnits);
   const factor = yardsToDisplay(1, displayUnits);
   const unit = distanceUnitLabel(displayUnits);
-  const target = Number(targetDistance) / factor;
+  const target = targetYd ?? Number.NaN;
   const hasTarget = Number.isFinite(target) && target >= 40 && target <= 350;
   const rankedClubs = useMemo(
     () => (hasTarget ? rankQuickBagForTarget(clubs, target, "finish") : clubs),
@@ -145,6 +148,8 @@ export function QuickBagClient({
                 onChange={(event) => {
                   const nextValue = event.target.value;
                   setTargetDistance(nextValue);
+                  const parsed = Number(nextValue);
+                  setTargetYd(nextValue.trim() && Number.isFinite(parsed) ? parsed / factor : null);
                 }}
                 type="number"
                 min={40 * factor}
@@ -175,7 +180,10 @@ export function QuickBagClient({
                     type="button"
                     variant={selected ? "default" : "outline"}
                     aria-pressed={selected}
-                    onClick={() => setTargetDistance(String(Number((value * factor).toFixed(1))))}
+                    onClick={() => {
+                      setTargetYd(value);
+                      setTargetDistance(String(Number((value * factor).toFixed(1))));
+                    }}
                     className="min-h-11 rounded-full px-1 text-sm font-bold active:scale-[0.97] motion-reduce:transform-none"
                   >
                     {Number((value * factor).toFixed(1))}
@@ -191,6 +199,7 @@ export function QuickBagClient({
             className="min-h-11 w-fit"
             onClick={() => {
               setTargetDistance("");
+              setTargetYd(null);
               setClubSearch("");
               setSelectedClubId(null);
               setDetailOpen(false);

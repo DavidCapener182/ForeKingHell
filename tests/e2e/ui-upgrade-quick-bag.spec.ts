@@ -29,6 +29,42 @@ test("Quick Bag keeps the target, units and complete evidence", async ({ page },
       await expect(page.locator("[data-quick-bag-answer] h2")).toHaveText(before!);
       await page.getByRole("button", { name: "Use yards", exact: true }).click();
       await expect(target).toHaveValue("150");
+      // Metric preset labels are rounded for display; their ranking target stays
+      // the exact yard preset rather than converting the rounded label back.
+      await page.getByRole("button", { name: "Use metres", exact: true }).click();
+      const presets = page.locator('[aria-label="Quick target distances"]');
+      await presets.getByRole("button", { name: "91.4", exact: true }).click();
+      await expect(presets.getByRole("button", { name: "91.4", exact: true })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      const presetAnswer = await page.locator("[data-quick-bag-answer] h2").textContent();
+      for (let switchCount = 0; switchCount < 3; switchCount++) {
+        await page.getByRole("button", { name: "Use yards", exact: true }).click();
+        await expect(target).toHaveValue("100");
+        await expect(presets.getByRole("button", { name: "100", exact: true })).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+        await expect(page.locator("[data-quick-bag-answer] h2")).toHaveText(presetAnswer!);
+        await page.getByRole("button", { name: "Use metres", exact: true }).click();
+        await expect(target).toHaveValue("91.44");
+        await expect(presets.getByRole("button", { name: "91.4", exact: true })).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+      }
+      await target.fill("100");
+      await page.getByRole("button", { name: "Use yards", exact: true }).click();
+      await expect(target).toHaveValue("109.361");
+      await expect(presets.getByRole("button", { name: "100", exact: true })).toHaveAttribute(
+        "aria-pressed",
+        "false",
+      );
+      await page.getByRole("button", { name: "Use metres", exact: true }).click();
+      await expect(target).toHaveValue("100");
+      await page.getByRole("button", { name: "Use yards", exact: true }).click();
+      await target.fill("150");
       const trigger = page.getByRole("button", { name: "See club evidence", exact: true });
       await trigger.click();
       const sheet = page.getByRole("dialog");

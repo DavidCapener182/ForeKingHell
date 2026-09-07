@@ -6,6 +6,10 @@ const source = readFileSync(
   join(process.cwd(), "src/components/training/TrainingLoadRangeView.tsx"),
   "utf8",
 );
+const ledgerSource = readFileSync(
+  join(process.cwd(), "src/components/training/TrainingSessionLedger.tsx"),
+  "utf8",
+);
 const chartSource = readFileSync(
   join(process.cwd(), "src/components/training/TrainingOverTimeChart.tsx"),
   "utf8",
@@ -50,12 +54,12 @@ describe("TrainingLoadRangeView readiness experience", () => {
     expect(source.match(/<TrainingOverTimeChart/g)).toHaveLength(1);
     expect(source.match(/data-training-recommendation/g)).toHaveLength(1);
 
-    expect(source).toContain("DesktopTableWorkbenchControls");
-    expect(source).toContain('data-workbench-export-table="training-load-sessions"');
-    expect(source).toContain('mainTableLabel="Training load session table"');
-    expect(source).toContain("trainingSessionSuggestedViews");
-    expect(source).toContain("exportFileName={`forekinghell-training-load-${rangeKey}.csv`}");
-    expect(source).toContain("No training load sessions are logged in this range.");
+    expect(ledgerSource).toContain("DesktopTableWorkbenchControls");
+    expect(ledgerSource).toContain('data-workbench-export-table="training-load-sessions"');
+    expect(ledgerSource).toContain('mainTableLabel="Training load session table"');
+    expect(ledgerSource).toContain("trainingSessionSuggestedViews");
+    expect(ledgerSource).toContain("exportFileName={`forekinghell-training-load-${rangeKey}.csv`}");
+    expect(ledgerSource).toContain("No training load sessions are logged in this range.");
 
     expect(source).not.toContain("<ChartAccessibleFallback");
     expect(chartSource.match(/<ChartAccessibleFallback/g)).toHaveLength(1);
@@ -88,9 +92,13 @@ describe("TrainingLoadRangeView readiness experience", () => {
     expect(source).toContain('decision: "Technical only"');
     expect(source).toContain('decision: "Recovery"');
     expect(source).toContain("className={styles.desktopRanges}");
-    expect(source).toMatch(
-      /<details>\s*<summary[^>]*>\s*Full training ledger and export\s*<\/summary>\s*<TrainingSessionLedger sessions={displayData.sessions} rangeKey={activeRangeKey} \/>\s*<\/details>/,
-    );
+    expect(source).toContain("data-training-ledger-disclosure");
+    expect(source).toContain("if (event.currentTarget.open) setLedgerVisited(true)");
+    expect(source).toContain("{ledgerVisited ? (");
+    expect(source).toContain('import("./TrainingSessionLedger")');
+    expect(source).not.toContain('from "@/components/app/desktop-workbench"');
+    expect(source).toContain("{desktop ? (");
+    expect(source).toContain('window.matchMedia("(min-width: 1024px)")');
     expect(source).toContain("<LabEvidenceList");
     expect(source).toContain("rows={displayData.sessions.map");
     expect(source).not.toContain("RecoveryWorkbench");
@@ -114,7 +122,7 @@ describe("TrainingLoadRangeView readiness experience", () => {
   });
 
   it("restores the coach interpretation and response metrics as flat semantic shadcn surfaces", () => {
-    const efficiency = componentBody("EfficiencyCards", "TrainingSessionLedger");
+    const efficiency = componentBody("EfficiencyCards", "RangeControls");
 
     expect(source.match(/<TrainingStatusCard/g)).toHaveLength(1);
     expect(source.match(/<EfficiencyCards/g)).toHaveLength(1);

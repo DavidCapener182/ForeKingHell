@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { readFile } from "node:fs/promises";
 test("Training Load keeps range and complete entry workflow on both surfaces", async ({
   page,
   context,
@@ -48,12 +49,18 @@ test("Training Load keeps range and complete entry workflow on both surfaces", a
     ]);
     await db`insert into fkh_golf_training_sessions(user_id,source_type,title,session_date,rpe,session_load,duration_minutes) values(${owner!},'manual','Recent synthetic practice','2026-09-06',5,100,30),(${owner!},'manual','Older synthetic practice','2026-08-01',5,90,25)`;
     for (const surface of ["workbench", "companion"]) {
+      await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(
         `/surface/${surface}?next=${encodeURIComponent("/stats/training-over-time")}`,
       );
       await expect(page.getByRole("button", { name: /History range:/ })).toBeVisible({
         timeout: 60000,
       });
+      await expect(page.locator('[data-workbench-scope="training-load-sessions"]')).toHaveCount(0);
+      const desktopLegend = page.locator(
+        '[data-training-status-chart-card] [aria-label="Training chart legend"]',
+      );
+      await expect(desktopLegend).toHaveCount(0);
       for (const [width, height] of [
         [1440, 900],
         [1280, 800],
@@ -89,6 +96,29 @@ test("Training Load keeps range and complete entry workflow on both surfaces", a
           await expect(page.locator("[data-mobile-training-chart]:visible")).toBeVisible();
           await page.getByRole("slider", { name: "Training day", exact: true }).press("Home");
         }
+        await expect(desktopLegend).toHaveCount(width >= 1024 ? 1 : 0);
+        const disclosure = page.locator("[data-training-ledger-disclosure] > summary");
+        await disclosure.click();
+        const ledger = page.locator('[data-workbench-scope="training-load-sessions"]');
+        await expect(ledger.getByRole("heading", { name: "Training load ledger" })).toBeVisible();
+        await ledger.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitemcheckbox", { name: "Notes", exact: true }).click();
+        await page.keyboard.press("Escape");
+        await disclosure.click();
+        await expect(ledger).toBeHidden();
+        await disclosure.click();
+        await expect(ledger.locator('[data-column="notes"]').filter({ visible: true })).toHaveCount(
+          0,
+        );
+        const downloadReady = page.waitForEvent("download");
+        await ledger.getByRole("button", { name: /^Export/ }).click();
+        const csv = await readFile((await (await downloadReady).path())!, "utf8");
+        expect(csv).toContain("Recent synthetic practice");
+        expect(csv).not.toContain("Older synthetic practice");
+        await ledger.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitem", { name: "Show all columns", exact: true }).click();
+        await page.keyboard.press("Escape");
+        await disclosure.click();
         await expect(page.locator("h1:visible")).toHaveCount(1);
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),

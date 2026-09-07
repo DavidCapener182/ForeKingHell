@@ -838,3 +838,11 @@ Next/current: restore saved views, columns and filtered CSV controls to SharedSe
 - Current: rerun full authentication smoke against disposable CI-like auth configuration. Next: publish only the selector correction plus this checkpoint after it passes; verify all6requiredjobs at the newSHA; merge PR59 with expectedhead and verify remote main. No bundle issue remains.
 
 - Authentication selector correction verified:7passed,1existing live-fixture skip,0failed in10.4s (`/tmp/fkh-auth-release-browser.log`). Includes both distinct email fields, protected redirect, wrong/short password errors, dropped-request retry and native JavaScript-disabled POST. Isolated3130 used synthetic auth pointed at127.0.0.1:9; server/buildfiles cleaned,3000and3116untouched. Publishing correction now; required CI rerun remains necessary.
+
+## Final inline review fixes
+
+- All6required checks passed at46921d5f, but GitHub required unresolved review threads to be addressed before squash merge. Merge commits are disabled; use squash with expectedhead. Partners/moderation threads were already addressed by verified retained controls and have been resolved.
+- Quick Bag now separates canonical yard targets from rounded unit display. Presets stay selected and ranking does not drift across unit switches. BrowserPASS14.9s all12surface/size variants;6sourcechecks/lintpassed. `/tmp/fkh-quick-bag-canonical-browser.log`.
+- Training now loads its closed full ledger on first use and retains column state, while the CSS-hidden desktop chart is no longer mounted on phones. Visible phone history/evidence/forms remain fully available as the user requires. BrowserPASS38.3s all12variants including7dayfilteredCSV/retainedNotes/formsave/sourcepreservation;11sourcechecks/lintpassed. `/tmp/fkh-training-lazy-browser-fixed.log`.
+- Final fullunits2788passed,0failed,149pending; `/tmp/fkh-review-fixes-unit-final.json`. Finalnormalbuild/types andall24budgetsPASS: `/tmp/fkh-review-final-build.log`, `/tmp/fkh-review-final-budgets.log`. Formatting/diffchecks passed.
+- Current: publish finalreviewfixes, resolve remaining2threads afterpublication, verify all6requiredjobs atnewSHA, squashmergePR59 normally and verifyorigin/main. No agent has further runtime edits in flight. All492componentacceptance statuses remain partial; maintainexistingtrackedblockers.
