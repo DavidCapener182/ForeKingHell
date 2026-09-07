@@ -42,6 +42,8 @@ describe.skipIf(!enabled)("course-specific record proof", () => {
       expect(pending!.recordCards.find((c) => c.record.id === board.id)?.viewerBest).toBeNull();
       await db`update fkh_course_record_results set verification_status='verified' where record_id=${board.id}`;
       expect((await getCourseRecordCourseData(courseId!))!.championCard?.record.id).toBe(board.id);
+      await db`update fkh_course_record_results set status='verified' where record_id=${board.id}`;
+      expect((await getCourseRecordCourseData(courseId!))!.championCard?.record.id).toBe(board.id);
       await db`update fkh_course_record_results set rank=2 where record_id=${board.id}`;
       expect((await getCourseRecordCourseData(courseId!))!.championCard).toBeNull();
       await db`update fkh_course_record_results set rank=1,status='inactive' where record_id=${board.id}`;

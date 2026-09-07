@@ -18,6 +18,9 @@ export async function consumeScorecardProofToken(
   token: string | null | undefined,
   userId: string,
   scope: ScorecardProofScope,
+  db:
+    | ReturnType<typeof getDb>
+    | Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0] = getDb(),
 ) {
   const payload = verifyScorecardProofToken(token, userId, scope);
 
@@ -25,7 +28,7 @@ export async function consumeScorecardProofToken(
     return null;
   }
 
-  const [consumption] = await getDb()
+  const [consumption] = await db
     .insert(scorecardProofConsumptions)
     .values({
       proofId: payload.proofId,

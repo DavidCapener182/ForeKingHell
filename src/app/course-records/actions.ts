@@ -13,6 +13,7 @@ export async function submitCourseRecordAttemptAction(formData: FormData) {
 
   const attemptId = await submitCourseRecordAttempt({
     recordId,
+    requestId: formString(formData, "requestId"),
     sessionId: formString(formData, "sessionId"),
     screenshotPath: formString(formData, "screenshotPath"),
     extractedScorecardTotal: formNumber(formData, "extractedScorecardTotal"),

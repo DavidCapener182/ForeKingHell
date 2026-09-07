@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-259 desktop / 259 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P57 Course record detail and proof submission**. 304 of492 UI implemented with partial verification; zero fully accepted. Continue full UI task with verification gaps retained.
+309 desktop / 309 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P58 Challenges**, next P59 Challenge detail. 183 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P34 Handicap estimates**, next P35/P36 existing implementation reconciliation. P10 advanced analytics nine entries and P11 Longest three entries now UI implemented with partial verification. Continue the UI pass; acceptance is still outstanding.
+Current: **P58 Challenges**, next **P59 Challenge detail**. P57-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -309,3 +309,10 @@ P55-C01–C03 UI implemented partial,301total. Full responsive record browser, c
 
 
 P56-C01–C03 UI implemented partial,304total. Full category records on both surfaces, proper scope/period/tee/proof/own/friend facts, UnderlineURLtabs and exactcategorysubmissiontarget. course-record-scopes-browser.log PASS33.3s12views/reloadBackForward/searchsort/DBtargetIDs. Types/lint pass;390capture inspected. Backend activeboard+verifiedleader filtering/nofallback with12targetedtests. Noactualsubmission/P57/positiveverifiedleaderUI/AT/sharednavigation acceptance. P55commit5638c415. Next P57 prompts read17193–17465, source page readthroughleaderboard and uploader full. Fix currently stale locked selected-round score, draft/error review form, scorecard uploader clears old token on filechange and supports5MB JPEG/PNG/WebP preview/retry/remove, truthful receipt only owned attempt. Backend agent read-only auditing until P56 commit completes; then coordinate backend fixes. No browser active.
+
+
+## P57 record detail — 7 September
+P57-C01–C05 implemented/partial. Full mobile task, selected saved-round score, proof preview/retry/removal/file bounds, review step, retained failure draft, stable retry UUID and owned numeric receipt. Actual12-viewport matrix PASS26.0s (record-detail-browser-final.log); isolated proof fixture PASS17.8s. Types/scoped lint pass,390 capture inspected. Backend110tests pass; transaction contains proof/attempt/evidence/ranking/feed writes and retry returns same ID.
+Regression identified in P55/P56: active-only result filter hid recalculated status=verified leaders; corrected to allow active/verified with verified verificationStatus. Initial browser total expected12 but found13: explicitly asserted one pre-existing autoSyncedFromVerifiedRound manual scorecard plus12 unique manual requestIds; source scorecard unchanged. Screenshot caught missing numeric receipt and manual-only Bronze displayed as verified leader; now numeric and Ranked labels with explicit proof explanation.
+Changed detail page, record-attempt-form, shared scorecard-proof-uploader, exact detail route capability, course-records/actions+service, transactional proof/feed helpers and fixtures. Outstanding: real OCR/signed positive proof and tournament consumer browser, fully prefiltered eligibility, >20 receipt history, AT/zoom/theme/sharedfixedbars. Existing manual-only auto-ranking rule preserved and disclosed.
+Resume: preserve upgrade branch and completed rows. Read P58 prompt only; implement six Challenges components desktop/mobile, then P59. Coordinate backend owner before shared changes. Keep CSV authoritative and regenerate workbook. No main merge/deploy.

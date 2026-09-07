@@ -1,27 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Medal, Send, ShieldCheck, Trophy } from "lucide-react";
 
-import { submitCourseRecordAttemptAction } from "@/app/course-records/actions";
+import { RecordAttemptForm } from "@/app/course-records/[recordId]/record-attempt-form";
+import boardStyles from "@/app/course-records/course-record-board.module.css";
 import {
-  DesktopWorkbenchLayout,
   DesktopTableWorkbenchControls,
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import { DataTableFrame, PageShell, StatusPill } from "@/components/premium";
-import { ScorecardProofUploader } from "@/components/scorecard-proof-uploader";
+import { DataTableFrame, PageHeader, PageShell } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -32,7 +21,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getCourseRecordDetailData, verificationTierLabel } from "@/lib/course-records";
-import { RecordSubmitButton } from "@/app/course-records/[recordId]/record-submit-button";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +29,12 @@ type CourseRecordDetailProps = {
   searchParams?: Promise<{ attempt?: string; sessionId?: string }>;
 };
 
-const dateFormatter = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" });
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
 type RecordProfile = { username: string; displayName: string } | null | undefined;
 
 const recordDetailLeaderboardColumns: DesktopWorkbenchColumn[] = [
@@ -88,207 +81,204 @@ export default async function CourseRecordDetailPage({
     data.recentSessions.find((session) => session.id === query?.sessionId) ??
     data.recentSessions[0] ??
     null;
+  const savedAttempt = data.attempts.find(
+    (row) => row.attempt.id === query?.attempt && row.attempt.userId === data.viewerUserId,
+  )?.attempt;
+  const period = [
+    data.record.period.replaceAll("_", " "),
+    data.record.periodStart ? `start ${dateFormatter.format(data.record.periodStart)}` : null,
+    data.record.periodEnd ? `end ${dateFormatter.format(data.record.periodEnd)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <PageShell>
-      <DesktopWorkbenchLayout scope="course-record-detail">
-        <div className="flex items-center justify-between gap-3">
-          <Button asChild variant="ghost" className="px-0">
-            <Link href={`/courses/${data.course.id}/records`} prefetch={false}>
-              <ArrowLeft className="size-4" />
-              {data.course.name}
-            </Link>
+      <PageHeader
+        title={data.category.name}
+        description={`${data.course.name} · ${data.record.scope} · ${period}`}
+        actions={
+          <Button asChild variant="outline">
+            <Link href={`/courses/${data.course.id}/records`}>Course boards</Link>
           </Button>
-          <Badge variant="outline">{data.teeSet?.name ?? "Any tee"}</Badge>
+        }
+      />
+      <p className="text-sm text-muted-foreground">
+        {data.category.description} · {data.teeSet?.name ?? "Any eligible tee"} · Required proof:{" "}
+        {data.record.verificationRequired}
+      </p>
+      {savedAttempt ? (
+        <div role="status" className="rounded-xl border bg-card p-4">
+          <h2 className="font-semibold">
+            Attempt saved · {savedAttempt.verificationStatus.replaceAll("_", " ")}
+          </h2>
+          <p className="mt-1 text-sm">
+            {savedAttempt.metricValue} {savedAttempt.metricLabel} · Proof:{" "}
+            {savedAttempt.proofStatus.replaceAll("_", " ")}.{" "}
+            {savedAttempt.verificationStatus === "verified"
+              ? "This attempt passed verification."
+              : "This is not yet a verified record. Review the status below and supply any required evidence."}
+          </p>
+          <a
+            className="mt-2 inline-flex min-h-11 items-center font-medium text-primary"
+            href="#recent-attempts"
+          >
+            View attempt status
+          </a>
         </div>
-
-        <header className="premium-hero p-4 sm:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <StatusPill tone="amber">Honours board</StatusPill>
-              <h1 className="mt-3 text-3xl font-semibold tracking-normal text-balance">
-                {data.category.name}
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {data.course.name} · {data.record.period === "month" ? "This month" : "All-time"} ·{" "}
-                {data.record.scope}
+      ) : query?.attempt ? (
+        <p role="status" className="rounded-xl border p-3 text-sm">
+          That submitted attempt is not available in your recent results for this board. No new save
+          is confirmed by this link.
+        </p>
+      ) : null}
+      <p className="text-sm text-muted-foreground">
+        Rankings follow the current record rules. Bronze review can include a manually saved
+        scorecard; it does not mean its image proof has been verified. Check each attempt’s proof
+        status below.
+      </p>
+      <section className="grid gap-3 sm:grid-cols-2" aria-label="Verified record summary">
+        <div className="rounded-xl border bg-card p-4">
+          <h2 className="font-semibold">Ranked leader</h2>
+          {leader?.profile ? (
+            <>
+              <ProfileNameLink
+                profile={leader.profile}
+                className="mt-2 block break-words font-semibold text-primary"
+              />
+              <p className="mt-2 text-2xl font-semibold">{leader.result.scoreLabel}</p>
+              <p className="text-sm">
+                {verificationTierLabel(leader.result.verificationTier)} ·{" "}
+                {dateFormatter.format(leader.result.calculatedAt)}
               </p>
-            </div>
-            <Button asChild>
-              <a href="#submit-record">
-                <Send className="size-4" />
-                Submit attempt
-              </a>
+            </>
+          ) : (
+            <p className="mt-2 text-sm">No verified leader yet.</p>
+          )}
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <h2 className="font-semibold">Your ranked best</h2>
+          {data.viewerResult ? (
+            <>
+              <p className="mt-2 text-2xl font-semibold">{data.viewerResult.result.scoreLabel}</p>
+              <p>
+                Rank {data.viewerResult.result.rank ?? "not ranked"} ·{" "}
+                {verificationTierLabel(data.viewerResult.result.verificationTier)}
+              </p>
+            </>
+          ) : (
+            <p className="mt-2 text-sm">No verified result for this category yet.</p>
+          )}
+        </div>
+      </section>
+      <section id="submit-record" className="grid gap-2 rounded-xl border bg-card p-4">
+        <h2 className="text-lg font-semibold">Submit attempt</h2>
+        <p className="text-sm text-muted-foreground">
+          The saved round determines this category’s result. Review its score and evidence before
+          submitting. Showing up to 20 recent saved sessions with a calculable result; the server
+          checks eligibility.
+        </p>
+        {selectedRound ? (
+          <RecordAttemptForm
+            recordId={data.record.id}
+            selectedSessionId={selectedRound.id}
+            rounds={data.recentSessions.map((round) => ({
+              id: round.id,
+              metricLabel: round.metricLabel,
+              dateLabel: dateFormatter.format(round.date),
+              holeCount: round.holeCount,
+              teeSetName: round.teeSetName,
+              proofLabel: round.proofLabel,
+            }))}
+          />
+        ) : (
+          <div>
+            <p className="text-sm">No saved round has a calculable result for this category yet.</p>
+            <Button asChild variant="outline" className="mt-3 min-h-11">
+              <Link
+                href={`/rounds/new?courseId=${data.course.id}${data.teeSet ? `&teeSetId=${data.teeSet.id}` : ""}`}
+              >
+                Log a round for this course
+              </Link>
             </Button>
           </div>
-          {query?.attempt ? <AttemptSubmittedNotice className="mt-4" /> : null}
-        </header>
-
-        <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <Card className="gap-0 py-0">
-            <CardContent className="p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="flex items-center gap-2 text-sm font-semibold">
-                    <Medal className="size-4 text-[var(--status-warning-foreground)]" />
-                    Current champion
-                  </p>
-                  {leader?.profile ? (
-                    <>
-                      <ProfileNameLink
-                        profile={leader.profile}
-                        className="mt-3 block text-3xl font-semibold tracking-normal hover:underline"
-                      />
-                      <p className="mt-1 text-4xl font-semibold tracking-normal">
-                        {leader.result.scoreLabel}
-                      </p>
-                      <p className="mt-2 text-sm text-muted-foreground">
-                        {verificationTierLabel(leader.result.verificationTier)} ·{" "}
-                        {dateFormatter.format(leader.result.calculatedAt)}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                      No champion yet. A verified submission takes the board.
-                    </p>
-                  )}
-                </div>
-                <Badge
-                  variant={
-                    leader?.result.verificationStatus === "verified" ? "secondary" : "outline"
-                  }
-                >
-                  {leader ? leader.result.verificationStatus.replace(/_/g, " ") : "open"}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="gap-0 py-0">
-            <CardHeader className="p-4 pb-0">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <ShieldCheck className="size-4 text-primary" />
-                Your best
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              {data.viewerResult ? (
-                <div className="mt-3 rounded-lg bg-muted/45 p-4">
-                  <Badge variant="secondary">Rank #{data.viewerResult.result.rank}</Badge>
-                  <p className="mt-3 text-2xl font-semibold tracking-normal">
-                    {data.viewerResult.result.scoreLabel}
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {verificationTierLabel(data.viewerResult.result.verificationTier)}
-                  </p>
-                </div>
-              ) : (
-                <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                  Submit a verified Rapsodo round and scorecard screenshot to appear here.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
-          <Card id="submit-record" className="gap-0 py-0">
-            <CardHeader className="p-4 pb-0">
-              <CardTitle className="text-sm font-semibold">Submit attempt</CardTitle>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                The score is derived from a saved round. You cannot type a champion score here;
-                screenshot OCR must match the round total before it reaches the verified board.
+        )}
+      </section>
+      <section id="verified-board-table" className="grid gap-3">
+        <h2 className="text-lg font-semibold">Ranked board</h2>
+        <div className={boardStyles.desktop}>
+          <CourseRecordLeaderboardTable recordId={data.record.id} rows={data.results} />
+        </div>
+        <div className={boardStyles.mobile}>
+          {data.results.map(({ result, profile }) => (
+            <article key={result.id} className="rounded-xl border bg-card p-4">
+              <h3 className="font-semibold">
+                #{result.rank ?? "not ranked"} ·{" "}
+                <ProfileNameLink profile={profile} className="text-primary" />
+              </h3>
+              <p className="mt-2 text-xl font-semibold">{result.scoreLabel}</p>
+              <details>
+                <summary className="min-h-11 cursor-pointer content-center font-medium">
+                  Proof, status and date
+                </summary>
+                <p>{verificationTierLabel(result.verificationTier)}</p>
+                <p>{result.verificationStatus.replaceAll("_", " ")}</p>
+                <p>{dateFormatter.format(result.calculatedAt)}</p>
+                {profileHref(profile) ? (
+                  <Link
+                    className="inline-flex min-h-11 items-center text-primary"
+                    href={profileHref(profile)!}
+                  >
+                    Open profile
+                  </Link>
+                ) : null}
+              </details>
+            </article>
+          ))}
+          {!data.results.length ? (
+            <p className="rounded-xl border border-dashed p-4 text-sm">No accepted entries yet.</p>
+          ) : null}
+        </div>
+      </section>
+      <details id="recent-attempts" className="rounded-xl border bg-card p-4" open={!!savedAttempt}>
+        <summary className="min-h-11 cursor-pointer content-center text-lg font-semibold">
+          Recent attempts · {data.attempts.length}
+        </summary>
+        <p className="py-2 text-sm text-muted-foreground">
+          Latest 20 attempts available to this board. Pending and rejected evidence is separate from
+          the verified leaderboard.
+        </p>
+        <div className="grid gap-3">
+          {data.attempts.map(({ attempt, profile }) => (
+            <article
+              id={`attempt-${attempt.id}`}
+              key={attempt.id}
+              className="rounded-xl border p-3"
+            >
+              <p className="font-semibold">
+                <ProfileNameLink profile={profile} className="text-primary" /> ·{" "}
+                {attempt.metricValue} {attempt.metricLabel}
               </p>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              {selectedRound ? (
-                <form
-                  action={submitCourseRecordAttemptAction}
-                  className="mt-4 grid gap-3"
-                  data-course-record-attempt-form
+              <p className="text-sm">
+                {attempt.verificationStatus.replaceAll("_", " ")} ·{" "}
+                {dateFormatter.format(attempt.submittedAt)}
+              </p>
+              <p className="text-sm">
+                Proof: {attempt.proofStatus.replaceAll("_", " ")} · Source:{" "}
+                {attempt.sourceKind.replaceAll("_", " ")}
+              </p>
+              {attempt.userId === data.viewerUserId && attempt.sessionId ? (
+                <Link
+                  className="inline-flex min-h-11 items-center font-medium text-primary"
+                  href={`/rounds/${attempt.sessionId}`}
                 >
-                  <input type="hidden" name="recordId" value={data.record.id} />
-                  <label className="grid gap-1 text-sm font-medium">
-                    Saved round
-                    <Select name="sessionId" defaultValue={selectedRound.id} required>
-                      <SelectTrigger className="h-10 w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {data.recentSessions.map((session) => (
-                          <SelectItem key={session.id} value={session.id}>
-                            {session.metricLabel} · {dateFormatter.format(session.date)} ·{" "}
-                            {session.proofLabel}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </label>
-                  <div className="rounded-lg border border-border bg-muted/45 p-3 text-sm">
-                    <p className="font-semibold">Locked from selected round</p>
-                    <p className="mt-1 text-2xl font-semibold tracking-normal">
-                      {selectedRound.metricLabel}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {selectedRound.holeCount} holes · {selectedRound.teeSetName ?? "Any tee"} ·{" "}
-                      {selectedRound.proofLabel}
-                    </p>
-                  </div>
-                  <ScorecardProofUploader
-                    proofScopeType="course_record"
-                    proofScopeId={data.record.id}
-                    screenshotFieldName="screenshotPath"
-                    extractedTotalFieldName="extractedScorecardTotal"
-                  />
-                  <RecordSubmitButton />
-                </form>
-              ) : (
-                <p className="mt-4 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                  No saved rounds for this record yet. Import or log a round for this course first.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <section className="grid gap-4">
-            <Card id="verified-board-table" className="gap-0 py-0">
-              <CardHeader className="p-4 pb-0">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <Trophy className="size-4 text-[var(--status-warning-foreground)]" />
-                  Verified board
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <CourseRecordLeaderboardTable recordId={data.record.id} rows={data.results} />
-              </CardContent>
-            </Card>
-
-            <Card className="gap-0 py-0">
-              <Collapsible id="recent-attempts">
-                <CollapsibleTrigger className="w-full cursor-pointer px-4 py-3 text-left text-sm font-semibold">
-                  Recent attempts
-                </CollapsibleTrigger>
-                <CollapsibleContent className="grid gap-2 border-t p-4">
-                  {data.attempts.map(({ attempt, profile }) => (
-                    <div key={attempt.id} className="rounded-lg bg-muted/45 px-3 py-2 text-sm">
-                      <p className="font-medium">
-                        <ProfileNameLink profile={profile} className="hover:underline" /> ·{" "}
-                        {attempt.metricValue}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {attempt.verificationStatus.replace(/_/g, " ")} ·{" "}
-                        {dateFormatter.format(attempt.submittedAt)}
-                      </p>
-                    </div>
-                  ))}
-                  {data.attempts.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No attempts yet.</p>
-                  ) : null}
-                </CollapsibleContent>
-              </Collapsible>
-            </Card>
-          </section>
-        </section>
-      </DesktopWorkbenchLayout>
+                  Review saved round
+                </Link>
+              ) : null}
+            </article>
+          ))}
+          {!data.attempts.length ? <p>No attempts yet.</p> : null}
+        </div>
+      </details>
     </PageShell>
   );
 }
@@ -399,20 +389,6 @@ function CourseRecordLeaderboardTable({
           </TableBody>
         </Table>
       </DataTableFrame>
-    </div>
-  );
-}
-
-function AttemptSubmittedNotice({ className = "" }: { className?: string }) {
-  return (
-    <div
-      role="status"
-      className={`rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-4 py-3 text-sm text-[var(--status-success-foreground)] ${className}`}
-    >
-      <p className="font-semibold">Attempt submitted</p>
-      <p className="mt-1 text-xs text-[var(--status-success-foreground)]/85">
-        Your score was received and the board status has refreshed.
-      </p>
     </div>
   );
 }

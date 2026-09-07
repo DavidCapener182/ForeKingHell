@@ -1085,23 +1085,26 @@ export async function createStatusUpdate(input: {
   revalidatePath(`/profile/${profile.username}`);
 }
 
-export async function createFeedItem(input: {
-  userId: string;
-  itemType: string;
-  headline: string;
-  metricLabel?: string | null;
-  metricValue?: string | null;
-  context?: string | null;
-  proofUrl?: string | null;
-  sourceType?: string | null;
-  sourceId?: string | null;
-  visibility?: SocialVisibility | null;
-  verificationLabel?: string | null;
-  dedupeKey?: string | null;
-  metadataJson?: Record<string, unknown>;
-}) {
-  const profile = await ensureSocialProfileForUser(input.userId);
-  const visibility = input.visibility ?? parseVisibility(profile.feedVisibilityDefault, "private");
+export async function createFeedItem(
+  input: {
+    userId: string;
+    itemType: string;
+    headline: string;
+    metricLabel?: string | null;
+    metricValue?: string | null;
+    context?: string | null;
+    proofUrl?: string | null;
+    sourceType?: string | null;
+    sourceId?: string | null;
+    visibility?: SocialVisibility | null;
+    verificationLabel?: string | null;
+    dedupeKey?: string | null;
+    metadataJson?: Record<string, unknown>;
+  },
+  db: Pick<ReturnType<typeof getDb>, "insert"> = getDb(),
+) {
+  const profile = input.visibility == null ? await ensureSocialProfileForUser(input.userId) : null;
+  const visibility = input.visibility ?? parseVisibility(profile?.feedVisibilityDefault, "private");
   const now = new Date();
   const values = {
     userId: input.userId,
@@ -1121,7 +1124,7 @@ export async function createFeedItem(input: {
   };
 
   if (values.dedupeKey) {
-    await getDb()
+    await db
       .insert(feedItems)
       .values(values)
       .onConflictDoUpdate({
@@ -1140,7 +1143,7 @@ export async function createFeedItem(input: {
         },
       });
   } else {
-    await getDb().insert(feedItems).values(values);
+    await db.insert(feedItems).values(values);
   }
 }
 

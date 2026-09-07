@@ -35,7 +35,7 @@ describe.skipIf(!enabled)("course record hub facts", () => {
       expect(initial.recordCount).toBeGreaterThan(0);
       expect(initial.liveAttemptCount).toBe(0);
       const [board] =
-        await db`select * from fkh_course_records where course_id=${courseId!} and period='all_time' order by record_type limit 1`;
+        await db`select * from fkh_course_records where course_id=${courseId!} and period='all_time' and scope='public' order by record_type limit 1`;
       const attempts =
         await db`insert into fkh_course_record_attempts(record_id,category_id,course_id,user_id,metric_value,metric_label,verification_status,proof_status) values(${board.id},${board.category_id},${courseId!},${owner!},72,'72','verified','verified'),(${board.id},${board.category_id},${courseId!},${owner!},70,'70','pending_evidence','pending_evidence') returning id`;
       await db`insert into fkh_course_record_results(record_id,user_id,best_attempt_id,rank,metric_value,score_label,verification_status) values(${board.id},${owner!},${attempts[0].id},1,72,'72','pending_evidence')`;
