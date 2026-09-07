@@ -131,8 +131,10 @@ describe("course holes desktop workspace", () => {
       join(process.cwd(), "src/app/courses/[courseId]/holes/course-editor.module.css"),
       "utf8",
     );
-    expect(styles).toContain('.controls[data-open="false"] { display: none; }');
-    expect(styles).toContain('.controls[data-open="false"] { display: block; }');
+    expect(styles).toMatch(/\.controls\[data-open="false"\]\s*\{\s*display:\s*none;\s*\}/);
+    expect(styles).toMatch(
+      /@media\s*\(min-width:\s*1024px\)\s*\{\s*\.controls\[data-open="false"\]\s*\{\s*display:\s*block;\s*\}/,
+    );
     expect(mapEditorSource.match(/name="holeNumber"/g)).toHaveLength(1);
     expect(mapEditorSource).toContain("h-[56dvh]");
     expect(mapEditorSource).toContain("lg:grid-cols-[minmax(18rem,0.75fr)_minmax(0,1.25fr)]");
