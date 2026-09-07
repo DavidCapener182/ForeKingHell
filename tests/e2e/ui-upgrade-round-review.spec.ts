@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
 import { Script } from "node:vm";
-test("Add round keeps searchable setup and explicitly resets incompatible tees", async ({
+test("Round review exposes all panels and retains mobile context drafts", async ({
   page,
   context,
 }, info) => {
@@ -57,19 +57,24 @@ test("Add round keeps searchable setup and explicitly resets incompatible tees",
         path: "/",
       },
     ]);
-    const [privateCourse] =
-      await db`insert into fkh_courses(name,visibility,created_by_user_id) values('Synthetic second setup course','private',${owner!}) returning id`;
-    const [privateTee] =
-      await db`insert into fkh_tee_sets(course_id,name,par) values(${privateCourse.id},'Synthetic tee',36) returning id`;
-    for (let hole = 1; hole <= 9; hole++)
-      await db`insert into fkh_holes(course_id,tee_set_id,hole_number,par,yards,tee_lat,tee_lng,green_lat,green_lng,centerline_geojson) select ${privateCourse.id},${privateTee.id},${hole},par,yards,tee_lat,tee_lng,green_lat,green_lng,centerline_geojson from fkh_holes limit 1`;
-    const options =
-      await db`select distinct on(c.id) c.id as course_id,c.name as course_name,t.id as tee_id from fkh_courses c join fkh_tee_sets t on t.course_id=c.id where (c.visibility='shared' or c.created_by_user_id=${owner!}) and exists(select 1 from fkh_holes h where h.tee_set_id=t.id) order by c.id,t.id`;
-    expect(options.length).toBeGreaterThan(1);
-    const [first, second] = options;
+    const [tee] =
+      await db`select t.id,t.course_id,c.name from fkh_tee_sets t join fkh_courses c on c.id=t.course_id where c.visibility='shared' and exists(select 1 from fkh_holes h where h.tee_set_id=t.id) limit 1`;
+    const holes =
+      await db`select hole_number,par,yards,stroke_index from fkh_holes where tee_set_id=${tee.id} order by hole_number limit 9`;
+    const card = holes.map((h) => ({
+      holeNumber: h.hole_number,
+      par: h.par,
+      yards: h.yards,
+      strokeIndex: h.stroke_index,
+      score: h.par + 1,
+      putts: 2,
+      penalties: 0,
+    }));
+    const [round] =
+      await db`insert into fkh_sessions(user_id,source,type,date,round_status,course_id,tee_set_id,course_name,scorecard_json,raw_csv_text) values(${owner!},'manual','real_round','2026-09-02','complete',${tee.course_id},${tee.id},${tee.name},${db.json(card)},'synthetic original') returning id`;
     for (const surface of ["workbench", "companion"]) {
       await page.goto(
-        `/surface/${surface}?next=${encodeURIComponent(`/rounds/new?courseId=${first.course_id}&teeSetId=${first.tee_id}`)}`,
+        `/surface/${surface}?next=${encodeURIComponent(`/rounds/${round.id}?view=corrections`)}`,
       );
       for (const [width, height] of [
         [1440, 900],
@@ -80,51 +85,40 @@ test("Add round keeps searchable setup and explicitly resets incompatible tees",
         [1024, 800],
       ]) {
         await page.setViewportSize({ width, height });
-        if (surface === "companion") {
+        await page.getByRole("tab", { name: "Corrections", exact: true }).click();
+        if (surface === "workbench" && width < 1024)
+          await page.getByRole("button", { name: /^Course link/ }).click();
+        await expect(
+          page.getByRole("combobox", { name: "Course / tee set", exact: true }),
+        ).toBeVisible({ timeout: 60000 });
+        if (surface === "companion")
           await page
-            .getByRole("combobox", { name: "Course", exact: true })
-            .selectOption(second.course_id);
-          await expect(page.getByRole("combobox", { name: "Tee", exact: true })).toHaveValue("");
-          await expect(
-            page.getByRole("button", { name: "Start round", exact: true }),
-          ).toBeDisabled();
-          await expect(page.getByRole("status")).toContainText("Course changed");
-          await page
-            .getByRole("combobox", { name: "Tee", exact: true })
-            .selectOption(second.tee_id);
-          await expect(
-            page.getByRole("button", { name: "Start round", exact: true }),
-          ).toBeEnabled();
-          await page
-            .getByRole("combobox", { name: "Course", exact: true })
-            .selectOption(first.course_id);
-          await page.getByRole("combobox", { name: "Tee", exact: true }).selectOption(first.tee_id);
-        } else {
-          await page
-            .getByRole("searchbox", { name: "Search courses and tees", exact: true })
-            .fill("No matching course xyz");
-          await expect(
-            page.getByRole("combobox", { name: "Course / tee", exact: true }),
-          ).toHaveValue(first.tee_id);
-          await page
-            .getByRole("searchbox", { name: "Search courses and tees", exact: true })
-            .fill("");
-        }
+            .getByRole("textbox", { name: "Round notes", exact: true })
+            .fill("Retained context draft");
+        await page.getByRole("tab", { name: "Evidence", exact: true }).click();
+        await page.getByRole("tab", { name: "Corrections", exact: true }).click();
+        if (surface === "companion")
+          await expect(page.getByRole("textbox", { name: "Round notes", exact: true })).toHaveValue(
+            "Retained context draft",
+          );
+        await page.getByRole("tab", { name: "Scorecard", exact: true }).click();
+        await expect(page.locator("h1:visible")).toHaveCount(1);
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         ).toBeTruthy();
         await page.screenshot({
-          path: info.outputPath(`P44-${surface}-${width}.png`),
+          path: info.outputPath(`P45-${surface}-${width}.png`),
           fullPage: true,
           animations: "disabled",
         });
       }
     }
+    const [saved] =
+      await db`select raw_csv_text,scorecard_json from fkh_sessions where id=${round.id}`;
+    expect(saved.raw_csv_text).toBe("synthetic original");
+    expect(saved.scorecard_json).toEqual(card);
   } finally {
-    if (owner) {
-      await db`delete from fkh_courses where created_by_user_id=${owner}`;
-      await db`delete from fkh_users where id=${owner}`;
-    }
+    if (owner) await db`delete from fkh_users where id=${owner}`;
     await db.end();
   }
 });

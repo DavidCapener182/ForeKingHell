@@ -43,7 +43,10 @@ export function MobileCollapsible({
       open={isDesktop || open}
       onOpenChange={setOpen}
     >
-      <CollapsibleTrigger className="focus-aaa flex min-h-14 w-full cursor-pointer touch-manipulation items-center justify-between gap-3 rounded-xl border bg-card px-4 py-2.5 text-left outline-none lg:hidden">
+      <CollapsibleTrigger
+        hidden={isDesktop}
+        className="focus-aaa flex min-h-14 w-full cursor-pointer touch-manipulation items-center justify-between gap-3 rounded-xl border bg-card px-4 py-2.5 text-left outline-none"
+      >
         <span className="min-w-0">
           <span className="block text-[15px] font-medium leading-5 tracking-normal">{title}</span>
           {description ? (

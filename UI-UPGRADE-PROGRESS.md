@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-250 desktop / 250 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P45 Round review and live scoring. Next: P46 Course library. P34 wrapped actual-app matrix passed 21.9s and P37 mocked-provider matrix passed 19.9s across both surfaces and all six requested sizes. P35/P36 earlier UI preserved. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
+259 desktop / 259 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P46 Course library. Next: P47 Create or import course. P34 wrapped actual-app matrix passed 21.9s and P37 mocked-provider matrix passed 19.9s across both surfaces and all six requested sizes. P35/P36 earlier UI preserved. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
 
 # UI upgrade progress
 
@@ -269,3 +269,11 @@ P43-C01–C04 UI implemented partial. Rounds preserves earlier mobile redesign a
 
 
 P44-C01–C03 UI implemented partial. Searchable course/tee choices; course change clears mobile tee and prevents Start until explicitly chosen. Existing complete scorecard/draft/idempotent creation kept. add-round-regression.log PASS52.5s covers actual mobile and desktop save plus simulated rejection/retry, hidden-hole validation and axe. add-round-browser-fixture.log PASS4.6s both surfaces x6sizes covers new setup.390 screenshot inspected; added wrapped selected course/tee line after native select truncated long label (not recaptured). Current250UIpartial,0accepted. P45 full prompts loaded /tmp/fkh-p45-prompts.txt; current source inspected. Next implement missing mobile course/tee context correction and align five tabs, preserving MobileLiveRound/offline controls/maps/3D. No P45 edits yet. Existing root backend services/actions remain other agent-owned.
+
+
+## P45 active implementation
+
+RoundCourseLinkEditor extracted unchanged from desktop and now rendered in mobile Corrections; five section labels aligned, correction/evidence panels retain mounted drafts, full course/tee name shown below mobile header. New tests/e2e/ui-upgrade-round-review.spec.ts running. First round-review-browser.log failed at narrow explicit workbench: MobileCollapsible content closed but global workbench .lg:hidden rule hid its trigger. Fixed local trigger visibility using actual viewport state in mobile-collapsible.tsx; rerun round-review-browser-collapsible.log active. Do not mark P45 passed/implemented until terminal evidence is inspected. Map/live-round/summary existing unit regressions run in p45-regressions.log. Other agent applied strict date calendar validation in rounds/actions.ts before freeze delivery; source now stable, no unrelated actions edits permitted during current browser run. Preserve branch commits through d6a22021 plus P45 dirty source/test.
+
+
+P45-C01–C09 recorded UI implemented partial, existing specialist/live/review actions preserved. Final round-review-browser-tabs.log PASS16.0s both surfaces x6sizes, retained mobile draft/context/source parity. 11map/live/summary tests pass508ms. Narrow explicit workbench trigger fixed and tab spacing clarified. Broader specialist/live/share and desktop unsaved server-navigation acceptance explicitly outstanding per row. Current259UIpartial,0accepted. P46 full prompt read /tmp/fkh-p46-prompts.txt, course-library/page sources inspected; no P46 edits yet. Next clarify filters apply/reset/URL preservation and complete full-field mobile course rows. Source stable, allbrowser runs terminal.
