@@ -74,5 +74,12 @@ function dateFromForm(formData: FormData, key: string) {
   }
 
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    !Number.isFinite(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== value
+  ) {
+    throw new Error(`${key} must be a valid date.`);
+  }
+  return parsed;
 }

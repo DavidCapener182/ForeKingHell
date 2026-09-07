@@ -326,6 +326,11 @@ export async function createChallenge(input: {
 
   const title = input.title.trim() || template.name;
   const now = new Date();
+  const startsAt = input.startsAt ?? now;
+  const endsAt = input.endsAt ?? defaultChallengeEnd(now);
+  if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt) {
+    throw new Error("Challenge dates must be valid, with the end after the start.");
+  }
   const [challenge] = await getDb().transaction(async (tx) => {
     const [created] = await tx
       .insert(challenges)
@@ -337,8 +342,8 @@ export async function createChallenge(input: {
         visibility,
         status: "open",
         challengeRulesJson: template.rulesJson,
-        startsAt: input.startsAt ?? now,
-        endsAt: input.endsAt ?? defaultChallengeEnd(now),
+        startsAt,
+        endsAt,
         updatedAt: now,
       })
       .returning();
@@ -394,6 +399,10 @@ export async function joinChallenge(challengeId: string) {
   const profile = await ensureSocialProfileForUser(userId);
   const challenge = await requireVisibleChallenge(userId, challengeId);
   const now = new Date();
+
+  if (challenge.status !== "open" || (challenge.endsAt && challenge.endsAt <= now)) {
+    throw new Error("This challenge is no longer open to join.");
+  }
 
   await getDb()
     .insert(challengeEntries)
@@ -796,7 +805,9 @@ async function calculateImportedChallengeAttemptState(
   const clauses: SQL[] = [
     inArray(shots.userId, userIds),
     ne(sessions.source, "manual"),
+    ne(sessions.source, "course_twin_live"),
     gte(shots.shotAt, challenge.startsAt),
+    lte(shots.shotAt, new Date()),
     inArray(shots.reviewStatus, ["included", "restored"]),
   ];
 
@@ -891,7 +902,7 @@ export function filterImportedChallengeEvidenceRows<
     shotCategory?: string | null;
   },
 >(rows: readonly T[]): T[] {
-  return rows.filter(isShotEvidenceEligible);
+  return rows.filter((row) => row.qualityTag !== "modelled" && isShotEvidenceEligible(row));
 }
 
 function rankImportedChallengeAttempts(

@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-309 desktop / 309 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P58 Challenges**, next P59 Challenge detail. 183 UI entries remain. Continue the UI pass with acceptance gaps retained.
+315 desktop / 315 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P59 Challenge detail**, next P60 Tournaments. 177 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P58 Challenges**, next **P59 Challenge detail**. P57-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P59 Challenge detail**, next **P60 Tournaments**. P58-C01–C06 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -316,3 +316,12 @@ P57-C01–C05 implemented/partial. Full mobile task, selected saved-round score,
 Regression identified in P55/P56: active-only result filter hid recalculated status=verified leaders; corrected to allow active/verified with verified verificationStatus. Initial browser total expected12 but found13: explicitly asserted one pre-existing autoSyncedFromVerifiedRound manual scorecard plus12 unique manual requestIds; source scorecard unchanged. Screenshot caught missing numeric receipt and manual-only Bronze displayed as verified leader; now numeric and Ranked labels with explicit proof explanation.
 Changed detail page, record-attempt-form, shared scorecard-proof-uploader, exact detail route capability, course-records/actions+service, transactional proof/feed helpers and fixtures. Outstanding: real OCR/signed positive proof and tournament consumer browser, fully prefiltered eligibility, >20 receipt history, AT/zoom/theme/sharedfixedbars. Existing manual-only auto-ranking rule preserved and disclosed.
 Resume: preserve upgrade branch and completed rows. Read P58 prompt only; implement six Challenges components desktop/mobile, then P59. Coordinate backend owner before shared changes. Keep CSV authoritative and regenerate workbook. No main merge/deploy.
+
+P58 in-progress checkpoint: six component UI changes implemented in new challenge-workspace.tsx and compact server page, plus local loading/error. Types/lint pass. Actual matrix is being rerun after hydration readiness and development-only Next indicator interception fixes. Backend date/status and modelled-shot exclusion regressions passed. Do not count P58 implemented/partial until challenges-browser-final.log is terminal PASS; preserve original failed evidence. Next P59 only after this batch.
+
+
+## P58 Challenges — 7 September
+P58-C01–C06 implemented/partial,315 total/0fullyaccepted. Shared full responsive page replaces companion subset and oversized decorative cards. URL status/counts/search, full target/evidence/proof/window/rank facts, closed join explanation, readable rules/focus return, all existing creation fields+review and retained draft on close/date errors; no invites on opening/review. Backend rejects invalid/rollover dates and closed joins, excludes modelled/future shot evidence.
+Browser challenges-browser-final.log PASS59.7s: both surfaces×six sizes,12 actual public creates preserve exact privacy/dates/template rules and zero invites. Types/lint pass,1440board+390review captures inspected. Earlier failures preserved: Rules prehydration click fixed readiness; Next development indicator overlapped Cancel, test makes only that dev portal noninteractive and asserts no pageerrors; no app click forced. Backend9targetedtests pass.
+Files: challenges/page, loading/error, new challenge-workspace.tsx, actions/date test, lib/challenges+lifecycle test, integration challenge workflow, ui-upgrade-challenges browser fixture. Outstanding per tracker: positive rank browser/search edge cases/private/friend/invitation fixtures/savefailure idempotence/immutable final snapshot/AT/zoom/theme/loadingerrors.
+Resume: load P59 seven detailed prompts only; implement full detail actions/results/evidence/comments/invitations desktop/mobile, use authorised isolated fixtures for external-style mutations. Coordinate other agent before shared backend edits. NextP60. Preserve CSV rows and regenerate Excel. Keepupgradebranch/no merge/deploy.

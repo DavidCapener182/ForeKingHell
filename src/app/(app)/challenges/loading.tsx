@@ -1,11 +1,8 @@
-import { GolfRouteLoading } from "@/components/golf-loading";
-
 export default function ChallengesLoading() {
   return (
-    <GolfRouteLoading
-      title="Loading challenge centre"
-      subtitle="Preparing live boards, invites, templates, proof tiers, and recommended challenges."
-      variant="challenges"
-    />
+    <section role="status" className="grid gap-3 p-6">
+      <h1 className="text-2xl font-semibold">Loading challenges</h1>
+      <p>Checking your challenge states and qualifying results.</p>
+    </section>
   );
 }
