@@ -1,3 +1,4 @@
+import { recordOfflineRoundCommit } from "@/lib/offline-operation-ledger";
 import "server-only";
 
 import { and, asc, eq, inArray, ne } from "drizzle-orm";
@@ -119,6 +120,7 @@ export async function correctShotClub(input: {
       ],
       calculatedAt: new Date(),
     });
+    await recordOfflineRoundCommit(tx, userId, session.id);
     return { sessionId: session.id, previousClubId: shot.clubId };
   });
   // Retry the refresh even when the club is already correct, without adding another audit event.
@@ -279,6 +281,7 @@ export async function updateClubIdentity(input: {
       ]),
       calculatedAt: now,
     });
+    await recordOfflineRoundCommit(tx, userId, sessionId);
     return { sessionIds: affectedSessions.map((session) => session.id), clubId: targetId };
   });
   const warning = await refreshCorrectedPracticeEvidence(userId, changed.sessionIds);

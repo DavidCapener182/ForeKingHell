@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import type { ReactElement } from "react";
 import SharedRoundPage, { type SharedRoundData } from "@/app/share/[token]/page";
 import { hashShareToken } from "@/lib/share-links";
@@ -333,6 +334,112 @@ describe.skipIf(!enabled)("club correction with the real database and domain ser
         await sql`select updated_at,scorecard_json from fkh_sessions where id=${round.sessionId}`
       )[0],
     ).toEqual(before);
+  });
+
+  it("rolls back the round when its offline receipt fails, then retries exactly once", async () => {
+    const round = await seedRound();
+    const [before] =
+      await sql`select updated_at,scorecard_json from fkh_sessions where id=${round.sessionId}`;
+    const operationId = `fixture-receipt-${round.sessionId}`;
+    const request = () =>
+      new NextRequest("http://localhost/api/offline/round-edits", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-fkh-offline-owner": owner,
+          "x-fkh-offline-operation": operationId,
+        },
+        body: JSON.stringify({
+          editKind: "round-hole",
+          fields: Object.entries({
+            sessionId: round.sessionId,
+            expectedUpdatedAt: before.updated_at.toISOString(),
+            holeNumber: "1",
+            score: "6",
+            putts: "1",
+            penalties: "1",
+          }),
+        }),
+      });
+    await sql.unsafe(
+      `create function ${trigger}() returns trigger language plpgsql as $$ begin if NEW.user_id='${owner}'::uuid and NEW.status='completed' then raise exception 'synthetic receipt failure'; end if; return NEW; end $$`,
+    );
+    await sql.unsafe(
+      `create trigger ${trigger} before update on fkh_offline_operations for each row execute function ${trigger}()`,
+    );
+    const failed = await postOfflineRoundEdit(request());
+    expect(failed.status).toBe(503);
+    expect(
+      (
+        await sql`select updated_at,scorecard_json from fkh_sessions where id=${round.sessionId}`
+      )[0],
+    ).toEqual(before);
+    expect(
+      (
+        await sql`select status from fkh_offline_operations where user_id=${owner} and operation_id=${operationId}`
+      )[0].status,
+    ).toBe("failed_transient");
+    await sql.unsafe(`drop function ${trigger}() cascade`);
+    const retried = await postOfflineRoundEdit(request());
+    expect(retried.status).toBe(200);
+    const result = await retried.json();
+    expect(result.warning).toBeUndefined();
+    const [saved] =
+      await sql`select updated_at,scorecard_json from fkh_sessions where id=${round.sessionId}`;
+    expect(saved.scorecard_json[0].score).toBe(6);
+    const replay = await postOfflineRoundEdit(request());
+    expect(await replay.json()).toEqual(result);
+    expect(
+      (await sql`select updated_at from fkh_sessions where id=${round.sessionId}`)[0].updated_at,
+    ).toEqual(saved.updated_at);
+  });
+
+  it("replays a committed round edit after post-save revalidation fails", async () => {
+    const round = await seedRound();
+    const version = (
+      await sql`select updated_at from fkh_sessions where id=${round.sessionId}`
+    )[0].updated_at.toISOString();
+    const request = () =>
+      new NextRequest("http://localhost/api/offline/round-edits", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-fkh-offline-owner": owner,
+          "x-fkh-offline-operation": `fixture-postcommit-${round.sessionId}`,
+        },
+        body: JSON.stringify({
+          editKind: "round-hole",
+          fields: Object.entries({
+            sessionId: round.sessionId,
+            expectedUpdatedAt: version,
+            holeNumber: "1",
+            score: "6",
+            putts: "1",
+            penalties: "1",
+          }),
+        }),
+      });
+    vi.mocked(revalidatePath).mockImplementation(() => {
+      throw new Error("Synthetic post-commit failure");
+    });
+    try {
+      const response = await postOfflineRoundEdit(request());
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body).toMatchObject({ ok: true, warning: expect.stringContaining("Round saved") });
+      const [saved] =
+        await sql`select updated_at,scorecard_json from fkh_sessions where id=${round.sessionId}`;
+      expect(saved.scorecard_json[0].score).toBe(6);
+      expect(body.recordVersion).toBe(saved.updated_at.toISOString());
+      const replay = await postOfflineRoundEdit(request());
+      expect(replay.headers.get("x-fkh-offline-replayed")).toBe("1");
+      expect(await replay.json()).toEqual(body);
+      expect(
+        (await sql`select updated_at from fkh_sessions where id=${round.sessionId}`)[0].updated_at,
+      ).toEqual(saved.updated_at);
+    } finally {
+      vi.mocked(revalidatePath).mockReset();
+    }
   });
 
   it("rejects a queued edit that becomes stale while waiting for a round lock, and replays the accepted operation", async () => {

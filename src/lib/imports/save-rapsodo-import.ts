@@ -171,6 +171,7 @@ export type SaveRapsodoImportResult =
   | {
       ok: false;
       message: string;
+      retryable?: boolean;
     };
 
 export type SaveRapsodoImportBatchResult =
@@ -191,6 +192,7 @@ export type SaveRapsodoImportBatchResult =
   | {
       ok: false;
       message: string;
+      retryable?: boolean;
     };
 
 const BAD_DATA_QUALITY_TAG = "bad_data";
@@ -351,6 +353,7 @@ export async function saveLaunchMonitorImport(
 
     return {
       ok: false,
+      retryable: !(error instanceof ImportValidationError),
       message:
         error instanceof ImportValidationError
           ? error.message
@@ -440,10 +443,12 @@ export async function saveRapsodoImportBatch(
       return {
         ok: false,
         message: `${input.fileName}: ${result.message}`,
+        ...(result.retryable ? { retryable: true } : {}),
       };
     }
 
     if (result.skipped) {
+      savedSessionId ??= result.sessionId;
       skippedCount += 1;
       warnings.push(`${input.fileName}: identical CSV was already imported and was skipped.`);
     } else {

@@ -1,5 +1,7 @@
 "use server";
 
+import { recordOfflineRoundCommit } from "@/lib/offline-operation-ledger";
+
 import {
   contextRoundStatus,
   relinkRoundScorecard,
@@ -227,6 +229,7 @@ export async function completeLiveRoundAction(formData: FormData) {
       .update(sessions)
       .set({ roundStatus: "complete", updatedAt: nextRoundVersionTime(current.updatedAt) })
       .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+    await recordOfflineRoundCommit(tx, userId, sessionId);
     return current;
   });
   await publishRoundCompletion(round, userId);
@@ -285,6 +288,7 @@ export async function updateRoundContextAction(formData: FormData) {
         updatedAt: nextRoundVersionTime(current.updatedAt),
       })
       .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+    await recordOfflineRoundCommit(tx, userId, sessionId);
     return current;
   });
   if (roundStatus === "complete") await publishRoundCompletion(round, userId);
@@ -426,6 +430,7 @@ export async function updateRoundCourseLinkAction(formData: FormData) {
       .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
     const scorecard = await recalculateRoundAssignments(sessionId, userId, tx);
     if (scorecard) await rebuildRoundStrokesGainedEvents(sessionId, userId, scorecard, tx);
+    await recordOfflineRoundCommit(tx, userId, sessionId);
   });
   await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
@@ -680,6 +685,7 @@ export async function updateRoundHoleAction(formData: FormData) {
       .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
     const recalculated = await recalculateRoundAssignments(sessionId, userId, tx);
     if (recalculated) await rebuildRoundStrokesGainedEvents(sessionId, userId, recalculated, tx);
+    await recordOfflineRoundCommit(tx, userId, sessionId);
   });
   await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
@@ -766,6 +772,7 @@ export async function resplitRoundAction(formData: FormData) {
     const recalculated = await recalculateRoundAssignments(sessionId, userId, db);
     if (recalculated) await rebuildRoundStrokesGainedEvents(sessionId, userId, recalculated, db);
     await refreshStockYardagesForClubs(db, { userId, clubContexts: sessionShots });
+    await recordOfflineRoundCommit(db, userId, sessionId);
   });
   await refreshPracticeEvidenceForReviewedSessions(userId, [sessionId]);
   await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
@@ -795,7 +802,11 @@ function dateFromForm(formData: FormData, key: string) {
   const value = requiredString(formData, key);
   const parsed = new Date(`${value}T12:00:00.000Z`);
 
-  if (Number.isNaN(parsed.getTime())) {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== value
+  ) {
     throw new Error(`${key} is not a valid date.`);
   }
 

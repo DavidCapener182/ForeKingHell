@@ -1,15 +1,23 @@
 import "server-only";
 
+import { AsyncLocalStorage } from "node:async_hooks";
+
 import { createHash } from "node:crypto";
 
 import { and, eq, lt, sql } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 
 import { getDb } from "@/db/client";
-import { offlineOperations } from "@/db/schema";
+import { offlineOperations, sessions } from "@/db/schema";
 import { reportServerFailure } from "@/lib/server-observability";
 
 export const OFFLINE_OPERATION_HEADER = "x-fkh-offline-operation";
+const activeClaim = new AsyncLocalStorage<{
+  ledgerId: string;
+  attemptCount: number;
+  userId: string;
+  kind: OfflineOperationKind;
+}>();
 const STALE_CLAIM_MS = 5 * 60 * 1000;
 
 type OfflineOperationKind = "import-csv" | "round-edit";
@@ -78,11 +86,28 @@ export async function runIdempotentOfflineOperation({
   }
 
   try {
-    const result = await execute();
+    const result = await activeClaim.run({ ...claim, userId, kind }, execute);
     const terminalStatus = result.status >= 500 ? "failed_transient" : "completed";
-    await finishOfflineOperation(claim.ledgerId, terminalStatus, result);
+    const finished = await finishOfflineOperation(
+      claim.ledgerId,
+      claim.attemptCount,
+      terminalStatus,
+      result,
+    );
+    if (!finished)
+      return (
+        (await readCommittedClaim(claim.ledgerId, claim.attemptCount, result)) ??
+        supersededOperationResponse()
+      );
     return Response.json(result.body, { status: result.status });
   } catch (error) {
+    const committed = await readCommittedClaim(claim.ledgerId, claim.attemptCount);
+    if (committed) {
+      reportServerFailure("offline_operation_post_commit_failed", error, {
+        "app.operation_kind": kind,
+      });
+      return committed;
+    }
     reportServerFailure("offline_operation_failed", error, {
       "app.operation_kind": kind,
     });
@@ -94,7 +119,17 @@ export async function runIdempotentOfflineOperation({
         message: "This offline action could not be completed yet. It is safe to retry.",
       },
     } satisfies OfflineOperationResult;
-    await finishOfflineOperation(claim.ledgerId, "failed_transient", result);
+    const finished = await finishOfflineOperation(
+      claim.ledgerId,
+      claim.attemptCount,
+      "failed_transient",
+      result,
+    );
+    if (!finished)
+      return (
+        (await readCommittedClaim(claim.ledgerId, claim.attemptCount)) ??
+        supersededOperationResponse()
+      );
     return Response.json(result.body, { status: result.status });
   }
 }
@@ -135,10 +170,10 @@ async function claimOfflineOperation({
     .onConflictDoNothing({
       target: [offlineOperations.userId, offlineOperations.operationId],
     })
-    .returning({ id: offlineOperations.id });
+    .returning({ id: offlineOperations.id, attemptCount: offlineOperations.attemptCount });
 
   if (created) {
-    return { kind: "claimed", ledgerId: created.id } as const;
+    return { kind: "claimed", ledgerId: created.id, attemptCount: created.attemptCount } as const;
   }
 
   const [existing] = await db
@@ -192,20 +227,21 @@ async function claimOfflineOperation({
           : eq(offlineOperations.status, "failed_transient"),
       ),
     )
-    .returning({ id: offlineOperations.id });
+    .returning({ id: offlineOperations.id, attemptCount: offlineOperations.attemptCount });
 
   return reclaimed
-    ? ({ kind: "claimed", ledgerId: reclaimed.id } as const)
+    ? ({ kind: "claimed", ledgerId: reclaimed.id, attemptCount: reclaimed.attemptCount } as const)
     : ({ kind: "in_progress" } as const);
 }
 
 async function finishOfflineOperation(
   ledgerId: string,
+  attemptCount: number,
   status: "completed" | "failed_transient" | "failed_permanent",
   result: OfflineOperationResult,
 ) {
   const now = new Date();
-  await getDb()
+  const [finished] = await getDb()
     .update(offlineOperations)
     .set({
       status,
@@ -214,5 +250,102 @@ async function finishOfflineOperation(
       completedAt: now,
       updatedAt: now,
     })
-    .where(and(eq(offlineOperations.id, ledgerId), eq(offlineOperations.status, "pending")));
+    .where(
+      and(
+        eq(offlineOperations.id, ledgerId),
+        eq(offlineOperations.status, "pending"),
+        eq(offlineOperations.attemptCount, attemptCount),
+      ),
+    )
+    .returning({ id: offlineOperations.id });
+  return Boolean(finished);
+}
+
+function supersededOperationResponse() {
+  return Response.json(
+    {
+      ok: false,
+      code: "offline_operation_in_progress",
+      message: "A newer attempt is processing this offline action. Retry to retrieve its result.",
+    },
+    { status: 409, headers: { "retry-after": "2" } },
+  );
+}
+
+/** Persist the core round receipt in the same transaction as its domain writes. */
+export async function recordOfflineRoundCommit(
+  tx: Pick<ReturnType<typeof getDb>, "select" | "update">,
+  userId: string,
+  sessionId: string,
+) {
+  const claim = activeClaim.getStore();
+  if (!claim || claim.kind !== "round-edit") return;
+  if (claim.userId !== userId) throw new Error("Offline round owner mismatch.");
+  const [round] = await tx
+    .select({ updatedAt: sessions.updatedAt })
+    .from(sessions)
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+    .limit(1);
+  if (!round) throw new Error("Offline round unavailable.");
+  const now = new Date();
+  const [saved] = await tx
+    .update(offlineOperations)
+    .set({
+      status: "completed",
+      responseStatus: 200,
+      responseJson: {
+        ok: true,
+        recordVersion: round.updatedAt.toISOString(),
+        warning:
+          "Round saved. Refresh the round to check linked practice results and achievements.",
+      },
+      completedAt: now,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(offlineOperations.id, claim.ledgerId),
+        eq(offlineOperations.userId, userId),
+        eq(offlineOperations.status, "pending"),
+        eq(offlineOperations.attemptCount, claim.attemptCount),
+      ),
+    )
+    .returning({ id: offlineOperations.id });
+  if (!saved)
+    throw new Error("Offline round claim was replaced. Retry to retrieve the current result.");
+}
+
+async function readCommittedClaim(
+  ledgerId: string,
+  attemptCount: number,
+  successfulResult?: OfflineOperationResult,
+) {
+  const [saved] = await getDb()
+    .select()
+    .from(offlineOperations)
+    .where(
+      and(
+        eq(offlineOperations.id, ledgerId),
+        eq(offlineOperations.attemptCount, attemptCount),
+        eq(offlineOperations.status, "completed"),
+      ),
+    )
+    .limit(1);
+  if (!saved) return null;
+  if (successfulResult?.status === 200) {
+    // Preserve the transaction's version even if a later edit happened before refresh finished.
+    const body = { ...successfulResult.body, recordVersion: saved.responseJson?.recordVersion };
+    await getDb()
+      .update(offlineOperations)
+      .set({ responseJson: body })
+      .where(
+        and(
+          eq(offlineOperations.id, ledgerId),
+          eq(offlineOperations.attemptCount, attemptCount),
+          eq(offlineOperations.status, "completed"),
+        ),
+      );
+    return Response.json(body, { status: 200 });
+  }
+  return Response.json(saved.responseJson, { status: saved.responseStatus ?? 200 });
 }
