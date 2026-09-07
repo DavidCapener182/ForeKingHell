@@ -92,10 +92,6 @@ export default async function DashboardPage() {
   const clubType = data.bagPreview.find((club) => club.id === focus?.clubId)?.type;
   const practiceQuery = new URLSearchParams({ source: "dashboard", time: "15" });
   if (clubType) practiceQuery.set("club", clubType);
-  const latestPractice = data.recentSessions.find(
-    (session) => session.type === "range" || session.type === "practice",
-  );
-  if (latestPractice) practiceQuery.set("sourceSessionId", latestPractice.id);
   const practiceHref = currentPlan
     ? `/practice?planId=${currentPlan.id}`
     : `/practice?${practiceQuery}`;

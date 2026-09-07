@@ -652,3 +652,9 @@ Reviewed both Today pages and their explicit dependencies: TodayWorkspaceTabs/Da
 Validation: Today actual four-section browser matrix both surfaces/six sizes PASS24.4s, zero errors/overflow, single visible panel/heading.390 companion quality screenshot inspected.31evidence/state tests PASS2.11s,16highlight-related tests PASS327ms after finite fix. Types/lint clean. Browser correction/delete actions, full highlight keyboard/AT and broader themes/native acceptance remain separate. P02allnine rows retain partial status with precise added evidence.
 
 Next: Dashboard aggregate recommendation incorrectly attaches the latest practice session without supporting identity. Root owns dashboard/page.tsx and existing dashboard browser spec, will remove inferred sourceSessionId while preserving club/source/time/saved-plan links, then verify arrival. Afterward resume session-history and session-detail remaining integration; preserve all unrelated dirty files and the153remaining failures from latest other-agent full-unit-current snapshot (2627passed/147pending).
+
+## 7 September — Dashboard aggregate handoff corrected
+
+Removed unconditional latestPractice sourceSessionId from Dashboard aggregate recommendation. Club/source/time and existing saved-plan branch preserved. Added actual fixture browser regression with older iron/newer Driver sessions; dashboard-practice-handoff.log PASS37.7s across both surfaces/six sizes, exact Practice arrival, no invented source parameter, original iron rows unchanged, zero page errors/overflow. Scoped lint passed. P03-C01/C03 evidence updated, still partial acceptance.
+
+Next/current: restore saved views, columns and filtered CSV controls to SharedSessionLedger (/shared/[userId]) while retaining permission/revocation gates and complete details. Root owns UI/test; other agent owns shared-account-data.ts finite-longest metric fix. Continue after this with session history/detail integration and remaining defects.
