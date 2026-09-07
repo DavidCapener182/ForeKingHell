@@ -1,8 +1,10 @@
 "use client";
+import { useClientReady } from "@/hooks/use-client-ready";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AlertCircle, Info, Loader2, MapPinned, Search, TriangleAlert } from "lucide-react";
 
+import { CourseCreationForm } from "./course-creation-form";
 import { createOsmCourseAction } from "@/app/courses/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +26,8 @@ type HoleState =
   | { status: "error"; holes: OsmHoleGeometry[]; message: string };
 
 export function OsmCourseImporter() {
+  const ready = useClientReady();
+  const lookupVersion = useRef(0);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<OsmCourseResult | null>(null);
   const [searchState, setSearchState] = useState<SearchState>({ status: "idle" });
@@ -35,6 +39,7 @@ export function OsmCourseImporter() {
       return;
     }
 
+    lookupVersion.current++;
     setSearchState({ status: "loading" });
     setSelected(null);
     setHoleState({ status: "idle", holes: [] });
@@ -59,6 +64,7 @@ export function OsmCourseImporter() {
   }
 
   async function selectCourse(course: OsmCourseResult) {
+    const version = ++lookupVersion.current;
     setSelected(course);
     setHoleState({ status: "loading", holes: [] });
 
@@ -74,8 +80,10 @@ export function OsmCourseImporter() {
         throw new Error(payload.message ?? "OpenStreetMap hole lookup failed.");
       }
 
+      if (version !== lookupVersion.current) return;
       setHoleState({ status: "success", holes: payload.holes ?? [] });
     } catch (error) {
+      if (version !== lookupVersion.current) return;
       setHoleState({
         status: "error",
         holes: [],
@@ -90,6 +98,7 @@ export function OsmCourseImporter() {
         <label className="grid gap-2 text-sm font-medium">
           <span>Search OpenStreetMap</span>
           <Input
+            disabled={!ready}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
@@ -105,7 +114,7 @@ export function OsmCourseImporter() {
         <Button
           type="button"
           className="h-11 self-end"
-          disabled={searchState.status === "loading"}
+          disabled={!ready || searchState.status === "loading"}
           onClick={() => void searchCourses()}
         >
           {searchState.status === "loading" ? (
@@ -139,11 +148,11 @@ export function OsmCourseImporter() {
               <Item
                 key={`${course.osmType}-${course.osmId}`}
                 variant={selected?.osmId === course.osmId ? "muted" : "outline"}
-                className="items-start"
+                className="items-start flex-col sm:flex-row"
                 data-osm-course-result
               >
                 <ItemContent>
-                  <ItemTitle>{course.name}</ItemTitle>
+                  <ItemTitle className="whitespace-normal break-words">{course.name}</ItemTitle>
                   <ItemDescription className="whitespace-normal [overflow-wrap:anywhere]">
                     {course.displayName}
                   </ItemDescription>
@@ -155,6 +164,7 @@ export function OsmCourseImporter() {
                   <Button
                     type="button"
                     size="sm"
+                    className="min-h-11"
                     variant={selected?.osmId === course.osmId ? "secondary" : "outline"}
                     onClick={() => void selectCourse(course)}
                   >
@@ -173,7 +183,34 @@ export function OsmCourseImporter() {
         </div>
       ) : null}
 
-      {selected ? <OsmCourseSelection course={selected} holeState={holeState} /> : null}
+      {selected ? (
+        <>
+          <OsmCourseSelection course={selected} holeState={holeState} />
+          <div className="flex flex-wrap gap-2">
+            {holeState.status === "error" ? (
+              <Button
+                type="button"
+                className="min-h-11"
+                onClick={() => void selectCourse(selected)}
+              >
+                Retry hole lookup
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              onClick={() => {
+                lookupVersion.current++;
+                setSelected(null);
+                setHoleState({ status: "idle", holes: [] });
+              }}
+            >
+              Cancel selection
+            </Button>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -192,7 +229,7 @@ export function OsmCourseSelection({
     <section className="grid gap-4 border-t border-border pt-4" data-osm-course-selection>
       <Item variant="muted" className="items-start">
         <ItemContent>
-          <ItemTitle>{course.name}</ItemTitle>
+          <ItemTitle className="whitespace-normal break-words">{course.name}</ItemTitle>
           <ItemDescription className="whitespace-normal leading-6">
             {course.displayName}
           </ItemDescription>
@@ -229,7 +266,11 @@ export function OsmCourseSelection({
           </AlertDescription>
         </Alert>
       ) : null}
-      <form
+      <p className="text-sm text-muted-foreground">
+        Imported hole coordinates need review. The expected total is not known until you check the
+        course scorecard; missing holes can be added in the course editor.
+      </p>
+      <CourseCreationForm
         action={createOsmCourseAction}
         className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end"
       >
@@ -248,7 +289,7 @@ export function OsmCourseSelection({
           <MapPinned className="size-4" />
           Import course
         </Button>
-      </form>
+      </CourseCreationForm>
     </section>
   );
 }

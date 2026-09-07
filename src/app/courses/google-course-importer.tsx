@@ -1,8 +1,10 @@
 "use client";
+import { useClientReady } from "@/hooks/use-client-ready";
 
 import { AlertCircle, Info, Loader2, MapPin, Search, Star } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
+import { CourseCreationForm } from "./course-creation-form";
 import { createGoogleCourseAction } from "@/app/courses/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +31,8 @@ type SearchState =
   | { status: "error"; message: string; results: GoogleCourseSearchResult[] };
 
 export function GoogleCourseImporter() {
+  const ready = useClientReady();
+  const searchBusy = useRef(false);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<GoogleCourseSearchResult | null>(null);
   const [searchState, setSearchState] = useState<SearchState>({
@@ -38,6 +42,7 @@ export function GoogleCourseImporter() {
   });
 
   async function searchCourses() {
+    if (searchBusy.current) return;
     const trimmedQuery = query.trim();
 
     if (trimmedQuery.length < 2) {
@@ -45,6 +50,8 @@ export function GoogleCourseImporter() {
       return;
     }
 
+    searchBusy.current = true;
+    setSelected(null);
     setSearchState({
       message: "Searching Google Places…",
       results: searchState.results,
@@ -56,6 +63,7 @@ export function GoogleCourseImporter() {
         `/api/courses/google/search?query=${encodeURIComponent(trimmedQuery)}`,
       );
       const payload = (await response.json()) as { results?: GoogleCourseSearchResult[] };
+      if (!response.ok) throw new Error("Search failed");
       const results = payload.results ?? [];
 
       setSearchState({
@@ -71,6 +79,8 @@ export function GoogleCourseImporter() {
         results: [],
         status: "error",
       });
+    } finally {
+      searchBusy.current = false;
     }
   }
 
@@ -78,6 +88,8 @@ export function GoogleCourseImporter() {
     <div className="grid gap-4">
       <div className="flex gap-2">
         <Input
+          aria-label="Search Google courses"
+          disabled={!ready}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
@@ -93,7 +105,7 @@ export function GoogleCourseImporter() {
           type="button"
           variant="secondary"
           className="h-11 rounded-xl"
-          disabled={searchState.status === "loading"}
+          disabled={!ready || searchState.status === "loading"}
           onClick={() => void searchCourses()}
         >
           {searchState.status === "loading" ? (
@@ -130,11 +142,11 @@ export function GoogleCourseImporter() {
             <Item
               key={course.placeId}
               variant={selected?.placeId === course.placeId ? "muted" : "outline"}
-              className="items-start"
+              className="items-start flex-col sm:flex-row"
               data-google-course-result
             >
               <ItemContent>
-                <ItemTitle>{course.name}</ItemTitle>
+                <ItemTitle className="whitespace-normal break-words">{course.name}</ItemTitle>
                 <ItemDescription className="flex whitespace-normal [overflow-wrap:anywhere]">
                   <MapPin className="mt-0.5 mr-2 size-4 shrink-0" />
                   {course.address ?? course.country ?? "Google Places course"}
@@ -150,6 +162,7 @@ export function GoogleCourseImporter() {
                 <Button
                   type="button"
                   size="sm"
+                  className="min-h-11"
                   variant={selected?.placeId === course.placeId ? "secondary" : "outline"}
                   onClick={() => setSelected(course)}
                 >
@@ -161,18 +174,30 @@ export function GoogleCourseImporter() {
         </div>
       ) : null}
 
-      {selected ? <GoogleCourseSelection course={selected} /> : null}
+      {selected ? (
+        <>
+          <GoogleCourseSelection course={selected} />
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            onClick={() => setSelected(null)}
+          >
+            Cancel selection
+          </Button>
+        </>
+      ) : null}
     </div>
   );
 }
 
 export function GoogleCourseSelection({ course }: { course: GoogleCourseSearchResult }) {
   return (
-    <form action={createGoogleCourseAction} data-google-course-selection>
+    <CourseCreationForm action={createGoogleCourseAction} data-google-course-selection>
       <input type="hidden" name="placeId" value={course.placeId} />
-      <Item variant="muted" className="items-start">
+      <Item variant="muted" className="items-start flex-col">
         <ItemContent>
-          <ItemTitle>{course.name}</ItemTitle>
+          <ItemTitle className="whitespace-normal break-words">{course.name}</ItemTitle>
           <ItemDescription className="whitespace-normal">
             {course.address ?? "Google Places match selected"}
           </ItemDescription>
@@ -183,6 +208,6 @@ export function GoogleCourseSelection({ course }: { course: GoogleCourseSearchRe
           </Button>
         </ItemActions>
       </Item>
-    </form>
+    </CourseCreationForm>
   );
 }
