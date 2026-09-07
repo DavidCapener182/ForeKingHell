@@ -137,6 +137,7 @@ export function PracticeCompanionClient({
   const [activityStarted, setActivityStarted] = useState(false);
   const startRequired = useRef(false);
   const saving = useRef(false);
+  const restoredActivity = useRef<string | null>(null);
   const [finished, setFinished] = useState(false);
   const [routeDirection, setRouteDirection] = useState<"forward" | "back" | null>(null);
   const [blockDirection, setBlockDirection] = useState<"forward" | "back" | null>(null);
@@ -168,7 +169,11 @@ export function PracticeCompanionClient({
   }, [savedPlanId, initialPlan.status]);
 
   useEffect(() => {
+    const identity = `${accountId}:${initialPlan.id ?? "draft"}`;
+    // Server refreshes replace arrays/objects; they must not reopen the initial restore over a live activity.
+    if (restoredActivity.current === identity) return;
     const timer = window.setTimeout(() => {
+      restoredActivity.current = identity;
       const cached = readActivePractice(accountId);
       if (initialPlan.status === "analysed") {
         if (cached?.planId === initialPlan.id) clearActivePractice(accountId);

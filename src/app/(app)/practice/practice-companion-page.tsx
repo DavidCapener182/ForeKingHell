@@ -2,7 +2,6 @@ import { DriverDevelopmentPanel } from "@/components/analysis/driver-development
 import { PracticeCompanionClient } from "@/app/practice/practice-companion-client";
 import { notFound } from "next/navigation";
 import { MobileSavedPracticeReview } from "@/app/practice/mobile-saved-practice-review";
-import { MobileAppShell } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { practiceSourceSessionId } from "@/lib/practice-handoff";
@@ -52,9 +51,9 @@ export default async function PracticeCompanionPage({
       requestedPlan.status === "match_found" ? await getPracticeImportOptions(userId) : [];
     return (
       <PageShell>
-        <MobileAppShell>
+        <section className="grid min-w-0 gap-4">
           <MobileSavedPracticeReview plan={requestedPlan} importOptions={importOptions} />
-        </MobileAppShell>
+        </section>
       </PageShell>
     );
   }
@@ -79,7 +78,7 @@ export default async function PracticeCompanionPage({
 
   return (
     <PageShell>
-      <MobileAppShell className="gap-4" data-practice-companion>
+      <section className="grid min-w-0 gap-4" data-practice-companion>
         <PracticeCompanionClient
           key={
             selectedPlan?.id ??
@@ -97,7 +96,7 @@ export default async function PracticeCompanionPage({
           }}
           measuredResult={selectedPlan?.result ?? null}
         />
-      </MobileAppShell>
+      </section>
       <DriverDevelopmentPanel variant="practice" />
     </PageShell>
   );
