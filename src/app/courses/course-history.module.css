@@ -1,0 +1,6 @@
+.table { overflow-x: auto; }
+.rows { display: none; }
+@media (max-width: 767px) {
+  .table { display: none; }
+  .rows { display: block; }
+}

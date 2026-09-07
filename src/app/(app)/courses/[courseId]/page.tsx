@@ -1,4 +1,6 @@
 import Link from "next/link";
+import historyStyles from "@/app/courses/course-history.module.css";
+import { roundHistoryScore } from "@/lib/round-history-evidence";
 import { notFound } from "next/navigation";
 import { and, asc, desc, eq, inArray, or } from "drizzle-orm";
 import {
@@ -47,7 +49,7 @@ export default async function CourseDetailPage({
     ? { href: `/play/${courseId}`, label: "Open Course Twin", icon: Cuboid }
     : data.strategyReady
       ? { href: `/courses/strategy?courseId=${courseId}`, label: "Open strategy", icon: Target }
-      : { href: `/rounds/new?courseId=${courseId}`, label: "Plan a round", icon: Flag };
+      : { href: `/courses/${courseId}/holes`, label: "Finish course setup", icon: Flag };
   const PrimaryIcon = primaryAction.icon;
 
   return (
@@ -65,7 +67,7 @@ export default async function CourseDetailPage({
             courseName={data.course.name}
             initialFavourite={data.favourite}
           />
-          <Button asChild className="min-h-10">
+          <Button asChild className="min-h-11">
             <Link href={primaryAction.href}>
               <PrimaryIcon className="size-4" aria-hidden />
               {primaryAction.label}
@@ -76,11 +78,11 @@ export default async function CourseDetailPage({
 
       <header className="overflow-hidden rounded-2xl border bg-card shadow-sm">
         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(360px,42%)]">
-          <div className="flex min-h-64 flex-col justify-end p-5 sm:p-7 lg:min-h-72">
+          <div className="flex flex-col justify-center p-5 sm:p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
               Course profile
             </p>
-            <h1 className="mt-3 max-w-3xl font-display text-3xl font-semibold leading-tight tracking-tight text-foreground sm:text-5xl">
+            <h1 className="mt-3 break-words font-display text-2xl font-semibold leading-tight tracking-tight text-foreground sm:text-3xl">
               {data.course.name}
             </h1>
             <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground sm:text-base">
@@ -104,7 +106,7 @@ export default async function CourseDetailPage({
               previewImageUrl: data.courseTwin?.previewImageUrl ?? null,
             }}
             priority
-            className="min-h-60 lg:min-h-full"
+            className="min-h-44 lg:min-h-full"
           />
         </div>
       </header>
@@ -248,11 +250,12 @@ function CourseOverview({
                     className="focus-aaa flex min-h-14 items-center justify-between gap-4 py-3 hover:text-primary"
                   >
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-foreground">
+                      <p className="break-words font-medium text-foreground">
                         {round.courseName || data.course.name}
                       </p>
                       <p className="mt-0.5 text-sm text-muted-foreground">
-                        {formatLongDate(round.date)} · {formatRoundType(round.type)}
+                        {formatLongDate(round.date)} · {formatRoundType(round.type)} ·{" "}
+                        {round.source}
                       </p>
                     </div>
                     <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -282,7 +285,8 @@ function CourseOverview({
           </CardHeader>
           <CardContent>
             <dl className="divide-y">
-              <FactRow label="Location" value={data.location} />
+              <FactRow label="Location" value={data.course.address || data.location} />
+              <FactRow label="Source" value={data.course.provider || "Not recorded"} />
               <FactRow
                 label="Holes"
                 value={data.holeCount > 0 ? String(data.holeCount) : "Not mapped"}
@@ -290,6 +294,13 @@ function CourseOverview({
               <FactRow label="Tee sets" value={String(data.teeSetCount)} />
               <FactRow label="Last played" value={formatLongDate(data.lastPlayedAt)} />
               <FactRow label="Record boards" value={String(data.recordCount)} />
+              {data.tees.map((tee) => (
+                <FactRow
+                  key={tee.id}
+                  label={tee.name}
+                  value={`Par ${tee.par ?? "unknown"} · ${tee.yards ?? "unknown"} yd · Rating ${tee.courseRating ?? "unknown"} · Slope ${tee.slopeRating ?? "unknown"}`}
+                />
+              ))}
             </dl>
           </CardContent>
         </Card>
@@ -361,22 +372,88 @@ function CourseRoundsTab({
           <Link href={`/rounds/new?courseId=${courseId}`}>Add round</Link>
         </Button>
       </CardHeader>
-      <CardContent className="divide-y">
-        {rounds.map((round) => (
-          <Link
-            key={round.id}
-            href={`/rounds/${round.id}`}
-            className="focus-aaa flex min-h-16 items-center justify-between gap-4 py-3 hover:text-primary"
-          >
-            <div>
-              <p className="font-medium text-foreground">{round.courseName || "Saved round"}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {formatLongDate(round.date)} · {formatRoundType(round.type)}
+      <CardContent>
+        <div
+          className={historyStyles.table}
+          role="region"
+          aria-label="Course round history"
+          tabIndex={0}
+        >
+          <table className="w-full text-left text-sm">
+            <caption className="sr-only">Saved rounds for this course, newest first</caption>
+            <thead>
+              <tr>
+                {["Date", "Round", "Source", "Score (strokes)", "Coverage", "Open"].map((label) => (
+                  <th key={label} scope="col" className="p-3">
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rounds.map((round) => {
+                const score = roundHistoryScore(round.scorecard ?? [], round.roundStatus);
+                return (
+                  <tr key={round.id} className="border-t">
+                    <td className="p-3">{formatLongDate(round.date)}</td>
+                    <td className="p-3">
+                      {round.courseName || "Saved round"}
+                      <br />
+                      {formatRoundType(round.type)}
+                    </td>
+                    <td className="p-3">{round.source}</td>
+                    <td className="p-3 text-right tabular-nums">{score.totalScore ?? "—"}</td>
+                    <td className="p-3">
+                      {score.scoredHoles}/{round.scorecard?.length ?? 0} holes ·{" "}
+                      {score.complete ? "Complete" : "Partial"}
+                    </td>
+                    <td className="p-3">
+                      <Link
+                        className="inline-flex min-h-11 items-center underline"
+                        href={`/rounds/${round.id}`}
+                      >
+                        Review round
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className={historyStyles.rows}>
+          {rounds.map((round) => (
+            <details key={round.id} className="py-3">
+              <summary className="min-h-11 cursor-pointer break-words font-medium">
+                {formatLongDate(round.date)} ·{" "}
+                {roundHistoryScore(round.scorecard ?? [], round.roundStatus).totalScore ??
+                  "No score"}{" "}
+                strokes ·{" "}
+                {roundHistoryScore(round.scorecard ?? [], round.roundStatus).complete
+                  ? "Complete"
+                  : "Partial scorecard"}
+              </summary>
+              <Link
+                key={round.id}
+                href={`/rounds/${round.id}`}
+                className="focus-aaa flex min-h-16 items-center justify-between gap-4 py-3 hover:text-primary"
+              >
+                <div>
+                  <p className="break-words font-medium text-foreground">
+                    {round.courseName || "Saved round"}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {formatLongDate(round.date)} · {formatRoundType(round.type)} · {round.source}
+                  </p>
+                </div>
+                <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              </Link>
+              <p className="text-sm text-muted-foreground">
+                {round.scorecard?.length ?? 0} scorecard holes · Status: {round.roundStatus}
               </p>
-            </div>
-            <ArrowRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-          </Link>
-        ))}
+            </details>
+          ))}
+        </div>
       </CardContent>
     </Card>
   );
@@ -485,7 +562,7 @@ function HeroMetric({ label, value }: { label: string; value: React.ReactNode })
   return (
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-1 truncate font-semibold tabular-nums text-foreground">{value}</dd>
+      <dd className="mt-1 break-words font-semibold tabular-nums text-foreground">{value}</dd>
     </div>
   );
 }
@@ -494,7 +571,9 @@ function FactRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
       <dt className="text-sm text-muted-foreground">{label}</dt>
-      <dd className="max-w-[65%] text-right text-sm font-medium text-foreground">{value}</dd>
+      <dd className="max-w-[65%] break-words text-right text-sm font-medium text-foreground">
+        {value}
+      </dd>
     </div>
   );
 }
@@ -516,7 +595,7 @@ async function getCourseDetailData(courseId: string) {
   if (!course) return null;
 
   const [teeRows, holeRows, roundRows, recordRows, favouriteRows, twins] = await Promise.all([
-    db.select({ id: teeSets.id }).from(teeSets).where(eq(teeSets.courseId, courseId)),
+    db.select().from(teeSets).where(eq(teeSets.courseId, courseId)),
     db.select({ holeNumber: holes.holeNumber }).from(holes).where(eq(holes.courseId, courseId)),
     db
       .select({
@@ -524,6 +603,9 @@ async function getCourseDetailData(courseId: string) {
         courseName: sessions.courseName,
         date: sessions.date,
         type: sessions.type,
+        source: sessions.source,
+        roundStatus: sessions.roundStatus,
+        scorecard: sessions.scorecardJson,
       })
       .from(sessions)
       .where(
@@ -561,6 +643,7 @@ async function getCourseDetailData(courseId: string) {
     mapPreviewAvailable: Boolean(process.env.GOOGLE_MAPS_API_KEY?.trim()),
     location: courseLocationLabel(course.address, course.country),
     teeSetCount: teeRows.length,
+    tees: teeRows,
     holeCount,
     strategyReady: holeCount >= 9 && teeRows.length > 0,
     courseTwin,
