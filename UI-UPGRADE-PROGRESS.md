@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-421 desktop / 421 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P79 Billing and entitlements**, next P80 Challenge and tournament administration. 71 UI entries remain. Continue the UI pass with acceptance gaps retained.
+425 desktop / 425 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P80 Challenge and tournament administration**, next P81 System checks. 67 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P79 Billing and entitlements**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P80 Challenge and tournament administration**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -412,3 +412,11 @@ Freeze RELEASED; rootP78page/moderationqueueapplied, fullpromptsread, otheragent
 ## P78 Moderation UI checkpoint
 P78-C01–C05UIimplementedpartial;421/492UI,0fullyaccepted. Separate80recordqueues, filters/search/orderURL, selectionclearedwhenhidden, exactreviewlist, pending/error/actualpartialreceipt, allmobileevidence/actionfields, actualresolutionaudit80records + preserved8recordstatushistory. Isolated6sizePASSadmin-moderation-browser.log; actualadmin-moderation-browser-final.log1PASS1.1m12surface/sizes: stale1of2→actual1resolved/1audit, Cancelinert, separateeventunchanged/highseveritydetails. Firstactual390readyguardstayeddisabled15s; bounded60sreadinesswaitpassed, no runtimechange. Types/lintclean. Backendredesign/admin-moderation-bulk2PASS4.04s. Companion390screenshotcaughtdrawerexittransition; neutralcaptureoutstanding. Futurecaptureswait drawer/sheetoverlay removal, notrolecountalone.
 Freeze RELEASED. P79 page/ledger/lifetimeUIapplied; owner-gatedresolveAdminGrantTargetAction and actual lifetimeauditRowspendingotheragent. FullP79promptsread; no fabricatedbillingtransitions. P78admin.tsstageonlygetAdminModerationDataauditaddition, preserveotheragentroleconcurrencydiff; nextP80.
+
+## P79 Billing administration UI pass, 7 September
+
+P79-C01–C04 UI implemented with partial verification. Full shared task, exact named account lookup before permanent access review, loaded subscription/entitlement records with full mobile detail, configured limits and actual grant audit. New admin-billing-ledger.tsx/admin-lifetime-grant.tsx; billing page, action/loader and exact capability updated.
+
+Checks: admin-billing-browser.log 2 passed (1.2m): isolated controls at six sizes and actual both surfaces x six sizes; Cancel no writes, full record identity/details, no overflow/pageerrors. TypeScript/scoped lint clean. admin-lifetime-audit.log 3 backend tests passed; resolver contract 2 passed per agent. Companion390 screenshot inspected after overlay removal. No real payment operation. Acceptance gaps remain in CSV.
+
+Resume: P80 prompts fully read. Existing template CRUD absent; other agent implementing supported service/action; root owns full responsive templates/boards UI. Coordinate before shared edits. P79 browser freeze released. Preserve existing dirty work and all previous partial evidence.

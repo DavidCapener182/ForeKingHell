@@ -359,7 +359,26 @@ export async function getAdminBillingData() {
     .orderBy(desc(entitlements.updatedAt))
     .limit(120);
 
+  const auditRows = await db
+    .select({
+      id: adminAuditLog.id,
+      actorUserId: adminAuditLog.actorUserId,
+      actorEmail: users.email,
+      targetUserId: adminAuditLog.targetUserId,
+      action: adminAuditLog.action,
+      targetType: adminAuditLog.targetType,
+      targetId: adminAuditLog.targetId,
+      createdAt: adminAuditLog.createdAt,
+      metadataJson: adminAuditLog.metadataJson,
+    })
+    .from(adminAuditLog)
+    .leftJoin(users, eq(users.id, adminAuditLog.actorUserId))
+    .where(eq(adminAuditLog.action, "lifetime_full_granted"))
+    .orderBy(desc(adminAuditLog.createdAt), desc(adminAuditLog.id))
+    .limit(80);
+
   return {
+    auditRows,
     planLimits: planRows,
     subscriptions: subscriptionRows.map((row) => ({
       ...row,
@@ -1140,4 +1159,15 @@ function safeAdminDisplayName(value: string | null | undefined) {
 
 function isSharedDatabaseArtifact(value: string | null | undefined) {
   return typeof value === "string" && /\bincert\b/i.test(value);
+}
+
+export async function resolveAdminGrantTarget(email: string) {
+  await requireAdminOwner();
+  const target = await findUserByEmail(email);
+  if (!target?.email) throw new Error("No user exists for that email address.");
+  return {
+    id: target.id,
+    displayName: safeAdminDisplayName(target.name) ?? "LM World Tour Player",
+    email: target.email,
+  };
 }

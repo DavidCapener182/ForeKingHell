@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 
 import {
+  resolveAdminGrantTarget,
   bulkResolveModerationEvents,
   bulkResolveSocialReports,
   deactivateAdminAccess,
@@ -210,4 +211,18 @@ function safeAdminFormError(error: unknown) {
     "Missing email.", "Missing userId.", "Missing reportId.", "Missing eventId.",
   ]);
   return allowed.has(message) ? message : "The admin action could not be completed. Try again.";
+}
+
+export async function resolveAdminGrantTargetAction(formData: FormData): Promise<{
+  ok: boolean;
+  target?: { id: string; displayName: string; email: string };
+  error?: string;
+}> {
+  try {
+    const target = await resolveAdminGrantTarget(readString(formData, "email"));
+    return { ok: true, target };
+  } catch (error) {
+    unstable_rethrow(error);
+    return { ok: false, error: safeAdminFormError(error) };
+  }
 }

@@ -134,3 +134,6 @@ Specified Filter bars/Drawers/Date pickers, Tables/Paginations, Modals/Buttons a
 
 ## P78 Moderation
 Specified Filter bars/Drawers/Date pickers, Tables/Paginations, Modals/Buttons and Activity feeds/Dropdowns reuse checked installed exports. Paid advanced templates unavailable; native filters and touch selection, semantic separate ledgers, complete responsive evidence/review panels and actual chronological audit disclosures are the accessible alternatives. Selection alone performs no mutation; no paid source claimed.
+
+## P79 Billing administration
+Specified official metrics, inputs/select, tables/paginations and activity feeds reuse previously checked references. Paid advanced examples remain unavailable. Accessible alternatives: semantic loaded-count strip, native labelled search/order fields, desktop table/full mobile detail panel, canonical account lookup and existing review form with pending/error recovery, actual audit definition lists. Current local exports pass TypeScript; no paid vendor installation claimed.
