@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getGoalImprovementProjectData } from "@/lib/goal-improvement-project";
 import { GoalProjectPanel } from "@/app/goals/goal-project-panel";
-import { and, countDistinct, eq, gte, lte, inArray, or, sql, isNotNull } from "drizzle-orm";
+import { and, countDistinct, eq, gte, lte, inArray, or, sql } from "drizzle-orm";
 import { GoalCreateDialog, GoalDeleteDialog, GoalEditSheet } from "@/app/goals/goal-form-panels";
 import { SeasonPlanEditor } from "@/app/goals/season-plan-editor";
 import { GoalEvidenceSheet } from "@/app/goals/goal-evidence-sheet";
@@ -35,7 +35,11 @@ export default async function GoalsPage() {
           gte(sessions.date, sql<Date>`now() - interval '7 days'`),
           lte(sessions.date, sql<Date>`now()`),
           shotEvidenceSqlPredicate(),
-          or(isNotNull(shots.carryYd), isNotNull(shots.totalYd), isNotNull(shots.ballSpeedMph)),
+          sql`(
+            (${shots.carryYd} > 0 and ${shots.carryYd} < 'Infinity'::double precision)
+            or (${shots.totalYd} > 0 and ${shots.totalYd} < 'Infinity'::double precision)
+            or (${shots.ballSpeedMph} > 0 and ${shots.ballSpeedMph} < 'Infinity'::double precision)
+          )`,
         ),
       ),
   ]);
