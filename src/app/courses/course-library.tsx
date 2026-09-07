@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
   Cuboid,
@@ -78,16 +78,46 @@ export function CourseLibrary({
   initialFilter = "",
   initialQuery = "",
   initialView = "grid",
+  initialLocation = "all",
 }: {
   courses: CourseLibraryEntry[];
   initialFilter?: string;
   initialQuery?: string;
   initialView?: "grid" | "table";
+  initialLocation?: string;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [view, setView] = useState<"grid" | "table">(initialView);
-  const [location, setLocation] = useState("all");
+  const [location, setLocation] = useState(initialLocation);
   const [filters, setFilters] = useState<Set<LibraryFilter>>(() => initialFilters(initialFilter));
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<Set<LibraryFilter>>(new Set());
+  const [draftLocation, setDraftLocation] = useState("all");
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    for (const [key, value] of [
+      ["q", query],
+      ["tab", [...filters].join(",")],
+      ["view", view === "grid" ? "" : view],
+      ["location", location === "all" ? "" : location],
+    ]) {
+      if (value) url.searchParams.set(key, value);
+      else url.searchParams.delete(key);
+    }
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }, [query, filters, view, location]);
+  function toggleDraft(filter: LibraryFilter) {
+    setDraftFilters((current) => {
+      const next = new Set(current);
+      if (next.has(filter)) next.delete(filter);
+      else next.add(filter);
+      return next;
+    });
+  }
   const { favourites, pendingCourseIds, toggleFavourite } = useCourseFavourites(
     courses.filter((course) => course.favourite).map((course) => course.id),
   );
@@ -172,9 +202,18 @@ export function CourseLibrary({
             <span className="font-semibold text-foreground">{filteredCourses.length}</span> of{" "}
             {courses.length} courses
           </p>
-          <Drawer>
+          <Drawer
+            open={drawerOpen}
+            onOpenChange={(open) => {
+              if (open) {
+                setDraftFilters(new Set(filters));
+                setDraftLocation(location);
+              }
+              setDrawerOpen(open);
+            }}
+          >
             <DrawerTrigger asChild>
-              <Button variant="outline" size="sm" className="h-9 lg:hidden">
+              <Button variant="outline" size="sm" className="min-h-11">
                 <SlidersHorizontal className="size-4" aria-hidden />
                 Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
               </Button>
@@ -188,36 +227,36 @@ export function CourseLibrary({
               </DrawerHeader>
               <div className="grid grid-cols-2 gap-2 overflow-y-auto px-4 pb-2">
                 <FilterButton
-                  active={filters.has("played")}
+                  active={draftFilters.has("played")}
                   icon={Flag}
                   label="Played"
-                  onClick={() => toggleFilter("played")}
+                  onClick={() => toggleDraft("played")}
                 />
                 <FilterButton
-                  active={filters.has("favourite")}
+                  active={draftFilters.has("favourite")}
                   icon={Heart}
                   label="Favourite"
-                  onClick={() => toggleFilter("favourite")}
+                  onClick={() => toggleDraft("favourite")}
                 />
                 <FilterButton
-                  active={filters.has("twin")}
+                  active={draftFilters.has("twin")}
                   icon={Cuboid}
                   label="Course Twin"
-                  onClick={() => toggleFilter("twin")}
+                  onClick={() => toggleDraft("twin")}
                 />
                 <FilterButton
-                  active={filters.has("strategy")}
+                  active={draftFilters.has("strategy")}
                   icon={Target}
                   label="Strategy"
-                  onClick={() => toggleFilter("strategy")}
+                  onClick={() => toggleDraft("strategy")}
                 />
                 <FilterButton
-                  active={filters.has("records")}
+                  active={draftFilters.has("records")}
                   icon={Trophy}
                   label="Records"
-                  onClick={() => toggleFilter("records")}
+                  onClick={() => toggleDraft("records")}
                 />
-                <Select value={location} onValueChange={setLocation}>
+                <Select value={draftLocation} onValueChange={setDraftLocation}>
                   <SelectTrigger
                     className="h-9 w-full bg-background"
                     aria-label="Filter by location"
@@ -236,13 +275,27 @@ export function CourseLibrary({
                 </Select>
               </div>
               <DrawerFooter>
-                {activeFilterCount > 0 ? (
-                  <Button variant="ghost" onClick={clearFilters}>
-                    Clear filters
+                {draftFilters.size > 0 || draftLocation !== "all" ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setDraftFilters(new Set());
+                      setDraftLocation("all");
+                    }}
+                  >
+                    Reset filters
                   </Button>
                 ) : null}
                 <DrawerClose asChild>
-                  <Button>Show {filteredCourses.length} courses</Button>
+                  <Button
+                    className="min-h-11"
+                    onClick={() => {
+                      setFilters(new Set(draftFilters));
+                      setLocation(draftLocation);
+                    }}
+                  >
+                    Apply filters
+                  </Button>
                 </DrawerClose>
               </DrawerFooter>
             </DrawerContent>
@@ -322,6 +375,23 @@ export function CourseLibrary({
         </div>
       </div>
 
+      {hasSearchOrFilters && (
+        <div
+          className="flex flex-wrap items-center gap-2 text-sm"
+          aria-label="Active course filters"
+        >
+          {query && <span className="rounded-lg border px-2 py-1">Search: {query}</span>}
+          {[...filters].map((filter) => (
+            <span key={filter} className="rounded-lg border px-2 py-1">
+              {filter}
+            </span>
+          ))}
+          {location !== "all" && <span className="rounded-lg border px-2 py-1">{location}</span>}
+          <Button variant="ghost" className="min-h-11" onClick={clearFilters}>
+            Clear all
+          </Button>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-xl font-semibold text-foreground">Courses</h2>
@@ -409,7 +479,7 @@ function FilterButton({
       type="button"
       variant={active ? "secondary" : "outline"}
       size="sm"
-      className={cn("h-9", active && "border-primary/25 text-primary")}
+      className={cn("min-h-11", active && "border-primary/25 text-primary")}
       aria-pressed={active}
       onClick={onClick}
     >
@@ -443,7 +513,7 @@ function CourseCard({
           onClick={onFavourite}
           disabled={favouritePending}
           className={cn(
-            "focus-aaa absolute right-3 top-3 grid size-10 place-items-center rounded-full border border-white/50 bg-background/90 text-foreground shadow-sm backdrop-blur transition-colors",
+            "focus-aaa absolute right-3 top-3 grid size-11 place-items-center rounded-full border border-white/50 bg-background/90 text-foreground shadow-sm backdrop-blur transition-colors",
             favourite && "bg-primary text-primary-foreground",
           )}
           aria-label={
@@ -469,13 +539,13 @@ function CourseCard({
         <div>
           <Link
             href={`/courses/${course.id}`}
-            className="focus-aaa line-clamp-2 font-display text-xl font-semibold leading-tight text-foreground underline-offset-4 group-hover:underline"
+            className="focus-aaa break-words font-display text-xl font-semibold leading-tight text-foreground underline-offset-4 group-hover:underline"
           >
             {course.name}
           </Link>
           <p className="mt-1 flex items-start gap-1.5 text-sm text-muted-foreground">
             <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span className="line-clamp-1">{course.location}</span>
+            <span className="break-words">{course.location}</span>
           </p>
         </div>
 
@@ -713,10 +783,18 @@ function formatLastPlayed(value: string | null) {
 
 function initialFilters(value: string) {
   const filters = new Set<LibraryFilter>();
-  if (value === "played") filters.add("played");
-  if (value === "favourites") filters.add("favourite");
-  if (value === "patterns" || value === "strategy") filters.add("strategy");
-  if (value === "records") filters.add("records");
-  if (value === "course-twin") filters.add("twin");
+  for (const item of value.split(",")) {
+    if (
+      item === "played" ||
+      item === "records" ||
+      item === "strategy" ||
+      item === "favourite" ||
+      item === "twin"
+    )
+      filters.add(item);
+    if (item === "favourites") filters.add("favourite");
+    if (item === "patterns") filters.add("strategy");
+    if (item === "course-twin") filters.add("twin");
+  }
   return filters;
 }
