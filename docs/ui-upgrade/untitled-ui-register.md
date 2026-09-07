@@ -64,3 +64,7 @@ Official filter bars/date pickers/drawers/metrics/table/chart references use est
 ## P29 Performance Lab
 
 Official https://www.untitledui.com/react/components/sliders rechecked7September: FREE, React Aria-based, CLI name slider. Local existing Slider(value/onValueChange arrays) remains the explicit adapter alternative with native number input/bounds/reset; no vendor export assumed. Existing verified React Aria UrlTabs and Radix Sheet/Dialog support complete details and optional confirmation. Paid metrics/table/modal compositions still unavailable as above. Specialized flight coordinates remain; numeric/list alternatives and non-intercepting decorative marks improve input access. Existing snapshot() values now exposed directly, not recalculated in UI.
+
+
+### P38 Providers — 7 September
+Official Tabs and Progress steps references rechecked: https://www.untitledui.com/react/components/tabs and https://www.untitledui.com/react/components/progress-steps . Tabs is advertised free; existing React Aria namespaced UrlTabs adapter retained. Advanced step examples link to Get the code; no paid entitlement established. Accessible local OperationStepper uses only latest actual job status, never cumulative totals. Local responsive sheet, full-field evidence list and guarded disconnect use existing exports. No vendor paid installation claimed. Full operation stages/retry cannot be invented from current job DTO.

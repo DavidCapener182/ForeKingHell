@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-229 desktop / 229 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P38 Providers UI, starting C01 controlled tabs. Next: P39 Companion import entry. P34 wrapped actual-app matrix passed 21.9s and P37 mocked-provider matrix passed 19.9s across both surfaces and all six requested sizes. P35/P36 earlier UI preserved. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
+240 desktop / 240 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P42 Companion R-Cloud, in progress. Next: P43 Rounds. P34 wrapped actual-app matrix passed 21.9s and P37 mocked-provider matrix passed 19.9s across both surfaces and all six requested sizes. P35/P36 earlier UI preserved. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
 
 # UI upgrade progress
 
@@ -244,3 +244,19 @@ P33 project integration passed7.9s12views; no increase to220because sixGoalrowsa
 P34-C01–C05 and P37-C01–C04 implemented with partial verification on both surfaces. Handicap now renders the complete companion task; methods wrap without truncation, trend excludes ineligible rounds, and all calculation/source fields remain available. Rapsodo retains preview corrections after closing, shows every measurement and original units, guards concurrent actions, and preserves success receipts with metadata warnings. Changed files: handicap/page.tsx, premium.tsx (opt-in wrapText), app-route-capabilities.ts (Handicap only), rapsodo-sync-client.tsx and scoped browser fixtures/tests. Logs: handicap-browser-wrapped.log PASS 21.9s; rapsodo-fixture-import.log PASS 19.9s. Actual Rapsodo shell/provider integration remains unverified. Shared sticky navigation can overlap scrolled content; no full acceptance claim.
 
 Resume: read /tmp/fkh-p38-prompts.txt or P38 in master prompts; implement Providers controlled retained tabs, provider details/actions, full session ledger and truthful current-operation diagnostics. Coordinate runtime edits with other thread worker-replay run first. Preserve all current dirty work and use scoped commits. Refresh Excel after CSV updates. Latest broader snapshot has 125 failing unit tests and 11 bundle-budget failures; these remain outstanding, not UI completion evidence.
+
+
+## Active P38/P39 checkpoint
+
+Handicap committed e7d76c40; Rapsodo and 229-entry tracker committed 9b504efe. Providers UI implemented locally in providers/page.tsx, provider-details.tsx and provider-connection-actions.tsx; capability switched only after complete controls were exposed. TypeScript and scoped ESLint passed. First browser run rendered the page but timed out waiting for hydration; no console exception recorded. Retry providers-browser-retry.log is active; do not mark P38 implemented-verified until terminal readback. The initial source modifications are preserved, not complete acceptance. P39 prompts read; companion history now includes actual source and correct real/simulator round classification, with latest-three coverage explicit. Its UI was largely already shared with P35; new correction still requires browser proof. Next: finish P38 fixture, then P39 current implementation reconciliation and P40 detailed prompt. Runtime currently frozen for Providers retry.
+
+
+P38-C01–C04 now implemented with partial verification: providers-browser-controls.log PASS 24.9s on both surfaces and six sizes. First hydration failure and transient invalid-script error were followed by a fully interactive diagnostic run; its failure was the test using mobile Close details label on desktop Close. Correct locator then passed all interactions. Do not claim the transient shared script error is fixed. Current: P39/P40 companion-import-browser.log running; source stable. Next P41 companion result.
+
+
+P39-C01–C02 and P40-C01–C03 reconciled with canonical importer and marked implemented partial after companion-import-browser.log PASS 22.0s at all six direct-runtime widths. New P39 source/round classification and latest-three coverage verified. P40 reused completed canonical full importer and retained quick/full drafts, not rewritten. No new save mutation claimed. Providers screenshot caught old feature panel saying Ready beside failure: replaced with actual recent job health, added Needs review assertion; providers-browser-health.log now running. Next P41.
+
+
+## Current exact checkpoint: P42
+
+240 desktop/mobile UI entries implemented partial, zero fully accepted. P38 final health PASS25.1s, committed ee3eace5. P39/P40 PASS22s. P41-C01/C02 PASS25.9s, new permission-bound ImportResultShotReview exposes existing keep/exclude and evidence/club correction in the saved result. Actual review mutation not claimed. P42 companion client and preview currently dirty: preview stays mounted with open state and Resume action; failed login uses onSubmit to retain fields; guarded transitions catch thrown errors. Types passed, browser not run. Critical remaining P42: non-range preview still has desktop-only scored-course restriction. Must provide canonical full scorecard/holes choices on mobile, preserving practicePlanId/exclusions; do not count complete. Read /tmp/fkh-p41-prompts.txt and P42 prompts lines13521–13710, then implement/test P42 before P43. Preserve all other dirty work. No runtime browser active after P41 and Providers final terminal passes.

@@ -25,6 +25,7 @@ import { getDb } from "@/db/client";
 import { sessions } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getSavedPracticePlan } from "@/lib/practice-planner";
+import { isRoundSessionType } from "@/lib/round-sessions";
 import { companionReviewRoute } from "@/lib/session-review-route";
 
 type ImportSearchParams = Promise<{ practicePlanId?: string }> | undefined;
@@ -41,7 +42,9 @@ export default async function ImportCompanionPage({
     : null;
   const validPlan =
     practicePlan &&
-    ["planned", "active", "awaiting_import", "match_found", "completed"].includes(practicePlan.status) &&
+    ["planned", "active", "awaiting_import", "match_found", "completed"].includes(
+      practicePlan.status,
+    ) &&
     !practicePlan.sourceSessionId
       ? practicePlan
       : null;
@@ -52,6 +55,7 @@ export default async function ImportCompanionPage({
       .select({
         id: sessions.id,
         type: sessions.type,
+        source: sessions.source,
         date: sessions.date,
         fileName: sessions.fileName,
         courseName: sessions.courseName,
@@ -136,7 +140,11 @@ export default async function ImportCompanionPage({
 
         {recent.length > 0 ? (
           <section id="recent-imports" className="grid gap-2.5 scroll-mt-20">
-            <h2 className="px-1 text-sm font-semibold">Recent imports</h2>
+            <h2 className="px-1 text-sm font-semibold">Recent saved sessions</h2>
+            <p className="px-1 text-sm text-muted-foreground">
+              Your latest three saved sessions, including manual rounds. Open a session to review
+              its recorded result.
+            </p>
             <Card size="sm">
               <CardContent>
                 <StatusTimeline
@@ -145,12 +153,11 @@ export default async function ImportCompanionPage({
                     id: session.id,
                     title: session.courseName ?? session.fileName ?? "Measured session",
                     timestamp: formatRecentImportDate(session.date),
-                    description:
-                      session.type === "round"
-                        ? "Round evidence imported"
-                        : "Practice evidence imported",
-                    status: session.type === "round" ? "Round" : "Practice",
-                    kind: session.type === "round" ? "round" : "import",
+                    description: isRoundSessionType(session.type)
+                      ? `${session.source} · Saved round evidence`
+                      : `${session.source} · Saved practice evidence`,
+                    status: isRoundSessionType(session.type) ? "Round" : "Practice",
+                    kind: isRoundSessionType(session.type) ? "round" : "import",
                     href: companionReviewRoute(session),
                   }))}
                 />

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ImportResultShotReview } from "@/app/import/import-result-shot-review";
 import { ImportResultRecovery, ImportPracticeReview } from "@/app/import/import-result-sections";
 import { UntitledPageHeader } from "@/components/untitled-ui/headers";
 import { ArrowRight, CheckCircle2, Target } from "lucide-react";
@@ -120,7 +121,7 @@ export default async function ImportResultCompanionPage({
               {!result.isRound ? (
                 <MobileListRow
                   label="Build next plan"
-                  href={`/practice?intent=latest_weakness&source=import&session=${encodeURIComponent(result.session.id)}`}
+                  href={`/practice?intent=latest_weakness&source=import&sourceSessionId=${encodeURIComponent(result.session.id)}`}
                 />
               ) : null}
             </MobileGroupedList>
@@ -142,6 +143,8 @@ export default async function ImportResultCompanionPage({
             preferredClub={result.preferredClub}
           />
         ) : null}
+
+        <ImportResultShotReview sessionId={result.session.id} />
 
         <div data-import-audit>
           <MobileDisclosure
