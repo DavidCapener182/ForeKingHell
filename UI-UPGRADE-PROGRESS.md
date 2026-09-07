@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-325 desktop / 325 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P61 Tournament detail**, next P62 Tournament management. 167 UI entries remain. Continue the UI pass with acceptance gaps retained.
+333 desktop / 333 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P62 Leaderboards**, next P63 per route coverage. 159 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P61 Tournament detail**, next P62 per route coverage. P60-C01–C03 are implemented with partial verification; acceptance remains outstanding.
+Current: **P62 Leaderboards**. P61-C01–C08 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -340,3 +340,9 @@ P60-C01–C03 implemented/partial,325total/0accepted. Sharedfullwidthindex with 
 Browser tournaments-browser-alias.log PASS1.3m all12: aliascourseID,1/0filteredcounts, statuses/reload, search/no-match/resetquery/nameorder, mobileallfields and actualcomponent/documentbounds. Types/lintpass,390 capture inspected. Prior teststrictmatches loading/count and hidden desktopdescription corrected; prior aliasdesktopgate and overflowingselector were realUIdefects fixed.
 Remaining pertracker: latest80global source scope, positive entered/result fixtures, clear/BackForward/unknowncourse/errors/AT/zoom/theme/nativekeyboard. Backend tournament transactions+entry/dateguards currentlydirty/tested, reservedforP61review/commit; indexcommitonlyownsUI+scopedalias.
 Resume:P61 detailedprompts only, full eventdetail/entry/round submission bothsurfaces; coordinate backendowner beforeedits. P62 followscoverage. No mainmerge/deploy; preservecompletedrows and regenerateworkbook.
+
+## P61 active implementation
+All eight detail UI components are applied and in progress. New tournament-detail-sections, tournament-round-progress, tournament-submission-form; shared entry and withdraw now confirmed form-state actions; optional proofRoundNumber sent by uploader and keyed to round. Full mobile standing details replace preview. TypeScript/scoped lint pass. Initial browser timed out during first route compilation/loading; tournament-detail-browser-ready is the active repeat. Do not claim browser completion until terminal result. Next P62 Leaderboards prompts read. Other agent holds runtime freeze during matrix.
+
+## P61 saved UI checkpoint
+P61-C01–C08 implemented, total333, fully accepted0. Full tournament task now both surfaces, canonical Rules/Submit/Rounds/Board query sections, exact owned receipt, no false50%progress, round verification labels, full mobile standings/history, review/pending/error-preserving actions, proof bound to round. Next-round form keyed to confirmed next round to reset after save. Actual all12 matrix PASS2.2m tournament-detail-browser-stack.log; additional1440/390 bothsurfaces multi-round PASS47.6s tournament-detail-multiround.log. Types/lint pass. Earlier firstcompile timeout and subsequent isolated Invalid token preserved as unresolved intermittent evidence; repeat zero pageerrors. Backend actions9tests, round-token4tests and tournamentworkflow11tests pass per coordinated terminal readback. Source service diff reviewed: transactional proof/evidence replacement, exact retry fingerprint, terms/join/date/courseownership checks; existing golf scoring preserved. Outstanding full acceptance enumerated per CSV. Continue P62 Leaderboards (all five prompts already read), thenP63. No live browser freeze after multiround terminal.

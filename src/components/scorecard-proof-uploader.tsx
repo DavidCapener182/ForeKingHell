@@ -28,6 +28,7 @@ type ScorecardExtractResponse = {
 export function ScorecardProofUploader({
   proofScopeId,
   proofScopeType,
+  proofRoundNumber,
   screenshotFieldName,
   extractedTotalFieldName,
   screenshotLabel = "Scorecard screenshot reference",
@@ -36,6 +37,7 @@ export function ScorecardProofUploader({
   onProofChange,
 }: {
   proofScopeId: string;
+  proofRoundNumber?: number;
   proofScopeType: "course_record" | "tournament";
   screenshotFieldName: string;
   extractedTotalFieldName: string;
@@ -112,7 +114,7 @@ export function ScorecardProofUploader({
         method: "POST",
         headers: { "content-type": "application/json" },
         signal: controller.signal,
-        body: JSON.stringify({ imageDataUrl, proofScopeId, proofScopeType }),
+        body: JSON.stringify({ imageDataUrl, proofScopeId, proofScopeType, proofRoundNumber }),
       });
       const payload = (await response.json()) as ScorecardExtractResponse;
       if (version !== requestVersion.current) return;
