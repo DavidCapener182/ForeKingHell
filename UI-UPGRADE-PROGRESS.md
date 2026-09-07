@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-416 desktop / 416 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P78 Moderation**, next P79 Billing and entitlements. 76 UI entries remain. Continue the UI pass with acceptance gaps retained.
+421 desktop / 421 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P79 Billing and entitlements**, next P80 Challenge and tournament administration. 71 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P78 Moderation**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P79 Billing and entitlements**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -408,3 +408,7 @@ Freeze RELEASED, P77page/directory/filters/stateformapplied; genericadminFormAct
 ## P77 Account Management checkpoint
 P77-C01–C04 UIimplementedpartial;416/492UI,0fullyaccepted. Full directory/detail withallidentity/plan/role/activity/auditfields, queryfiltersdrawerApply/Reset/Clear/count, coachfilter, scopeexplicitlatest100matchingsearchbeforefilters. Confirmedrole/lifetime/deactivationforms snapshotexactID/email/role; operatorgrant capabilitypreserved, ownergatesunchanged. admin-users-controls.log1PASS7.7s6sizes; actualadmin-users-browser-final.log1PASS2.4m12surface/sizes exacttargetoperatorgrant/Cancel/ownerunchanged/querypreserved. FirstApplyleftdraweropenfixed. Types/scopedlintcleanbeforelastphonewidth adjustment. Companion390inspected: closingdrawertransitioncapture; widenedsearchfieldafterreview, neutralfinalcaptureoutstanding. Backendadmin-state-identity18PASS/admin-action-routing12PASS; dedicatedadmin-identity-extracted1PASS958ms.
 Freeze RELEASED; rootP78page/moderationqueueapplied, fullpromptsread, otheragentaddingauditRowsDTO+dedicatedpartialbulk/audit tests. No nextbrowseruntilstable. P77admin.ts stageonlyoptionalexpectedUserIdsignatures+guards; broaderpreexistingrole/concurrencychangespreservedunstaged (combinedworkingtree tested). NextP79. No main/deploy.
+
+## P78 Moderation UI checkpoint
+P78-C01–C05UIimplementedpartial;421/492UI,0fullyaccepted. Separate80recordqueues, filters/search/orderURL, selectionclearedwhenhidden, exactreviewlist, pending/error/actualpartialreceipt, allmobileevidence/actionfields, actualresolutionaudit80records + preserved8recordstatushistory. Isolated6sizePASSadmin-moderation-browser.log; actualadmin-moderation-browser-final.log1PASS1.1m12surface/sizes: stale1of2→actual1resolved/1audit, Cancelinert, separateeventunchanged/highseveritydetails. Firstactual390readyguardstayeddisabled15s; bounded60sreadinesswaitpassed, no runtimechange. Types/lintclean. Backendredesign/admin-moderation-bulk2PASS4.04s. Companion390screenshotcaughtdrawerexittransition; neutralcaptureoutstanding. Futurecaptureswait drawer/sheetoverlay removal, notrolecountalone.
+Freeze RELEASED. P79 page/ledger/lifetimeUIapplied; owner-gatedresolveAdminGrantTargetAction and actual lifetimeauditRowspendingotheragent. FullP79promptsread; no fabricatedbillingtransitions. P78admin.tsstageonlygetAdminModerationDataauditaddition, preserveotheragentroleconcurrencydiff; nextP80.

@@ -131,3 +131,6 @@ Specified Sidebar navigations, Metrics/Tooltips, Tables/Paginations, Activity fe
 
 ## P77 Account management
 Specified Filter bars/Drawers/Date pickers, Tables/Paginations, Modals/Buttons and Alerts/Notifications references reuse current installed exports. Paid advanced examples unavailable; native labelled query/filter controls, semantic directory/full responsive account detail, exact review forms and normal-flow confirmed feedback are explicit accessible alternatives. No paid source or broadened admin role implied.
+
+## P78 Moderation
+Specified Filter bars/Drawers/Date pickers, Tables/Paginations, Modals/Buttons and Activity feeds/Dropdowns reuse checked installed exports. Paid advanced templates unavailable; native filters and touch selection, semantic separate ledgers, complete responsive evidence/review panels and actual chronological audit disclosures are the accessible alternatives. Selection alone performs no mutation; no paid source claimed.

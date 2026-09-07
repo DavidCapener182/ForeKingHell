@@ -403,7 +403,27 @@ export async function getAdminModerationData() {
     .orderBy(desc(moderationEvents.createdAt))
     .limit(80);
 
-  return { reports, events };
+  const auditRows = await db
+    .select({
+      id: adminAuditLog.id,
+      actorUserId: adminAuditLog.actorUserId,
+      actorEmail: users.email,
+      action: adminAuditLog.action,
+      targetType: adminAuditLog.targetType,
+      targetId: adminAuditLog.targetId,
+      createdAt: adminAuditLog.createdAt,
+      metadataJson: adminAuditLog.metadataJson,
+    })
+    .from(adminAuditLog)
+    .leftJoin(users, eq(users.id, adminAuditLog.actorUserId))
+    .where(and(
+      inArray(adminAuditLog.action, ["social_report_resolved", "moderation_event_resolved"]),
+      inArray(adminAuditLog.targetType, ["social_report", "moderation_event"]),
+    ))
+    .orderBy(desc(adminAuditLog.createdAt), desc(adminAuditLog.id))
+    .limit(80);
+
+  return { reports, events, auditRows };
 }
 
 export async function getAdminChallengesData() {
