@@ -140,3 +140,6 @@ Specified official metrics, inputs/select, tables/paginations and activity feeds
 
 ## P80 Challenge administration
 Specified official metrics/tooltips, inputs/select/textarea/buttons, tables/pagination and modals reuse previously checked references. Paid advanced examples unavailable. Explicit alternatives: compact semantic metrics, native labelled fields and validated JSON settings, focus-managed full editor/review panels, sortable semantic desktop table and full mobile board details. Local exports typechecked; no paid source installed.
+
+## P81 System checks
+Previously checked official metrics/tooltips, tables/paginations, modals/buttons and activity feeds/dropdowns. Paid advanced examples unavailable. Accessible local alternatives: semantic evidence summaries and tables, native filter controls, full responsive diagnostic/review panel and native dated history disclosures. Current exports pass types; no vendor package/source installation.

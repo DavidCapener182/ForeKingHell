@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-429 desktop / 429 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P81 System checks**, next P82 Sponsors and partner offers. 63 UI entries remain. Continue the UI pass with acceptance gaps retained.
+433 desktop / 433 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P82 Sponsors and partner offers**, next P83 Public home page. 59 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P81 System checks**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P82 Sponsors and partner offers**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -428,3 +428,11 @@ P80-C01–C04 UI implemented with partial verification. Shared full page, exact 
 Checks: admin-challenges-types.log and scoped lint clean. First isolated browser test failed short-label selector; corrected to include help-text accessible name. admin-challenges-controls-final.log passed 5.7s across six sizes. Actual all12 passed in combined admin-challenges-browser.log 3.6m (combined exit failed for original isolated selector only), Cancel unchanged and no overflow/pageerrors. Companion390 template list inspected after overlay removal. Backend template plus existing workflows 3 passed; concurrent edits exactlyone commit. Full browser-confirmed save and broad acceptance remain outstanding.
 
 Resume: P81 prompts read and root page/register/retry/data extraction applied; other agent implementing actual recorded-check refresh/audit history. P80 freeze released. P79 commit a19fd319; preserve all unrelated work.
+
+## P81 System checks UI pass, 7 September
+
+P81-C01–C04 UI implemented partial: current service evidence distinct from unverified live checks, searchable/sortable desktop register/full mobile diagnostics, named refresh review with pending/error and real database-record read followed by saved audit snapshot. Native full historical details preserve exact actor/time/scope/metrics across newer snapshots. New service/action and extracted data/register; no fabricated provider health probes.
+
+Checks: admin-system-browser.log1passed35.7s both surfaces/all6sizes; Cancel no write, one confirmed refresh adds one record, old seven-failure fixture retained, unverified auth remains unverified; no overflow/pageerrors. Companion390 inspected. Types/lintclean; service/action3PASS587ms. Native keyboard/screenreader/theme/error matrices and live health execution remain outstanding.
+
+Resume: P82 all5prompts read. Root forms draft /tmp/p82-forms.tsx; other agent implementing canonical click, recoverable sponsor/offer state and all-owned sponsor choices. P81 freeze released. P80 commit6abd93a6. Continue then P83 without resetting tracker.
