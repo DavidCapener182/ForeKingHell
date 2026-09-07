@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-259 desktop / 259 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P52 Course Twin catalogue**. P51 UI and bounded browser checks complete; all broader acceptance remains separately outstanding. 287 of492 UI implemented with partial verification, zero fully accepted.
+259 desktop / 259 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P53 Play and pre-round setup**. 289 of492 UI implemented with partial verification; zero fully accepted. Continue UI implementation first, with recorded acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -294,3 +294,6 @@ P50-C01–C04 UI implemented partial,282total,0fullyaccepted. ShotPatternMap exp
 
 
 P51-C01–C05 UI implemented partial,287total,0fullyaccepted. Searchable staged companion setup, pre/post navigation retaining course/tee/round context, explicit modelled conditions and complete saved reflections. course-strategy-browser-scorecard.log PASS18.4s both surfaces x6sizes;11 postround/roundlearning tests PASS184ms. Initial fixture stored scorecard as JSON string: corrected seed with db.json and full rerun passed. Measured shots/raw scorecard unchanged. Screenshot390 inspected; shared fixed-bar overlap and full positive trusted-bag/navigation/error/AT acceptance open. Changed strategy pages/navigation/forms/results, PlaySelectionControls and review dependencies. Next P52 full prompts /tmp/fkh-p52-prompts.txt read: complete catalogue on both surfaces, real image previews with fallback, full quality warnings and exact course entry/details links. Preserve other thread catalog ownership backend fix. Continue same upgrade branch, no merge/deploy.
+
+
+P52-C01/C02 UI implemented partial,289total. Complete shared catalogue replaces reduced companion branch. Full quality notes, supplied real preview URLs with loading/missing/failure states, all available grades, exact runtime and mapped-hole links; route loading/service-error recovery added. course-twins-browser.log PASS3.5s isolated fixture both surfaces x6sizes,390 screenshot inspected. Types/scoped lint pass. Actual app shell/font/3D/permission/error-boundary/AT acceptance open. Files course-twins page/catalogue/loading/error and fixture/test. P51 commit74de7f0e includes previously untracked review dependencies and hydration helper. Next P53 full prompts /tmp/fkh-p53-prompts.txt read; preserve older dirty Play redesign while adding missing full mobile planning facts and staged searchable setup. Other thread owns catalogue import ownership fix,104backend tests pass; no browser active.
