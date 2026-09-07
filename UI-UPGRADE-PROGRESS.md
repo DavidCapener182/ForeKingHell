@@ -522,3 +522,7 @@ G04/G13/G14: entity breadcrumb parents, 44px recovery/dismiss controls and reada
 Changed final shared files: desktop-workbench-chrome.tsx (only owned delta), workbench-breadcrumbs.tsx, workbench-breadcrumbs.ts and tests, companion-sync-status.tsx, achievement-notifications.tsx; isolated final-shared fixture/test. Preserve other agent dirty changes.
 
 Exact next steps: release only weekly-change-review-data.ts, activation-journey.ts and share/[token]/page.tsx to the coordinated backend agent for their three known failing regressions. Root must continue acceptance/integration, starting with redirect Performance.measure stack capture and isolated production-runtime comparison. Keep tracker partial until each full acceptance is evidenced. Do not rerun unchanged failing broad suites or deploy.
+
+### Integration: three deferred evidence defects fixed
+
+Coordinated backend changes filter positive finite carry before personal-best ranking; require positive finite measurement and same-owner active mapped club for activation evidence; suppress differential for incomplete/duplicate-hole shared rounds. Real disposable-DB tests: three-backend-fixes.log 4 passed/2.15s; expanded shared-round-completion-final.log 2 passed/9.67s. Agent full TypeScript and scoped lint pass. Root reviewed source and regression assertions. Existing activation review-label change remains separately owned and is not included in this backend commit. Overall acceptance remains partial; native/browser matrices still open.

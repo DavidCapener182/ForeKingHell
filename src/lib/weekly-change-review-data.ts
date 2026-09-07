@@ -68,7 +68,8 @@ export async function getWeeklyChangeEvidence(userId: string, now = new Date()) 
           ) as prior_best
         from ${shots}
         where ${shots.userId} = ${userId}
-          and ${shots.carryYd} is not null
+          and ${shots.carryYd} > 0
+          and ${shots.carryYd} < 'Infinity'::double precision
           and ${shots.reviewStatus} in ('included', 'restored')
           and (
             ${shots.reviewStatus} = 'restored'

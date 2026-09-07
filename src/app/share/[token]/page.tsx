@@ -7,6 +7,7 @@ import { courses, sessions, shareLinks, teeSets, users } from "@/db/schema";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import type { AppSurface } from "@/lib/app-surface";
 import { calculateRoundDifferential } from "@/lib/round-handicap";
+import { roundCompletionIssue } from "@/lib/round-context";
 import { hashShareToken } from "@/lib/share-links";
 
 export const dynamic = "force-dynamic";
@@ -112,13 +113,15 @@ async function getSharedRound(token: string) {
   const totalScore = sumNullable(holes.map((hole) => hole.score ?? null));
   const totalPar = holes.length > 0 ? holes.reduce((total, hole) => total + hole.par, 0) : null;
   const totalPutts = sumNullable(holes.map((hole) => hole.putts ?? null));
-  const handicapDifferential = calculateRoundDifferential({
-    totalScore,
-    totalPar,
-    courseRating: session.courseRating,
-    slopeRating: session.slopeRating,
-    holesPlayed: holes.length,
-  });
+  const handicapDifferential = roundCompletionIssue(holes)
+    ? null
+    : calculateRoundDifferential({
+        totalScore,
+        totalPar,
+        courseRating: session.courseRating,
+        slopeRating: session.slopeRating,
+        holesPlayed: holes.length,
+      });
 
   return {
     link,

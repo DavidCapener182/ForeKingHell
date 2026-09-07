@@ -54,7 +54,16 @@ export async function getActivationJourney(userId: string): Promise<ActivationJo
       db
         .select({
           raw: count(),
-          eligible: sql<number>`count(*) filter (where ${shotEvidenceSqlPredicate()})::int`,
+          eligible: sql<number>`count(*) filter (where ${shotEvidenceSqlPredicate()}
+            and (
+              (${shots.carryYd} > 0 and ${shots.carryYd} < 'Infinity'::double precision)
+              or (${shots.totalYd} > 0 and ${shots.totalYd} < 'Infinity'::double precision)
+              or (${shots.ballSpeedMph} > 0 and ${shots.ballSpeedMph} < 'Infinity'::double precision)
+              or (${shots.clubSpeedMph} > 0 and ${shots.clubSpeedMph} < 'Infinity'::double precision)
+            )
+            and exists (select 1 from ${clubs} where ${clubs.id} = ${shots.clubId}
+              and ${clubs.userId} = ${userId} and ${clubs.active} = true)
+          )::int`,
         })
         .from(shots)
         .where(eq(shots.userId, userId)),
