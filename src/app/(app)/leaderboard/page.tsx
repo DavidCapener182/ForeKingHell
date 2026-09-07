@@ -3,7 +3,6 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ShieldCheck, Target, Trophy } from "lu
 import { and, desc, eq, gte, inArray, or, sql } from "drizzle-orm";
 
 import { DataPanel, DataTableFrame, PageShell, SectionHeader } from "@/components/premium";
-import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -37,10 +36,10 @@ import { getDb } from "@/db/client";
 import { getChallengesPageData } from "@/lib/challenges";
 import { ensureSocialProfileForUser, getFriendIds, parseVisibility } from "@/lib/social";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { excludedRecordQualityTags, excludedRecordShotCategories } from "@/lib/shot-records";
 import { LeaderboardPlayerControls } from "@/app/leaderboard/leaderboard-controls";
-import { MobileLeaderboard } from "@/app/leaderboard/mobile-leaderboard";
+import { LeaderboardDetailCards } from "@/app/leaderboard/leaderboard-detail-cards";
+import boardStyles from "@/app/course-records/course-record-board.module.css";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +56,7 @@ type LeaderboardPageProps = {
     sort?: string;
     dir?: string;
     full?: string;
+    q?: string;
   }>;
 };
 
@@ -98,6 +98,7 @@ type TournamentBoard = {
   format: string;
   grossTotal: number;
   roundsCompleted: number;
+  roundCount: number;
   champion: {
     displayName: string;
     username: string;
@@ -227,99 +228,89 @@ const challengeLeaderboardSuggestedViews: DesktopSavedViewSuggestion[] = [
 export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps) {
   const params = await searchParams;
   const requestedTab = parseTab(params?.tab);
-  const surface = await getRequestAppSurface();
-  const activeTab =
-    surface === "companion"
-      ? requestedTab === "public"
-        ? "public"
-        : "friends"
-      : requestedTab === "monthly"
-        ? "friends"
-        : requestedTab;
-  const period =
-    surface === "companion" ? "monthly" : parseLeaderboardPeriod(params?.period, requestedTab);
+  const activeTab = requestedTab === "monthly" ? "friends" : requestedTab;
+  const period = parseLeaderboardPeriod(params?.period, requestedTab);
   const filters = parseLeaderboardFilters(params);
   const playerSort = parsePlayerLeaderboardSort(params?.sort, params?.dir);
   const challengeSort = parseChallengeLeaderboardSort(params?.sort, params?.dir);
   const data = await getLeaderboardData(activeTab, filters, period);
-  const companionScope = activeTab === "public" ? "public" : "friends";
-  const otherCompanionData =
-    surface === "companion"
-      ? await getLeaderboardData(
-          companionScope === "friends" ? "public" : "friends",
-          filters,
-          "monthly",
-        )
-      : null;
-  const friendsPlayers =
-    companionScope === "friends" ? data.players : (otherCompanionData?.players ?? []);
-  const globalPlayers =
-    companionScope === "public" ? data.players : (otherCompanionData?.players ?? []);
-  const workbench =
-    surface === "workbench" ? await import("@/components/app/desktop-workbench") : null;
-  const DesktopWorkbenchLayout = workbench?.DesktopWorkbenchLayout;
-
   return (
     <PageShell>
-      {surface === "companion" ? (
-        <MobileAppShell>
-          <MobileTopBar title="Leaderboards" />
-          <MobileLeaderboard
-            initialScope={companionScope}
-            monthLabel={formatMonth(data.monthStart)}
-            friends={friendsPlayers.map(toMobileLeaderboardPlayer)}
-            global={globalPlayers.map(toMobileLeaderboardPlayer)}
+      <div className="grid min-w-0 gap-4" data-leaderboard-workspace>
+        <div className="flex justify-end">
+          <Button asChild variant="outline">
+            <Link href="/profile" prefetch={false}>
+              <ShieldCheck className="size-4" />
+              Leaderboard privacy
+            </Link>
+          </Button>
+        </div>
+
+        <>
+          <LeaderboardCompetitionHeader
+            activeTab={activeTab}
+            period={period}
+            monthStart={data.monthStart}
+            playerCount={data.players.length}
           />
-        </MobileAppShell>
-      ) : null}
+          <nav aria-label="Leaderboard boards" className="flex flex-wrap gap-2">
+            {(
+              [
+                ["friends", "Friends"],
+                ["public", "Global"],
+                ["challenges", "Challenges"],
+                ["courses", "Course champions"],
+                ["tournaments", "Tournaments"],
+              ] as const
+            ).map(([id, name]) => (
+              <Button key={id} asChild variant={activeTab === id ? "default" : "outline"}>
+                <Link
+                  href={`/leaderboard?tab=${id}&period=${period}`}
+                  aria-current={activeTab === id ? "page" : undefined}
+                >
+                  {name}
+                </Link>
+              </Button>
+            ))}
+          </nav>
+          {activeTab === "friends" || activeTab === "public" ? (
+            <LeaderboardPlayerControls
+              key={`${activeTab}-${period}-${filters.provider}-${filters.verification}-${params?.q ?? ""}-${playerSort.metric}-${playerSort.dir}`}
+              activeTab={activeTab}
+              period={period}
+              monthLabel={formatMonth(data.monthStart)}
+              provider={filters.provider}
+              verification={filters.verification}
+              query={params?.q ?? ""}
+              sort={playerSort.metric}
+              dir={playerSort.dir}
+              resultCount={
+                data.players.filter((player) =>
+                  player.displayName.toLowerCase().includes((params?.q ?? "").toLowerCase()),
+                ).length
+              }
+            />
+          ) : null}
 
-      {surface === "workbench" && DesktopWorkbenchLayout ? (
-        <DesktopWorkbenchLayout scope="leaderboard">
-          <div className="flex justify-end">
-            <Button asChild variant="outline">
-              <Link href="/profile" prefetch={false}>
-                <ShieldCheck className="size-4" />
-                Leaderboard privacy
-              </Link>
-            </Button>
-          </div>
-
-          <>
-            <LeaderboardCompetitionHeader
+          {activeTab === "challenges" ? (
+            <ChallengeBoards boards={data.challengeBoards} sortState={challengeSort} />
+          ) : activeTab === "courses" ? (
+            <CourseChampionBoards boards={data.courseChampionBoards} />
+          ) : activeTab === "tournaments" ? (
+            <TournamentBoards boards={data.tournamentBoards} />
+          ) : (
+            <PlayerLeaderboard
+              players={data.players}
               activeTab={activeTab}
               period={period}
               monthStart={data.monthStart}
-              playerCount={data.players.length}
+              filters={filters}
+              sortState={playerSort}
+              query={params?.q ?? ""}
             />
-            {activeTab === "friends" || activeTab === "public" ? (
-              <LeaderboardPlayerControls
-                activeTab={activeTab}
-                period={period}
-                monthLabel={formatMonth(data.monthStart)}
-                provider={filters.provider}
-                verification={filters.verification}
-              />
-            ) : null}
-
-            {activeTab === "challenges" ? (
-              <ChallengeBoards boards={data.challengeBoards} sortState={challengeSort} />
-            ) : activeTab === "courses" ? (
-              <CourseChampionBoards boards={data.courseChampionBoards} />
-            ) : activeTab === "tournaments" ? (
-              <TournamentBoards boards={data.tournamentBoards} />
-            ) : (
-              <PlayerLeaderboard
-                players={data.players}
-                activeTab={activeTab}
-                period={period}
-                monthStart={data.monthStart}
-                filters={filters}
-                sortState={playerSort}
-              />
-            )}
-          </>
-        </DesktopWorkbenchLayout>
-      ) : null}
+          )}
+        </>
+      </div>
     </PageShell>
   );
 }
@@ -329,6 +320,7 @@ type LeaderboardProvider = "all" | "espn" | "rapsodo" | "rapsodo_cloud" | "manua
 type LeaderboardFilters = {
   provider: LeaderboardProvider;
   verification: "all" | "verified" | "manual";
+  query?: string;
 };
 
 async function getLeaderboardData(
@@ -561,7 +553,16 @@ async function getCourseChampionBoards(
     .innerJoin(courseRecordCategories, eq(courseRecords.categoryId, courseRecordCategories.id))
     .innerJoin(courses, eq(courseRecords.courseId, courses.id))
     .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
-    .where(and(eq(courseRecordResults.rank, 1), or(...visibilityConditions)))
+    .where(
+      and(
+        eq(courseRecordResults.rank, 1),
+        eq(courseRecords.status, "active"),
+        eq(courseRecordResults.verificationStatus, "verified"),
+        inArray(courseRecordResults.status, ["active", "verified"]),
+        or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, viewerUserId)),
+        or(...visibilityConditions),
+      ),
+    )
     .orderBy(desc(courseRecordResults.calculatedAt))
     .limit(12);
 
@@ -600,7 +601,15 @@ async function getTournamentBoards(
     .where(
       and(
         eq(tournamentStandings.rank, 1),
-        or(eq(tournaments.visibility, "public"), inArray(tournaments.createdByUserId, creatorIds)),
+        eq(tournamentStandings.status, "active"),
+        or(
+          eq(tournaments.visibility, "public"),
+          eq(tournaments.createdByUserId, viewerUserId),
+          and(
+            eq(tournaments.visibility, "friends"),
+            inArray(tournaments.createdByUserId, creatorIds),
+          ),
+        ),
       ),
     )
     .orderBy(desc(tournamentStandings.calculatedAt))
@@ -614,6 +623,7 @@ async function getTournamentBoards(
       format: row.tournament.format,
       grossTotal: row.standing.grossTotal,
       roundsCompleted: row.standing.roundsCompleted,
+      roundCount: row.tournament.roundCount,
       champion: {
         displayName: row.profile?.displayName ?? "Player",
         username: row.profile?.username ?? row.standing.userId,
@@ -628,8 +638,10 @@ async function PlayerLeaderboard({
   monthStart,
   filters,
   sortState,
+  query,
 }: {
   players: PlayerRow[];
+  query: string;
   activeTab: LeaderboardTab;
   period: LeaderboardPeriod;
   monthStart: Date;
@@ -638,7 +650,9 @@ async function PlayerLeaderboard({
 }) {
   const { DesktopTableWorkbenchControls } = await import("@/components/app/desktop-workbench");
   const rankByUserId = new Map(players.map((player, index) => [player.userId, index + 1]));
-  const tablePlayers = sortPlayerLeaderboard(players, sortState);
+  const tablePlayers = sortPlayerLeaderboard(players, sortState).filter((player) =>
+    player.displayName.toLowerCase().includes(query.toLowerCase()),
+  );
   const title = activeTab === "public" ? "Global leaderboard" : "Friends leaderboard";
   const resultLabel = period === "monthly" ? "Monthly XP" : "Total XP";
 
@@ -671,161 +685,196 @@ async function PlayerLeaderboard({
             exportFileName="forekinghell-leaderboard-players-view.csv"
             className="mb-3"
           />
-          <DataTableFrame
-            mainTable
-            mainTableId="leaderboard-player-main-table"
-            mainTableLabel="Leaderboard player table"
-            stickyFirstColumn
-          >
-            <Table
-              className="min-w-[760px]"
-              data-workbench-scope="leaderboard"
-              data-workbench-export-table="leaderboard-players"
-              aria-describedby="leaderboard-player-table-summary"
+          <div className={boardStyles.mobile}>
+            <LeaderboardDetailCards
+              rows={tablePlayers.map((player) => ({
+                id: player.userId,
+                title: `#${rankByUserId.get(player.userId)} ${player.displayName}`,
+                result: `${integerFormatter.format(scoreForPeriod(player, period))} XP`,
+                href: `/profile/${player.username}`,
+                personal: player.isCurrentUser,
+                fields: [
+                  ["Period", period === "monthly" ? formatMonth(monthStart) : "All time"],
+                  [
+                    "Movement",
+                    rankMovementForPlayer(player) ?? "Unavailable: no prior ranking snapshot",
+                  ],
+                  ["Relationship", player.relationship],
+                  [
+                    "This month: rounds / sessions",
+                    `${player.monthlyRounds} / ${player.monthlySessions}`,
+                  ],
+                  ["This month: shots", String(player.monthlyShots)],
+                  ["Best round", String(player.bestRoundScore ?? "Unavailable")],
+                  ["Longest drive (yd)", String(player.longestDriveYd ?? "Unavailable")],
+                  ["Drive evidence", player.verificationLabel],
+                ],
+              }))}
+              empty="No authorised results match this board."
+            />
+          </div>
+          <div className={boardStyles.desktop}>
+            <DataTableFrame
+              mainTable
+              mainTableId="leaderboard-player-main-table"
+              mainTableLabel="Leaderboard player table"
+              stickyFirstColumn
             >
-              <TableCaption id="leaderboard-player-table-summary" className="sr-only">
-                Ranked golfers with result, verified rank movement where available, round and
-                session counts, and proof status.
-              </TableCaption>
-              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
-                <TableRow>
-                  <SortablePlayerHead
-                    activeTab={activeTab}
-                    period={period}
-                    columnId="rank"
-                    filters={filters}
-                    metric="rank"
-                    sortState={sortState}
-                    className="sticky left-0 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
-                  />
-                  <SortablePlayerHead
-                    activeTab={activeTab}
-                    period={period}
-                    columnId="player"
-                    filters={filters}
-                    metric="player"
-                    sortState={sortState}
-                  />
-                  <SortablePlayerHead
-                    activeTab={activeTab}
-                    period={period}
-                    align="right"
-                    columnId="result"
-                    filters={filters}
-                    metric={period === "monthly" ? "monthly-xp" : "total-xp"}
-                    sortState={sortState}
-                  />
-                  <TableHead data-column="movement" className="text-right">
-                    Movement
-                  </TableHead>
-                  <TableHead data-column="rounds-sessions" className="text-right">
-                    Rounds / sessions
-                  </TableHead>
-                  <SortablePlayerHead
-                    activeTab={activeTab}
-                    period={period}
-                    align="right"
-                    columnId="proof"
-                    filters={filters}
-                    metric="source"
-                    sortState={sortState}
-                  />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tablePlayers.map((player) => {
-                  const rank = rankByUserId.get(player.userId) ?? 0;
-                  const movement = rankMovementForPlayer(player);
+              <Table
+                className="min-w-[760px]"
+                data-workbench-scope="leaderboard"
+                data-workbench-export-table="leaderboard-players"
+                aria-describedby="leaderboard-player-table-summary"
+              >
+                <TableCaption id="leaderboard-player-table-summary" className="sr-only">
+                  Ranked golfers with result, verified rank movement where available, round and
+                  session counts, and proof status.
+                </TableCaption>
+                <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
+                  <TableRow>
+                    <SortablePlayerHead
+                      activeTab={activeTab}
+                      period={period}
+                      columnId="rank"
+                      filters={filters}
+                      metric="rank"
+                      sortState={sortState}
+                      className="sticky left-0 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+                    />
+                    <SortablePlayerHead
+                      activeTab={activeTab}
+                      period={period}
+                      columnId="player"
+                      filters={filters}
+                      metric="player"
+                      sortState={sortState}
+                    />
+                    <SortablePlayerHead
+                      activeTab={activeTab}
+                      period={period}
+                      align="right"
+                      columnId="result"
+                      filters={filters}
+                      metric={period === "monthly" ? "monthly-xp" : "total-xp"}
+                      sortState={sortState}
+                    />
+                    <TableHead data-column="movement" className="text-right">
+                      Movement
+                    </TableHead>
+                    <TableHead data-column="rounds-sessions" className="text-right">
+                      Rounds / sessions
+                    </TableHead>
+                    <SortablePlayerHead
+                      activeTab={activeTab}
+                      period={period}
+                      align="right"
+                      columnId="proof"
+                      filters={filters}
+                      metric="source"
+                      sortState={sortState}
+                    />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tablePlayers.map((player) => {
+                    const rank = rankByUserId.get(player.userId) ?? 0;
+                    const movement = rankMovementForPlayer(player);
 
-                  return (
-                    <TableRow
-                      key={player.userId}
-                      tabIndex={0}
-                      data-current-user={player.isCurrentUser ? "true" : undefined}
-                      data-top-three={rank <= 3 ? String(rank) : undefined}
-                      className={leaderboardRowClassName(rank, player.isCurrentUser)}
-                    >
-                      <TableCell
-                        data-column="rank"
-                        className="sticky left-0 z-10 bg-inherit py-4 shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+                    return (
+                      <TableRow
+                        key={player.userId}
+                        tabIndex={0}
+                        data-current-user={player.isCurrentUser ? "true" : undefined}
+                        data-top-three={rank <= 3 ? String(rank) : undefined}
+                        className={leaderboardRowClassName(rank, player.isCurrentUser)}
                       >
-                        <span className={rankNumberClassName(rank)}>{rank > 0 ? rank : "--"}</span>
-                      </TableCell>
-                      <TableCell data-column="player">
-                        <div className="flex items-center gap-3">
-                          <span
-                            aria-hidden
-                            className="grid size-9 shrink-0 place-items-center rounded-full border bg-card text-xs font-semibold"
-                          >
-                            {golferInitials(player.displayName)}
+                        <TableCell
+                          data-column="rank"
+                          className="sticky left-0 z-10 bg-inherit py-4 shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+                        >
+                          <span className={rankNumberClassName(rank)}>
+                            {rank > 0 ? rank : "--"}
                           </span>
-                          <div className="min-w-0">
-                            <Link
-                              href={`/profile/${player.username}`}
-                              prefetch={false}
-                              className="block truncate font-semibold hover:underline"
+                        </TableCell>
+                        <TableCell data-column="player">
+                          <div className="flex items-center gap-3">
+                            <span
+                              aria-hidden
+                              className="grid size-9 shrink-0 place-items-center rounded-full border bg-card text-xs font-semibold"
                             >
-                              {player.displayName}
-                            </Link>
-                            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                              <span>{player.relationship}</span>
-                              {player.isCurrentUser ? (
-                                <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
-                                  You
-                                </Badge>
-                              ) : null}
+                              {golferInitials(player.displayName)}
+                            </span>
+                            <div className="min-w-0">
+                              <Link
+                                href={`/profile/${player.username}`}
+                                prefetch={false}
+                                className="block truncate font-semibold hover:underline"
+                              >
+                                {player.displayName}
+                              </Link>
+                              <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                                <span>{player.relationship}</span>
+                                {player.isCurrentUser ? (
+                                  <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                                    You
+                                  </Badge>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell data-column="result" className="text-right">
-                        <span className="text-lg font-semibold tabular-nums">
-                          {integerFormatter.format(scoreForPeriod(player, period))}
-                        </span>
-                        <span className="ml-1 text-xs text-muted-foreground">XP</span>
-                      </TableCell>
-                      <TableCell data-column="movement" className="text-right">
-                        {movement ? (
-                          <span className="font-medium tabular-nums">{movement}</span>
-                        ) : (
-                          <span className="text-muted-foreground" title="No prior rank snapshot">
-                            —<span className="sr-only"> No ranking history</span>
+                        </TableCell>
+                        <TableCell data-column="result" className="text-right">
+                          <span className="text-lg font-semibold tabular-nums">
+                            {integerFormatter.format(scoreForPeriod(player, period))}
                           </span>
-                        )}
-                      </TableCell>
-                      <TableCell data-column="rounds-sessions" className="text-right tabular-nums">
-                        <span className="font-medium">{player.monthlyRounds}</span>
-                        <span className="px-1 text-muted-foreground">/</span>
-                        <span>{player.monthlySessions}</span>
-                      </TableCell>
-                      <TableCell data-column="proof" className="text-right">
-                        <Badge variant={proofBadgeVariant(player.verificationLabel)}>
-                          {player.verificationLabel}
-                        </Badge>
+                          <span className="ml-1 text-xs text-muted-foreground">XP</span>
+                        </TableCell>
+                        <TableCell data-column="movement" className="text-right">
+                          {movement ? (
+                            <span className="font-medium tabular-nums">{movement}</span>
+                          ) : (
+                            <span className="text-muted-foreground" title="No prior rank snapshot">
+                              —<span className="sr-only"> No ranking history</span>
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell
+                          data-column="rounds-sessions"
+                          className="text-right tabular-nums"
+                        >
+                          <span className="font-medium">{player.monthlyRounds}</span>
+                          <span className="px-1 text-muted-foreground">/</span>
+                          <span>{player.monthlySessions}</span>
+                        </TableCell>
+                        <TableCell data-column="proof" className="text-right">
+                          <Badge variant={proofBadgeVariant(player.verificationLabel)}>
+                            {player.verificationLabel}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {tablePlayers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="p-4">
+                        <AppEmptyState
+                          title="No ranked entries yet"
+                          description="No opted-in players match this audience and evidence filter."
+                          primaryAction={
+                            <Button asChild variant="outline">
+                              <Link href="/profile" prefetch={false}>
+                                Review leaderboard privacy
+                              </Link>
+                            </Button>
+                          }
+                        />
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-                {tablePlayers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="p-4">
-                      <AppEmptyState
-                        title="No ranked entries yet"
-                        description="No opted-in players match this audience and evidence filter."
-                        primaryAction={
-                          <Button asChild variant="outline">
-                            <Link href="/profile" prefetch={false}>
-                              Review leaderboard privacy
-                            </Link>
-                          </Button>
-                        }
-                      />
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
-          </DataTableFrame>
+                  ) : null}
+                </TableBody>
+              </Table>
+            </DataTableFrame>
+          </div>
         </CardContent>
       </DataPanel>
     </section>
@@ -1007,6 +1056,7 @@ function leaderboardTableSortHref({
     params.set("verification", filters.verification);
   }
 
+  if (filters?.query) params.set("q", filters.query);
   params.set("sort", metric);
   params.set("dir", dir);
 
@@ -1221,7 +1271,7 @@ function LeaderboardCompetitionHeader({
   const scopeLabel = leaderboardScopeLabel(activeTab);
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border bg-card px-5 py-6 sm:px-7 sm:py-8">
+    <section className="relative overflow-hidden rounded-2xl border bg-card p-4 sm:p-5">
       <div className="absolute inset-y-0 left-0 w-1 bg-primary" aria-hidden />
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
@@ -1229,13 +1279,13 @@ function LeaderboardCompetitionHeader({
             <Trophy className="size-4 text-primary" aria-hidden />
             Competition board
           </div>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Leaderboards</h1>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Leaderboards</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
             Ranked golf results with visible participation and proof. Movement is shown only when
             ranking history exists.
           </p>
         </div>
-        <dl className="grid grid-cols-3 gap-5 border-l pl-5 text-right">
+        <dl className="grid grid-cols-3 gap-4 text-left sm:text-right">
           <div>
             <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Period
@@ -1291,111 +1341,139 @@ async function ChallengeBoards({
           exportFileName="forekinghell-challenge-leaderboards-view.csv"
           className="mb-3"
         />
-        <DataTableFrame
-          mainTable
-          mainTableId="challenge-leaderboard-main-table"
-          mainTableLabel="Challenge leaderboard table"
-          stickyFirstColumn
-        >
-          <Table
-            className="min-w-[840px]"
-            data-workbench-scope="leaderboard"
-            data-workbench-export-table="leaderboard-challenges"
-            aria-describedby="challenge-leaderboard-table-summary"
+        <div className={boardStyles.mobile}>
+          <LeaderboardDetailCards
+            rows={sortedBoards.map((board) => ({
+              id: board.id,
+              title: board.title,
+              result: board.leader?.scoreLabel ?? "No result",
+              href: `/challenges/${board.id}`,
+              fields: [
+                [
+                  "Scoring",
+                  `${board.templateName} · ${board.scoringDirection === "asc" ? "Lower wins" : "Higher wins"}`,
+                ],
+                ["Leader", board.leader?.displayName ?? "None"],
+                ["Participants", String(board.participantCount)],
+                ["Evidence", board.leader?.verificationLabel ?? "Unavailable"],
+                ["Rules", board.rulesSummary],
+              ],
+            }))}
+            empty="No authorised results match this board."
+          />
+        </div>
+        <div className={boardStyles.desktop}>
+          <DataTableFrame
+            mainTable
+            mainTableId="challenge-leaderboard-main-table"
+            mainTableLabel="Challenge leaderboard table"
+            stickyFirstColumn
           >
-            <TableCaption id="challenge-leaderboard-table-summary" className="sr-only">
-              Challenge leaderboard boards with template, participant count, leader, score and
-              verification source.
-            </TableCaption>
-            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
-              <TableRow>
-                <SortableChallengeHead
-                  columnId="challenge"
-                  metric="challenge"
-                  sortState={sortState}
-                  className="sticky left-0 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
-                />
-                <SortableChallengeHead
-                  columnId="template"
-                  metric="template"
-                  sortState={sortState}
-                />
-                <SortableChallengeHead
-                  align="right"
-                  columnId="participants"
-                  metric="participants"
-                  sortState={sortState}
-                />
-                <SortableChallengeHead
-                  align="right"
-                  columnId="leader"
-                  metric="leader"
-                  sortState={sortState}
-                />
-                <SortableChallengeHead
-                  align="right"
-                  columnId="score"
-                  metric="score"
-                  sortState={sortState}
-                />
-                <SortableChallengeHead
-                  align="right"
-                  columnId="source"
-                  metric="source"
-                  sortState={sortState}
-                />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedBoards.map((board) => (
-                <TableRow key={board.id} tabIndex={0} className="focus-aaa outline-none">
-                  <TableCell
-                    data-column="challenge"
-                    className="sticky left-0 z-10 bg-card shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
-                  >
-                    <Link
-                      href={`/challenges/${board.id}`}
-                      prefetch={false}
-                      className="font-medium hover:underline"
+            <Table
+              className="min-w-[840px]"
+              data-workbench-scope="leaderboard"
+              data-workbench-export-table="leaderboard-challenges"
+              aria-describedby="challenge-leaderboard-table-summary"
+            >
+              <TableCaption id="challenge-leaderboard-table-summary" className="sr-only">
+                Challenge leaderboard boards with template, participant count, leader, score and
+                verification source.
+              </TableCaption>
+              <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-muted">
+                <TableRow>
+                  <SortableChallengeHead
+                    columnId="challenge"
+                    metric="challenge"
+                    sortState={sortState}
+                    className="sticky left-0 z-20 bg-muted shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
+                  />
+                  <SortableChallengeHead
+                    columnId="template"
+                    metric="template"
+                    sortState={sortState}
+                  />
+                  <SortableChallengeHead
+                    align="right"
+                    columnId="participants"
+                    metric="participants"
+                    sortState={sortState}
+                  />
+                  <SortableChallengeHead
+                    align="right"
+                    columnId="leader"
+                    metric="leader"
+                    sortState={sortState}
+                  />
+                  <SortableChallengeHead
+                    align="right"
+                    columnId="score"
+                    metric="score"
+                    sortState={sortState}
+                  />
+                  <SortableChallengeHead
+                    align="right"
+                    columnId="source"
+                    metric="source"
+                    sortState={sortState}
+                  />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedBoards.map((board) => (
+                  <TableRow key={board.id} tabIndex={0} className="focus-aaa outline-none">
+                    <TableCell
+                      data-column="challenge"
+                      className="sticky left-0 z-10 bg-card shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                     >
-                      {board.title}
-                    </Link>
-                  </TableCell>
-                  <TableCell data-column="template">{board.templateName}</TableCell>
-                  <TableCell data-column="participants" className="text-right">
-                    {board.participantCount}
-                  </TableCell>
-                  <TableCell data-column="leader" className="text-right">
-                    {board.leader ? (
                       <Link
-                        href={`/profile/${board.leader.username}`}
+                        href={`/challenges/${board.id}`}
                         prefetch={false}
                         className="font-medium hover:underline"
                       >
-                        {board.leader.displayName}
+                        {board.title}
                       </Link>
-                    ) : (
-                      "--"
-                    )}
-                  </TableCell>
-                  <TableCell data-column="score" className="text-right">
-                    {board.leader?.scoreLabel ?? "--"}
-                  </TableCell>
-                  <TableCell data-column="source" className="text-right">
-                    {board.leader?.verificationLabel ?? "--"}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {sortedBoards.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    No challenge results yet.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
-        </DataTableFrame>
+                    </TableCell>
+                    <TableCell data-column="template">
+                      {board.templateName}
+                      <span className="block text-xs text-muted-foreground">
+                        {board.scoringDirection === "asc" ? "Lower wins" : "Higher wins"}
+                      </span>
+                    </TableCell>
+                    <TableCell data-column="participants" className="text-right">
+                      {board.participantCount}
+                    </TableCell>
+                    <TableCell data-column="leader" className="text-right">
+                      {board.leader ? (
+                        <Link
+                          href={`/profile/${board.leader.username}`}
+                          prefetch={false}
+                          className="font-medium hover:underline"
+                        >
+                          {board.leader.displayName}
+                        </Link>
+                      ) : (
+                        "--"
+                      )}
+                    </TableCell>
+                    <TableCell data-column="score" className="text-right">
+                      {board.leader?.scoreLabel ?? "--"}
+                    </TableCell>
+                    <TableCell data-column="source" className="text-right">
+                      {board.leader?.verificationLabel ?? "--"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {sortedBoards.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                      No challenge results yet.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
+        </div>
       </CardContent>
     </DataPanel>
   );
@@ -1406,7 +1484,7 @@ function CourseChampionBoards({ boards }: { boards: CourseChampionBoard[] }) {
     <DataPanel>
       <SectionHeader
         title="Course champions"
-        description="Course records ranked as one field, with scope, period and proof kept visible."
+        description="Leaders of separate course and category boards, with scope, period and proof kept visible."
         action={
           <Button asChild variant="outline" size="sm">
             <Link href="/course-records" prefetch={false}>
@@ -1416,72 +1494,92 @@ function CourseChampionBoards({ boards }: { boards: CourseChampionBoard[] }) {
         }
       />
       <CardContent>
-        <DataTableFrame>
-          <Table className="min-w-[760px]">
-            <TableHeader className="bg-muted">
-              <TableRow>
-                <TableHead>Rank</TableHead>
-                <TableHead>Course</TableHead>
-                <TableHead>Golfer</TableHead>
-                <TableHead className="text-right">Result</TableHead>
-                <TableHead className="text-right">Scope / period</TableHead>
-                <TableHead className="text-right">Proof</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {boards.map((board, index) => {
-                const rank = index + 1;
+        <div className={boardStyles.mobile}>
+          <LeaderboardDetailCards
+            rows={boards.map((board) => ({
+              id: board.id,
+              title: board.courseName,
+              result: board.scoreLabel,
+              href: `/course-records/${board.id}`,
+              fields: [
+                ["Category", board.categoryName],
+                ["Champion", board.champion.displayName],
+                ["Scope", label(board.scope)],
+                ["Period", label(board.period)],
+                ["Proof tier", label(board.verificationTier)],
+              ],
+            }))}
+            empty="No authorised results match this board."
+          />
+        </div>
+        <div className={boardStyles.desktop}>
+          <DataTableFrame>
+            <Table className="min-w-[760px]">
+              <TableHeader className="bg-muted">
+                <TableRow>
+                  <TableHead>Board rank</TableHead>
+                  <TableHead>Course</TableHead>
+                  <TableHead>Golfer</TableHead>
+                  <TableHead className="text-right">Result</TableHead>
+                  <TableHead className="text-right">Scope / period</TableHead>
+                  <TableHead className="text-right">Proof</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {boards.map((board, index) => {
+                  const rank = index + 1;
 
-                return (
-                  <TableRow key={board.id} className={leaderboardRowClassName(rank, false)}>
-                    <TableCell>
-                      <span className={rankNumberClassName(rank)}>{rank}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/course-records/${board.id}`}
-                        prefetch={false}
-                        className="font-semibold hover:underline"
-                      >
-                        {board.courseName}
-                      </Link>
-                      <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {board.categoryName}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/profile/${board.champion.username}`}
-                        prefetch={false}
-                        className="font-medium hover:underline"
-                      >
-                        {board.champion.displayName}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-right text-lg font-semibold tabular-nums">
-                      {board.scoreLabel}
-                    </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
-                      {label(board.scope)} · {label(board.period)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant={board.verificationTier === "gold" ? "default" : "outline"}>
-                        {label(board.verificationTier)}
-                      </Badge>
+                  return (
+                    <TableRow key={board.id} className={leaderboardRowClassName(rank, false)}>
+                      <TableCell>
+                        <span className={rankNumberClassName(rank)}>{rank}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/course-records/${board.id}`}
+                          prefetch={false}
+                          className="font-semibold hover:underline"
+                        >
+                          {board.courseName}
+                        </Link>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {board.categoryName}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/profile/${board.champion.username}`}
+                          prefetch={false}
+                          className="font-medium hover:underline"
+                        >
+                          {board.champion.displayName}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-right text-lg font-semibold tabular-nums">
+                        {board.scoreLabel}
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
+                        {label(board.scope)} · {label(board.period)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant={board.verificationTier === "gold" ? "default" : "outline"}>
+                          {label(board.verificationTier)}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {boards.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                      No course champions yet.
                     </TableCell>
                   </TableRow>
-                );
-              })}
-              {boards.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                    No course champions yet.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
-        </DataTableFrame>
+                ) : null}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
+        </div>
       </CardContent>
     </DataPanel>
   );
@@ -1502,67 +1600,93 @@ function TournamentBoards({ boards }: { boards: TournamentBoard[] }) {
         }
       />
       <CardContent>
-        <DataTableFrame>
-          <Table className="min-w-[680px]">
-            <TableHeader className="bg-muted">
-              <TableRow>
-                <TableHead>Rank</TableHead>
-                <TableHead>Tournament</TableHead>
-                <TableHead>Golfer</TableHead>
-                <TableHead className="text-right">Result</TableHead>
-                <TableHead className="text-right">Rounds</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {boards.map((board, index) => {
-                const rank = index + 1;
+        <div className={boardStyles.mobile}>
+          <LeaderboardDetailCards
+            rows={boards.map((board) => ({
+              id: board.id,
+              title: board.title,
+              result: `${board.grossTotal} gross`,
+              href: `/tournaments/${board.id}?tab=board`,
+              fields: [
+                ["Format", formatTournamentLabel(board.format)],
+                ["Leader", board.champion.displayName],
+                ["Rounds completed", `${board.roundsCompleted}/${board.roundCount}`],
+                [
+                  "Participation",
+                  board.roundsCompleted < board.roundCount
+                    ? "Partial: required rounds outstanding"
+                    : "All required rounds recorded",
+                ],
+              ],
+            }))}
+            empty="No authorised results match this board."
+          />
+        </div>
+        <div className={boardStyles.desktop}>
+          <DataTableFrame>
+            <Table className="min-w-[680px]">
+              <TableHeader className="bg-muted">
+                <TableRow>
+                  <TableHead>Board rank</TableHead>
+                  <TableHead>Tournament</TableHead>
+                  <TableHead>Golfer</TableHead>
+                  <TableHead className="text-right">Result</TableHead>
+                  <TableHead className="text-right">Rounds</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {boards.map((board, index) => {
+                  const rank = index + 1;
 
-                return (
-                  <TableRow key={board.id} className={leaderboardRowClassName(rank, false)}>
-                    <TableCell>
-                      <span className={rankNumberClassName(rank)}>{rank}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/tournaments/${board.id}`}
-                        prefetch={false}
-                        className="font-semibold hover:underline"
-                      >
-                        {board.title}
-                      </Link>
-                      <span className="mt-0.5 block text-xs text-muted-foreground">
-                        {formatTournamentLabel(board.format)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/profile/${board.champion.username}`}
-                        prefetch={false}
-                        className="font-medium hover:underline"
-                      >
-                        {board.champion.displayName}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-right text-lg font-semibold tabular-nums">
-                      {board.grossTotal}
-                      <span className="ml-1 text-xs font-normal text-muted-foreground">gross</span>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {board.roundsCompleted}
+                  return (
+                    <TableRow key={board.id} className={leaderboardRowClassName(rank, false)}>
+                      <TableCell>
+                        <span className={rankNumberClassName(rank)}>{rank}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/tournaments/${board.id}`}
+                          prefetch={false}
+                          className="font-semibold hover:underline"
+                        >
+                          {board.title}
+                        </Link>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {formatTournamentLabel(board.format)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/profile/${board.champion.username}`}
+                          prefetch={false}
+                          className="font-medium hover:underline"
+                        >
+                          {board.champion.displayName}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-right text-lg font-semibold tabular-nums">
+                        {board.grossTotal}
+                        <span className="ml-1 text-xs font-normal text-muted-foreground">
+                          gross
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {board.roundsCompleted}/{board.roundCount}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {boards.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                      No tournament standings yet.
                     </TableCell>
                   </TableRow>
-                );
-              })}
-              {boards.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                    No tournament standings yet.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
-        </DataTableFrame>
+                ) : null}
+              </TableBody>
+            </Table>
+          </DataTableFrame>
+        </div>
       </CardContent>
     </DataPanel>
   );
@@ -1678,17 +1802,6 @@ function scorecardTotal(scorecard: Array<{ score?: number | null }>) {
 
 function scoreForPeriod(player: PlayerRow, period: LeaderboardPeriod) {
   return period === "monthly" ? player.monthlyXp : player.totalXp;
-}
-
-function toMobileLeaderboardPlayer(player: PlayerRow) {
-  return {
-    userId: player.userId,
-    displayName: player.displayName,
-    username: player.username,
-    isCurrentUser: player.isCurrentUser,
-    rankMovement: player.rankMovement,
-    monthlyXp: player.monthlyXp,
-  };
 }
 
 function leaderboardViewLabel(tab: LeaderboardTab, period: LeaderboardPeriod) {
@@ -1877,6 +1990,7 @@ function parseLeaderboardFilters(
   params: Awaited<LeaderboardPageProps["searchParams"]>,
 ): LeaderboardFilters {
   return {
+    query: params?.q ?? "",
     provider:
       params?.provider === "espn" ||
       params?.provider === "rapsodo" ||

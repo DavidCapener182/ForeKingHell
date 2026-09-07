@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-333 desktop / 333 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P62 Leaderboards**, next P63 per route coverage. 159 UI entries remain. Continue the UI pass with acceptance gaps retained.
+338 desktop / 338 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P63 Achievements**, next P64 Friends. 154 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P62 Leaderboards**. P61-C01–C08 are implemented with partial verification; acceptance remains outstanding.
+Current: **P63 Achievements**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -346,3 +346,6 @@ All eight detail UI components are applied and in progress. New tournament-detai
 
 ## P61 saved UI checkpoint
 P61-C01–C08 implemented, total333, fully accepted0. Full tournament task now both surfaces, canonical Rules/Submit/Rounds/Board query sections, exact owned receipt, no false50%progress, round verification labels, full mobile standings/history, review/pending/error-preserving actions, proof bound to round. Next-round form keyed to confirmed next round to reset after save. Actual all12 matrix PASS2.2m tournament-detail-browser-stack.log; additional1440/390 bothsurfaces multi-round PASS47.6s tournament-detail-multiround.log. Types/lint pass. Earlier firstcompile timeout and subsequent isolated Invalid token preserved as unresolved intermittent evidence; repeat zero pageerrors. Backend actions9tests, round-token4tests and tournamentworkflow11tests pass per coordinated terminal readback. Source service diff reviewed: transactional proof/evidence replacement, exact retry fingerprint, terms/join/date/courseownership checks; existing golf scoring preserved. Outstanding full acceptance enumerated per CSV. Continue P62 Leaderboards (all five prompts already read), thenP63. No live browser freeze after multiround terminal.
+
+## P62 UI checkpoint
+P62-C01–C05 implemented;338partial/0full. SharedfiveboardUI and full mobile detailpanels/filter/sort task, preserved original rank/no fake movement. Exact URLperiod/search retained; native fields wait hydration. Course leaders verified+active/verified statuses, active record, visiblecourse; tournament active and own/public/friends-onlyvisibility. Actual12matrix PASS1.1m leaderboards-browser-final.log; sort initial prop wiring corrected then4case1440/390bothsurfacesPASS25.7s leaderboards-sort-final.log; types/lintpass. Ready prior run overlapped otheragent tournamentqueryedit, hencefinal stable rerun. Otheragent tournamentdirectoryprivatefriendleak reproduced then guarded;12targetedtestsPASS2.56s. P61commitb671864a. P63 all6promptsread; owns achievements page/client/ledger and newsharepreview. Keep achievements maths/source unchanged. Broad positive ranks/toolbars/AT/load/theme acceptance inCSV.

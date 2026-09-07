@@ -149,14 +149,19 @@ export async function getTournamentsPageData() {
   const scheduledSet = getScheduledTournamentSet();
   await ensureScheduledTournaments(viewerUserId, scheduledSet);
   const friendIds = await getFriendIds(viewerUserId);
-  const visibleCreatorIds = [viewerUserId, ...friendIds];
+  const viewerEntries = db
+    .select({ tournamentId: tournamentEntries.tournamentId })
+    .from(tournamentEntries)
+    .where(eq(tournamentEntries.userId, viewerUserId));
   const tournamentRows = await db
     .select()
     .from(tournaments)
     .where(
       or(
         eq(tournaments.visibility, "public"),
-        inArray(tournaments.createdByUserId, visibleCreatorIds),
+        eq(tournaments.createdByUserId, viewerUserId),
+        and(eq(tournaments.visibility, "friends"), inArray(tournaments.createdByUserId, friendIds)),
+        inArray(tournaments.id, viewerEntries),
       ),
     )
     .orderBy(desc(tournaments.startsAt))
