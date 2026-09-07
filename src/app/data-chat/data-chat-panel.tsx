@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useId, useRef, useState } from "react";
+import { FormEvent, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import {
   ArrowRight,
   BookmarkPlus,
@@ -40,6 +40,13 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+
+const subscribeChatViewport = (notify: () => void) => {
+  const query = window.matchMedia("(min-width: 1024px)");
+  query.addEventListener("change", notify);
+  return () => query.removeEventListener("change", notify);
+};
+const chatWideSnapshot = () => window.matchMedia("(min-width: 1024px)").matches;
 
 type DataChatCitation = {
   id: string;
@@ -109,12 +116,14 @@ const savedAnswerDateFormatter = new Intl.DateTimeFormat("en-GB", {
 });
 
 export function DataChatPanel({
+  accountId,
   monthlyRemaining,
   questionId,
   initialQuestion,
   suggestions = starterQuestions,
   embedded = false,
 }: {
+  accountId?: string;
   monthlyRemaining: number;
   questionId?: string;
   initialQuestion?: string;
@@ -122,6 +131,10 @@ export function DataChatPanel({
   suggestions?: string[];
   embedded?: boolean;
 }) {
+  const wide = useSyncExternalStore(subscribeChatViewport, chatWideSnapshot, () => false);
+  const [citationOpen, setCitationOpen] = useState(false);
+  const storageKey = accountId ? `${savedAnswersStorageKey}:${accountId}` : null;
+  const submitting = useRef(false);
   const generatedId = useId();
   const inputId = questionId ?? `data-chat-question-${generatedId}`;
   const loadedQuestion = initialQuestion?.trim().slice(0, 800) ?? "";
@@ -137,18 +150,19 @@ export function DataChatPanel({
   useEffect(() => {
     const readyTimer = window.setTimeout(() => {
       setIsReady(true);
-      setSavedAnswers(readSavedAnswers());
+      setSavedAnswers(storageKey ? readSavedAnswers(storageKey) : []);
     }, 0);
     return () => window.clearTimeout(readyTimer);
-  }, []);
+  }, [storageKey]);
 
   async function submitQuestion(nextQuestion = question) {
     const message = nextQuestion.trim();
 
-    if (!message || isPending) {
+    if (!message || submitting.current) {
       return;
     }
 
+    submitting.current = true;
     setIsPending(true);
     setError(null);
     setQuestion("");
@@ -170,7 +184,11 @@ export function DataChatPanel({
       const payload = (await result.json().catch(() => null)) as DataChatResponse | null;
 
       if (!result.ok || !payload?.answer) {
-        setError(payload?.message ?? "Could not answer that data question.");
+        setError(
+          payload?.message ??
+            "Could not answer that data question. Your question is restored below; retry when ready.",
+        );
+        setQuestion(message);
         return;
       }
 
@@ -196,7 +214,13 @@ export function DataChatPanel({
           confidence: payload.confidence,
         },
       });
+    } catch {
+      setError(
+        "The data service could not be reached. Your question is restored below; retry when connected.",
+      );
+      setQuestion(message);
     } finally {
+      submitting.current = false;
       setIsPending(false);
     }
   }
@@ -215,6 +239,7 @@ export function DataChatPanel({
 
   function selectCitation(citation: DataChatCitation) {
     setActiveCitationId(citation.id);
+    if (!wide) setCitationOpen(true);
     window.requestAnimationFrame(() => {
       evidencePanelRef.current?.focus({ preventScroll: true });
     });
@@ -226,7 +251,7 @@ export function DataChatPanel({
       question: sourceQuestion,
       answer: turn.content,
       confidence: turn.confidence,
-      citations: turn.citations.slice(0, 6),
+      citations: turn.citations,
       generatedAt: new Date().toISOString(),
     };
     const next = [
@@ -236,14 +261,50 @@ export function DataChatPanel({
       ),
     ].slice(0, 12);
 
-    setSavedAnswers(next);
-    window.localStorage.setItem(savedAnswersStorageKey, JSON.stringify(next));
+    try {
+      if (!storageKey) {
+        setError("This account context is unavailable; the answer remains in this conversation.");
+        return;
+      }
+      window.localStorage.setItem(storageKey, JSON.stringify(next));
+      setSavedAnswers(next);
+    } catch {
+      setError("Device storage is unavailable. Keep this conversation open to retain the answer.");
+    }
+  }
+
+  function openSavedAnswer(answer: SavedDataChatAnswer) {
+    setError(null);
+    setTurns([
+      { id: `${answer.id}-question`, role: "user", content: answer.question },
+      {
+        id: answer.id,
+        role: "assistant",
+        content: answer.answer,
+        tips: [],
+        drills: [],
+        followUpQuestions: [],
+        confidence: answer.confidence,
+        citations: answer.citations,
+        creditsCharged: 0,
+        creditsRemaining: monthlyRemaining,
+      },
+    ]);
+    setActiveCitationId(answer.citations[0]?.id ?? null);
   }
 
   function removeSavedAnswer(answerId: string) {
     const next = savedAnswers.filter((answer) => answer.id !== answerId);
-    setSavedAnswers(next);
-    window.localStorage.setItem(savedAnswersStorageKey, JSON.stringify(next));
+    try {
+      if (!storageKey) {
+        setError("This account context is unavailable; the answer remains in this conversation.");
+        return;
+      }
+      window.localStorage.setItem(storageKey, JSON.stringify(next));
+      setSavedAnswers(next);
+    } catch {
+      setError("Device storage is unavailable. Keep this conversation open to retain the answer.");
+    }
   }
 
   const latestAssistant = findLatestAssistant(turns);
@@ -258,22 +319,28 @@ export function DataChatPanel({
     <div
       className={cn(
         "grid min-h-[42rem] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-2xl border bg-card shadow-[0_18px_60px_-42px_hsl(var(--foreground)/0.35)]",
-        embedded ? "h-[min(72dvh,58rem)]" : "h-[calc(100dvh-5.5rem)]",
+        embedded ? "h-[min(72dvh,58rem)]" : "h-[calc(100dvh-7rem-env(safe-area-inset-bottom))]",
       )}
       data-data-chat-ready={isReady ? "true" : "false"}
     >
       <DataChatHeader
+        embedded={embedded}
         latestAssistant={latestAssistant}
         evidenceCount={conversationCitations.length}
         savedCount={savedAnswers.length}
         onNewConversation={startNewConversation}
         savedAnswers={savedAnswers}
+        onOpenAnswer={openSavedAnswer}
         onReuseQuestion={setQuestion}
         onRemoveAnswer={removeSavedAnswer}
       />
 
       <ResizablePanelGroup orientation="horizontal" className="min-h-0">
-        <ResizablePanel defaultSize="67" minSize="65" maxSize="70">
+        <ResizablePanel
+          defaultSize={wide ? "67" : "100"}
+          minSize={wide ? "65" : "100"}
+          maxSize={wide ? "70" : "100"}
+        >
           <div className="grid h-full min-h-0 min-w-0 grid-rows-[minmax(0,1fr)_auto] bg-background/45">
             <ScrollArea
               className="min-h-0"
@@ -281,7 +348,7 @@ export function DataChatPanel({
               aria-live="polite"
               data-data-chat-conversation
             >
-              <div className="mx-auto grid min-h-full w-full content-start gap-10 px-6 py-10 xl:px-10">
+              <div className="mx-auto grid min-h-full w-full content-start gap-6 px-3 py-5 sm:px-6 xl:px-10">
                 {turns.length > 0 ? (
                   turns.map((turn, index) => {
                     if (turn.role === "user") {
@@ -320,7 +387,7 @@ export function DataChatPanel({
               </div>
             </ScrollArea>
 
-            <div className="relative z-10 border-t bg-card/95 px-5 py-4 shadow-[0_-18px_45px_-35px_hsl(var(--foreground)/0.55)] backdrop-blur-xl xl:px-8">
+            <div className="relative z-10 border-t bg-card/95 px-3 py-3 pb-[max(.75rem,env(safe-area-inset-bottom))] sm:px-5 shadow-[0_-18px_45px_-35px_hsl(var(--foreground)/0.55)] backdrop-blur-xl xl:px-8">
               {loadedQuestion && turns.length === 0 ? (
                 <div
                   className="mb-3 flex items-center justify-between gap-3 rounded-lg bg-primary/7 px-3 py-2 text-xs text-foreground"
@@ -409,45 +476,78 @@ export function DataChatPanel({
             </div>
           </div>
         </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize="33" minSize="30" maxSize="35">
-          <EvidenceContextPanel
-            ref={evidencePanelRef}
-            citations={conversationCitations}
-            activeCitation={activeCitation}
-            confidence={latestAssistant?.confidence ?? null}
-            onSelectCitation={selectCitation}
-          />
-        </ResizablePanel>
+        {wide ? (
+          <>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize="33" minSize="30" maxSize="35">
+              <EvidenceContextPanel
+                ref={evidencePanelRef}
+                citations={conversationCitations}
+                activeCitation={activeCitation}
+                confidence={latestAssistant?.confidence ?? null}
+                onSelectCitation={selectCitation}
+              />
+            </ResizablePanel>
+          </>
+        ) : null}
       </ResizablePanelGroup>
+      {!wide ? (
+        <Sheet open={citationOpen} onOpenChange={setCitationOpen}>
+          <SheetContent className="w-full sm:max-w-xl">
+            <SheetHeader>
+              <SheetTitle>Cited evidence</SheetTitle>
+              <SheetDescription>Source records for this conversation.</SheetDescription>
+            </SheetHeader>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <EvidenceContextPanel
+                ref={evidencePanelRef}
+                citations={conversationCitations}
+                activeCitation={activeCitation}
+                confidence={latestAssistant?.confidence ?? null}
+                onSelectCitation={selectCitation}
+              />
+            </div>
+            <SheetClose asChild>
+              <Button variant="outline" className="m-4 min-h-11">
+                Close evidence
+              </Button>
+            </SheetClose>
+          </SheetContent>
+        </Sheet>
+      ) : null}
     </div>
   );
 }
 
 function DataChatHeader({
+  embedded,
   latestAssistant,
   evidenceCount,
   savedCount,
   onNewConversation,
   savedAnswers,
+  onOpenAnswer,
   onReuseQuestion,
   onRemoveAnswer,
 }: {
+  embedded: boolean;
   latestAssistant: AssistantChatTurn | null;
   evidenceCount: number;
   savedCount: number;
   onNewConversation: () => void;
   savedAnswers: SavedDataChatAnswer[];
+  onOpenAnswer: (answer: SavedDataChatAnswer) => void;
   onReuseQuestion: (question: string) => void;
   onRemoveAnswer: (answerId: string) => void;
 }) {
+  const Heading = embedded ? "h3" : "h1";
   return (
     <header className="flex min-h-16 items-center justify-between gap-4 border-b px-5 py-3 xl:px-6">
       <div className="min-w-0">
         <div className="flex items-center gap-3">
-          <h1 id="data-chat-heading" className="text-lg font-semibold tracking-tight">
+          <Heading id="data-chat-heading" className="text-lg font-semibold tracking-tight">
             Data Chat
-          </h1>
+          </Heading>
           <span className="hidden h-4 w-px bg-border sm:block" aria-hidden />
           <p className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex">
             <span className="size-1.5 rounded-full bg-primary" aria-hidden />
@@ -465,6 +565,7 @@ function DataChatHeader({
         <SavedAnswersHistory
           answers={savedAnswers}
           count={savedCount}
+          onOpenAnswer={onOpenAnswer}
           onReuseQuestion={onReuseQuestion}
           onRemoveAnswer={onRemoveAnswer}
         />
@@ -628,7 +729,7 @@ function AssistantTurn({
       <AnalystSection number="02" title="Evidence">
         {turn.citations.length > 0 ? (
           <div className="grid gap-1.5">
-            {turn.citations.slice(0, 6).map((citation, index) => (
+            {turn.citations.map((citation, index) => (
               <button
                 key={citation.id}
                 type="button"
@@ -869,11 +970,13 @@ const EvidenceContextPanel = function EvidenceContextPanel({
 function SavedAnswersHistory({
   answers,
   count,
+  onOpenAnswer,
   onReuseQuestion,
   onRemoveAnswer,
 }: {
   answers: SavedDataChatAnswer[];
   count: number;
+  onOpenAnswer: (answer: SavedDataChatAnswer) => void;
   onReuseQuestion: (question: string) => void;
   onRemoveAnswer: (answerId: string) => void;
 }) {
@@ -910,14 +1013,22 @@ function SavedAnswersHistory({
                     <span className="capitalize">{answer.confidence} confidence</span>
                   </div>
                   <h3 className="mt-2 text-sm font-semibold leading-5">{answer.question}</h3>
-                  <p className="mt-2 line-clamp-4 text-sm leading-6 text-muted-foreground">
-                    {answer.answer}
-                  </p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{answer.answer}</p>
                   <p className="mt-2 text-xs text-muted-foreground">
                     {answer.citations.length} cited record
                     {answer.citations.length === 1 ? "" : "s"}
                   </p>
-                  <div className="mt-4 flex items-center gap-2">
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <SheetClose asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onOpenAnswer(answer)}
+                      >
+                        Open saved answer
+                      </Button>
+                    </SheetClose>
                     <SheetClose asChild>
                       <Button
                         type="button"
@@ -954,6 +1065,11 @@ function SavedAnswersHistory({
             </div>
           )}
         </ScrollArea>
+        <SheetClose asChild>
+          <Button variant="outline" className="m-4 min-h-11">
+            Close saved answers
+          </Button>
+        </SheetClose>
       </SheetContent>
     </Sheet>
   );
@@ -984,9 +1100,9 @@ function findSourceQuestion(turns: ChatTurn[], assistantIndex: number) {
   );
 }
 
-function readSavedAnswers() {
+function readSavedAnswers(storageKey: string) {
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(savedAnswersStorageKey) ?? "[]");
+    const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? "[]");
     return Array.isArray(parsed) ? (parsed as SavedDataChatAnswer[]).slice(0, 12) : [];
   } catch {
     return [];

@@ -47,22 +47,14 @@ export const mobileCapabilities = {
     "Simulator Performance Lab is a full analytical workspace.",
   ),
   handicap: summaryMore(),
-  coach: {
-    mobileExperience: "summary",
-    mobileFallbackRoute: "/practice",
-    mobileFallbackLabel: "Build recommended practice",
-  },
+  coach: companionMore(),
   practice: companionPrimary(),
   "quick-bag": companionPrimary(),
   "quick-range": { mobileExperience: "companion" },
   speed: companionMore(),
   "training-load": companionMore(),
   goals: summaryMore(),
-  "data-chat": desktopOnly(
-    "Build recommended practice",
-    "/practice",
-    "Long-form Data Chat is available in the full workbench.",
-  ),
+  "data-chat": companionMore(),
   challenges: companionMore(),
   tournaments: summaryMore(),
   leaderboard: summaryMore(),
@@ -162,7 +154,7 @@ const desktopOnlyPrefixes = [
   "/coach/workspace",
 ] as const;
 
-const companionExactRoutes = ["/courses", "/equipment", "/equipment/experiments"] as const;
+const companionExactRoutes = ["/data-chat", "/coach/workspace", "/coach/reports", "/coach/diagnosis", "/coach", "/courses", "/equipment", "/equipment/experiments"] as const;
 const companionExceptions = ["/courses/strategy"] as const;
 const summaryOnlyPrefixes = [
   "/coach",
@@ -179,6 +171,7 @@ export function isDesktopOnlyCompanionPath(pathname: string) {
 }
 
 export function isSummaryOnlyCompanionPath(pathname: string) {
+  if (companionExactRoutes.some((route) => pathname === route)) return false;
   return summaryOnlyPrefixes.some((route) => pathMatches(pathname, route));
 }
 

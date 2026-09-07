@@ -1,12 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState } from "react";
+import { Component, type ReactNode, useCallback, useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-type CoachDataChatPanelProps = { monthlyRemaining: number };
+type CoachDataChatPanelProps = { monthlyRemaining: number; accountId: string };
 type DeferredDataChatPanelProps = CoachDataChatPanelProps & { onLoaded: () => void };
 
 const DataChatPanel = dynamic<DeferredDataChatPanelProps>(
@@ -16,6 +17,7 @@ const DataChatPanel = dynamic<DeferredDataChatPanelProps>(
 
       return function LoadedCoachDataChatPanel({
         monthlyRemaining,
+        accountId,
         onLoaded,
       }: DeferredDataChatPanelProps) {
         useEffect(() => {
@@ -24,6 +26,8 @@ const DataChatPanel = dynamic<DeferredDataChatPanelProps>(
 
         return (
           <LoadedDataChatPanel
+            key={accountId}
+            accountId={accountId}
             monthlyRemaining={monthlyRemaining}
             questionId="coach-data-chat-question"
             embedded
@@ -42,23 +46,48 @@ const DataChatPanel = dynamic<DeferredDataChatPanelProps>(
   },
 );
 
-export function LazyCoachDataChatPanel({ monthlyRemaining }: { monthlyRemaining: number }) {
+export function LazyCoachDataChatPanel({ monthlyRemaining, accountId }: CoachDataChatPanelProps) {
   const [loaded, setLoaded] = useState(false);
   const revealContent = useCallback(() => setLoaded(true), []);
 
   return (
-    <div
-      className={cn("t-skel", loaded && "is-revealed")}
-      data-state={loaded ? "loaded" : "loading"}
-      aria-busy={!loaded}
-      data-lazy-coach-data-chat-boundary
-    >
-      <CoachDataChatSkeleton hidden={loaded} />
-      <div className="t-skel-content" aria-hidden={!loaded} inert={!loaded}>
-        <DataChatPanel monthlyRemaining={monthlyRemaining} onLoaded={revealContent} />
+    <ChatLoadBoundary>
+      <div
+        className={cn("t-skel", loaded && "is-revealed")}
+        data-state={loaded ? "loaded" : "loading"}
+        aria-busy={!loaded}
+        data-lazy-coach-data-chat-boundary
+      >
+        <CoachDataChatSkeleton hidden={loaded} />
+        <div className="t-skel-content" aria-hidden={!loaded} inert={!loaded}>
+          <DataChatPanel
+            accountId={accountId}
+            monthlyRemaining={monthlyRemaining}
+            onLoaded={revealContent}
+          />
+        </div>
       </div>
-    </div>
+    </ChatLoadBoundary>
   );
+}
+
+class ChatLoadBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? (
+      <div role="alert" className="grid gap-3 rounded-lg border p-4">
+        <p>Data Chat could not load. Your coaching evidence remains available.</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>
+          Reload Data Chat
+        </Button>
+      </div>
+    ) : (
+      this.props.children
+    );
+  }
 }
 
 function CoachDataChatSkeleton({ hidden }: { hidden: boolean }) {

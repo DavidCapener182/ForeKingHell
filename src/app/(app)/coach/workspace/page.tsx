@@ -8,15 +8,19 @@ import {
   Eye,
   EyeOff,
   FileText,
-  MessageSquareText,
   UserRoundCheck,
 } from "lucide-react";
 
 import {
-  completePlayerInteractionAction,
-  createCoachInteractionAction,
-  updateCoachInteractionStatusAction,
+  completePlayerInteractionWithStateAction,
+  createCoachInteractionWithStateAction,
+  updateCoachInteractionStatusWithStateAction,
 } from "@/app/coach/workspace/actions";
+import {
+  AssignedPlayerPicker,
+  WorkspaceDetail,
+  WorkspaceForm,
+} from "@/app/coach/workspace/workspace-ui";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { DataWarning, RecommendedAction } from "@/components/app/evidence-status";
 import { StatusTimeline } from "@/components/app/status-timeline";
@@ -83,8 +87,7 @@ export default async function CoachWorkspacePage({
           </Link>
         </Button>
         <PageHeader
-          eyebrow={<StatusPill tone="sky">Coach workspace</StatusPill>}
-          title="One player, one evidence trail, one next action"
+          title="Coach workspace"
           description="Review assigned players without account impersonation. Private coach notes stay private; assignments, feedback and evidence requests are explicitly player-visible."
           actions={
             <Button asChild variant="outline" className="min-h-11">
@@ -126,49 +129,23 @@ export default async function CoachWorkspacePage({
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <nav className="grid gap-2" aria-label="Assigned players">
-                    {data.players.map((player) => (
-                      <Link
-                        key={player.id}
-                        href={`/coach/workspace?playerId=${player.id}`}
-                        aria-current={data.selected?.id === player.id ? "page" : undefined}
-                        className="focus-aaa block rounded-xl outline-none"
-                      >
-                        <Item
-                          variant="outline"
-                          className={
-                            data.selected?.id === player.id
-                              ? "border-primary/40 bg-primary/5"
-                              : "hover:bg-secondary/60"
-                          }
-                        >
-                          <ItemContent>
-                            <ItemTitle>{player.name}</ItemTitle>
-                            <ItemDescription>
-                              {player.latestActivity
-                                ? `Last evidence ${formatDate(player.latestActivity)}`
-                                : "No session evidence"}
-                            </ItemDescription>
-                            <div className="mt-2 flex flex-wrap gap-1">
-                              <StatusPill tone={player.openActions > 0 ? "amber" : "green"}>
-                                {player.openActions} open
-                              </StatusPill>
-                              {player.goal ? (
-                                <StatusPill tone="sky">
-                                  {goalProgress(player.goal)}% goal
-                                </StatusPill>
-                              ) : null}
-                            </div>
-                          </ItemContent>
-                        </Item>
-                      </Link>
-                    ))}
-                  </nav>
+                  <AssignedPlayerPicker
+                    selectedId={data.selected.id}
+                    players={data.players.map((player) => ({
+                      id: player.id,
+                      name: player.name,
+                      detail: `${player.openActions} open actions · ${player.latestActivity ? `last evidence ${formatDate(player.latestActivity)}` : "No session evidence"}`,
+                    }))}
+                  />
                 </CardContent>
               </Card>
             </aside>
 
-            <main className="grid min-w-0 gap-4">
+            <section
+              key={data.selected.id}
+              className="grid min-w-0 gap-4"
+              aria-label={`Selected player ${data.selected.name}`}
+            >
               <Card
                 aria-label="Player summary"
                 className="gap-0 py-0 shadow-sm"
@@ -258,9 +235,7 @@ export default async function CoachWorkspacePage({
                     </CardDescription>
                     <CardAction>
                       <Button asChild variant="outline" size="sm">
-                        <Link href={`/coach/reports?playerId=${data.selected.id}`}>
-                          Build report
-                        </Link>
+                        <Link href="/coach/reports">Open my reports</Link>
                       </Button>
                     </CardAction>
                   </CardHeader>
@@ -286,6 +261,29 @@ export default async function CoachWorkspacePage({
                               ) : null}
                             </ItemContent>
                             <ItemActions className="flex-wrap justify-end gap-1">
+                              <WorkspaceDetail
+                                title={
+                                  session.courseName ??
+                                  session.fileName ??
+                                  formatSessionType(session.type)
+                                }
+                                description={`Selected player: ${data.selected.name}`}
+                              >
+                                <dl className="grid gap-2 break-words">
+                                  <dt>Date</dt>
+                                  <dd>{formatDate(session.date)}</dd>
+                                  <dt>Source</dt>
+                                  <dd>{session.source}</dd>
+                                  <dt>Type</dt>
+                                  <dd>{formatSessionType(session.type)}</dd>
+                                  <dt>Shot count</dt>
+                                  <dd>{session.shotCount}</dd>
+                                  <dt>Equipment notes</dt>
+                                  <dd>{session.equipmentNotes ?? "Not recorded"}</dd>
+                                  <dt>Session ID</dt>
+                                  <dd>{session.id}</dd>
+                                </dl>
+                              </WorkspaceDetail>
                               {session.type === "real_round" ? (
                                 <StatusPill tone="sky">Round review</StatusPill>
                               ) : null}
@@ -303,9 +301,7 @@ export default async function CoachWorkspacePage({
                         description="No sessions are available for this assigned player."
                         primaryAction={
                           <Button asChild variant="outline" size="sm">
-                            <Link href={`/coach/reports?playerId=${data.selected.id}`}>
-                              Prepare report
-                            </Link>
+                            <Link href="/coach/reports">Prepare report</Link>
                           </Button>
                         }
                         className="shadow-none"
@@ -314,113 +310,116 @@ export default async function CoachWorkspacePage({
                   </CardContent>
                 </Card>
 
-                <form id="add-coach-interaction" action={createCoachInteractionAction}>
-                  <Card className="shadow-sm" data-coach-interaction-form-card>
-                    <CardHeader>
-                      <CardTitle>Add coach interaction</CardTitle>
-                      <CardDescription>
-                        Private coach note is coach-only. Every other type is player-visible.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid gap-3">
-                      <input type="hidden" name="playerUserId" value={data.selected.id} />
-                      <label className="grid gap-1 text-sm font-semibold">
-                        Type and visibility
-                        <Select name="interactionType" defaultValue="practice_assignment">
-                          <SelectTrigger className="min-h-11 w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {coachInteractionTypes.map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {coachInteractionTypeLabels[type]} ·{" "}
-                                {type === "private_note" ? "Coach only" : "Player visible"}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </label>
-                      <label className="grid gap-1 text-sm font-semibold">
-                        Title
-                        <Input
-                          name="title"
-                          maxLength={180}
-                          required
-                          placeholder="Driver start-line assignment"
-                        />
-                      </label>
-                      <label className="grid gap-1 text-sm font-semibold">
-                        Detail
-                        <Textarea
-                          name="body"
-                          rows={5}
-                          maxLength={8000}
-                          required
-                          className="min-h-32"
-                          placeholder="What the player should do, why, and what evidence will count"
-                        />
-                      </label>
-                      <div className="grid gap-3 sm:grid-cols-2">
+                <div id="add-coach-interaction">
+                  <WorkspaceForm
+                    key={data.selected.id}
+                    action={createCoachInteractionWithStateAction}
+                    label="Save interaction"
+                    interaction
+                  >
+                    <Card className="shadow-sm" data-coach-interaction-form-card>
+                      <CardHeader>
+                        <CardTitle>Add coach interaction</CardTitle>
+                        <CardDescription>
+                          Private coach note is coach-only. Every other type is player-visible.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="grid gap-3">
+                        <input type="hidden" name="playerUserId" value={data.selected.id} />
                         <label className="grid gap-1 text-sm font-semibold">
-                          Due date
-                          <Input type="date" name="dueAt" />
-                        </label>
-                        <label className="grid gap-1 text-sm font-semibold">
-                          Goal reference
-                          <Select name="goalReference" defaultValue="__none__">
-                            <SelectTrigger className="min-h-10 w-full">
+                          Type and visibility
+                          <Select name="interactionType" defaultValue="practice_assignment">
+                            <SelectTrigger className="min-h-11 w-full">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="__none__">No goal link</SelectItem>
-                              {data.playerDetail.goals.map((goal) => (
-                                <SelectItem key={goal.id} value={goal.id}>
-                                  {goal.title}
+                              {coachInteractionTypes.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {coachInteractionTypeLabels[type]} ·{" "}
+                                  {type === "private_note" ? "Coach only" : "Player visible"}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </label>
-                      </div>
-                      <label className="grid gap-1 text-sm font-semibold">
-                        Session evidence
-                        <Select name="sessionId" defaultValue="__none__">
-                          <SelectTrigger className="min-h-10 w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">No session link</SelectItem>
-                            {data.playerDetail.sessions.map((session) => (
-                              <SelectItem key={session.id} value={session.id}>
-                                {formatDate(session.date)} · {formatSessionType(session.type)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </label>
-                      <label className="grid gap-1 text-sm font-semibold">
-                        Practice plan
-                        <Select name="practicePlanId" defaultValue="__none__">
-                          <SelectTrigger className="min-h-10 w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">No plan link</SelectItem>
-                            {data.playerDetail.plans.map((plan) => (
-                              <SelectItem key={plan.id} value={plan.id}>
-                                {plan.title} · {plan.status}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </label>
-                      <Button type="submit" className="min-h-11 sm:w-fit">
-                        <MessageSquareText className="size-4" aria-hidden />
-                        Save interaction
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </form>
+                        <label className="grid gap-1 text-sm font-semibold">
+                          Title
+                          <Input
+                            name="title"
+                            maxLength={180}
+                            required
+                            placeholder="Driver start-line assignment"
+                          />
+                        </label>
+                        <label className="grid gap-1 text-sm font-semibold">
+                          Detail
+                          <Textarea
+                            name="body"
+                            rows={5}
+                            maxLength={8000}
+                            required
+                            className="min-h-32"
+                            placeholder="What the player should do, why, and what evidence will count"
+                          />
+                        </label>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <label className="grid gap-1 text-sm font-semibold">
+                            Due date
+                            <Input type="date" name="dueAt" />
+                          </label>
+                          <label className="grid gap-1 text-sm font-semibold">
+                            Goal reference
+                            <Select name="goalReference" defaultValue="__none__">
+                              <SelectTrigger className="min-h-10 w-full">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__">No goal link</SelectItem>
+                                {data.playerDetail.goals.map((goal) => (
+                                  <SelectItem key={goal.id} value={goal.id}>
+                                    {goal.title}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </label>
+                        </div>
+                        <label className="grid gap-1 text-sm font-semibold">
+                          Session evidence
+                          <Select name="sessionId" defaultValue="__none__">
+                            <SelectTrigger className="min-h-10 w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">No session link</SelectItem>
+                              {data.playerDetail.sessions.map((session) => (
+                                <SelectItem key={session.id} value={session.id}>
+                                  {formatDate(session.date)} · {formatSessionType(session.type)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </label>
+                        <label className="grid gap-1 text-sm font-semibold">
+                          Practice plan
+                          <Select name="practicePlanId" defaultValue="__none__">
+                            <SelectTrigger className="min-h-10 w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">No plan link</SelectItem>
+                              {data.playerDetail.plans.map((plan) => (
+                                <SelectItem key={plan.id} value={plan.id}>
+                                  {plan.title} · {plan.status}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </label>
+                      </CardContent>
+                    </Card>
+                  </WorkspaceForm>
+                </div>
               </section>
 
               <InteractionTimeline
@@ -433,19 +432,29 @@ export default async function CoachWorkspacePage({
               <RecommendedAction
                 title="Keep the loop measurable"
                 detail="Assign one action, name the imported evidence that will count, then review completion before adding another priority."
-                href={`/coach/reports?playerId=${data.selected.id}`}
-                actionLabel="Prepare selective report"
+                href="/coach/reports"
+                actionLabel="Open my reports"
               />
-            </main>
+            </section>
           </div>
         ) : (
           <AppEmptyState
             icon={<UserRoundCheck className="size-5" aria-hidden />}
-            title="No assigned players yet"
-            description="A player must explicitly add you as a coach before their evidence appears here. Selective reports remain available without granting account membership."
+            title={
+              params?.playerId && data.players.length
+                ? "Requested player unavailable"
+                : "No assigned players yet"
+            }
+            description={
+              params?.playerId && data.players.length
+                ? "That player is not in your assigned roster. Return to the workspace to select an authorised player."
+                : "A player must explicitly add you as a coach before their evidence appears here. Your reports do not grant account membership."
+            }
             primaryAction={
               <Button asChild variant="outline">
-                <Link href="/coach/reports">Open selective reports</Link>
+                <Link href={params?.playerId ? "/coach/workspace" : "/coach/reports"}>
+                  {params?.playerId ? "Choose an assigned player" : "Open my reports"}
+                </Link>
               </Button>
             }
           />
@@ -515,7 +524,21 @@ function InteractionTimeline({
                   ? ("warning" as const)
                   : undefined,
             icon: item.visibility === "coach_only" ? EyeOff : Eye,
-            action: interactionAction(item, mode, playerUserId),
+            action: (
+              <WorkspaceDetail
+                title={item.title}
+                description={`${coachInteractionStatusLabel(item.status)} · ${item.visibility === "coach_only" ? "Coach only" : "Player visible"}`}
+              >
+                <p className="whitespace-pre-wrap">{item.body}</p>
+                <p>
+                  Created {formatDate(item.createdAt)} · updated {formatDate(item.updatedAt)}
+                </p>
+                {item.sessionId ? <p>Linked session: {item.sessionId}</p> : null}
+                {item.practicePlanId ? <p>Linked plan: {item.practicePlanId}</p> : null}
+                {item.goalReference ? <p>Goal: {item.goalReference}</p> : null}
+                {interactionAction(item, mode, playerUserId)}
+              </WorkspaceDetail>
+            ),
           }))}
           empty={
             <AppEmptyState
@@ -572,13 +595,9 @@ function interactionAction(
 
   if (mode === "player" && interactionNeedsAction(item.interactionType, item.status)) {
     return (
-      <form action={completePlayerInteractionAction}>
+      <WorkspaceForm action={completePlayerInteractionWithStateAction} label="Mark complete">
         <input type="hidden" name="interactionId" value={item.id} />
-        <Button type="submit" size="sm" variant="outline">
-          <CheckCircle2 className="size-4" aria-hidden />
-          Mark complete
-        </Button>
-      </form>
+      </WorkspaceForm>
     );
   }
 
@@ -597,14 +616,11 @@ function StatusForm({
   label: string;
 }) {
   return (
-    <form action={updateCoachInteractionStatusAction}>
+    <WorkspaceForm action={updateCoachInteractionStatusWithStateAction} label={label}>
       <input type="hidden" name="interactionId" value={interactionId} />
       <input type="hidden" name="playerUserId" value={playerUserId} />
       <input type="hidden" name="status" value={status} />
-      <Button type="submit" size="sm" variant="outline">
-        {label}
-      </Button>
-    </form>
+    </WorkspaceForm>
   );
 }
 
@@ -732,7 +748,9 @@ async function getCoachWorkspaceData(requestedPlayerId?: string) {
       goal: preferenceMap.get(player.id)?.goals[0] ?? null,
     };
   });
-  const selected = players.find((player) => player.id === requestedPlayerId) ?? players[0] ?? null;
+  const selected = requestedPlayerId
+    ? (players.find((player) => player.id === requestedPlayerId) ?? null)
+    : (players[0] ?? null);
   if (!selected) return { players, selected: null, playerDetail: null, playerInbox };
 
   const [progress, recentSessions, plans, interactions] = await Promise.all([
@@ -812,12 +830,14 @@ async function getCoachWorkspaceData(requestedPlayerId?: string) {
   };
 }
 
-function formatDate(value: Date) {
+function formatDate(value: Date | string) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Date unavailable";
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
-  }).format(value);
+  }).format(date);
 }
 
 function formatSessionType(value: string) {
