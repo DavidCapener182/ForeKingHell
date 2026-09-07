@@ -167,3 +167,6 @@ Checked official headers, tables/pagination and empty/loading/alerts reused. Pai
 
 ## P89 Shared Course Twin
 Previously checked official headers, select/tooltips and empty/loading/alerts. Paid advanced examples unavailable. Accessible local shell uses visible semantic public identity, scope and exit with scoped responsive layout around unchanged canonical3D/2D renderer; dedicated recovery boundaries. No geometry replacement or paid installation.
+
+## P90 Shared coach report
+Checked official form, section/divider and empty/loading/alert references reused. Paid advanced examples unavailable. Accessible local alternatives: labelled stateful native password form, full frozen evidence sections, keyboard-focusable table regions with pinned identity and explicit public recovery. Existing server permission/cookie contracts retained; no paid installation.

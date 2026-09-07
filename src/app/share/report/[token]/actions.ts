@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
@@ -16,7 +16,7 @@ import {
 } from "@/lib/coach-report-access";
 import { hashShareToken } from "@/lib/share-links";
 
-export async function unlockCoachReportAction(token: string, formData: FormData) {
+async function unlockCoachReport(token: string, formData: FormData, inlineError = false) {
   if (token.length < 20 || token.length > 256) redirect("/privacy");
   const tokenHash = hashShareToken(token);
   const [row] = await getDb()
@@ -44,6 +44,7 @@ export async function unlockCoachReportAction(token: string, formData: FormData)
   const access = parseCoachReportAccessConfig(row.config);
   const password = String(formData.get("password") ?? "");
   if (!access.passwordHash || !verifyReportPassword(password, access.passwordHash)) {
+    if (inlineError) return { error: "That password did not unlock this report. Try again." };
     const query = new URLSearchParams({ error: "password", attempt: randomUUID() });
     redirect(`/share/report/${encodeURIComponent(token)}?${query.toString()}`);
   }
@@ -60,4 +61,22 @@ export async function unlockCoachReportAction(token: string, formData: FormData)
     },
   );
   redirect(`/share/report/${encodeURIComponent(token)}`);
+}
+
+export async function unlockCoachReportAction(token: string, formData: FormData) {
+  await unlockCoachReport(token, formData);
+}
+
+export async function unlockCoachReportStateAction(
+  token: string,
+  previous: { error?: string },
+  formData: FormData,
+): Promise<{ error?: string }> {
+  void previous;
+  try {
+    return await unlockCoachReport(token, formData, true);
+  } catch (error) {
+    unstable_rethrow(error);
+    return { error: "This report could not be unlocked. Try again later." };
+  }
 }

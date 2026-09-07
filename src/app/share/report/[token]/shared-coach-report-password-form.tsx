@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
-import { unlockCoachReportAction } from "@/app/share/report/[token]/actions";
+import { unlockCoachReportStateAction } from "@/app/share/report/[token]/actions";
+import { useClientReady } from "@/hooks/use-client-ready";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,14 +19,21 @@ export function SharedCoachReportPasswordForm({
   invalidAttempt: string | null;
   headingLevel: "h1" | "h2";
 }) {
-  const action = unlockCoachReportAction.bind(null, token);
+  const [state, action, pending] = useActionState(
+    unlockCoachReportStateAction.bind(null, token),
+    {},
+  );
+  const [password, setPassword] = useState("");
+  const [visible, setVisible] = useState(false);
+  const ready = useClientReady();
+  const error = state.error || (invalid ? "That password did not match." : "");
   const Heading = headingLevel;
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (!invalid) return;
+    if (!error || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     return replayErrorShake(passwordInputRef.current);
-  }, [invalid, invalidAttempt]);
+  }, [error, invalidAttempt]);
 
   return (
     <>
@@ -43,26 +51,41 @@ export function SharedCoachReportPasswordForm({
           Password
           <Input
             ref={passwordInputRef}
+            id="shared-report-password"
             name="password"
-            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            type={visible ? "text" : "password"}
             autoComplete="current-password"
             minLength={8}
             maxLength={128}
             autoFocus
-            aria-invalid={invalid}
-            className={`t-input min-h-11 ${invalid ? "is-error is-shaking" : ""}`}
+            aria-invalid={Boolean(error)}
+            aria-describedby={error ? "shared-report-password-error" : undefined}
+            className={`t-input min-h-11 ${error ? "is-error" : ""}`}
             required
           />
         </label>
-        {invalid ? (
-          <Alert variant="destructive">
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11"
+          disabled={!ready || pending}
+          aria-pressed={visible}
+          aria-controls="shared-report-password"
+          onClick={() => setVisible((v) => !v)}
+        >
+          {visible ? "Hide password" : "Show password"}
+        </Button>
+        {error ? (
+          <Alert variant="destructive" id="shared-report-password-error">
             <AlertDescription className="text-sm font-semibold text-destructive">
-              That password did not match.
+              {error}
             </AlertDescription>
           </Alert>
         ) : null}
-        <Button type="submit" className="min-h-11">
-          Open report
+        <Button type="submit" className="min-h-11" disabled={!ready || pending}>
+          {pending ? "Checking access…" : "Open report"}
         </Button>
       </form>
     </>

@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import styles from "./shared-report.module.css";
 import type { ReactNode } from "react";
 import { CalendarDays, CheckCircle2, FileLock2, LockKeyhole, ShieldCheck } from "lucide-react";
 
@@ -33,7 +36,12 @@ export function SharedCoachReportView({
 }) {
   return (
     <main className="min-h-dvh bg-background text-foreground">
-      <div className="mx-auto grid w-full max-w-5xl gap-6 px-6 py-12">
+      <div className="grid w-full min-w-0 gap-6 px-4 py-5 sm:px-6">
+        <nav aria-label="Shared report navigation">
+          <Button asChild variant="outline">
+            <Link href="/">Product home</Link>
+          </Button>
+        </nav>
         <header className="rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -41,12 +49,18 @@ export function SharedCoachReportView({
                 Frozen coach evidence
               </p>
               <h1 className="mt-3 font-display text-3xl font-semibold sm:text-4xl">{title}</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
                 {report.disclosure.statement}
               </p>
             </div>
             <FileLock2 className="size-8 shrink-0 text-primary" aria-hidden />
           </div>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Included:{" "}
+            {report.disclosure.selectedSections.map(formatLabel).join(", ") ||
+              "No sections selected"}
+            . Later account changes do not update this frozen report.
+          </p>
           <div className="mt-5 flex flex-wrap gap-3 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2">
               <CalendarDays className="size-4" aria-hidden />
@@ -86,7 +100,10 @@ export function SharedCoachReportPasswordGate({
 }) {
   return (
     <main className="grid min-h-dvh place-items-center bg-background p-4 text-foreground">
-      <section className="w-full max-w-md rounded-3xl border bg-card p-6 shadow-sm">
+      <section className="w-full rounded-3xl border bg-card p-6 shadow-sm">
+        <Button asChild variant="outline" className="mb-4">
+          <Link href="/">Cancel and return home</Link>
+        </Button>
         <LockKeyhole className="size-8 text-primary" aria-hidden />
         <SharedCoachReportPasswordForm
           token={token}
@@ -159,12 +176,17 @@ function ReportSections({ report }: { report: CoachReportSnapshot }) {
 
       {sections.bagNumbers ? (
         <ReportSection title="Bag numbers">
-          <div className="overflow-x-auto">
+          <div
+            className={styles.tableRegion}
+            role="region"
+            aria-label="Shared report evidence table"
+            tabIndex={0}
+          >
             <Table className="min-w-[42rem]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Club</TableHead>
-                  <TableHead>Stock carry</TableHead>
+                  <TableHead>Stock carry (yd)</TableHead>
                   <TableHead>Playable</TableHead>
                   <TableHead>Evidence</TableHead>
                 </TableRow>
@@ -240,13 +262,18 @@ function ReportSections({ report }: { report: CoachReportSnapshot }) {
 
       {sections.bagGaps ? (
         <ReportSection title="Bag gaps">
-          <div className="overflow-x-auto">
+          <div
+            className={styles.tableRegion}
+            role="region"
+            aria-label="Shared report evidence table"
+            tabIndex={0}
+          >
             <Table className="min-w-[38rem]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Longer club</TableHead>
                   <TableHead>Shorter club</TableHead>
-                  <TableHead>Gap</TableHead>
+                  <TableHead>Gap (yd)</TableHead>
                   <TableHead>Evidence</TableHead>
                 </TableRow>
               </TableHeader>
@@ -420,17 +447,23 @@ function ReportSections({ report }: { report: CoachReportSnapshot }) {
 
       {sections.rawEvidence ? (
         <ReportSection title="Selected raw evidence">
-          <div className="overflow-x-auto">
+          <div
+            className={styles.tableRegion}
+            role="region"
+            aria-label="Shared report evidence table"
+            tabIndex={0}
+          >
             <Table className="min-w-[52rem]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Club</TableHead>
                   <TableHead>Shot</TableHead>
-                  <TableHead>Carry</TableHead>
-                  <TableHead>Offline</TableHead>
-                  <TableHead>Ball speed</TableHead>
-                  <TableHead>Launch</TableHead>
+                  <TableHead>Carry (yd)</TableHead>
+                  <TableHead>Offline (yd)</TableHead>
+                  <TableHead>Ball speed (mph)</TableHead>
+                  <TableHead>Launch (°)</TableHead>
+                  <TableHead>Quality</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -443,6 +476,7 @@ function ReportSections({ report }: { report: CoachReportSnapshot }) {
                     <TableCell>{numberMetric(shot.sideCarryYd, "yd")}</TableCell>
                     <TableCell>{numberMetric(shot.ballSpeedMph, "mph")}</TableCell>
                     <TableCell>{numberMetric(shot.launchAngleDeg, "°")}</TableCell>
+                    <TableCell>{shot.quality ?? "Not recorded"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -457,7 +491,7 @@ function ReportSections({ report }: { report: CoachReportSnapshot }) {
 
 function ReportSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <section className="min-w-0 rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
       <h2 className="mb-4 flex items-center gap-2 font-display text-2xl font-semibold">
         <CheckCircle2 className="size-5 text-primary" aria-hidden />
         {title}
