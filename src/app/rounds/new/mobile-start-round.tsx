@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useActionState, useState } from "react";
+import type { RoundCreationState } from "@/app/rounds/actions";
 import { useFormStatus } from "react-dom";
 import type { RoundCourseOption } from "./new-round-form";
 import { MobileLargeTitle, MobileMetric } from "@/components/app/mobile-screen";
@@ -10,27 +11,49 @@ export function MobileStartRound({
   courses,
   courseId,
   teeSetId,
+  creationId,
   action,
 }: {
   courses: RoundCourseOption[];
   courseId?: string;
   teeSetId?: string;
-  action: (data: FormData) => Promise<void>;
+  creationId: string;
+  action: (state: RoundCreationState, data: FormData) => Promise<RoundCreationState>;
 }) {
+  const [requestId] = useState(creationId);
+  const [result, formAction, pending] = useActionState(action, { error: null });
   const [selectedCourse, setCourse] = useState(
     courses.find((course) => course.id === courseId)?.id ?? courses[0]?.id ?? "",
   );
   const course = courses.find((course) => course.id === selectedCourse);
-  const [selectedTee, setTee] = useState(teeSetId ?? "");
-  const tee = course?.teeSets.find((tee) => tee.id === selectedTee) ?? course?.teeSets[0];
+  const [search, setSearch] = useState("");
+  const [teeChanged, setTeeChanged] = useState(false);
+  const [selectedTee, setTee] = useState(
+    course?.teeSets.find((tee) => tee.id === teeSetId)?.id ?? course?.teeSets[0]?.id ?? "",
+  );
+  const tee = course?.teeSets.find((tee) => tee.id === selectedTee);
   return (
-    <div className="grid gap-6" data-mobile-start-round>
+    <div className="grid min-w-0 gap-6" data-mobile-start-round>
       <MobileLargeTitle title="Start round" detail="Choose your tee. Score as you play." />
-      <form action={action} className="grid gap-6">
+      <form
+        action={formAction}
+        className="grid min-w-0 gap-6"
+        onReset={(event) => event.preventDefault()}
+      >
+        <input type="hidden" name="creationId" value={requestId} />
         <input type="hidden" name="roundStatus" value="in_progress" />
         <input type="hidden" name="teeSetId" value={tee?.id ?? ""} />
         <input type="hidden" name="holeCount" value={tee?.holes.length ?? 0} />
-        <div className={styles.setup}>
+        <fieldset disabled={pending} className={`${styles.setup} ${styles.roundSetup}`}>
+          <label>
+            Search courses
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Course name"
+            />
+          </label>
           <label>
             Course
             <select
@@ -38,18 +61,33 @@ export function MobileStartRound({
               onChange={(event) => {
                 setCourse(event.target.value);
                 setTee("");
+                setTeeChanged(true);
               }}
             >
-              {courses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.name}
-                </option>
-              ))}
+              {courses
+                .filter(
+                  (item) =>
+                    item.id === selectedCourse ||
+                    item.name.toLowerCase().includes(search.toLowerCase()),
+                )
+                .map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.name}
+                  </option>
+                ))}
             </select>
           </label>
           <label>
             Tee
-            <select value={tee?.id ?? ""} onChange={(event) => setTee(event.target.value)}>
+            <select
+              required
+              value={tee?.id ?? ""}
+              onChange={(event) => {
+                setTee(event.target.value);
+                setTeeChanged(false);
+              }}
+            >
+              <option value="">Choose a tee</option>
               {course?.teeSets.map((tee) => (
                 <option key={tee.id} value={tee.id}>
                   {tee.name}
@@ -66,7 +104,15 @@ export function MobileStartRound({
               defaultValue={new Date().toLocaleDateString("en-CA")}
             />
           </label>
-        </div>
+        </fieldset>
+        <p className="break-words text-sm text-muted-foreground">
+          {course?.name ?? "No course selected"} · {tee?.name ?? "Choose a tee"}
+        </p>
+        {teeChanged && (
+          <p role="status" className="text-sm text-muted-foreground">
+            Course changed. Choose a tee for this course before starting.
+          </p>
+        )}
         {tee?.holes.length ? (
           <div className="mobile-metric-strip">
             <MobileMetric value={tee.holes.length} label="holes" />
@@ -93,9 +139,18 @@ export function MobileStartRound({
           ))}
         </div>
         <StartButton disabled={!tee?.holes.length} />
+        {result.error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {result.error}
+          </p>
+        ) : null}
       </form>
       <Button asChild variant="ghost" className="min-h-12">
-        <Link href="/rounds/new?mode=history">Enter a completed round</Link>
+        <Link
+          href={`/rounds/new?${new URLSearchParams({ mode: "history", ...(course ? { courseId: course.id } : {}), ...(tee ? { teeSetId: tee.id } : {}) })}`}
+        >
+          Enter a completed round
+        </Link>
       </Button>
     </div>
   );
