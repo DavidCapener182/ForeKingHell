@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-479 desktop / 479 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P93 Course record redirect**, next P94 Course tournament redirect. 13 UI entries remain (6 route entries and7 shared rows). Continue the UI pass with acceptance gaps retained.
+480 desktop / 480 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P94 Course tournament redirect**, next P95 Tournament standings alias. 12 UI entries remain (5 route entries and7 shared rows). Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P93 Course record redirect**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P94 Course tournament redirect**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -494,3 +494,7 @@ P91-C01–C02 UI implemented partial. Removed mobile-only wrapper; onefullwidth 
 P92-C01–C02 UIimplemented partial. Shared safe documented-route helper opens promotedfulltask; remaining summary has onefullwidth header/primary, exactrequestedquery context, semanticrows, clear limitation andfullworkspace/Todayreturn. Driverpanel nowonly explicitdriverquery andnative supportingdisclosure. Existingdata/math preserved. summary-browser.log1PASS20.8s all12size/surface actualemptyachievementfixture, correctfullhref/noirrelevantdriver/nooverflow/errors;390reviewed. Types/lint clean. Populated/state/physical/AT/themes remain; P91redirectruntimeerror notresolved. ResumeP93–P98 sequentialprompts, thenG04parentbreadcrumbs/44px,G13retry44px,G14wrap/dismiss44px andsource-reconciledG08/G09/G11/G12verificationgaps.
 
 P92 visual regression follow-up: screenshot showed SummaryActionLink swallowed Button props. Replaced intermediary with native Link/AppSurfaceLink children; added44pxprimaryassertion. summary-browser-final.log1PASS11.9s all12 sizes/surfaces. Both rows retain earlier evidence and record correction; no completion reset.
+
+## P93 Course record alias UI contract, 7 September
+
+P93-C01 implementedpartial. EncodedrecordId andsharedqueryhelper retain repeatedfilters; exactcompanionproxyexception allowscanonicalrecordtask instead ofhandoff. record-alias-browser.log1PASS53.3s bothsurfaces6sizes, canonicalrecord/form/query,390reload/Back, nooverflow/errors ornewattempts; syntheticcourse/round cleaned. Queryhelper2unitPASS;typesclean. Invalid/foreign/Forward/nativeacceptance remains. Stageonlynewcapabilityexception, preserve otherdirtycapabilityhunks. NextP94 preserveforcedcoursefilter thenP95–P98 namedtabs.

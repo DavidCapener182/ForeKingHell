@@ -176,3 +176,6 @@ Checked official section/badge/button domain lists and empty/loading/alerts reus
 
 ## P92 Companion summary
 Checked official section/badge/button domain-list references reused. Paid advanced examples unavailable. Accessible alternatives: native destination disclosure, semantic full current-evidence rows, explicit preserved-context surface navigation and optional route-specific driver disclosure. No deeper task acceptance inferred.
+
+## P93 Course record alias
+Official Underline tabs reference applies at the existing P57 destination; server alias preserves its canonical UI and query, with no duplicate page or invented tab. Existing local destination adapters retained; paid advanced examples remain unavailable.
