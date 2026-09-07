@@ -152,3 +152,6 @@ Specified official page/section headers/contentdividers, navigation, tables/radi
 
 ## P84 Authentication
 Checked official headers/sections, inputs/select/textarea/buttons and alerts/notifications references reused. Advanced paid examples unavailable. Accessible alternatives preserve existing auth contracts: native autofill fields, stateful password visibility, inline field-described errors and real pending/confirmed receipts. Local exports typechecked; no new auth provider or paid package claimed.
+
+## P85 Onboarding
+Previously checked official headers, progress indicators, section headers and buttons. Paid advanced examples unavailable. Accessible local alternative: native progress with saved evidence count, semantic ordered checklist, actual current task links and native stateful skip form with inline recovery. Local exports typechecked; no paid installation claimed.

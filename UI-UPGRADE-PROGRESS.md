@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-455 desktop / 455 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P85 First-run onboarding**, next P86 Data notice. 37 UI entries remain. Continue the UI pass with acceptance gaps retained.
+458 desktop / 458 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P86 Data notice**, next P87 Offline saved golf. 34 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P85 First-run onboarding**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P86 Data notice**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -460,3 +460,7 @@ P84-C01–C04 UI implemented partial: one formh1, visible safe returncontext, re
 Checks: isolated six-size mocked errors/retainedinputs/transport recovery passed in login-browser.log. Actual initiallyfailed earlyhydrationtoggle, then wrongexpected2visibleprivacylinks; readinessguard/testwait and correctvisiblecount. login-browser-ready.log1PASS5.8s6sizes, safenext/oneh1/visibility/autofill/querytruth/nooverflow/pageerrors.390 screenshot inspected. Types/lintclean; sixfileauth regressions18PASS563ms, no liveauth/email. Fullacceptance and beforehydrationinputretention remain outstanding.
 
 Resume P85 all3promptsread. Shared WelcomeJourney/WelcomeSkip applied, companion/workbench wrappers consume identicalfulltask; agent applying scoped skipstateerror wrapper. Activationjourney math untouched; known incomplete measurement/club eligibility backendgap retained. Unknown progress is not0/0complete; review-ready doesnotclaim viewed. P84freeze released. P83commit4b54c0f6.
+
+## P85 First-run onboarding UI pass, 7 September
+
+P85-C01–C03 UI implemented on both surfaces. Shared complete six-step evidence checklist, saved current task/resume, unavailable-data recovery and stateful skip feedback. Continue retains real task URLs; review-ready is not described as a completed review. Existing eligibility calculation preserved; measured-evidence defect deferred explicitly. Changed welcome journey/skip, both wrappers and state action; tests/fixtures added. welcome-browser-ready.log terminal PASS13.6s all12 surface/viewport combinations after required synthetic profile fields corrected. Initial three fixture setup failures occurred before navigation. Isolated controls pass all6 including failure and unknown state. welcome-types-fix.log clean; lint passed. Dismissal backend3 unit/1 DB tests pass, no unrelated account changes.390 companion screenshot inspected. No full acceptance claimed. Resume P86 privacy page then P87; preserve all concurrent dirty work.
