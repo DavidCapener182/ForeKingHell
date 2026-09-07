@@ -1,0 +1,27 @@
+.workspace {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+}
+.navigation {
+  min-width: 0;
+}
+.back {
+  margin-bottom: 1rem;
+  min-height: 44px;
+}
+@media (min-width: 1024px) {
+  .workspace {
+    grid-template-columns: 15rem minmax(0, 1fr);
+    align-items: start;
+  }
+  .navigation {
+    position: sticky;
+    top: 1rem;
+  }
+}
+@media (max-width: 1023px) {
+  .workspace[data-has-selection="true"] > .navigation {
+    display: none;
+  }
+}

@@ -113,3 +113,6 @@ Specified Avatars/Badges, Underline tabs, Metrics, domain lists, Tables/Paginati
 
 ## P70 Public Profile
 Specified Avatars/Badges/Dropdowns, Modals/Buttons, Tables/Paginations and Activity feeds references reuse current accessible adapters. Paid advanced examples unavailable; explicit alternatives are existing named-person confirmation menu, semantic sortable permitted summary table, full native mobile disclosures and dated permitted feed/ledger. No raw shot expansion or new paid component claimed.
+
+## P71 Settings
+Specified sidebar navigation, forms/select/toggles, tables/pagination, domain lists, alerts and modals references reuse checked installed exports. Paid advanced settings/sidebar/table templates remain unavailable; explicit alternatives are retained local settings navigation, labelled preference rows and stateful forms, native full mobile disclosures, existing responsive confirmation panels and the shared typed-confirmation button. Native local payload progress/status is factual; no paid source or new vendor package claimed.

@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-379 desktop / 379 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P71 Settings**, next P72 Notification preferences. 113 UI entries remain. Continue the UI pass with acceptance gaps retained.
+393 desktop / 393 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P72 Notification preferences**, next P73 Accept account invitation. 99 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P71 Settings**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P72 Notification preferences**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -383,3 +383,8 @@ Actual profile-browser.log and profile-browser-repeat.log BOTH FAILED initial60s
 P70-C01–C04 UI implemented partial;379/492 UI,0 fully accepted. One shared identity header, current relationship actions using exact pendingRequestId and existing confirmed state API, full permitted activity/ledger, complete mobile stock-bag details and searchable/orderable semantic table. Additional category privacy filtering restricts collection/public/item/comment access without widening item.visibility; owner/unmapped behavior retained.
 Changed public profile page/public-profile-bag.tsx/social.ts/capability and feed-category privacy + browser tests. public-profile-types-final.log and scoped lint clean. public-profile-final.log2files3backendtestsPASS1.78s. Actual profiles-browser-ready.log overall1PASS(P70),1FAIL(P69 initial60s goto),3.9m: P70 all12 surface/size combinations passed exact pending request Cancel/accept, private categories/header absent, shared full bag detail, search, block Cancel,0pageerrors/overflow. Companion390 capture inspected: caught the closing confirmation transition, so a neutral page capture remains outstanding; fixture now waits for dialog removal before future screenshots. Existing6feed item limit disclosed; broader acceptance stays outstanding. P69 remains route-unverified after additional compile timeout.
 Runtime freeze explicitly released. NextP71 Settings14components; all detailed prompts read. /tmp/fkh-settings-{workspace.tsx,workspace.module.css,dirty-form.tsx,access-actions.tsx} are prepared drafts. Other agent owns Settings/notification action state wrappers+tests; root owns page/UI including offline/theme local adjustments. Continue this branch, preserve tracker, do not rerun passed P70 without a regression.
+
+## P71 Settings UI checkpoint
+P71-C01–C14 UI implemented partial;393/492 UI,0 fully accepted. Full retained9section workspace and phone index/back; exact scoped state saves, errors/reset, draft preservation; invitation role/recipient review and named access controls with server-confirmed result; full mobile access details; current billing entitlement; accurate legacy-default versus actual-access copy; offline loading/error distinction, payload size/freshness, retry/removal feedback; typed reset/delete and final confirmations preserved, export access beside danger forms.
+First actual settings-browser.log failed Save changes missing after early SSR typing; fixed SettingsDirtyForm to disable fields until ready. General Reset now leaves another Appearance preview intact. Final settings-browser-ready.log2PASS2.1m: isolated6size form/error/retry/exactinvite/no-callCancel/theme-preview protection; actual12surface-size combinations all9sections, retained draft/saved names, invitationCancel noinsert, ResetCancel seeded golf session remains,0pageerrors/overflow. Companion390 screenshot inspected. Types settings-types-ready.log clean; settings-lint-complete.log final scoped lint clean. Backend5settings/sharing+2notificationtests pass. Full acceptance limitations in CSV; no actual reset/delete.
+Changed settings page/workspace module/draft/access/offline UI, theme-select44px, Settings+notification state actions and tests. Root owns UI. Freeze explicitly released; wait until P71 action staging done then otheragent proceedsP73 acceptance state API. Prepared /tmp/fkh-notification-preferences-page.tsx and /tmp/fkh-invitation-{page,accept}.tsx; P72/P73 detailed prompts read. ContinueP72 thenP73; no main/deploy.

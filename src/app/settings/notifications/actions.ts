@@ -10,7 +10,7 @@ import {
   updateProductPreferences,
 } from "@/lib/product-preferences";
 
-export async function saveNotificationPreferencesAction(formData: FormData) {
+async function persistNotificationPreferences(formData: FormData) {
   const userId = await requireCurrentUserId();
   const parsed = parseProductPreferences({
     notifications: {
@@ -26,13 +26,24 @@ export async function saveNotificationPreferencesAction(formData: FormData) {
   });
 
   await updateProductPreferences(userId, { notifications: parsed.notifications });
-  const returnToSettingsSection = formData.get("settingsReturnTo") === "section";
   revalidatePath("/settings");
   revalidatePath("/settings/notifications");
   revalidatePath("/api/desktop-workbench/notifications");
-  redirect(
-    returnToSettingsSection
-      ? "/settings?section=notifications&saved=1"
-      : "/settings/notifications?saved=1",
-  );
+}
+
+export async function saveNotificationPreferencesAction(formData: FormData) {
+  await persistNotificationPreferences(formData);
+  const returnToSettingsSection = formData.get("settingsReturnTo") === "section";
+  redirect(returnToSettingsSection ? "/settings?section=notifications&saved=1" : "/settings/notifications?saved=1");
+}
+
+export async function saveNotificationPreferencesFormAction(
+  _previous: { ok: boolean; error?: string }, formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await persistNotificationPreferences(formData);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not save notifications. Try again." };
+  }
 }
