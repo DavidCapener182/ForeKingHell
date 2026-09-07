@@ -558,3 +558,11 @@ Isolated production build terminal PASS: compiled2.3m, TypeScript17.7s,25static 
 handicap-link-no-errors.log PASS29.1s after strengthening pageerror assertions: all12contexts, saved-view exactURL/retainedquery/selectedtab, original shot values unchanged, zero browser errors. Earlier JSON error not reproduced, root cause unproven; do not repeat unchanged tests. Route metadata reconciled to canonical companion implementations while preserving hidden/admin nav and unknown-nested fallback fields/gates;20testsPASS1.51s plus types/lint. Root reviewed diff; prior best-shots/goals gate changes preserved.
 
 Current: other agent continues targeted unit/source-contract reconciliation; root continues acceptance and integration. No active root browser/build. Isolated production snapshot passed as qualified above. Latest source wrappers need representative UI checks; full native/AT/state matrices remain outstanding. All492rows still partial,0fullyaccepted.
+
+### Latest verification and active component
+
+Club-card actual browser PASS3.0m all12surface/viewports,6analysis tabs, selected-shot full source and tab reload, zero pageerrors;390companion capture inspected. G11 boundary component browser PASS4.2s all6sizes: keyboardRetry→visible busy challenge skeleton→fixture recovery, one main,2axe scans0violations;360capture inspected. This does not inject failures into all91real routes.
+
+Current P58 status regression: Available excludes closed/expired/nonopen unjoined entries; new Closed to entry tab preserves those records/rules/history with disabled Join and explanation. Active/joinedCompleted unchanged. Browser first run caught absent disabledcontrol on newtab; restored same canonical JoinChallenge disabled state. Final challenge-status-browser-final.log running exec70247; read terminal before updating P58 rows/committing. Files challenge-workspace.tsx and ui-upgrade-challenges.spec.ts. Types/lint passed before final tiny condition change.
+
+Other agent fresh full-unit-reconciled.json:2921total,2532pass,243failed,146pending,93failedfiles. Continues targeted reconciliation; coordinate every shared file. No overall completion.
