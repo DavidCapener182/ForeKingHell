@@ -164,3 +164,6 @@ Checked official alerts/notifications, progress, golf-visual toolbar, forms and 
 
 ## P88 Shared round
 Checked official headers, tables/pagination and empty/loading/alerts reused. Paid advanced examples unavailable. Accessible alternatives: shared semantic pinned scorecard, recorded-evidence summary, native public navigation and dedicated route recovery boundaries. Existing export adapter retained; local exports typechecked.
+
+## P89 Shared Course Twin
+Previously checked official headers, select/tooltips and empty/loading/alerts. Paid advanced examples unavailable. Accessible local shell uses visible semantic public identity, scope and exit with scoped responsive layout around unchanged canonical3D/2D renderer; dedicated recovery boundaries. No geometry replacement or paid installation.

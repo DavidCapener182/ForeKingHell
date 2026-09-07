@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-469 desktop / 469 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P89 Shared Course Twin**, next P90 Shared coach report. 23 UI entries remain. Continue the UI pass with acceptance gaps retained.
+472 desktop / 472 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P90 Shared coach report**, next P91 Desktop handoff. 20 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P89 Shared Course Twin**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P90 Shared coach report**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -476,3 +476,7 @@ P87-C01–C05 UI implemented with partial verification; existing complete specia
 ## P88 Shared round UI pass, 7 September
 
 P88-C01–C03 UI implemented with partial verification. Full shared Workbench scorecard now serves both surfaces; semantic pinned row headings/totals, partial score and putt counts, manual putt source, public identity/scope, complete allowed details. Existing roundCompletionIssue plus9/18gate suppresses incomplete differential display; loader/calculation unchanged and backend defect retained. Added route-local loading/error/not-found. shared-round-browser.log1PASS6.5s all12 sizes/surfaces using synthetic owner/link/card, revocation removes scorecard, noedit/delete/noindex/nooverflow/pageerrors. Types/lint clean and390 capture inspected. Access test separately covers revoked/expired/mismatched owner. Full native and all state acceptance outstanding. Next P89, preserve canonical renderer and token scoping.
+
+## P89 Shared Course Twin UI pass, 7 September
+
+P89-C01–C03 UI implemented with partial verification. Extracted shared-twin-view and scoped CSS retain canonical readOnly runtime while showing one public title/scope/exit on all sizes. Route adds noindex and local invalid/loading/service-error recovery; token loader unchanged. shared-twin-browser-final.log1PASS2.1s6sizes using synthetic manifest/canonical2D fallback, selected hole navigation, no private mutation controls or overflow/errors;390 inspected. Initial isolated router lacked replaceState notification, fixture corrected. Page handoff2unitPASS506ms;types/lint clean. shared-twin-access.log1DBPASS542ms exactowner/session/type plus expired/revoked/foreignowner failclosed before mocked loaders. No actual3D/real shared-route browser success claimed. Next P90 report UI; otheragent owns requested action-state adapter, root owns view/form/boundaries; leave dirty report/page.tsx untouched.
