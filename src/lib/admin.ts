@@ -464,24 +464,30 @@ export async function getAdminOperationsSnapshot() {
   return adminOperationsFromMetrics(metrics);
 }
 
-export async function grantLifetimeFullAccessByEmail(email: string) {
+export async function grantLifetimeFullAccessByEmail(email: string, expectedUserId?: string) {
   const admin = await requireAdminOwner();
   const target = await findUserByEmail(email);
 
   if (!target) {
     throw new Error("No user exists for that email address.");
   }
+  if (expectedUserId && target.id !== expectedUserId) {
+    throw new Error("This account has changed. Refresh its details before trying again.");
+  }
 
   await grantLifetimeFullAccess(target.id, admin.userId);
   return target;
 }
 
-export async function grantAdminAccessByEmail(email: string, role: AdminRole) {
+export async function grantAdminAccessByEmail(email: string, role: AdminRole, expectedUserId?: string) {
   const admin = role === "owner" ? await requireAdminOwner() : await requireAdminUser();
   const target = await findUserByEmail(email);
 
   if (!target) {
     throw new Error("No user exists for that email address.");
+  }
+  if (expectedUserId && target.id !== expectedUserId) {
+    throw new Error("This account has changed. Refresh its details before trying again.");
   }
 
   const now = new Date();

@@ -128,3 +128,6 @@ Specified Metrics, Tables/Paginations, Radio groups/Buttons, Inputs/Select, Moda
 
 ## P76 Operations
 Specified Sidebar navigations, Metrics/Tooltips, Tables/Paginations, Activity feeds/Dropdowns and domain-action references reuse current installed adapters. Paid advanced admin examples unavailable; searchable focus-managed section panel, factual semantic status rows, sortable queue table/full mobile detail panel and native chronological audit disclosures are the accessible alternatives. No paid source or broader admin permission implied.
+
+## P77 Account management
+Specified Filter bars/Drawers/Date pickers, Tables/Paginations, Modals/Buttons and Alerts/Notifications references reuse current installed exports. Paid advanced examples unavailable; native labelled query/filter controls, semantic directory/full responsive account detail, exact review forms and normal-flow confirmed feedback are explicit accessible alternatives. No paid source or broadened admin role implied.

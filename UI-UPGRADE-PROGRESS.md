@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-412 desktop / 412 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P77 Account management**, next P78 Moderation. 80 UI entries remain. Continue the UI pass with acceptance gaps retained.
+416 desktop / 416 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P78 Moderation**, next P79 Billing and entitlements. 76 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P77 Account management**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P78 Moderation**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -404,3 +404,7 @@ Runtimefreeze RELEASED. P76 page/nav/attention/strip applied, allP76promptsread;
 ## P76 Operations UI checkpoint
 P76-C01–C05 UIimplementedpartial;412/492UI,0fullyaccepted. Fullsharedconsole, collapsible/searchadminnav, datedfactualstatus/drilllinks, orderedqueue/fullmobiledetails, complete auditactor/action/target/source and explicitunknownoutcome, namedworkflowlinks. Isolated6sizePASSadmin-overview-browser.log; actualadmin-overview-browser-final.logreachedall12surface/sizes andscreenshots, thenFAILED finalinactiveadminreload90stimeout. Finalpageerrorsassertionnotreached. Backendredesign/admin-overview-integration.log5PASS2.77s authorization/exactcounts/no-readmutations. Companion390inspected. Typesbilling-admin-typesclean;3unusedimportsremoved. Originaltests/integration/admin-workflows.test.ts preexistinguntrackedbroaderworkleftunstaged; dedicatedoverviewtest extracted and redesign/admin-overview-extracted.log1PASS2.71s. Serverlog shows /admin307 then cold /todaycompile atfinalreload timeout; destinationrender unverified.
 Freeze RELEASED, P77page/directory/filters/stateformapplied; genericadminFormAction and optionalexpectedUserIdserviceguardpendingotheragent. Preserveoperatorgrant-to-nonadmin capability, owner-only lifetime/deactivate/ownerrole. P77querylimit100 explicit, newcoachfilter, no paginationrewrite. Runtypes/lint/statefixtures afteragentstablethenbrowser; nextP78. Exactcap/adminonlybelongsP76, /admin/userspendingP77; preserveotherdirtycapdiffs.
+
+## P77 Account Management checkpoint
+P77-C01–C04 UIimplementedpartial;416/492UI,0fullyaccepted. Full directory/detail withallidentity/plan/role/activity/auditfields, queryfiltersdrawerApply/Reset/Clear/count, coachfilter, scopeexplicitlatest100matchingsearchbeforefilters. Confirmedrole/lifetime/deactivationforms snapshotexactID/email/role; operatorgrant capabilitypreserved, ownergatesunchanged. admin-users-controls.log1PASS7.7s6sizes; actualadmin-users-browser-final.log1PASS2.4m12surface/sizes exacttargetoperatorgrant/Cancel/ownerunchanged/querypreserved. FirstApplyleftdraweropenfixed. Types/scopedlintcleanbeforelastphonewidth adjustment. Companion390inspected: closingdrawertransitioncapture; widenedsearchfieldafterreview, neutralfinalcaptureoutstanding. Backendadmin-state-identity18PASS/admin-action-routing12PASS; dedicatedadmin-identity-extracted1PASS958ms.
+Freeze RELEASED; rootP78page/moderationqueueapplied, fullpromptsread, otheragentaddingauditRowsDTO+dedicatedpartialbulk/audit tests. No nextbrowseruntilstable. P77admin.ts stageonlyoptionalexpectedUserIdsignatures+guards; broaderpreexistingrole/concurrencychangespreservedunstaged (combinedworkingtree tested). NextP79. No main/deploy.
