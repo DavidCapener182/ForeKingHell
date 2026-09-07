@@ -26,6 +26,7 @@ export type PlaySelectionControlsProps = {
   selectedTeeId: string | null;
   destination?: "/play" | "/courses/strategy";
   showSearch?: boolean;
+  stageChanges?: boolean;
 };
 
 export function PlaySelectionControls({
@@ -35,10 +36,12 @@ export function PlaySelectionControls({
   selectedTeeId,
   destination = "/play",
   showSearch = false,
+  stageChanges = false,
 }: PlaySelectionControlsProps) {
-  const staged = destination === "/courses/strategy";
+  const staged = stageChanges || destination === "/courses/strategy";
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [teeQuery, setTeeQuery] = useState("");
   const [isPending, startTransition] = useTransition();
   const [optimisticCourseId, setOptimisticCourseId] = useState(selectedCourseId);
   const [optimisticTeeId, setOptimisticTeeId] = useState(selectedTeeId);
@@ -79,8 +82,10 @@ export function PlaySelectionControls({
         else query.delete("teeSetId");
         router.replace(`${destination}?${query.toString()}`, { scroll: false });
       } catch {
-        setOptimisticCourseId(previousCourseId);
-        setOptimisticTeeId(previousTeeId);
+        if (!staged) {
+          setOptimisticCourseId(previousCourseId);
+          setOptimisticTeeId(previousTeeId);
+        }
         failedAttemptRef.current += 1;
         setSelectionError({
           field,
@@ -98,6 +103,7 @@ export function PlaySelectionControls({
           Search courses
           <Input
             type="search"
+            aria-label="Search courses"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             className="min-h-11"
@@ -146,6 +152,21 @@ export function PlaySelectionControls({
           </SelectContent>
         </Select>
       </SelectionField>
+      <p className="break-words text-sm" aria-live="polite">
+        Selected: {courses.find((course) => course.id === optimisticCourseId)?.name ?? "No course"}{" "}
+        · {tees.find((tee) => tee.id === optimisticTeeId)?.name ?? "Choose a tee"}
+      </p>
+      {showSearch && optimisticCourseId === selectedCourseId && tees.length > 0 ? (
+        <label className="grid gap-2 text-sm font-medium">
+          Search tees
+          <Input
+            type="search"
+            value={teeQuery}
+            onChange={(event) => setTeeQuery(event.target.value)}
+            className="min-h-11"
+          />
+        </label>
+      ) : null}
       {optimisticCourseId === selectedCourseId && tees.length > 0 ? (
         <SelectionField label="Tee" detail="Remembered separately for this course">
           <Select
@@ -164,12 +185,18 @@ export function PlaySelectionControls({
               <SelectValue placeholder="Choose a tee" />
             </SelectTrigger>
             <SelectContent>
-              {tees.map((tee) => (
-                <SelectItem key={tee.id} value={tee.id}>
-                  {tee.name}
-                  {tee.detail ? ` · ${tee.detail}` : ""}
-                </SelectItem>
-              ))}
+              {tees
+                .filter(
+                  (tee) =>
+                    tee.id === optimisticTeeId ||
+                    tee.name.toLowerCase().includes(teeQuery.toLowerCase()),
+                )
+                .map((tee) => (
+                  <SelectItem key={tee.id} value={tee.id}>
+                    {tee.name}
+                    {tee.detail ? ` · ${tee.detail}` : ""}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </SelectionField>
@@ -189,6 +216,7 @@ export function PlaySelectionControls({
                 setOptimisticCourseId(selectedCourseId);
                 setOptimisticTeeId(selectedTeeId);
                 setQuery("");
+                setTeeQuery("");
                 setSelectionError(null);
               }}
             >

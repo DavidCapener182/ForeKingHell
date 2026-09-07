@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-259 desktop / 259 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P53 Play and pre-round setup**. 289 of492 UI implemented with partial verification; zero fully accepted. Continue UI implementation first, with recorded acceptance gaps retained.
+259 desktop / 259 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P54 Immersive Course Twin**. 294 of492 UI implemented with partial verification; zero fully accepted. Continue UI work, retaining all recorded acceptance gaps.
 
 # UI upgrade progress
 
@@ -297,3 +297,6 @@ P51-C01–C05 UI implemented partial,287total,0fullyaccepted. Searchable staged 
 
 
 P52-C01/C02 UI implemented partial,289total. Complete shared catalogue replaces reduced companion branch. Full quality notes, supplied real preview URLs with loading/missing/failure states, all available grades, exact runtime and mapped-hole links; route loading/service-error recovery added. course-twins-browser.log PASS3.5s isolated fixture both surfaces x6sizes,390 screenshot inspected. Types/scoped lint pass. Actual app shell/font/3D/permission/error-boundary/AT acceptance open. Files course-twins page/catalogue/loading/error and fixture/test. P51 commit74de7f0e includes previously untracked review dependencies and hydration helper. Next P53 full prompts /tmp/fkh-p53-prompts.txt read; preserve older dirty Play redesign while adding missing full mobile planning facts and staged searchable setup. Other thread owns catalogue import ownership fix,104backend tests pass; no browser active.
+
+
+P53-C01–C05 UI implemented partial,294total. Requested-surface rendering (no duplicate hidden page), staged search/tee setup retaining failure drafts, real preview disclosure instead of generic pre-round art, mobile full planning facts and selected-tee mapping readiness. Active round remains sole start/resume priority. play-browser-label.log PASS37.9s both surfaces x6sizes; first run had unstable search accessible name including result count, explicit aria-label fixed. Screenshot390 inspected; shared fixed-bar overlap still visible. Types/lint pass before final label change. Positive trusted-bag transition and preview/twin tee semantics/error/AT remain open. P52 commit7e0f72ef. Next P54 prompts /tmp/fkh-p54-prompts.txt: finish reading untruncatedC03, inspect runtime/scene/mobile controls and improve fallback selected-hole and communications draft/errors without touching renderer math. Other thread owns legacy Play select cookie cleanup/tests; no browser active.
