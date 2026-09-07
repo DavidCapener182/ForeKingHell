@@ -462,6 +462,7 @@ function VisualBagSlotsSection({
         <div className="grid content-start gap-3">
           <EquipmentInlineForm
             action={captureEquipmentSnapshotWithStateAction}
+            snapshotIdentity
             submitLabel="Capture snapshot"
           >
             <FormField label="Snapshot label" name="label" placeholder="Pre-fitting bag" />

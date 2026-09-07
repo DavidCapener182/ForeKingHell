@@ -1,6 +1,7 @@
 "use server";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { reportServerFailure } from "@/lib/server-observability";
@@ -17,22 +18,38 @@ async function persistCreateBallModel(formData: FormData) {
   const model = requiredString(formData, "model");
   const db = getDb();
 
-  await db
-    .insert(ballModels)
-    .values({
-      userId,
-      brand,
-      model,
-      active: true,
-      updatedAt: new Date(),
-    })
-    .onConflictDoUpdate({
-      target: [ballModels.userId, ballModels.brand, ballModels.model],
-      set: {
-        active: true,
-        updatedAt: new Date(),
-      },
-    });
+  await db.transaction(async (tx) => {
+    // The existing nullable-brand index cannot arbitrate NULL equality. Serialize
+    // this account/model key, reuse its exact ID, and preserve historical links.
+    const identity = JSON.stringify(["equipment-ball", userId, brand, model]);
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${identity}, 0))`);
+    const [existing] = await tx
+      .select({ id: ballModels.id })
+      .from(ballModels)
+      .where(
+        and(
+          eq(ballModels.userId, userId),
+          eq(ballModels.model, model),
+          brand === null ? isNull(ballModels.brand) : eq(ballModels.brand, brand),
+        ),
+      )
+      .orderBy(asc(ballModels.createdAt), asc(ballModels.id))
+      .limit(1);
+    if (existing) {
+      await tx
+        .update(ballModels)
+        .set({ active: true, updatedAt: new Date() })
+        .where(and(eq(ballModels.id, existing.id), eq(ballModels.userId, userId)));
+      return;
+    }
+    await tx
+      .insert(ballModels)
+      .values({ userId, brand, model, active: true, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: [ballModels.userId, ballModels.brand, ballModels.model],
+        set: { active: true, updatedAt: new Date() },
+      });
+  });
 
   refreshEquipmentPathAfterCommit("/equipment");
 }
@@ -195,6 +212,9 @@ async function persistSaveBagOrder(formData: FormData) {
 async function persistCaptureEquipmentSnapshot(formData: FormData) {
   const userId = await requireCurrentUserId();
   const label = nullableString(formData, "label") ?? "Bag snapshot";
+  const creationId = nullableString(formData, "creationId") ?? randomUUID();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(creationId))
+    throw new Error("Invalid snapshot request.");
   const db = getDb();
   const activeClubs = await db
     .select({
@@ -208,12 +228,26 @@ async function persistCaptureEquipmentSnapshot(formData: FormData) {
     .from(clubs)
     .where(and(eq(clubs.userId, userId), eq(clubs.active, true)));
 
-  await db.insert(equipmentSnapshots).values({
-    userId,
-    label,
-    snapshotJson: buildEquipmentSnapshotPayload(activeClubs),
-    capturedAt: new Date(),
-  });
+  const [created] = await db
+    .insert(equipmentSnapshots)
+    .values({
+      id: creationId,
+      userId,
+      label,
+      snapshotJson: buildEquipmentSnapshotPayload(activeClubs),
+      capturedAt: new Date(),
+    })
+    .onConflictDoNothing({ target: equipmentSnapshots.id })
+    .returning({ id: equipmentSnapshots.id });
+  if (!created) {
+    const [existing] = await db
+      .select({ label: equipmentSnapshots.label })
+      .from(equipmentSnapshots)
+      .where(and(eq(equipmentSnapshots.id, creationId), eq(equipmentSnapshots.userId, userId)))
+      .limit(1);
+    if (!existing || existing.label !== label)
+      throw new Error("Snapshot request could not be restored.");
+  }
 
   revalidateEquipmentSurfaces();
 }
@@ -243,14 +277,17 @@ function nullableString(formData: FormData, key: string) {
 }
 
 function nullableNumber(formData: FormData, key: string) {
-  const value = nullableString(formData, key);
-
-  if (value === null) {
-    return null;
-  }
-
+  const value = formData.get(key);
+  if (value === null || (typeof value === "string" && !value.trim())) return null;
+  const label = key === "loftDeg" ? "Loft" : "Lie";
+  if (
+    typeof value !== "string" ||
+    !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value.trim())
+  )
+    throw new Error(`${label} must be a valid number.`);
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  if (!Number.isFinite(parsed)) throw new Error(`${label} must be a valid number.`);
+  return parsed;
 }
 
 function cleanBagSection(value: FormDataEntryValue | null) {
@@ -283,7 +320,7 @@ async function equipmentResult(save: () => Promise<void>): Promise<EquipmentForm
     unstable_rethrow(error);
     const message = error instanceof Error ? error.message : "";
     if (
-      /^(model|clubId) is required\.$|^(Club|Ball model) not found for this account\.$|^No clubs supplied for bag order\.$|^Equipment effective end date cannot be before the start date\.$|^(Loft|Lie) must be between/.test(
+      /^(model|clubId) is required\.$|^(Club|Ball model) not found for this account\.$|^No clubs supplied for bag order\.$|^Equipment effective end date cannot be before the start date\.$|^(Loft|Lie) must be a valid number\.$|^Invalid snapshot request\.$|^Snapshot request could not be restored\.$|^(Loft|Lie) must be between/.test(
         message,
       )
     )

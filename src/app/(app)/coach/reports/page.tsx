@@ -100,7 +100,13 @@ const sectionCopy: Record<
 export default async function CoachReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ share?: string; error?: string; include?: string; page?: string }>;
+  searchParams: Promise<{
+    share?: string;
+    error?: string;
+    include?: string;
+    page?: string;
+    recovered?: string;
+  }>;
 }) {
   const params = await searchParams;
   const userId = await requireCurrentUserId();
@@ -153,6 +159,19 @@ export default async function CoachReportsPage({
           <Alert variant="destructive">
             <AlertTriangle className="size-4" aria-hidden />
             <AlertTitle>Select at least one report section.</AlertTitle>
+          </Alert>
+        ) : null}
+
+        {params.recovered === "1" ? (
+          <Alert>
+            <ShieldCheck className="size-4" aria-hidden />
+            <AlertTitle>
+              The earlier attempt saved your report. No duplicate was created.
+            </AlertTitle>
+            <p className="text-sm">
+              Find it in report history below. For privacy, the original link cannot be recovered;
+              revoke that report before creating a replacement link if needed.
+            </p>
           </Alert>
         ) : null}
 

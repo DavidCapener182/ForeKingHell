@@ -3,6 +3,7 @@ import { getDb } from "@/db/client";
 import { clubs as clubTable } from "@/db/schema";
 import { getTodayShotDetailRows } from "@/lib/today-shot-detail-data";
 import { formatClubType } from "@/lib/club-format";
+import { sessionCarryMedian } from "@/lib/session-carry-summary";
 import { ImportPracticeReview } from "@/app/import/import-result-sections";
 import { SessionShotPreview } from "@/app/sessions/session-shot-preview-lazy";
 import { TodayDataQuality } from "@/app/today/today-data-quality";
@@ -138,7 +139,7 @@ export default async function PracticeSessionReviewPage({
     },
     {
       label: "Median carry",
-      value: formatYards(patternSummary.medianCarryYd),
+      value: formatYards(sessionCarryMedian(rawShots, trustedShotIds, preferredClub)),
       detail: preferredClub ? `${clubLabel(preferredClub)} selection` : "Selected chart view",
     },
     {
