@@ -693,7 +693,6 @@ Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10,
 
 P1: the provided comparison URL is ignored by the current page. The baseline line is reconstructed from a current score and momentum. These are source-confirmed behaviour/data-presentation issues, not just styling preferences.
 
-
 #### P01-C01 · Progress heading and score explanation
 
 Current target: `PerformanceStory`. Priority: **P1**.
@@ -1199,7 +1198,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P02-C01 · Today title and latest-session answer
 
 Current target: `TodayCompanionPage`. Priority: **P2**.
@@ -1692,7 +1690,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P03-C01 · Dashboard overview and priority
 
 Current target: `DashboardSummaryHero`. Priority: **P2**.
@@ -2070,7 +2067,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P04-C01 · History header and import action
 
 Current target: `SessionsCompanionPage`. Priority: **P2**.
@@ -2364,7 +2360,6 @@ Route: `/sessions/[sessionId]`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P05-C01 · Session identity and verdict
 
@@ -2753,7 +2748,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P06-C01 · Shot search, filters and active scope
 
 Current target: `ShotFilterToolbar, MobileShotFilters`. Priority: **P2**.
@@ -3046,7 +3040,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P07-C01 · Suggestion queue and reason
 
 Current target: `MobileAutomaticReview`. Priority: **P2**.
@@ -3233,7 +3226,6 @@ Route: `/bag`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P08-C01 · Bag health and selected context
 
@@ -4050,7 +4042,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P09-C01 · Club identity, specification and primary number
 
 Current target: `ClubDetailClient`. Priority: **P2**.
@@ -4374,7 +4365,6 @@ Route: `/bag/[clubId]/analytics`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P10-C01 · Analytics header and decision support
 
@@ -4826,7 +4816,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P11-C01 · Personal-best identity and summary
 
 Current target: `LongestShotsSection`. Priority: **P2**.
@@ -5006,7 +4995,6 @@ Route: `/quick-bag`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P12-C01 · Target distance and club search
 
@@ -5229,7 +5217,6 @@ Route: `/equipment`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P13-C01 · Current setup and fit summary
 
@@ -5706,7 +5693,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P14-C01 · Experiment and baseline selection
 
 Current target: `ExperimentSelectionForm, SessionSelect`. Priority: **P2**.
@@ -5929,7 +5915,6 @@ Route: `/practice`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P15-C01 · Practice title and plan state
 
@@ -6371,7 +6356,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P16-C01 · Quick-range focus and start/resume
 
 Current target: `QuickRangeWorkbenchSession, QuickRangeCompanionSession`. Priority: **P2**.
@@ -6547,7 +6531,6 @@ Route: `/coach`. **Live state captured + source reviewed**.
 Current mobile scope: Summary capability: verify and implement full specified tasks. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P17-C01 · Primary coaching opportunity
 
@@ -6882,7 +6865,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P18-C01 · Diagnosis evidence table
 
 Current target: `CoachDiagnosisEvidenceTable`. Priority: **P2**.
@@ -7059,7 +7041,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P19-C01 · Frozen report builder
 
 Current target: `Checkbox, Select, Input`. Priority: **P2**.
@@ -7233,7 +7214,6 @@ Route: `/coach/workspace`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P20-C01 · Assigned player selector
 
@@ -7454,7 +7434,6 @@ Route: `/data-chat`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P21-C01 · Conversation history and prompt suggestions
 
@@ -7688,7 +7667,6 @@ Route: `/analyse`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P22-C01 · Analysis title and evidence overview
 
@@ -7962,7 +7940,6 @@ Route: `/analyse/compare`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P23-C01 · Baseline, focus and comparison scope
 
@@ -8244,7 +8221,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P24-C01 · Club and conditions scope
 
 Current target: `Select`. Priority: **P2**.
@@ -8461,7 +8437,6 @@ Route: `/analyse/session-impact`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P25-C01 · Session and reversible filter controls
 
@@ -8680,7 +8655,6 @@ Route: `/analyse/workspace`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P26-C01 · Data-quality inbox
 
@@ -8907,7 +8881,6 @@ Route: `/compare`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P27-C01 · Progress, club and player comparison modes
 
@@ -9238,7 +9211,6 @@ Route: `/strokes-gained`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P28-C01 · Scope, category and active filters
 
@@ -9599,7 +9571,6 @@ Route: `/simulator-lab`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P29-C01 · Lab summary and range-reality estimate
 
@@ -10059,7 +10030,6 @@ Route: `/speed`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P30-C01 · Speed-development overview
 
@@ -10537,7 +10507,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P31-C01 · Session identity and summary
 
 Current target: `PageHeader, SpeedSessionCompanion`. Priority: **P2**.
@@ -10865,7 +10834,6 @@ Route: `/stats/training-over-time`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P32-C01 · Current load and readiness summary
 
@@ -11211,7 +11179,6 @@ Current mobile scope: Summary capability: verify and implement full specified ta
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P33-C01 · Season outcome and weekly rhythm
 
 Current target: `SeasonPlanForm`. Priority: **P2**.
@@ -11536,7 +11503,6 @@ Current mobile scope: Summary capability: verify and implement full specified ta
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P34-C01 · Best-form and realistic playing estimates
 
 Current target: `HandicapPanel, PlayingHandicapPanel`. Priority: **P2**.
@@ -11813,7 +11779,6 @@ Route: `/import`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P35-C01 · Import title and current operation
 
@@ -12348,7 +12313,6 @@ Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10,
 
 Live navigation without a result identifier returned the guarded not-found state. A successful newly saved result was source-reviewed; no import was submitted during this audit.
 
-
 #### P36-C01 · Import outcome and saved-session action
 
 Current target: `Inline page section: Import outcome and saved-session action`. Priority: **P2**.
@@ -12574,7 +12538,6 @@ Route: `/rapsodo`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P37-C01 · Connection form and connection state
 
@@ -12821,7 +12784,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P38-C01 · Connections and Diagnostics tabs
 
 Current target: `Tabs`. Priority: **P2**.
@@ -13054,7 +13016,6 @@ Current mobile scope: Dedicated companion route; wide content hidden in captured
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P39-C01 · Import a session source actions
 
 Current target: `ImportCompanionPage`. Priority: **P2**.
@@ -13186,7 +13147,6 @@ Route: `/companion-runtime/import/csv`. **Runtime DOM/source reviewed; captured 
 Current mobile scope: Dedicated companion route; wide content hidden in captured runtime views. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P40-C01 · Choose range CSV and file state
 
@@ -13370,7 +13330,6 @@ Current mobile scope: Dedicated companion route; wide content hidden in captured
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P41-C01 · Saved import outcome and session story
 
 Current target: `Inline page section: Saved import outcome and session story`. Priority: **P2**.
@@ -13525,7 +13484,6 @@ Route: `/companion-runtime/rapsodo`. **Runtime DOM/source reviewed; captured wid
 Current mobile scope: Dedicated companion route; wide content hidden in captured runtime views. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P42-C01 · Connect and sync state
 
@@ -13715,7 +13673,6 @@ Route: `/rounds`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P43-C01 · Scoring story and round actions
 
@@ -13943,7 +13900,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P44-C01 · Course, tee and round setup
 
 Current target: `NewRoundForm, MobileStartRound`. Priority: **P2**.
@@ -14130,7 +14086,6 @@ Route: `/rounds/[sessionId]`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P45-C01 · Round identity and result
 
@@ -14620,7 +14575,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P46-C01 · Course search and filters
 
 Current target: `CourseLibrary`. Priority: **P2**.
@@ -14799,7 +14753,6 @@ Route: `/courses/new`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P47-C01 · Google course search and import
 
@@ -15036,7 +14989,6 @@ Route: `/courses/[courseId]`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P48-C01 · Course identity, tabs and favourite action
 
@@ -15308,7 +15260,6 @@ Route: `/courses/[courseId]/holes`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P49-C01 · Course editor identity and sections
 
@@ -15688,7 +15639,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P50-C01 · Hole and club setup
 
 Current target: `ShotPatternSetupBoard`. Priority: **P2**.
@@ -15929,7 +15879,6 @@ Route: `/courses/strategy`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P51-C01 · Pre/post-round mode and setup
 
@@ -16211,7 +16160,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P52-C01 · Course catalogue and quality labels
 
 Current target: `CourseTwinCatalogue`. Priority: **P2**.
@@ -16346,7 +16294,6 @@ Route: `/play`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P53-C01 · Course and tee selection
 
@@ -16624,7 +16571,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P54-C01 · 3D canvas and accessible fallback
 
 Current target: `CourseTwinRuntime, CourseTwinScene`. Priority: **P2**.
@@ -16837,7 +16783,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P55-C01 · Record-board title and proof context
 
 Current target: `CourseRecordFeaturePanel`. Priority: **P2**.
@@ -17022,7 +16967,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P56-C01 · Course-specific record table
 
 Current target: `CourseRecordCourseTable`. Priority: **P2**.
@@ -17197,7 +17141,6 @@ Route: `/course-records/[recordId]`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P57-C01 · Record identity, champion and personal best
 
@@ -17470,7 +17413,6 @@ Route: `/challenges`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P58-C01 · Active, available and completed views
 
@@ -17799,7 +17741,6 @@ Route: `/challenges/[challengeId]`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P59-C01 · Challenge identity and section navigation
 
@@ -18172,7 +18113,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P60-C01 · Event status tabs and course scope
 
 Current target: `TournamentIndexTabs`. Priority: **P2**.
@@ -18348,7 +18288,6 @@ Route: `/tournaments/[tournamentId]`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P61-C01 · Event identity and primary action
 
@@ -18771,7 +18710,6 @@ Current mobile scope: Summary capability: verify and implement full specified ta
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P62-C01 · Result, scope and period controls
 
 Current target: `LeaderboardPlayerControls`. Priority: **P2**.
@@ -19048,7 +18986,6 @@ Route: `/achievements`. **Live state captured + source reviewed**.
 Current mobile scope: Summary capability: verify and implement full specified tasks. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P63-C01 · Level, XP and next unlock summary
 
@@ -19377,7 +19314,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P64-C01 · Friends, requests and discovery navigation
 
 Current target: `FriendsTabs`. Priority: **P2**.
@@ -19613,7 +19549,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P65-C01 · My groups, discover and invitations
 
 Current target: `GroupDirectoryTabs`. Priority: **P2**.
@@ -19841,7 +19776,6 @@ Route: `/groups/[groupSlug]`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P66-C01 · Group identity and section tabs
 
@@ -20162,7 +20096,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P67-C01 · Feed scope and activity filters
 
 Current target: `FeedFilterControls`. Priority: **P2**.
@@ -20408,7 +20341,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P68-C01 · Generate weekly or challenge recap
 
 Current target: `GenerateSummaryForm`. Priority: **P2**.
@@ -20642,7 +20574,6 @@ Route: `/profile`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P69-C01 · Identity, avatar and public visibility
 
@@ -21112,7 +21043,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P70-C01 · Profile identity and relationship
 
 Current target: `PageHeader, SocialAvatar, MobilePublicProfileSummary`. Priority: **P2**.
@@ -21347,7 +21277,6 @@ Route: `/settings`. **Live state captured + source reviewed**.
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P71-C01 · Settings section navigation
 
@@ -22066,7 +21995,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P72-C01 · Delivery by notification category
 
 Current target: `Select`. Priority: **P2**.
@@ -22239,7 +22167,6 @@ Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10,
 
 Source-reviewed only: no valid invitation token was available and no invitation was created or accepted for this audit.
 
-
 #### P73-C01 · Invitation identity and access scope
 
 Current target: `PageHeader, DataPanel`. Priority: **P2**.
@@ -22359,7 +22286,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
 Source-reviewed only for role-specific access. No new membership or shared-account access was created.
-
 
 #### P74-C01 · Shared player identity and role context
 
@@ -22536,7 +22462,6 @@ Route: `/billing`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P75-C01 · Current plan and entitlement
 
@@ -22850,7 +22775,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P76-C01 · Admin navigation and account context
 
 Current target: `AdminNav`. Priority: **P2**.
@@ -23122,7 +23046,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P77-C01 · User search and account filters
 
 Current target: `ToolbarField, Input, Select`. Priority: **P2**.
@@ -23356,7 +23279,6 @@ Route: `/admin/moderation`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P78-C01 · Queue filters and selection scope
 
@@ -23638,7 +23560,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P79-C01 · Billing overview and plan limits
 
 Current target: `AdminMetric`. Priority: **P2**.
@@ -23868,7 +23789,6 @@ Route: `/admin/challenges`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P80-C01 · Competition operations summary
 
@@ -24100,7 +24020,6 @@ Current mobile scope: Explicit desktop-only capability: mobile task must be impl
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P81-C01 · Health summary and needs-attention list
 
 Current target: `Inline page section: Health summary and needs-attention list`. Priority: **P2**.
@@ -24327,7 +24246,6 @@ Route: `/partners`. **Live state captured + source reviewed**.
 Current mobile scope: Explicit desktop-only capability: mobile task must be implemented. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P82-C01 · Partner operations overview
 
@@ -24608,7 +24526,6 @@ Route: `/`. **Live state captured + source reviewed**.
 Current mobile scope: Public responsive/source branch reviewed. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P83-C01 · Public navigation
 
@@ -25263,7 +25180,6 @@ Current mobile scope: Public responsive/source branch reviewed. Narrow-screen vi
 
 Shared component dependencies: G01, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P84-C01 · Authentication brand and product context
 
 Current target: `BrandMark, GolfProof`. Priority: **P2**.
@@ -25481,7 +25397,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P85-C01 · First trusted insight and resume state
 
 Current target: `WelcomeWorkbenchPage, WelcomeCompanionPage`. Priority: **P2**.
@@ -25651,7 +25566,6 @@ Current mobile scope: Public responsive/source branch reviewed. Narrow-screen vi
 
 Shared component dependencies: G01, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P86-C01 · Data-notice title and navigation
 
 Current target: `PageHeader`. Priority: **P2**.
@@ -25816,7 +25730,6 @@ Route: `/offline`. **Live state captured + source reviewed**.
 Current mobile scope: Offline companion source reviewed; network/device execution not tested. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P87-C01 · Connection status and saved resources
 
@@ -26095,7 +26008,6 @@ Shared component dependencies: G01, G09, G10, G11, G12, G13, G14, where consumed
 
 Token-specific success state was source-reviewed; no share link was created or expanded for this audit.
 
-
 #### P88-C01 · Shared round identity and scope
 
 Current target: `SharedRoundWorkbench, SharedRoundCompanion`. Priority: **P2**.
@@ -26278,7 +26190,6 @@ Shared component dependencies: G01, G09, G10, G11, G12, G13, G14, where consumed
 
 Token-specific success state was source-reviewed; no new public Course Twin link was created.
 
-
 #### P89-C01 · Shared twin identity and access scope
 
 Current target: `CourseTwinRuntime`. Priority: **P2**.
@@ -26446,7 +26357,6 @@ Current mobile scope: Public responsive/source branch reviewed. Narrow-screen vi
 Shared component dependencies: G01, G09, G10, G11, G12, G13, G14, where consumed.
 
 Token/password success states were source-reviewed only. No report was generated or access expanded for this audit.
-
 
 #### P90-C01 · Password-protected report gate
 
@@ -26620,7 +26530,6 @@ Current mobile scope: Companion/summary branch source reviewed; narrow viewport 
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
-
 #### P91-C01 · Surface handoff and preserved destination
 
 Current target: `AppSurfaceLink`. Priority: **P1**.
@@ -26743,7 +26652,6 @@ Route: `/companion/summary`. **Source reviewed; token/special state not exercise
 Current mobile scope: Companion/summary branch source reviewed; narrow viewport visual QA outstanding. Narrow-screen visual QA is outstanding.
 
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
-
 
 #### P92-C01 · Route-specific summary and next action
 
@@ -26872,7 +26780,6 @@ Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10,
 
 Redirect-only route. Component prompts live on /course-records/[recordId]; this entry explicitly verifies the redirect contract.
 
-
 #### P93-C01 · Canonical destination and selected component
 
 Current target: `Inline page section: Canonical destination and selected component`. Priority: **P2**.
@@ -26930,7 +26837,6 @@ Current mobile scope: Redirect; verify the destination mobile task. Narrow-scree
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
 Redirect-only route. Component prompts live on /tournaments; this entry explicitly verifies the redirect contract.
-
 
 #### P94-C01 · Canonical destination and selected component
 
@@ -26990,7 +26896,6 @@ Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10,
 
 Redirect-only route. Component prompts live on /tournaments/[tournamentId]; this entry explicitly verifies the redirect contract.
 
-
 #### P95-C01 · Canonical destination and selected component
 
 Current target: `Inline page section: Canonical destination and selected component`. Priority: **P2**.
@@ -27048,7 +26953,6 @@ Current mobile scope: Redirect; verify the destination mobile task. Narrow-scree
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
 Redirect-only route. Component prompts live on /tournaments/[tournamentId]; this entry explicitly verifies the redirect contract.
-
 
 #### P96-C01 · Canonical destination and selected component
 
@@ -27108,7 +27012,6 @@ Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10,
 
 Redirect-only route. Component prompts live on /tournaments/[tournamentId]; this entry explicitly verifies the redirect contract.
 
-
 #### P97-C01 · Canonical destination and selected component
 
 Current target: `Inline page section: Canonical destination and selected component`. Priority: **P2**.
@@ -27166,7 +27069,6 @@ Current mobile scope: Redirect; verify the destination mobile task. Narrow-scree
 Shared component dependencies: G01, G02, G03, G04, G05, G06, G07, G08, G09, G10, G11, G12, G13, G14, where consumed.
 
 Redirect-only route. Component prompts live on /tournaments/[tournamentId]; this entry explicitly verifies the redirect contract.
-
 
 #### P98-C01 · Canonical destination and selected component
 

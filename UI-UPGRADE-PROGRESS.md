@@ -731,3 +731,8 @@ Next/current: restore saved views, columns and filtered CSV controls to SharedSe
 - Next: confirm remote main SHA after nonforce push, then resume remaining register controls and source-contract reconciliation; preserve all partial acceptance statuses. Workbook lock file belongs to user and remains outside git.
 
 - Final release formatting check PASS: all matched files use Prettier style (/tmp/fkh-main-format-confirm.log).
+
+## GitHub release outcome
+
+- Upgrade commit81e41a71 pushed and remote parity verified. Direct atomic main push rejected by GitHub protected branch GH006: pull request and six required checks mandatory. Main remains cf9de4018e0273a7f86a0ae69791af4ff414d29c. No bypass attempted.
+- Open PR59: https://github.com/DavidCapener182/ForeKingHell/pull/59 targets main from upgrade/untitled-ui-migration. Not merged. Continue by inspecting PR checks and fixing documented acceptance/source-contract and budget failures; do not claim main or production updated.

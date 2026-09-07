@@ -88,18 +88,18 @@ The checked-out source is main at cf9de4018e0273a7f86a0ae69791af4ff414d29c. The 
 
 ## Flow health
 
-| Flow | Assessment | Evidence and next work |
-|---|---|---|
-| Sign in → first import | Needs repair | Import source-card readability is visibly broken. Authentication worked in this account; upload/save and first-user completion were not submitted. |
-| Today → session → shot review | Useful foundation; hierarchy needs work | Real evidence, reversible exclusions and specialist plots should be retained. Oversized/repeated headings and development panels compete with the task. |
-| Progress → compare → practice | Needs repair | URL comparison scope, baseline presentation and blocker consistency require correction before visual polish. |
-| Bag → club → equipment | Rich capability; simplify controls | Keep true dispersion, carry ranges, benchmark provenance and the repository ban on Attack/Launch benchmark comparisons. Mobile equipment tasks are gated. |
-| Practice → measured result → speed/load | Strong domain structure; verify state transitions | Preserve guidance-versus-measurement and no-ball-versus-with-ball distinctions. Draft, import matching and offline completion require fixture-based execution checks. |
-| Course setup → strategy → live round/twin | Specialist UI worth preserving | Wrap maps and 3D with accessible controls; several course administration screens lack a full mobile task. |
-| Challenges → tournaments → records | Needs consistency work | Preserve qualifying evidence and verification. Tournament stepper completion conflicts with its round count in the captured state. |
-| Friends → groups → profile/sharing | Desktop task surfaces present; mobile incomplete | Many social-management routes are explicitly desktop-only. No live invitations, posts or new public shares were sent. |
-| Settings → billing → administration | Broad surface coverage; protect exact actions | Forms, role scope and confirmations need deliberate adapters. No payment, entitlement change, account reset or deletion was performed. |
-| Offline and surface switching | Confirmed surface-switch defect; offline runtime needs execution QA | Wide companion mode hides Today main content. Offline page and source were reviewed; this was not a physical-device, offline-network or conflict-replay test. |
+| Flow                                      | Assessment                                                          | Evidence and next work                                                                                                                                                |
+| ----------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sign in → first import                    | Needs repair                                                        | Import source-card readability is visibly broken. Authentication worked in this account; upload/save and first-user completion were not submitted.                    |
+| Today → session → shot review             | Useful foundation; hierarchy needs work                             | Real evidence, reversible exclusions and specialist plots should be retained. Oversized/repeated headings and development panels compete with the task.               |
+| Progress → compare → practice             | Needs repair                                                        | URL comparison scope, baseline presentation and blocker consistency require correction before visual polish.                                                          |
+| Bag → club → equipment                    | Rich capability; simplify controls                                  | Keep true dispersion, carry ranges, benchmark provenance and the repository ban on Attack/Launch benchmark comparisons. Mobile equipment tasks are gated.             |
+| Practice → measured result → speed/load   | Strong domain structure; verify state transitions                   | Preserve guidance-versus-measurement and no-ball-versus-with-ball distinctions. Draft, import matching and offline completion require fixture-based execution checks. |
+| Course setup → strategy → live round/twin | Specialist UI worth preserving                                      | Wrap maps and 3D with accessible controls; several course administration screens lack a full mobile task.                                                             |
+| Challenges → tournaments → records        | Needs consistency work                                              | Preserve qualifying evidence and verification. Tournament stepper completion conflicts with its round count in the captured state.                                    |
+| Friends → groups → profile/sharing        | Desktop task surfaces present; mobile incomplete                    | Many social-management routes are explicitly desktop-only. No live invitations, posts or new public shares were sent.                                                 |
+| Settings → billing → administration       | Broad surface coverage; protect exact actions                       | Forms, role scope and confirmations need deliberate adapters. No payment, entitlement change, account reset or deletion was performed.                                |
+| Offline and surface switching             | Confirmed surface-switch defect; offline runtime needs execution QA | Wide companion mode hides Today main content. Offline page and source were reviewed; this was not a physical-device, offline-network or conflict-replay test.         |
 
 ## What to preserve
 
@@ -112,23 +112,23 @@ The checked-out source is main at cf9de4018e0273a7f86a0ae69791af4ff414d29c. The 
 
 Untitled UI is the requested reference. Official pages inspected include the component catalogue, installation, sidebar navigations, tables, metrics, filters, tabs, charts, drawers, file uploaders, radio groups, select, date pickers and command menus. Other family links come from its official catalogue. FREE is explicitly shown on the inspected base tables, tabs, select, date pickers, file uploaders, sidebar navigation and line/bar-chart pages. Several advanced layouts show “Get the code”; access and licensing must be checked at implementation time. Named variants in this pack are documented examples, not invented npm exports. A domain-specific golf table, map toolbar, bottom sheet or profile layout is a custom composition of those components; it is not claimed to be a prebuilt Untitled UI golf module.
 
-| Existing need | Recommended reference | Application |
-|---|---|---|
-| Nav | [Sidebar navigations — Sections subheadings](https://www.untitledui.com/react/components/sidebar-navigations) | Keep navigation groups collapsible, active ancestry visible and the account controls reachable without burying the destination. |
-| Header | [Page headers + Section headers](https://www.untitledui.com/react/components/page-headers) | Use one compact page title, a concise description and a right-aligned primary action; let secondary actions wrap below. Preserve the full-width work area. |
-| Tabs | [Tabs — Underline](https://www.untitledui.com/react/components/tabs) | Use controlled Underline tabs with real panels, visible selected state and URL persistence where the screen already supports shareable views. |
-| Filters | [Filter bars — Dropdowns and date picker; Drawers — Filters menu](https://www.untitledui.com/react/components/filter-bars) | Place the highest-value filters in a compact toolbar; show active filter chips, result count and Clear all. |
-| Table | [Tables + Paginations](https://www.untitledui.com/react/components/tables) | Use an accessible table with aligned numeric columns, units in headers, semantic sorting, row actions and existing server pagination. Constrain horizontal scrolling to the table. |
-| Metrics | [Metrics — Simple actions](https://www.untitledui.com/react/components/metrics) | Use a restrained connected metric strip; show value, unit, time window, sample size and evidence link where available. |
-| Chart | [Line & bar charts — Line chart 01 / Bar chart 01](https://www.untitledui.com/react/components/line-bar-charts) | Reuse the existing calculation and Recharts data; restyle axes, grid, legend and tooltip to match the shared tokens and include a tabular alternative. |
-| Map | [Section headers + Select + Tooltips around the existing golf visual](https://www.untitledui.com/react/components/section-headers) | Preserve the existing map, SVG, dispersion or Three.js renderer and coordinate model. Apply Untitled UI to the toolbar, legend and detail panel only. |
-| Radio | [Radio groups — Icon card](https://www.untitledui.com/react/components/radio-groups) | Use selectable cards with icon, title, badge and full-width description laid out independently; the whole card selects its labelled radio. |
-| Upload | [File uploaders — Progress bar](https://www.untitledui.com/react/components/file-uploaders) | Support click-to-choose and drag-and-drop, show type/size guidance, per-file progress, errors and removal before submission. |
-| Form | [Inputs + Select + Textarea + Buttons](https://www.untitledui.com/react/components/inputs) | Group labelled fields by task, show inline validation and a clear save/cancel footer, and preserve the existing server action and permission checks. |
-| Drawer | [Drawers + Section footers](https://www.untitledui.com/react/components/drawers) | Use a side drawer with a labelled heading, scrollable body and stable action footer; restore focus on close. |
-| Chat | [Messaging + Drawers](https://www.untitledui.com/react/components/messaging) | Use a conversation pane and evidence side panel with a stable composer, pending/error states and keyboard access. |
-| Steps | [Progress steps + Progress indicators](https://www.untitledui.com/react/components/progress-steps) | Show completed, active, pending and failed steps separately, using the current operation rather than historical account totals. |
-| Empty | [Empty states + Loading indicators + Alerts](https://www.untitledui.com/react/components/empty-states) | Distinguish loading, no data, no filter matches, permission denial and service failure; offer the specific recovery action for each. |
+| Existing need | Recommended reference                                                                                                              | Application                                                                                                                                                                        |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Nav           | [Sidebar navigations — Sections subheadings](https://www.untitledui.com/react/components/sidebar-navigations)                      | Keep navigation groups collapsible, active ancestry visible and the account controls reachable without burying the destination.                                                    |
+| Header        | [Page headers + Section headers](https://www.untitledui.com/react/components/page-headers)                                         | Use one compact page title, a concise description and a right-aligned primary action; let secondary actions wrap below. Preserve the full-width work area.                         |
+| Tabs          | [Tabs — Underline](https://www.untitledui.com/react/components/tabs)                                                               | Use controlled Underline tabs with real panels, visible selected state and URL persistence where the screen already supports shareable views.                                      |
+| Filters       | [Filter bars — Dropdowns and date picker; Drawers — Filters menu](https://www.untitledui.com/react/components/filter-bars)         | Place the highest-value filters in a compact toolbar; show active filter chips, result count and Clear all.                                                                        |
+| Table         | [Tables + Paginations](https://www.untitledui.com/react/components/tables)                                                         | Use an accessible table with aligned numeric columns, units in headers, semantic sorting, row actions and existing server pagination. Constrain horizontal scrolling to the table. |
+| Metrics       | [Metrics — Simple actions](https://www.untitledui.com/react/components/metrics)                                                    | Use a restrained connected metric strip; show value, unit, time window, sample size and evidence link where available.                                                             |
+| Chart         | [Line & bar charts — Line chart 01 / Bar chart 01](https://www.untitledui.com/react/components/line-bar-charts)                    | Reuse the existing calculation and Recharts data; restyle axes, grid, legend and tooltip to match the shared tokens and include a tabular alternative.                             |
+| Map           | [Section headers + Select + Tooltips around the existing golf visual](https://www.untitledui.com/react/components/section-headers) | Preserve the existing map, SVG, dispersion or Three.js renderer and coordinate model. Apply Untitled UI to the toolbar, legend and detail panel only.                              |
+| Radio         | [Radio groups — Icon card](https://www.untitledui.com/react/components/radio-groups)                                               | Use selectable cards with icon, title, badge and full-width description laid out independently; the whole card selects its labelled radio.                                         |
+| Upload        | [File uploaders — Progress bar](https://www.untitledui.com/react/components/file-uploaders)                                        | Support click-to-choose and drag-and-drop, show type/size guidance, per-file progress, errors and removal before submission.                                                       |
+| Form          | [Inputs + Select + Textarea + Buttons](https://www.untitledui.com/react/components/inputs)                                         | Group labelled fields by task, show inline validation and a clear save/cancel footer, and preserve the existing server action and permission checks.                               |
+| Drawer        | [Drawers + Section footers](https://www.untitledui.com/react/components/drawers)                                                   | Use a side drawer with a labelled heading, scrollable body and stable action footer; restore focus on close.                                                                       |
+| Chat          | [Messaging + Drawers](https://www.untitledui.com/react/components/messaging)                                                       | Use a conversation pane and evidence side panel with a stable composer, pending/error states and keyboard access.                                                                  |
+| Steps         | [Progress steps + Progress indicators](https://www.untitledui.com/react/components/progress-steps)                                 | Show completed, active, pending and failed steps separately, using the current operation rather than historical account totals.                                                    |
+| Empty         | [Empty states + Loading indicators + Alerts](https://www.untitledui.com/react/components/empty-states)                             | Distinguish loading, no data, no filter matches, permission denial and service failure; offer the specific recovery action for each.                                               |
 
 ## Implementation order and completion rules
 
@@ -148,103 +148,103 @@ Untitled UI is the requested reference. Official pages inspected include the com
 
 ## Complete route coverage
 
-| Page ID | Route | Functional components | Live/source evidence | Current mobile scope |
-|---|---|---:|---|---|
-| P01 | `/progress` | 10 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P02 | `/today` | 9 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P03 | `/dashboard` | 7 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P04 | `/sessions` | 5 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P05 | `/sessions/[sessionId]` | 7 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P06 | `/shots` | 5 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P07 | `/shots/review` | 3 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P08 | `/bag` | 16 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P09 | `/bag/[clubId]` | 6 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P10 | `/bag/[clubId]/analytics` | 9 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P11 | `/bag/longest` | 3 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P12 | `/quick-bag` | 4 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P13 | `/equipment` | 9 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P14 | `/equipment/experiments` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P15 | `/practice` | 8 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P16 | `/practice/quick-range` | 3 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P17 | `/coach` | 6 | Live state captured + source reviewed | Summary capability: verify and implement full specified tasks |
-| P18 | `/coach/diagnosis` | 3 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P19 | `/coach/reports` | 3 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P20 | `/coach/workspace` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P21 | `/data-chat` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P22 | `/analyse` | 5 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P23 | `/analyse/compare` | 5 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P24 | `/analyse/conditions` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P25 | `/analyse/session-impact` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P26 | `/analyse/workspace` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P27 | `/compare` | 6 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P28 | `/strokes-gained` | 7 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P29 | `/simulator-lab` | 9 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P30 | `/speed` | 9 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P31 | `/speed/sessions/[sessionId]` | 6 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P32 | `/stats/training-over-time` | 6 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P33 | `/goals` | 6 | Live state captured + source reviewed | Summary capability: verify and implement full specified tasks |
-| P34 | `/handicap` | 5 | Live state captured + source reviewed | Summary capability: verify and implement full specified tasks |
-| P35 | `/import` | 10 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P36 | `/import/result` | 4 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P37 | `/rapsodo` | 4 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P38 | `/providers` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P39 | `/companion-runtime/import` | 2 | Runtime DOM/source reviewed; captured wide state is hidden or guarded | Dedicated companion route; wide content hidden in captured runtime views |
-| P40 | `/companion-runtime/import/csv` | 3 | Runtime DOM/source reviewed; captured wide state is hidden or guarded | Dedicated companion route; wide content hidden in captured runtime views |
-| P41 | `/companion-runtime/import/result` | 2 | Runtime DOM/source reviewed; captured wide state is hidden or guarded | Dedicated companion route; wide content hidden in captured runtime views |
-| P42 | `/companion-runtime/rapsodo` | 3 | Runtime DOM/source reviewed; captured wide state is hidden or guarded | Dedicated companion route; wide content hidden in captured runtime views |
-| P43 | `/rounds` | 4 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P44 | `/rounds/new` | 3 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P45 | `/rounds/[sessionId]` | 9 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P46 | `/courses` | 3 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P47 | `/courses/new` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P48 | `/courses/[courseId]` | 5 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P49 | `/courses/[courseId]/holes` | 7 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P50 | `/courses/[courseId]/shot-pattern` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P51 | `/courses/strategy` | 5 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P52 | `/course-twins` | 2 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P53 | `/play` | 5 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P54 | `/play/[courseId]` | 4 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P55 | `/course-records` | 3 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P56 | `/courses/[courseId]/records` | 3 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P57 | `/course-records/[recordId]` | 5 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P58 | `/challenges` | 6 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P59 | `/challenges/[challengeId]` | 7 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P60 | `/tournaments` | 3 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P61 | `/tournaments/[tournamentId]` | 8 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P62 | `/leaderboard` | 5 | Live state captured + source reviewed | Summary capability: verify and implement full specified tasks |
-| P63 | `/achievements` | 6 | Live state captured + source reviewed | Summary capability: verify and implement full specified tasks |
-| P64 | `/friends` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P65 | `/groups` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P66 | `/groups/[groupSlug]` | 6 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P67 | `/feed` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P68 | `/social-intelligence` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P69 | `/profile` | 9 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P70 | `/profile/[username]` | 4 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P71 | `/settings` | 14 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P72 | `/settings/notifications` | 3 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P73 | `/settings/invitations/[token]` | 2 | Source reviewed; token/special state not exercised live | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P74 | `/shared/[userId]` | 3 | Source reviewed; token/special state not exercised live | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P75 | `/billing` | 6 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P76 | `/admin` | 5 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P77 | `/admin/users` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P78 | `/admin/moderation` | 5 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P79 | `/admin/billing` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P80 | `/admin/challenges` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P81 | `/admin/system-checks` | 4 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P82 | `/partners` | 5 | Live state captured + source reviewed | Explicit desktop-only capability: mobile task must be implemented |
-| P83 | `/` | 13 | Live state captured + source reviewed | Public responsive/source branch reviewed |
-| P84 | `/login` | 4 | Live authentication exercised + source reviewed; no retained screenshot | Public responsive/source branch reviewed |
-| P85 | `/welcome` | 3 | Live state captured + source reviewed | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P86 | `/privacy` | 3 | Live state captured + source reviewed | Public responsive/source branch reviewed |
-| P87 | `/offline` | 5 | Live state captured + source reviewed | Offline companion source reviewed; network/device execution not tested |
-| P88 | `/share/[token]` | 3 | Source reviewed; token/special state not exercised live | Public responsive/source branch reviewed |
-| P89 | `/share/course-twin/[token]` | 3 | Source reviewed; token/special state not exercised live | Public responsive/source branch reviewed |
-| P90 | `/share/report/[token]` | 3 | Source reviewed; token/special state not exercised live | Public responsive/source branch reviewed |
-| P91 | `/companion/handoff` | 2 | Source reviewed; token/special state not exercised live | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P92 | `/companion/summary` | 2 | Source reviewed; token/special state not exercised live | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
-| P93 | `/courses/[courseId]/records/[recordId]` | 1 | Redirect contract source-reviewed | Redirect; verify the destination mobile task |
-| P94 | `/courses/[courseId]/tournaments` | 1 | Redirect contract source-reviewed | Redirect; verify the destination mobile task |
-| P95 | `/tournaments/[tournamentId]/leaderboard` | 1 | Redirect contract source-reviewed | Redirect; verify the destination mobile task |
-| P96 | `/tournaments/[tournamentId]/rounds` | 1 | Redirect contract source-reviewed | Redirect; verify the destination mobile task |
-| P97 | `/tournaments/[tournamentId]/rules` | 1 | Redirect contract source-reviewed | Redirect; verify the destination mobile task |
-| P98 | `/tournaments/[tournamentId]/submit` | 1 | Redirect contract source-reviewed | Redirect; verify the destination mobile task |
+| Page ID | Route                                     | Functional components | Live/source evidence                                                    | Current mobile scope                                                            |
+| ------- | ----------------------------------------- | --------------------: | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| P01     | `/progress`                               |                    10 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P02     | `/today`                                  |                     9 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P03     | `/dashboard`                              |                     7 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P04     | `/sessions`                               |                     5 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P05     | `/sessions/[sessionId]`                   |                     7 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P06     | `/shots`                                  |                     5 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P07     | `/shots/review`                           |                     3 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P08     | `/bag`                                    |                    16 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P09     | `/bag/[clubId]`                           |                     6 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P10     | `/bag/[clubId]/analytics`                 |                     9 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P11     | `/bag/longest`                            |                     3 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P12     | `/quick-bag`                              |                     4 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P13     | `/equipment`                              |                     9 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P14     | `/equipment/experiments`                  |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P15     | `/practice`                               |                     8 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P16     | `/practice/quick-range`                   |                     3 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P17     | `/coach`                                  |                     6 | Live state captured + source reviewed                                   | Summary capability: verify and implement full specified tasks                   |
+| P18     | `/coach/diagnosis`                        |                     3 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P19     | `/coach/reports`                          |                     3 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P20     | `/coach/workspace`                        |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P21     | `/data-chat`                              |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P22     | `/analyse`                                |                     5 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P23     | `/analyse/compare`                        |                     5 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P24     | `/analyse/conditions`                     |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P25     | `/analyse/session-impact`                 |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P26     | `/analyse/workspace`                      |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P27     | `/compare`                                |                     6 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P28     | `/strokes-gained`                         |                     7 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P29     | `/simulator-lab`                          |                     9 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P30     | `/speed`                                  |                     9 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P31     | `/speed/sessions/[sessionId]`             |                     6 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P32     | `/stats/training-over-time`               |                     6 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P33     | `/goals`                                  |                     6 | Live state captured + source reviewed                                   | Summary capability: verify and implement full specified tasks                   |
+| P34     | `/handicap`                               |                     5 | Live state captured + source reviewed                                   | Summary capability: verify and implement full specified tasks                   |
+| P35     | `/import`                                 |                    10 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P36     | `/import/result`                          |                     4 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P37     | `/rapsodo`                                |                     4 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P38     | `/providers`                              |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P39     | `/companion-runtime/import`               |                     2 | Runtime DOM/source reviewed; captured wide state is hidden or guarded   | Dedicated companion route; wide content hidden in captured runtime views        |
+| P40     | `/companion-runtime/import/csv`           |                     3 | Runtime DOM/source reviewed; captured wide state is hidden or guarded   | Dedicated companion route; wide content hidden in captured runtime views        |
+| P41     | `/companion-runtime/import/result`        |                     2 | Runtime DOM/source reviewed; captured wide state is hidden or guarded   | Dedicated companion route; wide content hidden in captured runtime views        |
+| P42     | `/companion-runtime/rapsodo`              |                     3 | Runtime DOM/source reviewed; captured wide state is hidden or guarded   | Dedicated companion route; wide content hidden in captured runtime views        |
+| P43     | `/rounds`                                 |                     4 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P44     | `/rounds/new`                             |                     3 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P45     | `/rounds/[sessionId]`                     |                     9 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P46     | `/courses`                                |                     3 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P47     | `/courses/new`                            |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P48     | `/courses/[courseId]`                     |                     5 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P49     | `/courses/[courseId]/holes`               |                     7 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P50     | `/courses/[courseId]/shot-pattern`        |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P51     | `/courses/strategy`                       |                     5 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P52     | `/course-twins`                           |                     2 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P53     | `/play`                                   |                     5 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P54     | `/play/[courseId]`                        |                     4 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P55     | `/course-records`                         |                     3 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P56     | `/courses/[courseId]/records`             |                     3 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P57     | `/course-records/[recordId]`              |                     5 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P58     | `/challenges`                             |                     6 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P59     | `/challenges/[challengeId]`               |                     7 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P60     | `/tournaments`                            |                     3 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P61     | `/tournaments/[tournamentId]`             |                     8 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P62     | `/leaderboard`                            |                     5 | Live state captured + source reviewed                                   | Summary capability: verify and implement full specified tasks                   |
+| P63     | `/achievements`                           |                     6 | Live state captured + source reviewed                                   | Summary capability: verify and implement full specified tasks                   |
+| P64     | `/friends`                                |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P65     | `/groups`                                 |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P66     | `/groups/[groupSlug]`                     |                     6 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P67     | `/feed`                                   |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P68     | `/social-intelligence`                    |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P69     | `/profile`                                |                     9 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P70     | `/profile/[username]`                     |                     4 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P71     | `/settings`                               |                    14 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P72     | `/settings/notifications`                 |                     3 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P73     | `/settings/invitations/[token]`           |                     2 | Source reviewed; token/special state not exercised live                 | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P74     | `/shared/[userId]`                        |                     3 | Source reviewed; token/special state not exercised live                 | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P75     | `/billing`                                |                     6 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P76     | `/admin`                                  |                     5 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P77     | `/admin/users`                            |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P78     | `/admin/moderation`                       |                     5 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P79     | `/admin/billing`                          |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P80     | `/admin/challenges`                       |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P81     | `/admin/system-checks`                    |                     4 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P82     | `/partners`                               |                     5 | Live state captured + source reviewed                                   | Explicit desktop-only capability: mobile task must be implemented               |
+| P83     | `/`                                       |                    13 | Live state captured + source reviewed                                   | Public responsive/source branch reviewed                                        |
+| P84     | `/login`                                  |                     4 | Live authentication exercised + source reviewed; no retained screenshot | Public responsive/source branch reviewed                                        |
+| P85     | `/welcome`                                |                     3 | Live state captured + source reviewed                                   | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P86     | `/privacy`                                |                     3 | Live state captured + source reviewed                                   | Public responsive/source branch reviewed                                        |
+| P87     | `/offline`                                |                     5 | Live state captured + source reviewed                                   | Offline companion source reviewed; network/device execution not tested          |
+| P88     | `/share/[token]`                          |                     3 | Source reviewed; token/special state not exercised live                 | Public responsive/source branch reviewed                                        |
+| P89     | `/share/course-twin/[token]`              |                     3 | Source reviewed; token/special state not exercised live                 | Public responsive/source branch reviewed                                        |
+| P90     | `/share/report/[token]`                   |                     3 | Source reviewed; token/special state not exercised live                 | Public responsive/source branch reviewed                                        |
+| P91     | `/companion/handoff`                      |                     2 | Source reviewed; token/special state not exercised live                 | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P92     | `/companion/summary`                      |                     2 | Source reviewed; token/special state not exercised live                 | Companion/summary branch source reviewed; narrow viewport visual QA outstanding |
+| P93     | `/courses/[courseId]/records/[recordId]`  |                     1 | Redirect contract source-reviewed                                       | Redirect; verify the destination mobile task                                    |
+| P94     | `/courses/[courseId]/tournaments`         |                     1 | Redirect contract source-reviewed                                       | Redirect; verify the destination mobile task                                    |
+| P95     | `/tournaments/[tournamentId]/leaderboard` |                     1 | Redirect contract source-reviewed                                       | Redirect; verify the destination mobile task                                    |
+| P96     | `/tournaments/[tournamentId]/rounds`      |                     1 | Redirect contract source-reviewed                                       | Redirect; verify the destination mobile task                                    |
+| P97     | `/tournaments/[tournamentId]/rules`       |                     1 | Redirect contract source-reviewed                                       | Redirect; verify the destination mobile task                                    |
+| P98     | `/tournaments/[tournamentId]/submit`      |                     1 | Redirect contract source-reviewed                                       | Redirect; verify the destination mobile task                                    |
