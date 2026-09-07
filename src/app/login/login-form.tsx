@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState, useEffect, useRef, useSyncExternalStore } from "react";
+import { useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useFormStatus } from "react-dom";
 import { KeyRound, Mail } from "lucide-react";
 
 import {
@@ -34,6 +35,10 @@ const initialState: LoginActionState = {
 export function LoginForm({ error, next }: { error?: string | null; next?: string | null }) {
   // Keep native Server Function metadata in the HTML until hydration finishes.
   const hydrated = useSyncExternalStore(subscribeHydration, hydratedSnapshot, serverSnapshot);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [magicEmail, setMagicEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const magicEmailInputRef = useRef<HTMLInputElement>(null);
   const [passwordState, passwordAction, passwordPending] = useActionState(
@@ -77,6 +82,10 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
         >
           Email
           <Input
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            aria-invalid={passwordIsError}
+            aria-describedby={passwordMessage ? "password-login-message" : undefined}
             id="email"
             name="email"
             type="email"
@@ -93,15 +102,29 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
           Password
           <Input
             ref={passwordInputRef}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            aria-describedby={passwordMessage ? "password-login-message" : undefined}
             id="password"
             name="password"
-            type="password"
+            type={showPassword ? "text" : "password"}
             autoComplete="current-password"
             placeholder="Your password"
             aria-invalid={passwordIsError}
             className={`t-input h-[3.125rem] rounded-xl border-[var(--ios-separator)] bg-[var(--ios-secondary-surface)] px-3.5 text-[17px] text-[var(--ios-label)] shadow-none placeholder:text-[var(--ios-tertiary-label)] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:px-2.5 lg:text-base lg:text-slate-950 lg:placeholder:text-slate-400 lg:focus-visible:ring-ring/50 ${passwordIsError ? "is-error is-shaking" : ""}`}
           />
         </label>
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 justify-self-end"
+          disabled={!hydrated}
+          aria-controls="password"
+          aria-pressed={showPassword}
+          onClick={() => setShowPassword((value) => !value)}
+        >
+          {showPassword ? "Hide password" : "Show password"}
+        </Button>
         <Button
           type="submit"
           size="lg"
@@ -163,9 +186,12 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             className="grid gap-2 text-[15px] font-medium text-[var(--ios-label)] lg:text-sm lg:text-slate-800"
             htmlFor="magic-email"
           >
-            <span className="sr-only">Magic link address</span>
+            <span>Email for a secure link</span>
             <Input
               ref={magicEmailInputRef}
+              value={magicEmail}
+              onChange={(event) => setMagicEmail(event.target.value)}
+              aria-describedby={magicMessage ? "magic-login-message" : undefined}
               id="magic-email"
               name="email"
               type="email"
@@ -189,13 +215,13 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
           {magicMessage ? (
             <p
               id="magic-login-message"
-              role="alert"
+              role={magicIsError ? "alert" : "status"}
               className={
                 magicIsError
                   ? "rounded-xl border border-[var(--ios-separator)] bg-[var(--ios-secondary-surface)] px-3 py-2.5 text-[15px] leading-5 text-[var(--ios-label)] lg:rounded-lg lg:border-amber-200 lg:bg-amber-50 lg:py-2 lg:text-sm lg:text-amber-900"
                   : "rounded-xl border border-[var(--ios-separator)] bg-[var(--ios-secondary-surface)] px-3 py-2.5 text-[15px] leading-5 text-[var(--ios-label)] lg:rounded-lg lg:border-emerald-200 lg:bg-emerald-50 lg:py-2 lg:text-sm lg:text-emerald-900"
               }
-              aria-live="assertive"
+              aria-live={magicIsError ? "assertive" : "polite"}
             >
               {magicMessage}
             </p>
@@ -207,7 +233,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
 }
 
 function replayErrorShake(element: HTMLElement | null) {
-  if (!element) return;
+  if (!element || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   element.classList.remove("is-shaking");
   void element.offsetWidth;
   element.classList.add("is-shaking");
@@ -227,15 +253,18 @@ function OAuthButton({
   label: string;
   className?: string;
 }) {
+  const { pending } = useFormStatus();
   return (
     <Button
+      disabled={pending}
+      aria-busy={pending}
       type="submit"
       variant="outline"
       size="lg"
       className={`h-[3.125rem] w-full justify-center rounded-xl text-[17px] font-semibold shadow-none active:scale-[0.985] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:text-base lg:shadow-sm lg:focus-visible:ring-ring/50 lg:active:scale-100 ${className}`}
     >
       {icon}
-      {label}
+      {pending ? "Opening sign-in…" : label}
     </Button>
   );
 }

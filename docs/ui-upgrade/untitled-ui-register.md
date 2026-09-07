@@ -149,3 +149,6 @@ Specified official metrics/tooltips, inputs/select/textarea/buttons, section hea
 
 ## P83 Public home
 Specified official page/section headers/contentdividers, navigation, tables/radiogroups/buttons and input references reuse checked sources. Paid advanced examples unavailable. Local accessible alternatives preserve branded golf art: semantic fullplan lists, native FAQ disclosure, existing focus-managed searched Sheet and ResponsiveDetailPanel, genuine feature/full-image links. No new paid exports or installation claimed.
+
+## P84 Authentication
+Checked official headers/sections, inputs/select/textarea/buttons and alerts/notifications references reused. Advanced paid examples unavailable. Accessible alternatives preserve existing auth contracts: native autofill fields, stateful password visibility, inline field-described errors and real pending/confirmed receipts. Local exports typechecked; no new auth provider or paid package claimed.

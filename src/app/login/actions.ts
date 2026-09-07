@@ -25,7 +25,7 @@ export async function sendMagicLinkAction(
     return {
       status: "error",
       message:
-        "Supabase Auth is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
+        "Sign-in is temporarily unavailable. Try again later.",
     };
   }
 
@@ -68,7 +68,7 @@ export async function signInWithPasswordAction(
     return {
       status: "error",
       message:
-        "Supabase Auth is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
+        "Sign-in is temporarily unavailable. Try again later.",
     };
   }
 
@@ -138,15 +138,20 @@ export async function signInWithPasswordAction(
 }
 
 export async function signInWithOAuthAction(formData: FormData) {
+  const next = safeNextPath(String(formData.get("next") ?? "")) ?? "/dashboard";
+  const failureHref = (message: string) => {
+    const query = new URLSearchParams({ error: message });
+    if (next !== "/dashboard") query.set("next", next);
+    return `/login?${query}`;
+  };
   if (!isSupabaseAuthConfigured()) {
-    redirect("/login?error=Supabase%20Auth%20is%20not%20configured");
+    redirect(failureHref("Sign-in is temporarily unavailable. Try again later."));
   }
 
   const provider = String(formData.get("provider") ?? "");
-  const next = safeNextPath(String(formData.get("next") ?? "")) ?? "/dashboard";
 
   if (provider !== "google") {
-    redirect("/login?error=Unsupported%20auth%20provider");
+    redirect(failureHref("Unsupported auth provider"));
   }
 
   await clearSupabaseAuthCookies();
@@ -161,7 +166,7 @@ export async function signInWithOAuthAction(formData: FormData) {
   });
 
   if (error || !data.url) {
-    redirect(`/login?error=${encodeURIComponent(error?.message ?? "OAuth sign-in failed")}`);
+    redirect(failureHref(error?.message ?? "OAuth sign-in failed"));
   }
 
   redirect(data.url);
