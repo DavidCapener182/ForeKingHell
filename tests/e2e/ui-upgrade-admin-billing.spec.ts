@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 test("Billing administration shows complete records and resolves the exact account without granting on review", async ({
   page,
   context,
@@ -121,6 +122,61 @@ test("Billing administration shows complete records and resolves the exact accou
         await expect(detail).toContainText("synthetic_fixture");
         await page.keyboard.press("Escape");
         await expect(detail).toHaveCount(0);
+        // Exports must remain scoped even with both registers mounted and filtered.
+        for (const [register, included, excluded] of [
+          [subscriptions, "Scheduled at period end", "Synthetic complete entitlement evidence"],
+          [entitlements, "Synthetic complete entitlement evidence", "Scheduled at period end"],
+        ] as const) {
+          const downloadReady = page.waitForEvent("download");
+          await register.locator("[data-export-table-id]").click();
+          const download = await downloadReady;
+          const csv = await readFile((await download.path())!, "utf8");
+          expect(csv).toContain(email);
+          expect(csv).toContain(included);
+          expect(csv).not.toContain(excluded);
+        }
+        await subscriptions.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitemcheckbox", { name: "Email", exact: true }).click();
+        await page.keyboard.press("Escape");
+        await expect(
+          subscriptions.locator('[data-column="email"]').filter({ visible: true }),
+        ).toHaveCount(0);
+        const viewName = `Billing ${surface} ${width}`;
+        await subscriptions.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.getByRole("menuitem", { name: "Save current view", exact: true }).click();
+        const saveView = page.getByRole("dialog", { name: "Save table view" });
+        await saveView.getByRole("textbox", { name: "View name" }).fill(viewName);
+        await saveView.getByRole("button", { name: "Save view", exact: true }).click();
+        await subscriptions
+          .getByRole("textbox", { name: "Search subscriptions", exact: true })
+          .fill("no-matching-record");
+        await expect(subscriptions).toContainText("No records match this view.");
+        await expect(
+          entitlements.getByRole("textbox", { name: "Search current entitlements", exact: true }),
+        ).toHaveValue(email);
+        await subscriptions.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.getByRole("menuitem", { name: new RegExp(`^${viewName} `) }).click();
+        await expect(
+          subscriptions.getByRole("textbox", { name: "Search subscriptions", exact: true }),
+        ).toHaveValue(email);
+        await page.reload();
+        await expect(
+          subscriptions.locator('[data-column="email"]').filter({ visible: true }),
+        ).toHaveCount(0);
+        const hiddenDownloadReady = page.waitForEvent("download");
+        await subscriptions.locator("[data-export-table-id]").click();
+        const hiddenDownload = await hiddenDownloadReady;
+        const hiddenCsv = await readFile((await hiddenDownload.path())!, "utf8");
+        expect(hiddenCsv).not.toContain(email);
+        expect(hiddenCsv).toContain("Scheduled at period end");
+        await subscriptions.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitem", { name: "Show all columns", exact: true }).click();
+        await expect(
+          subscriptions.getByRole("textbox", { name: "Search subscriptions", exact: true }),
+        ).toHaveValue(email);
+        await expect(
+          entitlements.getByRole("textbox", { name: "Search current entitlements", exact: true }),
+        ).toHaveValue(email);
         await expect(
           page.locator(
             '[data-slot="drawer-content"], [data-slot="sheet-content"], [data-slot="drawer-overlay"], [data-slot="sheet-overlay"]',
@@ -129,6 +185,8 @@ test("Billing administration shows complete records and resolves the exact accou
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         ).toBe(true);
+        await subscriptions.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: info.outputPath(`P79-register-${surface}-${width}.png`) });
         await page.evaluate(() => window.scrollTo(0, 0));
         await page.screenshot({ path: info.outputPath(`P79-${surface}-${width}.png`) });
       }

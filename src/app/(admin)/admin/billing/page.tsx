@@ -70,6 +70,7 @@ export default async function AdminBillingPage({
           ) : null}
         </section>
         <AdminBillingLedger
+          scope="admin-billing-subscriptions"
           title="Subscriptions"
           description="Latest 80 subscription records at most. Saved provider status does not by itself describe the account’s current app entitlements."
           initialSort={params?.sort}
@@ -95,6 +96,7 @@ export default async function AdminBillingPage({
           }))}
         />
         <AdminBillingLedger
+          scope="admin-billing-entitlements"
           title="Current entitlements"
           description="Latest 120 current entitlement rows at most. Updated dates describe these saved records; they do not prove a grant, change or revocation event."
           rows={data.entitlements.map((row) => ({

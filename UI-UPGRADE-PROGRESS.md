@@ -736,3 +736,17 @@ Next/current: restore saved views, columns and filtered CSV controls to SharedSe
 
 - Upgrade commit81e41a71 pushed and remote parity verified. Direct atomic main push rejected by GitHub protected branch GH006: pull request and six required checks mandatory. Main remains cf9de4018e0273a7f86a0ae69791af4ff414d29c. No bypass attempted.
 - Open PR59: https://github.com/DavidCapener182/ForeKingHell/pull/59 targets main from upgrade/untitled-ui-migration. Not merged. Continue by inspecting PR checks and fixing documented acceptance/source-contract and budget failures; do not claim main or production updated.
+
+## PR59 follow-up — Billing controls
+
+- Implemented independent scopes for subscriptions and current entitlements; complete field columns/filtered CSV, scoped local saved-view restore and URL query/sort/direction. Desktop table and mobile records expose selected columns; full diagnostics and server limits retained. P79-C03/C04 remain partial.
+- Runtime files: admin-billing-ledger.tsx and (admin)/admin/billing/page.tsx. Scoped lint/types PASS; browser readback assigned to verification agent on3116. No grants/payments performed.
+- Reviewed source-test reconciliation: sidebar whitespace and complete/partial round summary12PASS; billing confirmation2PASS with2other assertions still failing until register reconciliation. Do not publish batch until current browser result is recorded.
+
+## Billing retained controls verified
+
+- Final browser PASS1.5m (/tmp/fkh-billing-restored-final.log),12surface/size combinations. Complete filtered CSV and cross-register isolation, optional Email excluded from UI/CSV, scoped saved search/columns restored through reload, exact-account cancel and no grant audit writes. Companion390register screenshot inspected in test-results/ui-upgrade-admin-billing-B-fecde--without-granting-on-review-chromium/P79-register-companion-390.png.
+- Real retry failure: mobile-apple.css replaced collision-aware menu height with70dvh. Fixed max-height to also respect Radix dropdown/popover/select available-height variables, preserving scrolling and every item. Final Show all columns action reachable.
+- Combined billing/round/sidebar/mobile-theme source tests33PASS99ms; scoped types/lint passed. Publishing runtime, browser, source-test and tracker batch to PR59; overall upgrade still partial and main protected. Next: remaining admin challenge/Partners/moderation retained controls, remaining source contracts and route budgets.
+
+- Fresh full suite after billing batch: 2710 passed, 74 failed, 149 pending of 2933. /tmp/fkh-main-unit-billing.json; main remains blocked until required checks pass.

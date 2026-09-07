@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { DesktopWorkbenchControls } from "@/components/app/desktop-workbench-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
@@ -16,12 +18,14 @@ export type AdminBillingRecord = {
   fields: Record<string, string>;
 };
 export function AdminBillingLedger({
+  scope,
   title,
   description,
   rows,
   initialSort = "created",
   initialDir = "desc",
 }: {
+  scope: "admin-billing-subscriptions" | "admin-billing-entitlements";
   title: string;
   description: string;
   rows: AdminBillingRecord[];
@@ -29,9 +33,21 @@ export function AdminBillingLedger({
   initialDir?: string;
 }) {
   const ready = useClientReady();
-  const [query, setQuery] = useState("");
-  const [sort, setSort] = useState(initialSort);
-  const [direction, setDirection] = useState(initialDir);
+  const params = useSearchParams();
+  const query = params.get(`${scope}-query`) ?? "";
+  const sort = params.get(`${scope}-sort`) ?? initialSort;
+  const direction = params.get(`${scope}-direction`) ?? initialDir;
+  const update = (values: Record<string, string>) => {
+    const url = new URL(window.location.href);
+    for (const [key, value] of Object.entries(values))
+      url.searchParams.set(`${scope}-${key}`, value);
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  };
+  const setQuery = (value: string) => update({ query: value });
+  const setSort = (value: string) => update({ sort: value });
+  const setDirection = (value: string) => update({ direction: value });
+  const fields = Array.from(new Set(rows.flatMap((row) => Object.keys(row.fields))));
+  const fieldColumn = (field: string) => `field-${field.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = rows.find((row) => row.id === selectedId) ?? null;
   const shown = useMemo(
@@ -58,9 +74,27 @@ export function AdminBillingLedger({
     [rows, query, sort, direction],
   );
   return (
-    <section className="grid min-w-0 gap-3" aria-label={title}>
+    <section data-workbench-scope={scope} className="grid min-w-0 gap-3" aria-label={title}>
       <h2 className="text-xl font-semibold">{title}</h2>
       <p className="text-sm text-muted-foreground">{description}</p>
+      <DesktopWorkbenchControls
+        viewKey={scope}
+        scope={scope}
+        currentViewLabel={title}
+        resultLabel={`${shown.length} matching loaded records`}
+        exportFileName={`${scope}-filtered.csv`}
+        localView={{ state: { query, sort, direction }, restore: update }}
+        columns={[
+          { id: "account", label: "Account", locked: true },
+          { id: "email", label: "Email" },
+          { id: "state", label: "Saved state", locked: true },
+          { id: "date", label: "Recorded date" },
+          { id: "record-id", label: "Record ID" },
+          { id: "account-id", label: "Account ID" },
+          ...fields.map((field) => ({ id: fieldColumn(field), label: field })),
+          { id: "details", label: "Details", locked: true },
+        ]}
+      />
       <div className="flex flex-wrap gap-3">
         <label className="grid min-w-0 flex-1 basis-full gap-1 text-sm sm:basis-auto">
           Search {title.toLowerCase()}
@@ -97,18 +131,25 @@ export function AdminBillingLedger({
         <p className="rounded-xl border p-4">No records match this view.</p>
       ) : (
         <>
-          <div className={layout.desktop}>
-            <table className="w-full text-left text-sm">
+          <div className={layout.desktop} role="region" aria-label={`${title} table`} tabIndex={0}>
+            <table data-workbench-export-table={scope} className="w-full text-left text-sm">
               <caption className="sr-only">
                 {title}, ordered by {sort}, {direction}; all secondary fields are available in
                 details.
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Account</th>
-                  <th scope="col">Email</th>
-                  <th scope="col">Saved state</th>
+                  <th data-column="account" scope="col">
+                    Account
+                  </th>
+                  <th data-column="email" scope="col">
+                    Email
+                  </th>
+                  <th data-column="state" scope="col">
+                    Saved state
+                  </th>
                   <th
+                    data-column="date"
                     scope="col"
                     aria-sort={
                       sort === "created"
@@ -120,17 +161,45 @@ export function AdminBillingLedger({
                   >
                     Recorded date
                   </th>
-                  <th scope="col">Details</th>
+                  <th data-column="record-id" scope="col">
+                    Record ID
+                  </th>
+                  <th data-column="account-id" scope="col">
+                    Account ID
+                  </th>
+                  {fields.map((field) => (
+                    <th key={field} data-column={fieldColumn(field)} scope="col">
+                      {field}
+                    </th>
+                  ))}
+                  <th data-column="details" scope="col">
+                    Details
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {shown.map((row) => (
                   <tr key={row.id}>
-                    <th scope="row">{row.title}</th>
-                    <td className="break-all">{row.email ?? "Not recorded"}</td>
-                    <td>{row.summary}</td>
-                    <td>{row.date}</td>
-                    <td>
+                    <th data-column="account" scope="row">
+                      {row.title}
+                    </th>
+                    <td data-column="email" className="break-all">
+                      {row.email ?? "Not recorded"}
+                    </td>
+                    <td data-column="state">{row.summary}</td>
+                    <td data-column="date">{row.date}</td>
+                    <td data-column="record-id">{row.id}</td>
+                    <td data-column="account-id">{row.userId}</td>
+                    {fields.map((field) => (
+                      <td
+                        key={field}
+                        data-column={fieldColumn(field)}
+                        className="whitespace-pre-wrap"
+                      >
+                        {row.fields[field] ?? "Not recorded"}
+                      </td>
+                    ))}
+                    <td data-column="details">
                       <Button
                         variant="outline"
                         disabled={!ready}
@@ -158,7 +227,25 @@ export function AdminBillingLedger({
                 <span className="min-w-0 break-words">
                   {row.title}
                   <span className="block text-xs font-normal">
-                    {row.summary} · {row.date}
+                    {row.summary} <span data-column="date">· {row.date}</span>
+                  </span>
+                  <span data-column="email" className="block text-xs font-normal">
+                    {row.email ?? "Not recorded"}
+                  </span>
+                  {fields.map((field) => (
+                    <span
+                      key={field}
+                      data-column={fieldColumn(field)}
+                      className="block text-xs font-normal"
+                    >
+                      {field}: {row.fields[field] ?? "Not recorded"}
+                    </span>
+                  ))}
+                  <span data-column="record-id" className="block text-xs font-normal">
+                    Record ID: {row.id}
+                  </span>
+                  <span data-column="account-id" className="block text-xs font-normal">
+                    Account ID: {row.userId}
                   </span>
                 </span>
                 <span className="ml-2 shrink-0">Details</span>

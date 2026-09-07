@@ -31,7 +31,12 @@ describe("round review scoring and learning redesign", () => {
   it("makes the summary result-led and keeps its five learning answers together", () => {
     const summary = functionBlock("RoundLearningSummary", "LearningRow");
 
-    expect(summary).toContain("Final score");
+    expect(summary).toContain(
+      'round.session.roundStatus === "complete" ? "Your round result" : "Score so far"',
+    );
+    expect(summary).toContain("formatNullableInteger(round.totalScore)");
+    expect(summary).toContain("formatScoreToPar(round.totalScore, round.totalPar)");
+    expect(summary).toContain("round.holes.filter((hole) => hole.score !== null).length");
     expect(summary).toContain("<ScoringBreakdown");
     expect(summary).toContain('label="Best scoring"');
     expect(summary).toContain('label="Largest score over par"');
