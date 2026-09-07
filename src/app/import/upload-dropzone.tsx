@@ -21,6 +21,7 @@ type UploadDropzoneFile = {
 };
 type ReadProgress = { fileName: string; loaded: number; total: number } | null;
 export function UploadDropzone({
+  disabled = false,
   fileInputRef,
   isDragging,
   readProgress,
@@ -33,6 +34,7 @@ export function UploadDropzone({
   onRetry,
   onDismissError,
 }: {
+  disabled?: boolean;
   fileInputRef: RefObject<HTMLInputElement | null>;
   isDragging: boolean;
   readProgress: ReadProgress;
@@ -45,7 +47,7 @@ export function UploadDropzone({
   onRetry?: (file: File) => void | Promise<void>;
   onDismissError?: (id: string) => void;
 }) {
-  const reading = Boolean(readProgress);
+  const reading = disabled || Boolean(readProgress);
   return (
     <div className="grid min-w-0 gap-3" data-import-upload-table>
       <input
@@ -53,6 +55,7 @@ export function UploadDropzone({
         id="csv-file"
         className="hidden"
         type="file"
+        disabled={reading}
         accept=".csv,text/csv"
         multiple
         onChange={(event) => {

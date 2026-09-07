@@ -856,6 +856,7 @@ export function ImportForm({
           <div className="grid gap-5 xl:grid-cols-2">
             <div id="import-files" className="grid min-w-0 scroll-mt-28 content-start gap-5">
               <UploadDropzone
+                disabled={!isHydrated}
                 fileInputRef={fileInputRef}
                 isDragging={isDragging}
                 readProgress={readProgress}

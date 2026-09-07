@@ -263,8 +263,8 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
             />
           ) : null}
           {message ? (
-            <Alert variant="destructive">
-              <AlertTitle>This file cannot be imported</AlertTitle>
+            <Alert variant={progress === "queued" ? "default" : "destructive"} role={progress === "queued" ? "status" : "alert"}>
+              <AlertTitle>{progress === "queued" ? "Upload queued on this device" : "This file cannot be imported"}</AlertTitle>
               <AlertDescription>{message}</AlertDescription>
             </Alert>
           ) : null}
