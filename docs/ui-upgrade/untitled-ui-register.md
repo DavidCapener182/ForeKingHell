@@ -52,3 +52,15 @@ Equipment, experiments, practice, quick range, Coach, diagnosis, reports, worksp
 ## P22–P24 analysis continuation
 
 [Filter bars](https://www.untitledui.com/react/components/filter-bars), [date pickers](https://www.untitledui.com/react/components/date-pickers), [drawers](https://www.untitledui.com/react/components/drawers), [section footers](https://www.untitledui.com/react/components/section-footers), tables/paginations, metrics and the established page/section header references are implemented through local accessible compositions. Paid example entitlement and installed vendor exports remain unavailable, so no paid component is claimed: labelled native date/select controls and focus-managed existing Sheet/ResponsiveDetailPanel are the explicit alternatives. Comparison uses existing SVG coordinate/axis functions; baseline square markers and focus circles add non-colour identification. Exact plotted values use a semantic table. Conditions proof reuses the existing classification function without changing its calculation.
+
+## P25–P27 continuation
+
+The specified headers, metrics, filter bars, drawers, modals, tables and date-picker references reuse the registered accessible local compositions; paid example code/entitlement remains unavailable. P25 preserves specialist SVG trajectories and adds numeric inclusion evidence. P26 uses native labelled optional selects (empty means unlinked) and existing focus-managed Sheets/AlertDialogs. P27 uses verified React Aria UrlTabs exports, native search inputs with existing Sheet, semantic mobile dl pairs and desktop table; current state-action exports are checked by TypeScript. Free chart references retain existing calculations and numeric alternatives; zero/missing samples receive no fabricated minimum bar width. No paid vendor installation is claimed.
+
+## P28 Strokes gained
+
+Official filter bars/date pickers/drawers/metrics/table/chart references use established local alternatives because paid example exports/entitlement remain unavailable. Native GET select/date controls plus Radix Sheet retain actual filters. Existing category totals and expected-strokes functions remain; cumulative SVG display replaces independent zero-origin bars and exposes exact semantic values. Local CSS media queries preserve mobile task access even under explicit workbench.
+
+## P29 Performance Lab
+
+Official https://www.untitledui.com/react/components/sliders rechecked7September: FREE, React Aria-based, CLI name slider. Local existing Slider(value/onValueChange arrays) remains the explicit adapter alternative with native number input/bounds/reset; no vendor export assumed. Existing verified React Aria UrlTabs and Radix Sheet/Dialog support complete details and optional confirmation. Paid metrics/table/modal compositions still unavailable as above. Specialized flight coordinates remain; numeric/list alternatives and non-intercepting decorative marks improve input access. Existing snapshot() values now exposed directly, not recalculated in UI.
