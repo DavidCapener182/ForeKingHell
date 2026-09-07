@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useClientReady } from "@/hooks/use-client-ready";
 import {
   type ReactNode,
   useCallback,
@@ -10,6 +11,7 @@ import {
   useRef,
   useState,
   useTransition,
+  useSyncExternalStore,
 } from "react";
 import {
   AlertCircle,
@@ -46,7 +48,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { DataTableFrame } from "@/components/premium";
+import { PageShell, DataTableFrame } from "@/components/premium";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
@@ -200,6 +202,11 @@ export function RapsodoSyncClient({
   children?: ReactNode;
 }) {
   const router = useRouter();
+  const ready = useClientReady();
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [sessionQuery, setSessionQuery] = useState("");
+  const operationBusy = useRef(false);
+  const loadBusy = useRef(false);
   const [status, setStatus] = useState(initialStatus);
   const [notice, setNotice] = useState<Notice>({ kind: "idle" });
   const [saveStatus, setSaveStatus] = useState<SaveStatus | null>(null);
@@ -221,15 +228,38 @@ export function RapsodoSyncClient({
   const [courseName, setCourseName] = useState("");
   const [scorecardText, setScorecardText] = useState("");
   const [holeReview, setHoleReview] = useState<HoleReviewState>({});
-  const [browserNotificationState, setBrowserNotificationState] =
-    useState<BrowserNotificationState>(() =>
-      typeof window !== "undefined" && "Notification" in window
-        ? Notification.permission
-        : "unsupported",
-    );
+  const detectedPermission = useSyncExternalStore<BrowserNotificationState>(
+    () => () => {},
+    () => ("Notification" in window ? Notification.permission : "unsupported"),
+    () => "unsupported",
+  );
+  const [permissionOverride, setBrowserNotificationState] =
+    useState<BrowserNotificationState | null>(null);
+  const browserNotificationState: BrowserNotificationState =
+    permissionOverride ?? detectedPermission;
   const noticeRef = useRef<HTMLDivElement | null>(null);
   const previewSectionRef = useRef<HTMLElement | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startReactTransition] = useTransition();
+  function startTransition(work: () => Promise<void>) {
+    if (operationBusy.current) return;
+    operationBusy.current = true;
+    startReactTransition(async () => {
+      try {
+        await work();
+      } catch {
+        setNotice({
+          kind: "error",
+          title: "Operation could not be confirmed",
+          message:
+            "Your review entries are retained. Check saved sessions before retrying an import.",
+        });
+        setSaveStatus(null);
+      } finally {
+        operationBusy.current = false;
+        setLoadingLabel(null);
+      }
+    });
+  }
   const [loadingLabel, setLoadingLabel] = useState<string | null>(null);
 
   const availableSessions = useMemo(
@@ -240,6 +270,12 @@ export function RapsodoSyncClient({
   const filteredSessions = useMemo(
     () =>
       availableSessions.filter((session) => {
+        if (
+          !`${session.title} ${session.providerSessionId}`
+            .toLowerCase()
+            .includes(sessionQuery.toLowerCase())
+        )
+          return false;
         if (sessionFilter === "course") {
           return isCourseSession(session);
         }
@@ -250,7 +286,7 @@ export function RapsodoSyncClient({
 
         return true;
       }),
-    [availableSessions, sessionFilter],
+    [availableSessions, sessionFilter, sessionQuery],
   );
 
   const choicesByKey = useMemo(() => {
@@ -452,44 +488,59 @@ export function RapsodoSyncClient({
 
   const loadSessions = useCallback(
     async (options: { silent?: boolean } = {}) => {
-      setLoadingLabel(options.silent ? null : "Loading sessions");
-      const result = await listRapsodoSessionsAction({
-        take: 60,
-        startDate: dateFilter.startDate || null,
-        endDate: dateFilter.endDate || null,
-      });
-      setLoadingLabel(null);
+      if (loadBusy.current) return;
+      loadBusy.current = true;
+      try {
+        setLoadingLabel(options.silent ? null : "Loading sessions");
+        const result = await listRapsodoSessionsAction({
+          take: 60,
+          startDate: dateFilter.startDate || null,
+          endDate: dateFilter.endDate || null,
+        });
+        setLoadingLabel(null);
 
-      if (!result.ok) {
+        if (!result.ok) {
+          if (!options.silent) {
+            setNotice({ kind: "error", title: "Sessions unavailable", message: result.message });
+          }
+          if (result.code === "RAPSODO_AUTH_EXPIRED" || result.code === "RAPSODO_NOT_CONNECTED") {
+            setStatus((current) => ({ ...current, connected: false }));
+          }
+          return;
+        }
+
+        setSessions(result.data);
+        const availableResultSessions = result.data.filter((session) => !session.importedSessionId);
+        const newSessions = availableResultSessions.filter((session) => session.isNew);
+
+        if (newSessions.length > 0) {
+          setNotice({
+            kind: "success",
+            title: "New Rapsodo sessions available",
+            message: `${newSessions.length} new session${newSessions.length === 1 ? "" : "s"} found. Review them, then use Rapsodo clubs or LM World Tour recommendations before saving.`,
+          });
+          notifyNewRapsodoSessions(newSessions.length);
+          return;
+        }
+
         if (!options.silent) {
-          setNotice({ kind: "error", title: "Sessions unavailable", message: result.message });
+          setNotice({
+            kind: "success",
+            title: "Sessions loaded",
+            message: `${availableResultSessions.length} unimported R-Cloud session${availableResultSessions.length === 1 ? "" : "s"} ready to review.`,
+          });
         }
-        if (result.code === "RAPSODO_AUTH_EXPIRED" || result.code === "RAPSODO_NOT_CONNECTED") {
-          setStatus((current) => ({ ...current, connected: false }));
-        }
-        return;
-      }
-
-      setSessions(result.data);
-      const availableResultSessions = result.data.filter((session) => !session.importedSessionId);
-      const newSessions = availableResultSessions.filter((session) => session.isNew);
-
-      if (newSessions.length > 0) {
-        setNotice({
-          kind: "success",
-          title: "New Rapsodo sessions available",
-          message: `${newSessions.length} new session${newSessions.length === 1 ? "" : "s"} found. Review them, then use Rapsodo clubs or LM World Tour recommendations before saving.`,
-        });
-        notifyNewRapsodoSessions(newSessions.length);
-        return;
-      }
-
-      if (!options.silent) {
-        setNotice({
-          kind: "success",
-          title: "Sessions loaded",
-          message: `${availableResultSessions.length} unimported R-Cloud session${availableResultSessions.length === 1 ? "" : "s"} ready to review.`,
-        });
+      } catch {
+        if (!options.silent)
+          setNotice({
+            kind: "error",
+            title: "Sessions unavailable",
+            message:
+              "The remote list could not be loaded. Your current preview is retained; retry when connected.",
+          });
+      } finally {
+        loadBusy.current = false;
+        setLoadingLabel(null);
       }
     },
     [dateFilter.endDate, dateFilter.startDate],
@@ -552,6 +603,7 @@ export function RapsodoSyncClient({
       setStatus({ connected: false, expiresAt: null, profile: null });
       setSessions([]);
       setPreview(null);
+      setPreviewOpen(false);
       setLoadingLabel(null);
       setNotice({
         kind: "success",
@@ -576,6 +628,7 @@ export function RapsodoSyncClient({
       }
 
       setPreview(result.data);
+      setPreviewOpen(true);
       setCourseName(result.data.courseName || result.data.session.title);
       setScorecardText(
         result.data.courseScorecard.length > 0
@@ -759,7 +812,7 @@ export function RapsodoSyncClient({
               result.data.practicePlanMatch
                 ? ` Practice plan matched: ${result.data.practicePlanMatch.title} (${result.data.practicePlanMatch.matchScore}% confidence) and scored ${result.data.practicePlanMatch.score.score}/100.`
                 : ""
-            }${writebackMessage}`,
+            }${writebackMessage} ${(result.data.warnings ?? []).join(" ")}`,
         sessionId: result.data.sessionId,
       };
       setSaveStatus({
@@ -793,7 +846,7 @@ export function RapsodoSyncClient({
   }
 
   return (
-    <main id="main-content" className="min-h-0 px-4 py-5 pb-6 sm:px-6 sm:py-6 lg:px-8">
+    <PageShell>
       <div className="mx-auto flex w-full max-w-none flex-col gap-5 sm:gap-6">
         <DesktopWorkflowLayout
           steps={rapsodoWorkflowSteps}
@@ -822,12 +875,17 @@ export function RapsodoSyncClient({
                   </h1>
                   <p className="text-sm leading-6 text-muted-foreground">
                     Pull R-Cloud CSV exports, review club matches, use recommendations, and save
-                    trusted shots into LM World Tour.
+                    trusted shots into LM World Tour. Historical imported files do not establish a
+                    current live connection.
                   </p>
                 </div>
                 <div data-primary-action className="flex shrink-0 items-center gap-2">
                   {status.connected ? (
-                    <Button type="button" onClick={() => void loadSessions()} disabled={isPending}>
+                    <Button
+                      type="button"
+                      onClick={() => void loadSessions()}
+                      disabled={!ready || isPending || Boolean(loadingLabel)}
+                    >
                       <RefreshCw className="size-4" />
                       Load sessions
                     </Button>
@@ -999,7 +1057,7 @@ export function RapsodoSyncClient({
                       <Button
                         type="button"
                         onClick={() => void loadSessions()}
-                        disabled={isPending}
+                        disabled={!ready || isPending || Boolean(loadingLabel)}
                       >
                         {loadingLabel === "Loading sessions" ? (
                           <Loader2 className="size-4 animate-spin" />
@@ -1023,7 +1081,7 @@ export function RapsodoSyncClient({
                         type="button"
                         variant="outline"
                         onClick={() => setDisconnectConfirmationOpen(true)}
-                        disabled={isPending}
+                        disabled={!ready || isPending || Boolean(loadingLabel)}
                       >
                         <LogOut className="size-4" />
                         Disconnect
@@ -1061,7 +1119,11 @@ export function RapsodoSyncClient({
                         required
                       />
                     </label>
-                    <Button type="submit" className="w-full" disabled={isPending}>
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={!ready || isPending || Boolean(loadingLabel)}
+                    >
                       {loadingLabel === "Signing in" ? (
                         <Loader2 className="size-4 animate-spin" />
                       ) : (
@@ -1119,161 +1181,224 @@ export function RapsodoSyncClient({
                 </div>
               </CardHeader>
               <CardContent>
-                <div data-workbench-scope="rapsodo">
-                  <DesktopTableWorkbenchControls
-                    viewKey="rapsodo-sessions"
-                    scope="rapsodo"
-                    currentViewLabel={`R-Cloud ${sessionFilter === "all" ? "sessions" : `${sessionFilter} sessions`}`}
-                    resultLabel={`${filteredSessions.length} sessions`}
-                    columns={rapsodoSessionColumns}
-                    suggestedViews={rapsodoSessionSuggestedViews}
-                    exportTableId="rapsodo-sessions"
-                    exportFileName="forekinghell-rapsodo-sessions.csv"
-                    className="mb-3"
+                <div className="grid gap-3 pb-4">
+                  <Input
+                    aria-label="Search remote sessions"
+                    value={sessionQuery}
+                    onChange={(event) => setSessionQuery(event.target.value)}
+                    placeholder="Search session titles or IDs"
                   />
-                  <DataTableFrame
-                    mainTable
-                    mainTableLabel="Rapsodo remote sessions table"
-                    stickyFirstColumn
-                  >
-                    <Table
-                      data-workbench-export-table="rapsodo-sessions"
-                      aria-describedby="rapsodo-sessions-summary"
-                    >
-                      <TableCaption id="rapsodo-sessions-summary" className="sr-only">
-                        Unimported Rapsodo cloud sessions with type, date, shot count and preview
-                        action.
-                      </TableCaption>
-                      <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
-                        <TableRow>
-                          <TableHead
-                            data-column="session"
-                            className="sticky left-0 z-20 min-w-72 bg-card shadow-[1px_0_0_hsl(var(--border))]"
-                          >
-                            Session
-                          </TableHead>
-                          <TableHead data-column="type">Type</TableHead>
-                          <TableHead data-column="date">Date</TableHead>
-                          <TableHead data-column="shots" className="text-right">
-                            Shots
-                          </TableHead>
-                          <TableHead data-column="action" className="w-28">
-                            <span className="sr-only">Action</span>
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredSessions.map((session) => (
-                          <TableRow
-                            key={`${session.providerKind}-${session.providerSessionId}`}
-                            tabIndex={0}
-                            className="focus-aaa outline-none"
-                          >
-                            <TableCell
-                              data-column="session"
-                              className="sticky left-0 z-10 min-w-72 bg-card shadow-[1px_0_0_hsl(var(--border))]"
-                            >
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="font-medium">{session.title}</span>
-                                {session.isNew && !session.importedSessionId ? (
-                                  <Badge variant="secondary">New</Badge>
-                                ) : null}
-                              </div>
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                                {session.importedSessionId ? (
-                                  <Link
-                                    href={`/shots?sessionId=${encodeURIComponent(session.importedSessionId)}`}
-                                    className="text-primary underline-offset-4 hover:underline"
-                                  >
-                                    Imported
-                                  </Link>
-                                ) : null}
-                                {session.firstSeenAt ? (
-                                  <span className="text-muted-foreground">
-                                    Seen {formatDate(session.firstSeenAt)}
-                                  </span>
-                                ) : null}
-                              </div>
-                            </TableCell>
-                            <TableCell data-column="type">{formatSessionKind(session)}</TableCell>
-                            <TableCell data-column="date">
-                              {session.dateIso ? formatDate(session.dateIso) : "--"}
-                            </TableCell>
-                            <TableCell data-column="shots" className="text-right">
-                              {session.shotCount === null ? "--" : session.shotCount}
-                            </TableCell>
-                            <TableCell data-column="action">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => previewSession(session)}
-                                disabled={isPending}
-                              >
-                                Preview
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        {filteredSessions.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={5} className="p-4">
-                              <AppEmptyState
-                                icon={<Cloud className="size-5" />}
-                                title={status.connected ? "R-Cloud inbox clear" : "Connect R-Cloud"}
-                                description={
-                                  status.connected
-                                    ? "No unimported sessions match these dates. Imported sessions stay hidden from this inbox."
-                                    : "Sign in from the connection card to load waiting sessions."
-                                }
-                                primaryAction={
-                                  status.connected ? (
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      onClick={() => void loadSessions()}
-                                      disabled={isPending}
-                                    >
-                                      <RefreshCw className="size-4" />
-                                      Refresh sessions
-                                    </Button>
-                                  ) : (
-                                    <Button asChild variant="outline">
-                                      <a href="#rapsodo-sessions">Open connection</a>
-                                    </Button>
-                                  )
-                                }
-                                secondaryAction={
-                                  <Button asChild variant="ghost">
-                                    <Link href="/import?source=csv#csv-import">
-                                      Use CSV instead
-                                    </Link>
-                                  </Button>
-                                }
-                                className="border-0 bg-transparent"
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ) : null}
-                      </TableBody>
-                    </Table>
-                  </DataTableFrame>
+                  <p role="status" className="text-sm">
+                    {filteredSessions.length} matching unimported sessions. Latest 60 remote records
+                    per load; change dates to inspect another period.
+                  </p>
+                  {preview && !previewOpen && (
+                    <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+                      Resume review: {preview.session.title}
+                    </Button>
+                  )}
+                  <div className="grid gap-2">
+                    {filteredSessions.map((session) => (
+                      <article
+                        key={`${session.providerKind}-${session.providerSessionId}`}
+                        className="grid gap-2 rounded-lg border p-3"
+                      >
+                        <strong className="break-words">{session.title}</strong>
+                        <p className="text-sm">
+                          {session.dateIso ? formatDate(session.dateIso) : "Date unavailable"} ·{" "}
+                          {session.providerKind} · {session.providerSessionId} ·{" "}
+                          {session.shotCount ?? "Unknown"} shots
+                        </p>
+                        <Button
+                          variant="outline"
+                          disabled={!ready || isPending || Boolean(loadingLabel)}
+                          onClick={() => previewSession(session)}
+                        >
+                          Preview {session.title}
+                        </Button>
+                      </article>
+                    ))}
+                  </div>
                 </div>
+                <details>
+                  <summary className="min-h-11 cursor-pointer py-3">
+                    Remote session table and export
+                  </summary>
+                  <div data-workbench-scope="rapsodo">
+                    <DesktopTableWorkbenchControls
+                      viewKey="rapsodo-sessions"
+                      scope="rapsodo"
+                      currentViewLabel={`R-Cloud ${sessionFilter === "all" ? "sessions" : `${sessionFilter} sessions`}`}
+                      resultLabel={`${filteredSessions.length} sessions`}
+                      columns={rapsodoSessionColumns}
+                      suggestedViews={rapsodoSessionSuggestedViews}
+                      exportTableId="rapsodo-sessions"
+                      exportFileName="forekinghell-rapsodo-sessions.csv"
+                      className="mb-3"
+                    />
+                    <DataTableFrame
+                      mainTable
+                      mainTableLabel="Rapsodo remote sessions table"
+                      stickyFirstColumn
+                    >
+                      <Table
+                        data-workbench-export-table="rapsodo-sessions"
+                        aria-describedby="rapsodo-sessions-summary"
+                      >
+                        <TableCaption id="rapsodo-sessions-summary" className="sr-only">
+                          Unimported Rapsodo cloud sessions with type, date, shot count and preview
+                          action.
+                        </TableCaption>
+                        <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
+                          <TableRow>
+                            <TableHead
+                              data-column="session"
+                              className="sticky left-0 z-20 min-w-72 bg-card shadow-[1px_0_0_hsl(var(--border))]"
+                            >
+                              Session
+                            </TableHead>
+                            <TableHead data-column="type">Type</TableHead>
+                            <TableHead data-column="date">Date</TableHead>
+                            <TableHead data-column="shots" className="text-right">
+                              Shots
+                            </TableHead>
+                            <TableHead data-column="action" className="w-28">
+                              <span className="sr-only">Action</span>
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredSessions.map((session) => (
+                            <TableRow
+                              key={`${session.providerKind}-${session.providerSessionId}`}
+                              tabIndex={0}
+                              className="focus-aaa outline-none"
+                            >
+                              <TableCell
+                                data-column="session"
+                                className="sticky left-0 z-10 min-w-72 bg-card shadow-[1px_0_0_hsl(var(--border))]"
+                              >
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-medium">{session.title}</span>
+                                  {session.isNew && !session.importedSessionId ? (
+                                    <Badge variant="secondary">New</Badge>
+                                  ) : null}
+                                </div>
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                                  {session.importedSessionId ? (
+                                    <Link
+                                      href={`/shots?sessionId=${encodeURIComponent(session.importedSessionId)}`}
+                                      className="text-primary underline-offset-4 hover:underline"
+                                    >
+                                      Imported
+                                    </Link>
+                                  ) : null}
+                                  {session.firstSeenAt ? (
+                                    <span className="text-muted-foreground">
+                                      Seen {formatDate(session.firstSeenAt)}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </TableCell>
+                              <TableCell data-column="type">{formatSessionKind(session)}</TableCell>
+                              <TableCell data-column="date">
+                                {session.dateIso ? formatDate(session.dateIso) : "--"}
+                              </TableCell>
+                              <TableCell data-column="shots" className="text-right">
+                                {session.shotCount === null ? "--" : session.shotCount}
+                              </TableCell>
+                              <TableCell data-column="action">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => previewSession(session)}
+                                  disabled={!ready || isPending || Boolean(loadingLabel)}
+                                >
+                                  Preview
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {filteredSessions.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={5} className="p-4">
+                                <AppEmptyState
+                                  icon={<Cloud className="size-5" />}
+                                  title={
+                                    status.connected ? "R-Cloud inbox clear" : "Connect R-Cloud"
+                                  }
+                                  description={
+                                    status.connected
+                                      ? "No unimported sessions match these dates. Imported sessions stay hidden from this inbox."
+                                      : "Sign in from the connection card to load waiting sessions."
+                                  }
+                                  primaryAction={
+                                    status.connected ? (
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => void loadSessions()}
+                                        disabled={!ready || isPending || Boolean(loadingLabel)}
+                                      >
+                                        <RefreshCw className="size-4" />
+                                        Refresh sessions
+                                      </Button>
+                                    ) : (
+                                      <Button asChild variant="outline">
+                                        <a href="#rapsodo-sessions">Open connection</a>
+                                      </Button>
+                                    )
+                                  }
+                                  secondaryAction={
+                                    <Button asChild variant="ghost">
+                                      <Link href="/import?source=csv#csv-import">
+                                        Use CSV instead
+                                      </Link>
+                                    </Button>
+                                  }
+                                  className="border-0 bg-transparent"
+                                />
+                              </TableCell>
+                            </TableRow>
+                          ) : null}
+                        </TableBody>
+                      </Table>
+                    </DataTableFrame>
+                  </div>
+                </details>
               </CardContent>
             </Card>
           </section>
 
           {preview ? (
             <ResponsiveDetailPanel
-              open
+              open={previewOpen}
               onOpenChange={(open) => {
-                if (open) return;
-                setPreview(null);
+                if (!isPending) setPreviewOpen(open);
               }}
               title={preview.session.title}
               description={`${preview.shotCount} shots · ${preview.rawRowCount} raw rows · ${preview.distanceUnit}`}
               className="w-[96vw] sm:max-w-[72rem]"
               contentClassName="pt-4"
+              footer={
+                <div className="grid gap-2 p-4">
+                  <p className="text-xs">
+                    Remote session {preview.session.providerSessionId} · {preview.shotCount} shots ·{" "}
+                    {preview.distanceUnit}
+                  </p>
+                  <Button onClick={savePreview} disabled={!canSave}>
+                    {saveButtonLabel}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={!ready || isPending || Boolean(loadingLabel)}
+                    onClick={() => setPreviewOpen(false)}
+                  >
+                    Close and keep review
+                  </Button>
+                </div>
+              }
             >
               <section
                 id="rapsodo-preview"
@@ -1315,7 +1440,7 @@ export function RapsodoSyncClient({
                         variant={clubSelectionMode === "recommendations" ? "default" : "outline"}
                         className={clubSelectionMode === "recommendations" ? "premium-action" : ""}
                         onClick={() => applyClubSelectionMode("recommendations")}
-                        disabled={isPending}
+                        disabled={!ready || isPending || Boolean(loadingLabel)}
                       >
                         <Sparkles className="size-4" />
                         Use recommendations
@@ -1325,7 +1450,7 @@ export function RapsodoSyncClient({
                         variant={clubSelectionMode === "rapsodo" ? "default" : "outline"}
                         className={clubSelectionMode === "rapsodo" ? "premium-action" : ""}
                         onClick={() => applyClubSelectionMode("rapsodo")}
-                        disabled={isPending}
+                        disabled={!ready || isPending || Boolean(loadingLabel)}
                       >
                         <ShieldCheck className="size-4" />
                         Use Rapsodo clubs
@@ -1378,90 +1503,155 @@ export function RapsodoSyncClient({
                         <AlertDescription>{preview.warnings.join(" ")}</AlertDescription>
                       </Alert>
                     ) : null}
-                    <div className="rounded-lg border">
-                      <Table className="text-xs">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="h-8 w-14 px-3">Shot</TableHead>
-                            <TableHead className="h-8 w-24 px-2">Rapsodo</TableHead>
-                            <TableHead className="h-8 w-64 px-2">{clubMappingLabel}</TableHead>
-                            <TableHead className="h-8 w-20 px-2 text-right">Carry</TableHead>
-                            <TableHead className="h-8 w-20 px-2 text-right">Total</TableHead>
-                            <TableHead className="h-8 px-2">Match</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {preview.shots.map((shot) => (
-                            <TableRow key={shot.rowNumber}>
-                              <TableCell className="px-3 py-1.5">
-                                {shot.shotNumber ?? shot.rowNumber}
-                              </TableCell>
-                              <TableCell className="px-2 py-1.5">
-                                <div className="flex items-center gap-1.5">
-                                  <span>{shot.reportedClubLabel}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="px-2 py-1.5">
-                                <Select
-                                  value={selectedClubByRow[shot.rowNumber] || undefined}
-                                  onValueChange={(value) => {
-                                    setClubSelectionMode("custom");
-                                    setSelectedClubByRow((current) => ({
-                                      ...current,
-                                      [shot.rowNumber]: value,
-                                    }));
-                                    setClubSelectionOriginByRow((current) => ({
-                                      ...current,
-                                      [shot.rowNumber]: "user",
-                                    }));
-                                  }}
-                                >
-                                  <SelectTrigger
-                                    aria-label={`${clubMappingLabel} for shot ${shot.shotNumber ?? shot.rowNumber}`}
-                                    className="h-8 w-56 text-xs"
-                                  >
-                                    <SelectValue placeholder="Choose club" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {preview.clubChoices.map((choice) => (
-                                      <SelectItem
-                                        key={`${shot.rowNumber}-${choice.clubKey}`}
-                                        value={choice.clubKey}
-                                      >
-                                        {choice.clubLabel}
-                                        {choice.clubBrand || choice.clubModel
-                                          ? ` - ${[choice.clubBrand, choice.clubModel].filter(Boolean).join(" ")}`
-                                          : ""}
-                                        {choice.active === false ? " (retired)" : ""}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell className="px-2 py-1.5 text-right">
-                                {formatMetric(shot.carryYd)}
-                              </TableCell>
-                              <TableCell className="px-2 py-1.5 text-right">
-                                {formatMetric(shot.totalYd)}
-                              </TableCell>
-                              <TableCell className="min-w-[360px] px-2 py-1.5">
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <Badge
-                                    variant={
-                                      shot.suggestion.confidence === "low" ? "secondary" : "default"
-                                    }
-                                    className="shrink-0"
-                                  >
-                                    {shot.suggestion.confidenceScore}%
-                                  </Badge>
-                                  <span className="truncate">{shot.suggestion.reason}</span>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                    <div className="grid gap-3" aria-label="Complete preview readings">
+                      <p className="text-xs text-muted-foreground">
+                        Readings below use yards, mph and degrees. Original export distance unit:{" "}
+                        {preview.distanceUnit}. Club matches remain editable before saving.
+                      </p>
+                      {preview.shots.map((shot) => (
+                        <details key={shot.rowNumber} className="rounded-lg border p-3">
+                          <summary className="min-h-11 cursor-pointer font-medium">
+                            Shot {shot.shotNumber ?? shot.rowNumber} · {shot.reportedClubLabel} ·{" "}
+                            {shot.carryYd ?? "Not measured"} yd
+                          </summary>
+                          <dl className="grid grid-cols-2 gap-3 py-3 text-sm">
+                            {Object.entries({
+                              "Carry (yd)": shot.carryYd,
+                              "Total (yd)": shot.totalYd,
+                              "Side (yd)": shot.sideCarryYd,
+                              "Ball speed (mph)": shot.ballSpeedMph,
+                              "Launch (degrees)": shot.launchAngleDeg,
+                              "Source shot ID": shot.rapsodoShotId,
+                            }).map(([label, value]) => (
+                              <div key={label} className="min-w-0">
+                                <dt className="text-muted-foreground">{label}</dt>
+                                <dd className="break-words">{value ?? "Not recorded"}</dd>
+                              </div>
+                            ))}
+                          </dl>
+                          <p className="text-sm">
+                            Match {shot.suggestion.confidenceScore}% · {shot.suggestion.reason}
+                          </p>
+                          <label className="grid gap-2 py-3 text-sm">
+                            Review club for shot {shot.shotNumber ?? shot.rowNumber}
+                            <select
+                              className="min-h-11 w-full min-w-0 rounded-lg border bg-background px-3"
+                              disabled={isPending}
+                              value={selectedClubByRow[shot.rowNumber] ?? ""}
+                              onChange={(event) => {
+                                setClubSelectionMode("custom");
+                                setSelectedClubByRow((current) => ({
+                                  ...current,
+                                  [shot.rowNumber]: event.target.value,
+                                }));
+                                setClubSelectionOriginByRow((current) => ({
+                                  ...current,
+                                  [shot.rowNumber]: "user",
+                                }));
+                              }}
+                            >
+                              <option value="">Choose club</option>
+                              {preview.clubChoices.map((choice) => (
+                                <option key={choice.clubKey} value={choice.clubKey}>
+                                  {choice.clubLabel}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        </details>
+                      ))}
                     </div>
+                    <details>
+                      <summary className="min-h-11 cursor-pointer py-3">
+                        Full club matching table
+                      </summary>
+                      <div className="overflow-x-auto rounded-lg border">
+                        <Table className="text-xs">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="h-8 w-14 px-3">Shot</TableHead>
+                              <TableHead className="h-8 w-24 px-2">Rapsodo</TableHead>
+                              <TableHead className="h-8 w-64 px-2">{clubMappingLabel}</TableHead>
+                              <TableHead className="h-8 w-20 px-2 text-right">Carry</TableHead>
+                              <TableHead className="h-8 w-20 px-2 text-right">Total</TableHead>
+                              <TableHead className="h-8 px-2">Match</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {preview.shots.map((shot) => (
+                              <TableRow key={shot.rowNumber}>
+                                <TableCell className="px-3 py-1.5">
+                                  {shot.shotNumber ?? shot.rowNumber}
+                                </TableCell>
+                                <TableCell className="px-2 py-1.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <span>{shot.reportedClubLabel}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="px-2 py-1.5">
+                                  <Select
+                                    value={selectedClubByRow[shot.rowNumber] || undefined}
+                                    onValueChange={(value) => {
+                                      setClubSelectionMode("custom");
+                                      setSelectedClubByRow((current) => ({
+                                        ...current,
+                                        [shot.rowNumber]: value,
+                                      }));
+                                      setClubSelectionOriginByRow((current) => ({
+                                        ...current,
+                                        [shot.rowNumber]: "user",
+                                      }));
+                                    }}
+                                  >
+                                    <SelectTrigger
+                                      aria-label={`${clubMappingLabel} for shot ${shot.shotNumber ?? shot.rowNumber}`}
+                                      className="h-8 w-56 text-xs"
+                                    >
+                                      <SelectValue placeholder="Choose club" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {preview.clubChoices.map((choice) => (
+                                        <SelectItem
+                                          key={`${shot.rowNumber}-${choice.clubKey}`}
+                                          value={choice.clubKey}
+                                        >
+                                          {choice.clubLabel}
+                                          {choice.clubBrand || choice.clubModel
+                                            ? ` - ${[choice.clubBrand, choice.clubModel].filter(Boolean).join(" ")}`
+                                            : ""}
+                                          {choice.active === false ? " (retired)" : ""}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+                                <TableCell className="px-2 py-1.5 text-right">
+                                  {formatMetric(shot.carryYd)}
+                                </TableCell>
+                                <TableCell className="px-2 py-1.5 text-right">
+                                  {formatMetric(shot.totalYd)}
+                                </TableCell>
+                                <TableCell className="min-w-[360px] px-2 py-1.5">
+                                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <Badge
+                                      variant={
+                                        shot.suggestion.confidence === "low"
+                                          ? "secondary"
+                                          : "default"
+                                      }
+                                      className="shrink-0"
+                                    >
+                                      {shot.suggestion.confidenceScore}%
+                                    </Badge>
+                                    <span className="truncate">{shot.suggestion.reason}</span>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </details>
                   </CardContent>
                 </Card>
 
@@ -1480,7 +1670,7 @@ export function RapsodoSyncClient({
                           variant={courseImportMode === "shot_only" ? "default" : "outline"}
                           className={courseImportMode === "shot_only" ? "shadow-sm" : ""}
                           onClick={() => setCourseImportMode("shot_only")}
-                          disabled={isPending}
+                          disabled={!ready || isPending || Boolean(loadingLabel)}
                         >
                           <Database className="size-4" />
                           Shot data only
@@ -1490,7 +1680,7 @@ export function RapsodoSyncClient({
                           variant={courseImportMode === "scored_round" ? "default" : "outline"}
                           className={courseImportMode === "scored_round" ? "shadow-sm" : ""}
                           onClick={() => setCourseImportMode("scored_round")}
-                          disabled={isPending}
+                          disabled={!ready || isPending || Boolean(loadingLabel)}
                         >
                           <ShieldCheck className="size-4" />
                           Scored round
@@ -1620,10 +1810,12 @@ export function RapsodoSyncClient({
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel disabled={isPending}>Keep connected</AlertDialogCancel>
+                <AlertDialogCancel disabled={!ready || isPending || Boolean(loadingLabel)}>
+                  Keep connected
+                </AlertDialogCancel>
                 <AlertDialogAction
                   variant="destructive"
-                  disabled={isPending}
+                  disabled={!ready || isPending || Boolean(loadingLabel)}
                   onClick={() => {
                     setDisconnectConfirmationOpen(false);
                     disconnect();
@@ -1645,7 +1837,7 @@ export function RapsodoSyncClient({
           {children ? <div>{children}</div> : null}
         </DesktopWorkflowLayout>
       </div>
-    </main>
+    </PageShell>
   );
 
   function updateHoleReview(holeNumber: number, patch: HoleReviewState[number]) {

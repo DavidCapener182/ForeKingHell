@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-220 desktop / 220 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P34 Handicap estimates; next P35/P36 verify existing completed UI before P37. P29 matrix p29-browser-interaction.log passed35.3s; screenshot390companion inspected. Latest P28 actual fixture matrix passed19.0s; P27 passed34.8s. Full-unit baseline112failedtests (two backend stale assertions later fixed), details output/playwright/redesign/full-unit-current.log. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
+229 desktop / 229 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P38 Providers UI, starting C01 controlled tabs. Next: P39 Companion import entry. P34 wrapped actual-app matrix passed 21.9s and P37 mocked-provider matrix passed 19.9s across both surfaces and all six requested sizes. P35/P36 earlier UI preserved. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
 
 # UI upgrade progress
 
@@ -237,3 +237,10 @@ P32 code in progress: common fullpage, allmobilehistory, rangeSheet supported7d/
 P33 previouslyimplementedrows preserved; new goal-project-panel.tsx connects existingownedbaseline/practice/drills/completion/subsequent-qualified evidence/comparelinks. Goaldata/actions unchanged. Run ui-upgrade-goal-project.spec.ts fixture3116, maintainbrowserruntimefreeze with otheragent. Next P34 fullprompts onepage. Latestfullunit125failures/2492pass (58failedfiles/492pass/22skip) output/playwright/redesign/full-unit-latest.log; targeted66Speed/Trainingdomain pass.
 
 P33 project integration passed7.9s12views; no increase to220because sixGoalrowsalreadyimplemented. Exactownedbaseline+planIDs persisted, drills/no false subsequent evidence displayed, rawshotsunchanged. Evidence appendedP33C02/C05. ExistingGoals UI preserved. P34 sourceactivelyrewrittencommonfullpage with fourURLsections, allroundcalculations/sourceSheets, eligible-only trendpoints and allmethodcaveats/repairrounds. Types/browserpending; noP34statusesupdatedyet. Next P35/P36previousUI preserve and verify regressions beforefirstunimplementedP37.
+
+
+## P34 and P37 UI checkpoint — 7 September
+
+P34-C01–C05 and P37-C01–C04 implemented with partial verification on both surfaces. Handicap now renders the complete companion task; methods wrap without truncation, trend excludes ineligible rounds, and all calculation/source fields remain available. Rapsodo retains preview corrections after closing, shows every measurement and original units, guards concurrent actions, and preserves success receipts with metadata warnings. Changed files: handicap/page.tsx, premium.tsx (opt-in wrapText), app-route-capabilities.ts (Handicap only), rapsodo-sync-client.tsx and scoped browser fixtures/tests. Logs: handicap-browser-wrapped.log PASS 21.9s; rapsodo-fixture-import.log PASS 19.9s. Actual Rapsodo shell/provider integration remains unverified. Shared sticky navigation can overlap scrolled content; no full acceptance claim.
+
+Resume: read /tmp/fkh-p38-prompts.txt or P38 in master prompts; implement Providers controlled retained tabs, provider details/actions, full session ledger and truthful current-operation diagnostics. Coordinate runtime edits with other thread worker-replay run first. Preserve all current dirty work and use scoped commits. Refresh Excel after CSV updates. Latest broader snapshot has 125 failing unit tests and 11 bundle-budget failures; these remain outstanding, not UI completion evidence.

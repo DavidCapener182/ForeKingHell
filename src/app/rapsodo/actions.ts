@@ -42,6 +42,14 @@ type ActionResult<T> = { ok: true; data: T } | { ok: false; message: string; cod
 
 const RAPSODO_BAG_SHOT_SAMPLE_LIMIT = 600;
 
+function refreshRapsodoAfterCommit() {
+  try {
+    revalidatePath("/rapsodo");
+  } catch {
+    console.error("Rapsodo page refresh failed after the operation completed.");
+  }
+}
+
 export async function getRapsodoConnectionStatusAction(): Promise<
   ActionResult<{
     connected: boolean;
@@ -82,7 +90,7 @@ export async function loginRapsodoAction(input: {
   try {
     const result = await new RapsodoCloudClient().login(email, password);
     await setStoredRapsodoToken(result.token, result.profile);
-    revalidatePath("/rapsodo");
+    refreshRapsodoAfterCommit();
 
     return {
       ok: true,
@@ -98,7 +106,7 @@ export async function loginRapsodoAction(input: {
 
 export async function disconnectRapsodoAction(): Promise<ActionResult<{ connected: boolean }>> {
   await clearStoredRapsodoToken();
-  revalidatePath("/rapsodo");
+  refreshRapsodoAfterCommit();
   return { ok: true, data: { connected: false } };
 }
 
@@ -334,13 +342,27 @@ export async function importRapsodoSessionAction(input: {
     const result = await saveRapsodoImport(input.importInput);
 
     if (result.ok) {
-      await setAchievementUnlockFlash(result.achievementUnlockNotifications);
-      await markRapsodoSessionImported(
-        input.session,
-        input.importInput.rawCsvText,
-        result.sessionId,
-      );
-      revalidatePath("/rapsodo");
+      // The import receipt is authoritative once saveRapsodoImport commits.
+      // Independent follow-up failures must neither hide it nor skip the other follow-ups.
+      try {
+        await setAchievementUnlockFlash(result.achievementUnlockNotifications);
+      } catch {
+        console.error("Rapsodo achievement notification failed after import completed.");
+      }
+      try {
+        await markRapsodoSessionImported(
+          input.session,
+          input.importInput.rawCsvText,
+          result.sessionId,
+        );
+      } catch {
+        console.error("Rapsodo sync status update failed after import completed.");
+        result.warnings = [
+          ...result.warnings,
+          "Your session is saved, but the R-Cloud list could not be updated. Open the saved session to review it.",
+        ];
+      }
+      refreshRapsodoAfterCommit();
     }
 
     return { ok: true, data: result };
