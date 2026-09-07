@@ -3,11 +3,11 @@ import { ArrowLeft, Crosshair, Share2, Target, TriangleAlert } from "lucide-reac
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import { ComparisonProvenancePanel } from "@/app/analyse/compare/comparison-provenance-panel";
-import { DeleteComparisonButton } from "@/app/analyse/compare/delete-comparison-button";
+import { SavedComparisons } from "@/app/analyse/compare/saved-comparisons";
 import { SaveComparisonDialog } from "@/app/analyse/compare/save-comparison-dialog";
 import { SessionComparisonStage } from "@/app/analyse/compare/session-comparison-stage";
 import { SessionComparisonToolbar } from "@/app/analyse/compare/session-comparison-toolbar";
-import { PageShell, StatusPill, type Tone } from "@/components/premium";
+import { PageHeader, PageShell, StatusPill, type Tone } from "@/components/premium";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -43,6 +43,8 @@ type SearchParams = Promise<{
   clubId?: string;
   condition?: string;
   period?: string;
+  metric?: string;
+  view?: string;
 }>;
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
@@ -94,22 +96,19 @@ export default async function SessionComparePage({ searchParams }: { searchParam
         </Button>
       </div>
 
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-            Evidence workspace
-          </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Compare sessions
-          </h1>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-            Put two launch-monitor samples under the same filters and inspect the shot pattern,
-            deltas and confidence.
-          </p>
-        </div>
-      </header>
+      <PageHeader
+        title="Compare sessions"
+        description="Choose focus and baseline samples, then inspect measured change, source coverage and confidence."
+        actions={
+          <SaveComparisonDialog
+            filters={saveFilters}
+            defaultName={`${data.focus.label} vs ${data.baseline.label}`}
+          />
+        }
+      />
 
       <SessionComparisonToolbar
+        key={JSON.stringify(saveFilters)}
         sessions={data.sessions}
         clubs={data.clubs}
         initial={{
@@ -151,6 +150,9 @@ export default async function SessionComparePage({ searchParams }: { searchParam
       </section>
 
       <SessionComparisonStage
+        key={`${params.metric ?? ""}:${params.view ?? ""}`}
+        initialMetric={params.metric}
+        initialView={params.view}
         focus={data.focus}
         baseline={data.baseline}
         delta={data.delta}
@@ -185,7 +187,41 @@ export default async function SessionComparePage({ searchParams }: { searchParam
             </Button>
           </div>
         </div>
-        <Card className="mt-3 overflow-hidden py-0 shadow-sm">
+        <div className="mt-3 grid gap-3 lg:hidden">
+          {provenance.map((metric) => (
+            <article key={metric.key} className="grid gap-3 rounded-xl border bg-card p-4">
+              <h3 className="font-semibold">{metric.label}</h3>
+              <dl className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <dt className="text-muted-foreground">Focus · {data.focus.stockShots} shots</dt>
+                  <dd className="font-semibold">
+                    {comparisonMetricValue(metric.key, data.focus, metric.unit)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">
+                    Baseline · {data.baseline.stockShots} shots
+                  </dt>
+                  <dd className="font-semibold">
+                    {comparisonMetricValue(metric.key, data.baseline, metric.unit)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Delta</dt>
+                  <dd>{formatDelta(metric.value, metric.unit)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Interpretation</dt>
+                  <dd>
+                    {directionLabel(metric)} · {metric.confidenceLabel}
+                  </dd>
+                </div>
+              </dl>
+              <ComparisonProvenancePanel metrics={[metric]} />
+            </article>
+          ))}
+        </div>
+        <Card className="mt-3 hidden overflow-hidden py-0 shadow-sm lg:block">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -260,54 +296,27 @@ export default async function SessionComparePage({ searchParams }: { searchParam
         </div>
       </div>
 
-      <section className="grid gap-3" aria-labelledby="saved-comparisons-title">
-        <div>
-          <h2 id="saved-comparisons-title" className="text-lg font-semibold">
-            Saved comparisons
-          </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Frozen filters and interpretation notes from earlier reviews.
-          </p>
-        </div>
-        {savedComparisons.length ? (
-          <ul className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border/80 bg-card">
-            {savedComparisons.map((snapshot) => (
-              <li
-                key={snapshot.id}
-                className="grid gap-2 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-              >
-                <div className="min-w-0">
-                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                    <p className="truncate font-semibold">{snapshot.name}</p>
-                    <span className="text-xs text-muted-foreground">
-                      {dateTimeFormatter.format(snapshot.capturedAt)}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                    {String(
-                      snapshot.summaryJson.summary ??
-                        snapshot.summaryJson.verdict ??
-                        "Saved evidence comparison",
-                    )}
-                  </p>
-                  {snapshot.notes ? (
-                    <p className="mt-1 truncate text-xs font-medium">{snapshot.notes}</p>
-                  ) : null}
-                </div>
-                <DeleteComparisonButton id={snapshot.id} name={snapshot.name} />
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-muted/20 px-4 py-3">
-            <p className="text-sm text-muted-foreground">No saved comparison yet.</p>
-            <SaveComparisonDialog
-              filters={saveFilters}
-              defaultName={`${data.focus.label} vs ${data.baseline.label}`}
-            />
-          </div>
-        )}
-      </section>
+      <SavedComparisons
+        rows={savedComparisons.map((snapshot) => {
+          const filters = snapshot.filtersJson as Record<string, unknown>;
+          const query = new URLSearchParams();
+          for (const key of ["sessionId", "baselineSessionId", "clubId", "condition"])
+            if (typeof filters[key] === "string") query.set(key, filters[key]);
+          if (filters.focus === "last-30") query.set("period", "month");
+          return {
+            id: snapshot.id,
+            name: snapshot.name,
+            date: dateTimeFormatter.format(snapshot.capturedAt),
+            summary: String(
+              snapshot.summaryJson.summary ??
+                snapshot.summaryJson.verdict ??
+                "Saved evidence comparison",
+            ),
+            notes: snapshot.notes ?? "",
+            href: `/analyse/compare?${query.toString()}`,
+          };
+        })}
+      />
     </PageShell>
   );
 }
