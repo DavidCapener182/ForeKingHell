@@ -1,0 +1,89 @@
+.hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  min-height: 17rem;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: #102e29;
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+}
+.heroImage {
+  z-index: -2;
+  object-fit: cover;
+  object-position: 72% 62%;
+}
+.heroShade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    90deg,
+    rgba(6, 27, 24, 0.97),
+    rgba(6, 27, 24, 0.82) 45%,
+    rgba(6, 27, 24, 0.2)
+  );
+}
+.heroHeading {
+  --foreground: #fff;
+  --muted-foreground: #e0ebe6;
+  width: 100%;
+}
+.heroHeading > div:first-child {
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.heroHeading > div:first-child > div:first-child {
+  flex-basis: auto;
+  max-width: 32rem;
+}
+.heroHeading h1 {
+  font-size: clamp(2rem, 3vw, 2.75rem);
+}
+.insight {
+  background-image: radial-gradient(
+    ellipse at top right,
+    color-mix(in srgb, var(--primary) 10%, transparent),
+    transparent 65%
+  );
+}
+.conditions {
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in srgb, #c6a463 13%, transparent),
+    transparent 72%
+  );
+}
+.quality {
+  background-image: radial-gradient(
+    ellipse at bottom right,
+    color-mix(in srgb, var(--primary) 12%, transparent),
+    transparent 75%
+  );
+}
+@media (max-width: 639px) {
+  .hero {
+    min-height: 16rem;
+  }
+  .heroImage {
+    object-position: 74% center;
+  }
+  .heroShade {
+    background: linear-gradient(90deg, rgba(6, 27, 24, 0.96), rgba(6, 27, 24, 0.73));
+  }
+}
+@media (forced-colors: active) {
+  .heroImage,
+  .heroShade {
+    display: none;
+  }
+  .hero {
+    background: Canvas;
+    border: 1px solid CanvasText;
+  }
+  .heroHeading {
+    --foreground: CanvasText;
+    --muted-foreground: CanvasText;
+  }
+}

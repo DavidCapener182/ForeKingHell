@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Image from "next/image";
+import atmosphere from "@/app/analyse/analyse-atmosphere.module.css";
 import {
   ArrowRight,
   BarChart3,
@@ -139,19 +141,33 @@ export default async function AnalysePage() {
 function InsightHero({ data }: { data: AnalyseOverview }) {
   return (
     <section className="grid min-w-0 gap-4">
-      <PageHeader
-        title="Analysis"
-        description="Choose a measured question, then inspect the records behind it."
-        actions={
-          <Button asChild>
-            <Link href={data.insight.shotsHref}>
-              {data.insight.actionLabel}
-              <ArrowRight className="size-4" aria-hidden />
-            </Link>
-          </Button>
-        }
-      />
-      <div className="grid gap-4 rounded-xl border bg-card p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto]">
+      <div className={atmosphere.hero} data-analysis-hero>
+        <Image
+          src="/assets/generated/lmwt-range-hero.png"
+          alt=""
+          fill
+          sizes="(max-width: 1023px) 100vw, 80vw"
+          className={atmosphere.heroImage}
+          priority
+        />
+        <div className={atmosphere.heroShade} aria-hidden="true" />
+        <PageHeader
+          className={atmosphere.heroHeading}
+          title="Analysis"
+          description="Choose a measured question, then inspect the records behind it."
+          actions={
+            <Button asChild>
+              <Link href={data.insight.shotsHref}>
+                {data.insight.actionLabel}
+                <ArrowRight className="size-4" aria-hidden />
+              </Link>
+            </Button>
+          }
+        />
+      </div>
+      <div
+        className={`${atmosphere.insight} grid gap-4 rounded-xl border bg-card p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto]`}
+      >
         <div className="min-w-0">
           <h2 className="text-xl font-semibold">{data.insight.title}</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{data.insight.detail}</p>
@@ -226,7 +242,7 @@ function ConditionsFeature({ data, className }: { data: AnalyseOverview; classNa
   return (
     <Link
       href="/analyse/conditions"
-      className={`group focus-aaa flex min-h-52 flex-col rounded-[1.5rem] border border-border bg-card p-5 outline-none transition-colors hover:border-primary/35 sm:p-6 ${className ?? ""}`}
+      className={`${atmosphere.conditions} group focus-aaa flex min-h-52 flex-col rounded-[1.5rem] border border-border bg-card p-5 outline-none transition-colors hover:border-primary/35 sm:p-6 ${className ?? ""}`}
     >
       <FeatureHeading
         icon={<CloudSun className="size-4" aria-hidden />}
@@ -247,7 +263,7 @@ function DataQualityFeature({ data, className }: { data: AnalyseOverview; classN
   return (
     <Link
       href="/analyse/workspace"
-      className={`group focus-aaa flex min-h-52 flex-col overflow-hidden rounded-[1.5rem] border border-border bg-muted/35 p-4 outline-none transition-colors hover:border-primary/35 ${className ?? ""}`}
+      className={`${atmosphere.quality} group focus-aaa flex min-h-52 flex-col overflow-hidden rounded-[1.5rem] border border-border bg-muted/35 p-4 outline-none transition-colors hover:border-primary/35 ${className ?? ""}`}
     >
       <FeatureHeading
         icon={<ShieldCheck className="size-4" aria-hidden />}

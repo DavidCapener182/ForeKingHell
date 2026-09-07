@@ -16,6 +16,15 @@ test("Analysis overview retains provenance and scoped entry points", async ({ pa
       [1024, 800],
     ]) {
       await page.setViewportSize({ width, height });
+      const hero = page.locator("[data-analysis-hero]");
+      await expect(hero).toBeVisible();
+      await expect(hero.locator("img")).toHaveJSProperty("complete", true);
+      expect(
+        await hero.locator("img").evaluate((image) => (image as HTMLImageElement).naturalWidth),
+      ).toBeGreaterThan(0);
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+      ).toBe(true);
       await page.getByRole("button", { name: "Evidence & calculation", exact: true }).click();
       await expect(page.getByRole("dialog")).toContainText("Trusted shots");
       await expect(
