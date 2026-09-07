@@ -10,12 +10,14 @@ export function UntitledTabs({
   onSelectionChange,
   label,
   keepMounted = false,
+  disabled = false,
 }: {
   items: Array<{ id: string; label: string; content: ReactNode }>;
   selectedKey: string;
   onSelectionChange: (key: string) => void;
   label: string;
   keepMounted?: boolean;
+  disabled?: boolean;
 }) {
   const strip = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -36,7 +38,7 @@ export function UntitledTabs({
       <div className={styles.strip} ref={strip}>
         <TabList aria-label={label} className={styles.list}>
           {items.map((item) => (
-            <Tab key={item.id} id={item.id} className={styles.tab}>
+            <Tab key={item.id} id={item.id} className={styles.tab} isDisabled={disabled}>
               {item.label}
             </Tab>
           ))}

@@ -1,0 +1,6 @@
+.controls[data-open="false"] { display: none; }
+.toggle { display: flex; }
+@media (min-width: 1024px) {
+  .controls[data-open="false"] { display: block; }
+  .toggle { display: none; }
+}

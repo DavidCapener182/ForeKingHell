@@ -9,16 +9,20 @@ export function CourseCreationForm({
   action,
   children,
   className,
+  noun = "course",
   ...attributes
 }: {
-  action: (data: FormData) => Promise<unknown>;
+  action: (data: FormData) => unknown | Promise<unknown>;
   children: ReactNode;
   className?: string;
+  id?: string;
+  noun?: string;
   "data-google-course-selection"?: boolean;
 }) {
   const ready = useClientReady();
   const [pending, startTransition] = useTransition();
   const busy = useRef(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
     <form
@@ -30,13 +34,15 @@ export function CourseCreationForm({
         const data = new FormData(event.currentTarget);
         busy.current = true;
         setError(null);
+        setSaved(false);
         startTransition(async () => {
           try {
             await action(data);
+            setSaved(true);
           } catch (failure) {
             unstable_rethrow(failure);
             setError(
-              "We could not confirm that this course was saved. Your entries are kept. Check your course library before trying again.",
+              `We could not confirm that this ${noun} was saved. Your entries are kept. Check the saved record before trying again.`,
             );
           } finally {
             busy.current = false;
@@ -50,7 +56,12 @@ export function CourseCreationForm({
       </fieldset>
       {pending ? (
         <p role="status" className="mt-3 text-sm">
-          Saving course…
+          Saving {noun}…
+        </p>
+      ) : null}
+      {saved ? (
+        <p role="status" className="mt-3 text-sm">
+          Saved {noun}.
         </p>
       ) : null}
       {error ? (

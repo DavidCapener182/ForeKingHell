@@ -29,6 +29,7 @@ export function UrlTabs({
     <div className={className} data-url-tabs data-ready={ready}>
       <UntitledTabs
         label={label}
+        disabled={!ready}
         keepMounted
         selectedKey={selected}
         items={tabs}

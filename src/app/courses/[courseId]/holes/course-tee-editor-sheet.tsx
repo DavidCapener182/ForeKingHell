@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { CourseCreationForm } from "@/app/courses/course-creation-form";
 import { Save, Settings2 } from "lucide-react";
 
 import { updateTeeSetAction } from "@/app/courses/actions";
@@ -30,10 +32,11 @@ export function CourseTeeEditorSheet({
     yards: number | null;
   };
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" className="min-h-11">
           <Settings2 className="size-4" />
           Edit tee set
         </Button>
@@ -45,12 +48,23 @@ export function CourseTeeEditorSheet({
             Rating and slope feed the handicap estimate. Par and yardage provide the round context.
           </SheetDescription>
         </SheetHeader>
-        <form action={updateTeeSetAction} className="grid gap-5 px-4 pb-4">
+        <CourseCreationForm
+          noun="tee set"
+          action={updateTeeSetAction}
+          className="grid gap-5 px-4 pb-4"
+        >
           <input type="hidden" name="courseId" value={courseId} />
           <input type="hidden" name="teeSetId" value={teeSet.id} />
           <FieldGroup>
             <TeeField label="Tee set" name="name" defaultValue={teeSet.name} required />
-            <TeeField label="Par" name="par" type="number" defaultValue={teeSet.par} required />
+            <TeeField
+              label="Par"
+              name="par"
+              type="number"
+              min={1}
+              defaultValue={teeSet.par}
+              required
+            />
             <TeeField
               label="Course rating"
               name="courseRating"
@@ -61,23 +75,34 @@ export function CourseTeeEditorSheet({
             <TeeField
               label="Slope"
               name="slopeRating"
+              min={55}
+              max={155}
               type="number"
               defaultValue={teeSet.slopeRating ?? undefined}
             />
             <TeeField
               label="Yards"
               name="yards"
+              min={1}
               type="number"
               defaultValue={teeSet.yards ?? undefined}
             />
           </FieldGroup>
           <SheetFooter className="px-0">
-            <Button type="submit">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" className="min-h-11">
               <Save className="size-4" />
               Save tee set
             </Button>
           </SheetFooter>
-        </form>
+        </CourseCreationForm>
       </SheetContent>
     </Sheet>
   );
@@ -87,7 +112,12 @@ function TeeField({ label, ...props }: { label: string } & React.ComponentProps<
   return (
     <Field>
       <FieldLabel htmlFor={`tee-${props.name}`}>{label}</FieldLabel>
-      <Input id={`tee-${props.name}`} {...props} />
+      <Input
+        inputMode={props.type === "number" ? "decimal" : undefined}
+        className="min-h-11"
+        id={`tee-${props.name}`}
+        {...props}
+      />
     </Field>
   );
 }
