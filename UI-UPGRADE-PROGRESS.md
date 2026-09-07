@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-259 desktop / 259 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P56 Records at a course**. 301 of492 UI implemented with partial verification; zero fully accepted. P55 hub now mobile-complete; P56/P57 downstream tasks are next.
+259 desktop / 259 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P57 Course record detail and proof submission**. 304 of492 UI implemented with partial verification; zero fully accepted. Continue full UI task with verification gaps retained.
 
 # UI upgrade progress
 
@@ -306,3 +306,6 @@ P54-C01–C04 UI implemented partial,298total. Existing3D math/renderer retained
 
 
 P55-C01–C03 UI implemented partial,301total. Full responsive record browser, compact proof context, canonical category/period bounds and server verification, real submissions count. course-records-browser.log PASS15s all12actualappviews; types/lint pass;390 screenshot inspected. Backend hub11targeted+periodregression pass;107combined backend snapshot. PositiveverifiedleaderUI/downstreamP56P57/servererrors/80coursepagination/AT/sharednav acceptance open. Changed hubpage,newcourse-record-board.tsx/CSS,exactroutecapability,course-records.ts hubbackend and integrationtest. P54commitb507a2e2. Next P56 prompt /tmp/fkh-p56-prompts.txt read throughP56 (filealsoincludesstartP57), source partlyread throughpreviousrounds. Finish source then implement full responsive category table and existing scopeURLnavigation; await otherthread read-only semantics review before editing backend. No browser active, no deploy/merge.
+
+
+P56-C01–C03 UI implemented partial,304total. Full category records on both surfaces, proper scope/period/tee/proof/own/friend facts, UnderlineURLtabs and exactcategorysubmissiontarget. course-record-scopes-browser.log PASS33.3s12views/reloadBackForward/searchsort/DBtargetIDs. Types/lint pass;390capture inspected. Backend activeboard+verifiedleader filtering/nofallback with12targetedtests. Noactualsubmission/P57/positiveverifiedleaderUI/AT/sharednavigation acceptance. P55commit5638c415. Next P57 prompts read17193–17465, source page readthroughleaderboard and uploader full. Fix currently stale locked selected-round score, draft/error review form, scorecard uploader clears old token on filechange and supports5MB JPEG/PNG/WebP preview/retry/remove, truthful receipt only owned attempt. Backend agent read-only auditing until P56 commit completes; then coordinate backend fixes. No browser active.

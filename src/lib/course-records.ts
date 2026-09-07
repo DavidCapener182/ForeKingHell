@@ -651,7 +651,7 @@ export async function getCourseRecordCourseData(
     db
       .select()
       .from(courseRecords)
-      .where(eq(courseRecords.courseId, courseId))
+      .where(and(eq(courseRecords.courseId, courseId), eq(courseRecords.status, "active")))
       .orderBy(asc(courseRecords.createdAt)),
     db
       .select({
@@ -699,7 +699,13 @@ export async function getCourseRecordCourseData(
           .from(courseRecordResults)
           .innerJoin(courseRecords, eq(courseRecordResults.recordId, courseRecords.id))
           .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
-          .where(inArray(courseRecords.id, visibleRecordIds))
+          .where(
+            and(
+              inArray(courseRecords.id, visibleRecordIds),
+              eq(courseRecordResults.status, "active"),
+              eq(courseRecordResults.verificationStatus, "verified"),
+            ),
+          )
           .orderBy(asc(courseRecordResults.rank))
       : [],
     db
@@ -738,7 +744,7 @@ export async function getCourseRecordCourseData(
     .map((record) => {
       const category = categoryById.get(record.categoryId);
       const leaders = resultRows.filter((row) => row.record.id === record.id);
-      const champion = leaders.find((row) => row.result.rank === 1) ?? leaders[0] ?? null;
+      const champion = leaders.find((row) => row.result.rank === 1) ?? null;
       const friendToBeat =
         leaders.find((row) => row.profile && friendIds.includes(row.profile.userId)) ?? null;
       const viewerBest = leaders.find((row) => row.result.userId === viewerUserId) ?? null;
@@ -755,10 +761,7 @@ export async function getCourseRecordCourseData(
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
     .sort((left, right) => left.category.sortOrder - right.category.sortOrder);
-  const championCard =
-    recordCards.find((card) => card.champion?.result.verificationStatus === "verified") ??
-    recordCards.find((card) => card.champion) ??
-    null;
+  const championCard = recordCards.find((card) => card.champion) ?? null;
   const bestViewerAttempt = viewerAttemptRows[0] ?? null;
   const previousRounds = previousRoundRows
     .map((row) =>
