@@ -319,7 +319,7 @@ function ShotSimulator({
           <Label
             x={geometry.totalLabel.x}
             y={geometry.totalLabel.y}
-            title="Total"
+            title={shot.totalYd === null ? "Carry only · total unavailable" : "Total"}
             value={formatStoredYards(shot.totalYd ?? shot.carryYd, preferredUnits)}
           />
           <Label
@@ -337,7 +337,8 @@ function ShotSimulator({
             {formatClubType(shot.clubType)}
           </Badge>
           <h2 className="mt-3 text-2xl font-semibold tracking-normal">
-            {formatStoredYards(shot.totalYd ?? shot.carryYd, preferredUnits)} longest total
+            {formatStoredYards(shot.totalYd ?? shot.carryYd, preferredUnits)}{" "}
+            {shot.totalYd === null ? "carry · total unavailable" : "longest total"}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Shot #{shot.shotNumber ?? "-"} on {formatDate(shot.shotAt)} ·{" "}
@@ -608,7 +609,7 @@ function flightProfileRows(shot: LongestShot, preferredUnits: DistanceUnitPrefer
 }
 
 function shotDistance(shot: LongestShot) {
-  return shot.totalYd ?? shot.carryYd ?? null;
+  return shot.totalYd ?? null;
 }
 
 function shotDistanceValue(shot: LongestShot) {
