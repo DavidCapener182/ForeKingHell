@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 test("Moderation resolves only reviewed report IDs and shows partial counts independently of events", async ({
   page,
   context,
@@ -76,6 +77,63 @@ test("Moderation resolves only reviewed report IDs and shows partial counts inde
         await expect(
           queue.getByRole("button", { name: "Select visible open records", exact: true }),
         ).toBeEnabled({ timeout: 60000 });
+        const eventsRegister = page.getByRole("region", { name: "Moderation events", exact: true });
+        for (const [register, included, excluded] of [
+          [queue, "Complete first evidence", "Independent event evidence"],
+          [eventsRegister, "Independent event evidence", "Complete first evidence"],
+        ] as const) {
+          const downloadReady = page.waitForEvent("download");
+          await register.locator("[data-export-table-id]").click();
+          const download = await downloadReady;
+          const csv = await readFile((await download.path())!, "utf8");
+          expect(csv).toContain(prefix);
+          expect(csv).toContain(included);
+          expect(csv).not.toContain(excluded);
+        }
+        await queue.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitemcheckbox", { name: "Evidence", exact: true }).click();
+        await page.keyboard.press("Escape");
+        await expect(
+          queue.locator('[data-column="details"]').filter({ visible: true }),
+        ).toHaveCount(0);
+        const viewName = `Reports ${surface} ${width}`;
+        await queue.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.getByRole("menuitem", { name: "Save current view", exact: true }).click();
+        const saveView = page.getByRole("dialog", { name: "Save table view" });
+        await saveView.getByRole("textbox", { name: "View name" }).fill(viewName);
+        await saveView.getByRole("button", { name: "Save view", exact: true }).click();
+        await queue
+          .getByRole("textbox", { name: "Search reports", exact: true })
+          .fill("no-matching-report");
+        await expect(
+          eventsRegister.getByRole("textbox", { name: "Search events", exact: true }),
+        ).toHaveValue(prefix);
+        await queue.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.getByRole("menuitem", { name: new RegExp(`^${viewName} `) }).click();
+        await expect(
+          queue.getByRole("textbox", { name: "Search reports", exact: true }),
+        ).toHaveValue(prefix);
+        await page.reload();
+        await expect(
+          queue.getByRole("textbox", { name: "Search reports", exact: true }),
+        ).toHaveValue(prefix);
+        await expect(
+          eventsRegister.getByRole("textbox", { name: "Search events", exact: true }),
+        ).toHaveValue(prefix);
+        await expect(
+          queue.locator('[data-column="details"]').filter({ visible: true }),
+        ).toHaveCount(0);
+        const hiddenDownloadReady = page.waitForEvent("download");
+        await queue.locator("[data-export-table-id]").click();
+        const hiddenDownload = await hiddenDownloadReady;
+        const hiddenCsv = await readFile((await hiddenDownload.path())!, "utf8");
+        expect(hiddenCsv).not.toContain("Complete first evidence");
+        expect(hiddenCsv).toContain(prefix);
+        await queue.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitem", { name: "Show all columns", exact: true }).click();
+        await expect(page.getByRole("menu")).toHaveCount(0);
+        await queue.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: info.outputPath(`P78-register-${surface}-${width}.png`) });
         await queue
           .getByRole("button", { name: "Select visible open records", exact: true })
           .click();

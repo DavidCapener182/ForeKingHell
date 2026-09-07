@@ -761,3 +761,14 @@ Next/current: restore saved views, columns and filtered CSV controls to SharedSe
 - P80-C03 browserPASS1.4m,12surface/sizevariants, scoped full-field CSV and excluded-board check, optionalOwner hidden fromUI/CSV, saved query/columns restored through reload, Showallreachable, boardidentity/templatecancel/auditpreserved.3source testsPASS75ms independently.
 - Companion390screenshot inspected but caught menu closing transition; clean settled visual acceptance outstanding. Test now waits menu removal before screenshot, not rerun solely for screenshot. No runtime defect inferred from transition frame.
 - Publishing challenge runtime/test/tracker batch to PR59. Nextactualcontrols: moderation reports/events andPartners; main remains protected pending required checks.
+
+## Moderation retained controls — in verification
+
+- P78-C02/C03: independent report/event scopes for saved views, full-field filtered CSV and optional columns. Existing URL filters persist; saved restore clears selected records. Existing review snapshot, explicit confirmation, duplicate guard and audit actions untouched. Focusable table and mobile fields retain all record context.
+- Scoped lint/types clean; authorised browser verification owned by other agent on3116. Runtime unpublished until terminal result.
+- Challenge settled rerun PASS1.3m (/tmp/fkh-challenge-register-settled.log) and clean390companion screenshot inspected by verification agent; earlier transient screenshot limitation now resolved for that fixture.
+
+## Moderation functional verification passed
+
+- /tmp/fkh-moderation-recovered.log PASS1.5m,12variants; isolated report/event CSV, optionalEvidencehidden, saved ownviewrestore/reload, exactIDselection/partialresolution and audit checks. Initial Nextdev /surface/workbench JSONparse500 disappeared on direct307readback; no application change/error suppression used to rerun.
+- Publishing moderationqueue+source/browser tests+tracker. Latestuserinstruction is finish actualCI failures and merge main normally; wrap-only request superseded. Otheragentowns remaining source-test reconciliation batch; thisagentowns runtime Partners/performance andsolepublisher.

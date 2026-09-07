@@ -10,29 +10,53 @@ const queue = readFileSync(join(process.cwd(), "src/app/admin/moderation-queue.t
 
 describe("admin moderation desktop console source", () => {
   it("uses a shared admin moderation workbench without adding a contextual AI rail", () => {
-    expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="admin-moderation">');
+    expect(source).toContain("<PageShell>");
+    expect(source).toContain("<PageHeader");
+    expect(source).toContain('<AdminNav active="/admin/moderation" />');
+    expect(source).toContain("getAdminModerationData()");
+    expect(source.match(/<PageShell>/g)).toHaveLength(1);
+    expect(source).not.toMatch(/max-w-(?:6xl|7xl|\[1500px\])/);
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
   });
 
   it("keeps reports and events as separate exportable queue workbenches", () => {
-    for (const scope of ["admin-moderation-reports", "admin-moderation-events"]) {
-      expect(source).toContain(`data-workbench-scope="${scope}"`);
-      expect(source).toContain(`viewKey="${scope}"`);
-      expect(source).toContain(`scope="${scope}"`);
-      expect(source).toContain(`exportTableId="${scope}"`);
-      expect(source).toContain(`data-workbench-export-table="${scope}"`);
+    expect(queue).toContain(
+      'kind === "report" ? "admin-moderation-reports" : "admin-moderation-events"',
+    );
+    for (const attribute of [
+      "viewKey",
+      "scope",
+      "data-workbench-scope",
+      "data-workbench-export-table",
+    ]) {
+      expect(queue).toContain(`${attribute}={scope}`);
     }
-
-    expect(source).toContain("DataTableFrame");
-    expect(source).toContain('mainTableLabel="User reports table"');
-    expect(source).toContain('label="Moderation events table"');
-    expect(source).toContain("stickyFirstColumn");
-    expect(source).toContain("<TableCaption");
-    expect(source).toContain("tabIndex={0}");
-    expect(source.match(/<a\n      href={adminModerationSortHref/g)).toHaveLength(2);
-    expect(source).not.toContain('from "next/link"');
+    expect(queue).toContain("<DesktopWorkbenchControls");
+    expect(queue).toContain("exportFileName={`${scope}-filtered.csv`}");
+    expect(queue).toContain("localView={{");
+    expect(queue).toContain("shown.map((row) => (");
+    expect(queue).toContain("data-column={column.id}");
+    expect(queue).toContain("tabIndex={0}");
+    expect(queue).toContain("<caption");
+    for (const column of [
+      "id",
+      "label",
+      "status",
+      "targetType",
+      "targetId",
+      "reason",
+      "details",
+      "actor",
+      "reportedUser",
+      "severity",
+      "created",
+      "resolved",
+      "metadata",
+    ]) {
+      expect(queue).toContain(`id: "${column}"`);
+    }
+    expect(queue).toContain("url.searchParams.set(`${kind}Q`, next.query)");
   });
 
   it("keeps moderation bulk and row actions confirmable", () => {

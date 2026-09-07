@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { DesktopWorkbenchControls } from "@/components/app/desktop-workbench-controls";
 import { adminFormAction } from "@/app/admin/actions";
 import { AdminOperationForm } from "@/app/admin/admin-operation-form";
 import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
@@ -43,6 +44,30 @@ export function ModerationQueue({
   initialQuery?: string;
   initialStatus?: string;
 }) {
+  const scope = kind === "report" ? "admin-moderation-reports" : "admin-moderation-events";
+  const columns: { id: keyof ModerationRecord; label: string; locked?: boolean }[] = [
+    { id: "label", label: "Record", locked: true },
+    { id: "id", label: "Record ID" },
+    { id: "status", label: "Status", locked: true },
+    { id: "targetType", label: "Target type" },
+    { id: "targetId", label: "Target ID" },
+    { id: "reason", label: "Reason" },
+    { id: "details", label: "Evidence" },
+    { id: "actor", label: kind === "report" ? "Reporter ID" : "Actor ID" },
+    { id: "reportedUser", label: "Reported user" },
+    { id: "severity", label: "Severity" },
+    { id: "created", label: "Created" },
+    { id: "resolved", label: "Resolved" },
+    { id: "metadata", label: "Metadata" },
+  ];
+  const display = (row: ModerationRecord, key: keyof ModerationRecord) =>
+    key === "created"
+      ? date(row.created)
+      : key === "resolved"
+        ? row.resolved
+          ? date(row.resolved)
+          : "Not resolved"
+        : row[key];
   const ready = useClientReady();
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
@@ -120,6 +145,7 @@ export function ModerationQueue({
   );
   return (
     <section
+      data-workbench-scope={scope}
       className="grid min-w-0 gap-3 rounded-xl border p-4"
       aria-label={kind === "report" ? "User reports" : "Moderation events"}
     >
@@ -133,6 +159,35 @@ export function ModerationQueue({
           : "Detected moderation events, shown separately from user reports."}{" "}
         Filters and selection apply to these loaded records.
       </p>
+      <DesktopWorkbenchControls
+        viewKey={scope}
+        scope={scope}
+        currentViewLabel={kind === "report" ? "User reports" : "Moderation events"}
+        resultLabel={`${shown.length} matching loaded records`}
+        exportFileName={`${scope}-filtered.csv`}
+        columns={[
+          { id: "select", label: "Selection", locked: true },
+          ...columns,
+          { id: "action", label: "Review", locked: true },
+        ]}
+        localView={{
+          state: { query, status, sort, direction },
+          restore: (saved) => {
+            const next = {
+              query: saved.query ?? "",
+              status: saved.status ?? "all",
+              sort: saved.sort ?? "created",
+              direction: saved.direction === "asc" ? "asc" : "desc",
+            };
+            setQuery(next.query);
+            setStatus(next.status);
+            setSort(next.sort);
+            setDirection(next.direction);
+            setSelected([]);
+            persist(next);
+          },
+        }}
+      />
       <div className="flex flex-wrap items-end gap-2">
         <label className="grid min-w-0 flex-1 gap-1 text-sm">
           Search {kind}s
@@ -199,57 +254,63 @@ export function ModerationQueue({
         <p className="rounded-lg border p-4">No {kind}s match this view.</p>
       ) : (
         <>
-          <div className={layout.desktop}>
-            <table className="w-full text-left text-sm">
+          <div
+            className={layout.desktop}
+            role="region"
+            aria-label={`${kind === "report" ? "User reports" : "Moderation events"} table`}
+            tabIndex={0}
+          >
+            <table data-workbench-export-table={scope} className="w-full text-left text-sm">
               <caption className="sr-only">
                 Loaded {kind}s ordered by {sort}, {direction}. Only explicitly selected open records
                 can be resolved.
               </caption>
               <thead>
                 <tr>
-                  <th scope="col">Select</th>
-                  <th scope="col">Record</th>
-                  <th
-                    scope="col"
-                    aria-sort={
-                      sort === "status"
-                        ? direction === "asc"
-                          ? "ascending"
-                          : "descending"
-                        : undefined
-                    }
-                  >
-                    Status
+                  <th data-column="select" scope="col">
+                    Select
                   </th>
-                  <th scope="col">Target</th>
-                  <th scope="col">{kind === "event" ? "Severity" : "Reporter"}</th>
-                  <th
-                    scope="col"
-                    aria-sort={
-                      sort === "created"
-                        ? direction === "asc"
-                          ? "ascending"
-                          : "descending"
-                        : undefined
-                    }
-                  >
-                    Created
+                  {columns.map((column) => (
+                    <th
+                      key={column.id}
+                      data-column={column.id}
+                      scope="col"
+                      aria-sort={
+                        column.id === sort
+                          ? direction === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : undefined
+                      }
+                    >
+                      {column.label}
+                    </th>
+                  ))}
+                  <th data-column="action" scope="col">
+                    Action
                   </th>
-                  <th scope="col">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {shown.map((row) => (
                   <tr key={row.id}>
-                    <td>{checkbox(row)}</td>
-                    <th scope="row">{row.label}</th>
-                    <td>{row.status}</td>
-                    <td className="break-all">
-                      {row.targetType} · {row.targetId}
-                    </td>
-                    <td className="break-all">{kind === "event" ? row.severity : row.actor}</td>
-                    <td>{date(row.created)}</td>
-                    <td>
+                    <td data-column="select">{checkbox(row)}</td>
+                    {columns.map((column) =>
+                      column.id === "label" ? (
+                        <th key={column.id} data-column={column.id} scope="row">
+                          {row.label}
+                        </th>
+                      ) : (
+                        <td
+                          key={column.id}
+                          data-column={column.id}
+                          className="whitespace-pre-wrap break-all"
+                        >
+                          {display(row, column.id)}
+                        </td>
+                      ),
+                    )}
+                    <td data-column="action">
                       <Button
                         variant="outline"
                         disabled={!ready}
@@ -271,9 +332,17 @@ export function ModerationQueue({
                   {checkbox(row)}
                   <span className="min-w-0 break-words font-medium">{row.label}</span>
                 </div>
-                <p className="break-all text-sm">
-                  {row.status} · {row.targetType} · {row.targetId}
-                </p>
+                {columns
+                  .filter((column) => column.id !== "label")
+                  .map((column) => (
+                    <p
+                      key={column.id}
+                      data-column={column.id}
+                      className="whitespace-pre-wrap break-all text-sm"
+                    >
+                      {column.label}: {display(row, column.id)}
+                    </p>
+                  ))}
                 <Button
                   variant="outline"
                   disabled={!ready}
