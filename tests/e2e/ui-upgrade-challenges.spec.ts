@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect as baseExpect, test } from "@playwright/test";
 import postgres from "postgres";
+const expect = baseExpect.configure({ timeout: 60000 });
 test("Challenges retain all status views rules and reviewed creation on both surfaces", async ({
   page,
   context,
@@ -15,7 +16,7 @@ test("Challenges retain all status views rules and reviewed creation on both sur
     "Designated fixture only",
   );
   test.skip(info.project.name !== "chromium");
-  test.setTimeout(180000);
+  test.setTimeout(360000);
   page.setDefaultTimeout(15000);
   page.setDefaultNavigationTimeout(60000);
   const errors: string[] = [];
@@ -99,10 +100,28 @@ test("Challenges retain all status views rules and reviewed creation on both sur
         );
         await tabs.getByRole("tab", { name: /Available/ }).click();
         await expect(page).toHaveURL(/tab=available/);
+        await expect(workspace.locator("[data-challenge-row]")).toHaveCount(1);
+        await expect(workspace.locator("[data-challenge-row]")).toContainText(
+          "Available long championship",
+        );
+        await expect(
+          workspace.getByRole("button", { name: "Joining unavailable", exact: true }),
+        ).toHaveCount(0);
+        await tabs.getByRole("tab", { name: /Closed to entry/ }).click();
+        await expect(page).toHaveURL(/tab=closed/);
+        await expect(workspace.locator("[data-challenge-row]")).toHaveCount(1);
+        await expect(workspace.locator("[data-challenge-row]")).toContainText(
+          "Closed long championship",
+        );
         await expect(
           workspace.getByRole("button", { name: "Joining unavailable", exact: true }),
         ).toBeDisabled();
-        await expect(workspace.locator("[data-challenge-row]")).toHaveCount(2);
+        await page.reload();
+        await expect(tabs.getByRole("tab", { name: /Closed to entry/ })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
+        await page.addStyleTag({ content: "nextjs-portal { pointer-events: none !important; }" });
         await page.screenshot({
           path: info.outputPath(`P58-board-${surface}-${width}.png`),
           animations: "disabled",
@@ -132,7 +151,7 @@ test("Challenges retain all status views rules and reviewed creation on both sur
           fullPage: false,
         });
         await form.getByRole("button", { name: "Create reviewed challenge", exact: true }).click();
-        await expect(page).toHaveURL(/\/challenges\/[a-f0-9-]+/);
+        await expect(page).toHaveURL(/\/challenges\/[a-f0-9-]+/, { timeout: 60000 });
         const id = new URL(page.url()).pathname.split("/").pop()!;
         const [created] =
           await db`select visibility,starts_at,ends_at,challenge_rules_json from fkh_challenges where id=${id} and creator_user_id=${owner!}`;

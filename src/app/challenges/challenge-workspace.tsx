@@ -55,7 +55,9 @@ export function ChallengeWorkspace({
     setRules(null);
     setTimeout(() => rulesTrigger.current?.focus(), 0);
   };
-  const active = ["active", "available", "completed"].includes(initialTab) ? initialTab : "active";
+  const active = ["active", "available", "completed", "closed"].includes(initialTab)
+    ? initialTab
+    : "active";
   const [previousQuery, setPreviousQuery] = useState(initialQuery);
   if (previousQuery !== initialQuery) {
     setPreviousQuery(initialQuery);
@@ -63,7 +65,8 @@ export function ChallengeWorkspace({
   }
   const groups = {
     active: challenges.filter((c) => c.viewerJoined && !finished(c)),
-    available: challenges.filter((c) => !c.viewerJoined),
+    available: challenges.filter((c) => !c.viewerJoined && c.status === "open" && !finished(c)),
+    closed: challenges.filter((c) => !c.viewerJoined && (c.status !== "open" || finished(c))),
     completed: challenges
       .filter((c) => c.viewerJoined && finished(c))
       .sort(
@@ -129,7 +132,7 @@ export function ChallengeWorkspace({
         onSelectionChange={(key) => navigate(key)}
         items={Object.entries(groups).map(([key, items]) => ({
           id: key,
-          label: `${key[0].toUpperCase() + key.slice(1)} (${items.length})`,
+          label: `${key === "closed" ? "Closed to entry" : key[0].toUpperCase() + key.slice(1)} (${items.length})`,
           content:
             key === active ? (
               <div className="grid gap-3">
@@ -226,7 +229,7 @@ export function ChallengeWorkspace({
                           </div>
                         ) : null}
                         <div className="flex flex-wrap gap-2">
-                          {key === "available" ? (
+                          {key === "available" || key === "closed" ? (
                             <JoinChallenge challenge={c} />
                           ) : key === "active" ? (
                             <Button asChild className="min-h-11">

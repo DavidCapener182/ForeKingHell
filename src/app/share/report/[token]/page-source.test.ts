@@ -34,13 +34,11 @@ describe("shared coach report request-surface composition", () => {
     expect(source).not.toMatch(/lg:hidden|hidden lg:|max-lg:hidden/);
   });
 
-  it("keeps the companion privacy journey in its isolated graph", () => {
-    expect(companion).toContain("MobileCoachReportSections");
-    expect(companion).toContain("IOSDisclosureGroup");
-    expect(companion).toContain("MobileTopBar");
-    expect(companion).toContain("This link grants access only to this frozen report");
-    expect(companion).not.toContain("function ReportSections(");
-    expect(companion).not.toContain('from "@/components/ui/table"');
+  it("shares the complete frozen report and password gate with the companion surface", () => {
+    expect(companion).toContain("SharedCoachReportView");
+    expect(companion).toContain("SharedCoachReportPasswordGate");
+    expect(companion).toContain('from "./shared-coach-report-workbench"');
+    expect(workbench).toContain("This link grants access only to this frozen report");
     expect(companion).not.toMatch(/lg:hidden|hidden lg:|max-lg:hidden/);
   });
 
@@ -54,11 +52,16 @@ describe("shared coach report request-surface composition", () => {
   });
 
   it("keeps both password gates focused and keyboard friendly", () => {
-    expect(companion).toContain('headingLevel="h2"');
+    expect(companion).toContain("SharedCoachReportPasswordGate");
     expect(workbench).toContain('headingLevel="h1"');
     expect(passwordForm).toContain('autoComplete="current-password"');
     expect(passwordForm).toContain('className="min-h-11"');
-    expect(passwordForm).toContain('<Alert variant="destructive">');
+    expect(passwordForm).toMatch(
+      /<Alert\b[^>]*variant="destructive"[^>]*id="shared-report-password-error"/,
+    );
+    expect(passwordForm).toContain(
+      'aria-describedby={error ? "shared-report-password-error" : undefined}',
+    );
     expect(passwordForm).toContain("<AlertDescription");
     expect(alertSource).toContain('role="alert"');
   });

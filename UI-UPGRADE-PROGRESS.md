@@ -572,3 +572,11 @@ Other agent fresh full-unit-reconciled.json:2921total,2532pass,243failed,146pend
 P93–P98 obsolete source-string tests replaced with real async route invocation assertions for encoded IDs, repeated filters and required context; no duplicate PageShell/hash destinations retained. alias-contract-reconciled.log13PASS/4files501ms.
 
 P58 new Closed to entry UI remains uncommitted while browser finishes. First revised run caught missing disabled Join explanation (fixed); next create navigation exceeded10s while destination compiled22s; next reached final companion matrix iteration but remained in visible pending navigation beyond10s. All assertions retained; local fixture assertions now bounded60s and matrix360s. Current run challenge-status-browser-verified.log, exec1397. If this fails again, diagnose exact pending/error rather than increasing timeouts. No runtime timeout/guard changed.
+
+### P58 status regression and shared contracts verified
+
+challenge-status-browser-verified.log PASS2.1m all12surface/viewports: Available1 joinable, Closed1 retained, disabled Join/reason, URLclosed+reload, rules focus, create validation/draft/review/exact DBfields/noinvites, zero pageerrors. No source eligibility or challenge-action change. Earlier fixture cold waits documented above; bounded60s assertions, no performance acceptance. P58-C01/C03 tracker updated without resetting previous work.
+
+Shared report/twin source-contract reconciliation7PASS175ms: retain expiry/revocation/ownerjoin/token scope, canonical readOnly renderer, full mobile report reuse, password invalid-description relationship/alert semantics. Root-owned3testfiles now match current composition; prior DB/browser checks remain separate. No security gate removed.
+
+Current: continue other-agent integration queue and remaining acceptance matrices. No root browser/build running. Latest full-unit snapshot243failed/93files is historical relative to new targeted passes; do not subtract counts or claim clean suite without rerun. User instruction is keep implementing/verifying, not end with status-only response.
