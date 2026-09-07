@@ -10,7 +10,6 @@ import { requireCurrentUserId } from "@/lib/current-user";
 import { UrlBackedSessionTimeline } from "@/app/sessions/session-timeline";
 import { loadHistoryPage, HistoryLoadMore } from "@/app/sessions/history-page-data";
 import {
-  resolveSessionHistorySearchParams,
   sessionHistoryHref,
   type SessionHistorySearchParamsInput,
 } from "@/lib/session-history-search-params";
@@ -23,10 +22,15 @@ export default async function SessionsPage({
   searchParams: SessionHistorySearchParamsInput;
 }) {
   const userId = await requireCurrentUserId();
-  const { rows, total } = await loadHistoryPage(userId, searchParams, true);
-  const resolved = resolveSessionHistorySearchParams(searchParams, rows);
+  const result = await loadHistoryPage(userId, searchParams, true);
+  const { rows, total, filterOptions } = result;
 
-  if (resolved.changed) redirect(sessionHistoryHref(resolved.query));
+  const original = new URLSearchParams(
+    Object.entries(searchParams).flatMap(([key, value]) =>
+      value === undefined ? [] : Array.isArray(value) ? value.map((v) => [key, v]) : [[key, value]],
+    ),
+  ).toString();
+  if (result.query !== original) redirect(sessionHistoryHref(result.query));
 
   return (
     <PageShell>
@@ -43,8 +47,13 @@ export default async function SessionsPage({
         }
       />
 
-      {rows.length > 0 ? (
-        <UrlBackedSessionTimeline sessions={rows} accountId={userId} />
+      {result.savedTotal > 0 ? (
+        <UrlBackedSessionTimeline
+          sessions={rows}
+          accountId={userId}
+          filterOptions={filterOptions}
+          matchingTotal={total}
+        />
       ) : (
         <AppEmptyState
           icon={<CalendarDays className="size-6" aria-hidden />}
@@ -62,7 +71,14 @@ export default async function SessionsPage({
           }
         />
       )}
-      <HistoryLoadMore loaded={rows.length} total={total} query={resolved.query} />
+      <HistoryLoadMore
+        loaded={rows.length}
+        total={total}
+        savedTotal={result.savedTotal}
+        page={result.page}
+        pages={result.pages}
+        query={result.query}
+      />
     </PageShell>
   );
 }

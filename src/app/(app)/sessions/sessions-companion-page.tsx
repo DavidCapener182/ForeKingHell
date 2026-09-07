@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { loadHistoryPage, HistoryLoadMore } from "@/app/sessions/history-page-data";
 import {
-  resolveSessionHistorySearchParams,
   sessionHistoryHref,
   type SessionHistorySearchParamsInput,
 } from "@/lib/session-history-search-params";
@@ -22,10 +21,15 @@ export default async function SessionsCompanionPage({
   searchParams: SessionHistorySearchParamsInput;
 }) {
   const userId = await requireCurrentUserId();
-  const { rows: sessions, total } = await loadHistoryPage(userId, searchParams, false);
-  const resolved = resolveSessionHistorySearchParams(searchParams, sessions);
+  const result = await loadHistoryPage(userId, searchParams, false);
+  const { rows: sessions, total, filterOptions } = result;
 
-  if (resolved.changed) redirect(sessionHistoryHref(resolved.query));
+  const original = new URLSearchParams(
+    Object.entries(searchParams).flatMap(([key, value]) =>
+      value === undefined ? [] : Array.isArray(value) ? value.map((v) => [key, v]) : [[key, value]],
+    ),
+  ).toString();
+  if (result.query !== original) redirect(sessionHistoryHref(result.query));
 
   return (
     <PageShell>
@@ -39,8 +43,13 @@ export default async function SessionsCompanionPage({
         }
       />
       <MobileAppShell className="gap-4" data-sessions-companion>
-        {sessions.length > 0 ? (
-          <SessionsCompanionList sessions={sessions} accountId={userId} />
+        {result.savedTotal > 0 ? (
+          <SessionsCompanionList
+            sessions={sessions}
+            accountId={userId}
+            filterOptions={filterOptions}
+            matchingTotal={total}
+          />
         ) : (
           <AppEmptyState
             icon={<CalendarDays className="size-6" aria-hidden />}
@@ -60,7 +69,14 @@ export default async function SessionsCompanionPage({
           />
         )}
       </MobileAppShell>
-      <HistoryLoadMore loaded={sessions.length} total={total} query={resolved.query} />
+      <HistoryLoadMore
+        loaded={sessions.length}
+        total={total}
+        savedTotal={result.savedTotal}
+        page={result.page}
+        pages={result.pages}
+        query={result.query}
+      />
     </PageShell>
   );
 }

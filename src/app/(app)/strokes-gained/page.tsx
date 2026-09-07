@@ -1,21 +1,14 @@
+import { randomUUID } from "node:crypto";
+import { shotEvidenceSqlPredicate } from "@/lib/strokes-gained-practice-data";
+import {
+  sgPracticePrescription,
+  sgPracticeFingerprint,
+} from "@/lib/strokes-gained-practice-handoff";
+import { SgPracticeDraftForm } from "@/app/strokes-gained/practice-draft-form";
 import Link from "next/link";
 import styles from "@/app/strokes-gained/strokes-gained.module.css";
 import Image from "next/image";
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  gt,
-  gte,
-  inArray,
-  isNull,
-  lt,
-  lte,
-  or,
-  sql,
-  type SQL,
-} from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, isNull, lt, lte, or, type SQL } from "drizzle-orm";
 import {
   AlertTriangle,
   BarChart3,
@@ -354,7 +347,10 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
           filters={filters}
         />
 
-        <PracticeThisFirstCard summary={activeCategory ?? analysis.weakestCategory} />
+        <PracticeThisFirstCard
+          summary={activeCategory ?? analysis.weakestCategory}
+          events={data.events}
+        />
 
         <MainScoringLeak
           summary={activeCategory ?? analysis.weakestCategory}
@@ -465,21 +461,6 @@ async function getStrokesGainedData(filters: StrokesGainedFilters) {
     .limit(ANALYSIS_LIMIT);
 
   return { events };
-}
-
-function shotEvidenceSqlPredicate() {
-  return and(
-    inArray(shots.reviewStatus, ["included", "restored"]),
-    or(
-      eq(shots.reviewStatus, "restored"),
-      and(
-        eq(shots.reviewStatus, "included"),
-        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
-        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
-        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
-      ),
-    ),
-  )!;
 }
 
 function buildStrokesGainedAnalysis(events: StrokesGainedEvent[]) {
@@ -1078,9 +1059,7 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
 
                 return (
                   <g key={category.category}>
-                    <title>
-                      {category.label}: {formatSg(value)} strokes; cumulative {formatSg(after)}
-                    </title>
+                    <title>{`${category.label}: ${formatSg(value)} strokes; cumulative ${formatSg(after)}`}</title>
                     <rect
                       x={x}
                       y={y}
@@ -1152,13 +1131,21 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
   );
 }
 
-function PracticeThisFirstCard({ summary }: { summary: CategorySummary | null }) {
+function PracticeThisFirstCard({
+  summary,
+  events,
+}: {
+  summary: CategorySummary | null;
+  events: StrokesGainedEvent[];
+}) {
+  const prescription = sgPracticePrescription(summary?.category);
+  const evidence = events.filter((event) => event.category === summary?.category);
   const title = summary ? `${summary.label}: practice this first` : "Practice this first";
   const total = summary?.total ?? null;
   const hasCalculatedSignal = total !== null && (summary?.sampleSize ?? 0) > 0;
 
   return (
-    <DataPanel>
+    <DataPanel id="sg-practice-priority">
       <CardContent className="grid gap-3 p-4 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)_auto] md:items-center">
         <div>
           <StatusPill tone={total !== null && total < 0 ? "pink" : "amber"}>
@@ -1179,12 +1166,18 @@ function PracticeThisFirstCard({ summary }: { summary: CategorySummary | null })
           />
           <DataPair label="Confidence" value={hasCalculatedSignal ? "Actionable" : "Building"} />
         </div>
-        <Button asChild className="min-h-11 rounded-lg">
-          <Link href="/practice?intent=latest_weakness" prefetch={false}>
-            <Target className="size-4" />
-            Start drill
-          </Link>
-        </Button>
+        {prescription && evidence.length ? (
+          <SgPracticeDraftForm
+            category={prescription.category}
+            eventIds={evidence.map((event) => event.id)}
+            fingerprint={sgPracticeFingerprint(prescription.category, evidence)}
+            creationId={randomUUID()}
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Map category evidence before saving a focused drill.
+          </p>
+        )}
       </CardContent>
     </DataPanel>
   );
@@ -1734,7 +1727,7 @@ function HoleImpactSingle({
           </p>
           {action ? (
             <Link
-              href="/practice?intent=latest_weakness"
+              href="#sg-practice-priority"
               prefetch={false}
               className="inline-flex min-h-11 items-center text-xs font-semibold text-primary hover:underline"
             >
@@ -2346,23 +2339,10 @@ function categoryRoleDetail(category: CategorySummary) {
 }
 
 function practiceRecommendation(category: string | undefined) {
-  if (category === "tee") {
-    return "Hit 10 driver or tee-club shots with a hard fairway boundary. Track start line, side miss, and whether the next shot is playable.";
-  }
-
-  if (category === "approach") {
-    return "Build a 9-shot approach ladder from your common yardages. Score each shot by green, safe-side miss, and short-side miss.";
-  }
-
-  if (category === "short_game") {
-    return "Practise 12 chips from one landing spot and one rough lie. Track shots inside 10 feet and the miss that leaves the next shot hardest.";
-  }
-
-  if (category === "putting") {
-    return "Add first-putt distance and finish distance for each green, then practise 3, 6, and 10 foot start-line gates.";
-  }
-
-  return "Keep mapping complete rounds, then choose the lowest SG category as the first practice block.";
+  return (
+    sgPracticePrescription(category)?.drill ??
+    "Keep mapping complete rounds, then choose the lowest SG category as the first practice block."
+  );
 }
 
 function roundSignal(

@@ -32,6 +32,7 @@ export function ReportBuilder({
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
   const submitting = useRef(false);
+  const attempt = useRef<{ draft: string; id: string } | null>(null);
   const [step, setStep] = useState(0);
   const [review, setReview] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +62,11 @@ export function ReportBuilder({
     if (submitting.current || !form.current) return;
     submitting.current = true;
     const data = new FormData(form.current);
+    const draft = JSON.stringify([...data.entries()]);
+    if (!attempt.current || attempt.current.draft !== draft) {
+      attempt.current = { draft, id: crypto.randomUUID() };
+    }
+    data.set("requestId", attempt.current.id);
     startTransition(async () => {
       try {
         const result = await createCoachReportWithStateAction(data);
@@ -68,7 +74,11 @@ export function ReportBuilder({
           setError(result.error);
           return;
         }
-        if (result.shareToken) {
+        if (result.recovered) {
+          router.push("/coach/reports?recovered=1");
+          setReview(false);
+          router.refresh();
+        } else if (result.shareToken) {
           router.push(`/coach/reports?share=${encodeURIComponent(result.shareToken)}`);
           setReview(false);
           router.refresh();
@@ -79,7 +89,7 @@ export function ReportBuilder({
         }
       } catch {
         setError(
-          "Could not confirm report creation. Your selections remain here; check history before retrying.",
+          "Could not confirm report creation. Your selections remain here; retrying this draft will not create a duplicate.",
         );
       } finally {
         submitting.current = false;

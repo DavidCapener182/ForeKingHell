@@ -34,7 +34,7 @@ const dateKeyFormatter = new Intl.DateTimeFormat("en-CA", {
 export async function getRecentSessionHistory(
   userId: string,
   limit = 24,
-  options: { includeShotPatterns?: boolean } = {},
+  options: { includeShotPatterns?: boolean; sessionIds?: string[] } = {},
 ): Promise<SessionTimelineItem[]> {
   const db = getDb();
   // A session can support several plans. Pick its latest linked result before
@@ -71,7 +71,12 @@ export async function getRecentSessionHistory(
     .from(sessions)
     .leftJoin(shots, and(eq(shots.sessionId, sessions.id), eq(shots.userId, userId)))
     .leftJoin(latestLinkedPlan, eq(latestLinkedPlan.sourceSessionId, sessions.id))
-    .where(eq(sessions.userId, userId))
+    .where(
+      and(
+        eq(sessions.userId, userId),
+        options.sessionIds ? inArray(sessions.id, options.sessionIds) : undefined,
+      ),
+    )
     .groupBy(
       sessions.id,
       latestLinkedPlan.id,

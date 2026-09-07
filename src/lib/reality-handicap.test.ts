@@ -206,3 +206,27 @@ function shot(overrides: Partial<RealityHandicapShot> = {}): RealityHandicapShot
     ...overrides,
   };
 }
+
+it("exposes exact monthly model depth without filling empty months or changing the100-shot window", () => {
+  const january = rangeSet("7i", 120, 155, 5).map((shot, index) => ({
+    ...shot,
+    id: `jan-${index}`,
+    shotAt: new Date("2026-01-15"),
+    sessionId: "january",
+  }));
+  const march = rangeSet("driver", 8, 245, 8).map((shot, index) => ({
+    ...shot,
+    id: `mar-${index}`,
+    shotAt: new Date("2026-03-15"),
+    sessionId: "march",
+  }));
+  const timeline = buildRangeRealityHandicapData([...january, ...march]).estimate.timeline;
+  expect(timeline.map((item) => item.id)).toEqual(["2026-01", "2026-03"]);
+  expect(timeline[0]).toMatchObject({ sampleSize: 100, sessionCount: 1, availableShotCount: 120 });
+  expect(timeline[1]).toMatchObject({
+    sampleSize: 8,
+    sessionCount: 1,
+    availableShotCount: 8,
+    value: null,
+  });
+});

@@ -1,5 +1,5 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { DraftForm } from "@/components/untitled-ui/draft-form";
 import { Button } from "@/components/ui/button";
@@ -27,17 +27,31 @@ export function EquipmentInlineForm({
   action,
   children,
   submitLabel,
+  snapshotIdentity = false,
 }: {
   action: Action;
+  snapshotIdentity?: boolean;
   children: ReactNode;
   submitLabel: string;
 }) {
   const router = useRouter();
+  const request = useRef<{ id: string; label: string } | null>(null);
   return (
     <DraftForm
-      action={action}
+      action={(data) => {
+        if (snapshotIdentity) {
+          const label = String(data.get("label") ?? "").trim() || "Bag snapshot";
+          if (!request.current || request.current.label !== label)
+            request.current = { id: crypto.randomUUID(), label };
+          data.set("creationId", request.current.id);
+        }
+        return action(data);
+      }}
       submitLabel={submitLabel}
-      onSuccess={() => router.refresh()}
+      onSuccess={() => {
+        request.current = null;
+        router.refresh();
+      }}
       gridClassName="grid gap-3"
     >
       {children}

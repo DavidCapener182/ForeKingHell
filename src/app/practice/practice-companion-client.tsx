@@ -226,6 +226,21 @@ export function PracticeCompanionClient({
     blockCarouselApi.scrollTo(selectedIndex);
   }, [blockCarouselApi, selectedIndex]);
 
+  useEffect(() => {
+    if (!blockCarouselApi) return;
+    const viewport = blockCarouselApi.rootNode();
+    const focused = document.activeElement;
+    if (
+      focused instanceof HTMLElement &&
+      viewport.contains(focused) &&
+      focused.hasAttribute("data-practice-block")
+    ) {
+      viewport
+        .querySelector<HTMLButtonElement>(`[data-practice-block="${selectedIndex}"]`)
+        ?.focus({ preventScroll: true });
+    }
+  }, [blockCarouselApi, selectedIndex]);
+
   useMobileActivity(rangeMode, { keepNavigation: true });
 
   const syncSnapshot = useRef({
@@ -540,7 +555,7 @@ export function PracticeCompanionClient({
     >
       <PageHeader
         title="Practice"
-        description={`${plan.estimatedTimeMinutes} minutes · ${plan.blocks.length} blocks · ${activityPresentation.label}`}
+        description={`${plan.estimatedTimeMinutes} minutes · ${plan.blocks.length} ${plan.blocks.length === 1 ? "block" : "blocks"} · ${activityPresentation.label}`}
       />
       {activeMeasuredResult ? (
         <MeasuredPracticeResultCard result={activeMeasuredResult} blocks={plan.blocks} />
@@ -634,7 +649,12 @@ export function PracticeCompanionClient({
         </div>
       </section>
 
-      <PracticeSourceEvidence source={plan.sourceContext.latestPractice} />
+      <PracticeSourceEvidence
+        source={plan.sourceContext.latestPractice}
+        coachSource={Boolean(plan.generation.coachHandoff)}
+        sgSource={plan.generation.sgHandoff}
+        simulatorSource={plan.generation.simulatorHandoff}
+      />
       <Button asChild variant="outline" className="min-h-11">
         <Link
           href={`/practice?${new URLSearchParams({ editor: "full", ...(savedPlanId ? { planId: savedPlanId } : {}), ...(options.sourceSessionId ? { sourceSessionId: options.sourceSessionId } : {}), ...(options.focusClub ? { club: options.focusClub } : {}), ...(goalId ? { goalId } : {}), time: String(options.timeMinutes), intent: options.intent, energy: options.energy, session: options.sessionType, ...(options.ballCount ? { balls: String(options.ballCount) } : {}) }).toString()}`}
@@ -656,10 +676,11 @@ export function PracticeCompanionClient({
           title="Practice blocks"
           description={`${plan.blocks.length} focused tasks`}
         />
+        {/* Embla owns horizontal positioning; prevent a second native focus-scroll offset. */}
         <Carousel
           opts={{ align: "start", containScroll: "trimSnaps", dragFree: false }}
           setApi={setBlockCarouselApi}
-          className="w-full min-w-0 max-w-full"
+          className="w-full min-w-0 max-w-full [&>[data-slot=carousel-content]]:overflow-clip"
           aria-label="Practice blocks"
           data-practice-block-carousel
         >
@@ -674,6 +695,8 @@ export function PracticeCompanionClient({
                   type="button"
                   disabled={!hydrated}
                   aria-pressed={selectedIndex === index}
+                  data-practice-block={index}
+                  tabIndex={selectedIndex === index ? 0 : -1}
                   onClick={() => setSelectedIndex(index)}
                   className={cn(
                     "focus-aaa h-full min-h-36 w-full min-w-0 touch-manipulation rounded-[var(--mobile-radius-lg)] border p-4 text-left outline-none transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100",
@@ -702,7 +725,7 @@ export function PracticeCompanionClient({
             <MobileCarouselPagination
               labels={plan.blocks.map((_, index) => `block ${index + 1}`)}
               selectedIndex={selectedIndex}
-              onSelect={(index) => blockCarouselApi?.scrollTo(index)}
+              onSelect={setSelectedIndex}
               ariaLabel="Choose practice block"
             />
             <CarouselNext className="static size-11 translate-y-0 disabled:invisible" />

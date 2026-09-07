@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { closeDb } from "@/db/client";
 import {
@@ -36,6 +37,7 @@ describe.skipIf(!enabled)("report state actions", () => {
       try {
         expect(await createCoachReportWithStateAction(new FormData())).toMatchObject({ ok: false });
         const form = new FormData();
+        form.set("requestId", randomUUID());
         form.append("sections", "recent_sessions");
         form.append("sections", "raw_evidence");
         form.set("hideExactShotData", "on");
@@ -57,6 +59,28 @@ describe.skipIf(!enabled)("report state actions", () => {
         expect(report.render_config_json.passwordHash).not.toBe("Synthetic password");
         expect(link.title).toBe("My measured review");
         expect(report.snapshot_json.title).toBe(link.title);
+        const retries = await Promise.all([
+          createCoachReportWithStateAction(form),
+          createCoachReportWithStateAction(form),
+        ]);
+        for (const retry of retries)
+          expect(retry).toEqual({ ok: true, reportId: report.id, recovered: true });
+        expect(await sql`select id from fkh_content_exports where user_id=${ids[0]}`).toHaveLength(
+          1,
+        );
+        expect(await sql`select id from fkh_share_links where user_id=${ids[0]}`).toHaveLength(1);
+        form.set("password", "Different secret password");
+        expect(await createCoachReportWithStateAction(form)).toMatchObject({ ok: false });
+        form.set("password", "Synthetic password");
+        form.set("title", "Changed scope must not overwrite frozen report");
+        expect(await createCoachReportWithStateAction(form)).toMatchObject({ ok: false });
+        form.set("title", "  My measured review  ");
+        actor.id = ids[1];
+        const foreignAttempt = await createCoachReportWithStateAction(form);
+        expect(foreignAttempt.ok).toBe(true);
+        if (!foreignAttempt.ok) throw new Error("Foreign owner's independent attempt failed");
+        expect(foreignAttempt.reportId).not.toBe(report.id);
+        actor.id = ids[0];
         const revoke = new FormData();
         revoke.set("shareLinkId", link.id);
         actor.id = ids[1];
@@ -69,10 +93,43 @@ describe.skipIf(!enabled)("report state actions", () => {
         expect(
           (await sql`select revoked_at from fkh_share_links where id=${link.id}`)[0].revoked_at,
         ).not.toBeNull();
+        expect(await createCoachReportWithStateAction(form)).toEqual({
+          ok: true,
+          reportId: report.id,
+          recovered: true,
+        });
+        expect(
+          (await sql`select revoked_at from fkh_share_links where id=${link.id}`)[0].revoked_at,
+        ).not.toBeNull();
       } finally {
         vi.mocked(revalidatePath).mockReset();
         await sql`delete from fkh_users where id in ${sql(ids)}`;
       }
     },
   );
+  it("serializes simultaneous first submissions into one frozen report", async () => {
+    const [owner] =
+      await sql`insert into fkh_users(name) values('Synthetic concurrent report owner') returning id`;
+    actor.id = owner.id;
+    try {
+      const form = new FormData();
+      form.set("requestId", randomUUID());
+      form.append("sections", "recent_sessions");
+      const results = await Promise.all([
+        createCoachReportWithStateAction(form),
+        createCoachReportWithStateAction(form),
+      ]);
+      expect(results.every((result) => result.ok)).toBe(true);
+      expect(results.filter((result) => result.ok && result.shareToken)).toHaveLength(1);
+      expect(results.filter((result) => result.ok && result.recovered)).toHaveLength(1);
+      expect(await sql`select id from fkh_content_exports where user_id=${owner.id}`).toHaveLength(
+        1,
+      );
+      expect(await sql`select id from fkh_share_links where user_id=${owner.id}`).toHaveLength(1);
+      form.set("requestId", "invalid");
+      expect(await createCoachReportWithStateAction(form)).toMatchObject({ ok: false });
+    } finally {
+      await sql`delete from fkh_users where id=${owner.id}`;
+    }
+  });
 });

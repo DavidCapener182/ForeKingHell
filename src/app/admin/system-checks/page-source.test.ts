@@ -15,7 +15,7 @@ const retrySource = readFileSync(
 describe("admin system checks desktop console source", () => {
   it("loads protected operational evidence and preserves dated history", () => {
     expect(source).toContain("getAdminOperationsSnapshot()");
-    expect(source).toContain("getAdminSystemCheckHistory()");
+    expect(source).toContain("getAdminSystemCheckHistory(requestedPage)");
     expect(source).toContain('<AdminNav active="/admin/system-checks" />');
     expect(source).toContain('title="System health console"');
     expect(source).toContain("buildSystemCheckRows(operations)");
@@ -38,7 +38,7 @@ describe("admin system checks desktop console source", () => {
       /export async function getAdminOperationsSnapshot\(\)\s*\{\s*await requireAdminUser\(\)/,
     );
     expect(historySource).toMatch(
-      /export async function getAdminSystemCheckHistory\(\)\s*\{\s*await requireAdminUser\(\)/,
+      /export async function getAdminSystemCheckHistory\([^)]*\)\s*\{\s*await requireAdminUser\(\)/,
     );
 
     for (const area of [

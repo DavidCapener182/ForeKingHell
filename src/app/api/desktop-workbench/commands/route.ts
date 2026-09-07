@@ -130,7 +130,7 @@ export async function GET() {
     return NextResponse.json({ items });
   } catch (error) {
     reportServerFailure("workbench_commands_failed", error);
-    return NextResponse.json({ items: [] });
+    return NextResponse.json({ items: [] }, { status: 503 });
   }
 }
 
@@ -207,7 +207,7 @@ function sessionCommand(session: {
 
   return {
     title: `Session - ${title}`,
-    href: `/today?session=${session.id}`,
+    href: `/sessions/${session.id}`,
     detail: `${dateLabel} - ${formatSessionType(session.type)} evidence`,
     group: "Session",
     keywords: joinKeywords([

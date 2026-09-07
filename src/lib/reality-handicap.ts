@@ -84,6 +84,9 @@ export type CostlyShotGroup = {
 };
 
 export type RealityHandicapTimelineItem = {
+  sampleSize?: number;
+  sessionCount?: number;
+  availableShotCount?: number;
   id: string;
   label: string;
   value: number | null;
@@ -132,6 +135,7 @@ export type BagTruthItem = {
 };
 
 export type RangeRealityHandicapData = {
+  evidence?: { shotIds: string[]; sessionIds: string[]; sampleSize: number };
   estimate: RangeRealityHandicapEstimate;
   costlyShots: CostlyShotItem[];
   costlyShotGroups: CostlyShotGroup[];
@@ -193,7 +197,7 @@ export async function getRangeRealityHandicapData(
         shotEvidenceSqlPredicate(),
       ),
     )
-    .orderBy(desc(shots.shotAt), desc(shots.shotNumber))
+    .orderBy(desc(shots.shotAt), desc(shots.shotNumber), desc(shots.id))
     .limit(MAX_REALITY_SHOTS);
 
   return buildRangeRealityHandicapData(rows);
@@ -213,6 +217,13 @@ export function buildRangeRealityHandicapData(
     costlyShotGroups: buildCostlyShotGroups(usableShots),
     disasterScenarios: buildDisasterScenarios(usableShots, estimate, costlyShots),
     prescriptions: buildPracticePrescriptions(usableShots, costlyShots),
+    evidence: {
+      shotIds: usableShots.map((shot) => shot.id),
+      sessionIds: [
+        ...new Set(usableShots.flatMap((shot) => (shot.sessionId ? [shot.sessionId] : []))),
+      ],
+      sampleSize: usableShots.length,
+    },
     flightLines: buildRealityFlightLines(usableShots),
     bagTruth: buildBagTruthItems(usableShots),
   };
@@ -435,6 +446,9 @@ function buildConfidenceTimeline(
         label: monthLabel(items[0]?.date ?? null),
         value: score,
         valueLabel: formatHandicapValue(score),
+        sampleSize: monthShots.length,
+        sessionCount: sessionIds.size,
+        availableShotCount: items.length,
         confidenceScore: confidenceScore({
           usableShots: monthShots,
           clubCount: clubs.size,

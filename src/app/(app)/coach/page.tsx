@@ -1,8 +1,10 @@
+import { randomUUID } from "node:crypto";
+import { CoachPracticeDraftForm } from "@/app/coach/practice-draft-form";
+import { coachPracticeFingerprint } from "@/lib/coach-practice-handoff";
 import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
-  ArrowRight,
   Brain,
   CalendarDays,
   ChevronRight,
@@ -305,15 +307,10 @@ function CoachDiagnosis({
             </span>
           </DiagnosisRead>
           <DiagnosisRead label="Next action" icon={<Crosshair className="size-4" />}>
-            <span className="grid gap-3">
-              <span>{topClub.drill}</span>
-              <Button asChild className="w-fit" size="sm">
-                <Link href={practiceHref("latest_weakness", topClub)} prefetch={false}>
-                  Build this practice plan
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-            </span>
+            <div className="grid gap-3">
+              <p>{topClub.drill}</p>
+              <CoachPracticeAction coach={coach} card={topClub} />
+            </div>
           </DiagnosisRead>
         </div>
       </section>
@@ -360,7 +357,7 @@ function CoachDiagnosis({
           index={1}
           title={`${topClub.clubName} · ${topClub.issueLabel}`}
           detail={topClub.drill}
-          href={practiceHref("latest_weakness", topClub)}
+          action={<CoachPracticeAction coach={coach} card={topClub} />}
         />
         <CoachingPriority
           index={2}
@@ -373,6 +370,9 @@ function CoachDiagnosis({
             secondaryClub?.reason ?? "Add another comparable session before widening the plan."
           }
           href={practiceHref("confidence", secondaryClub)}
+          action={
+            secondaryClub ? <CoachPracticeAction coach={coach} card={secondaryClub} /> : undefined
+          }
         />
         <CoachingPriority
           index={3}
@@ -577,23 +577,40 @@ function EvidenceVisual({
   );
 }
 
+function CoachPracticeAction({ coach, card }: { coach: CoachSummary; card: CoachClubCard }) {
+  const drill = buildCoachDrillChallenges({ ...coach, clubCards: [card] })[0];
+  if (!drill) return null;
+  return (
+    <div className="grid min-w-0 gap-2">
+      <p className="text-sm leading-6">
+        <strong>Target:</strong> {drill.target} {drill.winCondition}
+      </p>
+      <CoachPracticeDraftForm
+        clubId={card.clubId}
+        fingerprint={coachPracticeFingerprint(card, drill)}
+        creationId={randomUUID()}
+      />
+    </div>
+  );
+}
+
 function CoachingPriority({
   index,
   title,
   detail,
   href,
+  action,
 }: {
   index: number;
   title: string;
   detail: string;
-  href: string;
+  href?: string;
+  action?: ReactNode;
 }) {
-  return (
-    <Link
-      href={href}
-      prefetch={false}
-      className="group grid grid-cols-[2rem_minmax(0,1fr)_auto] items-start gap-3 border-b px-5 py-4 last:border-b-0 hover:bg-muted/35"
-    >
+  const className =
+    "group grid grid-cols-[2rem_minmax(0,1fr)_auto] items-start gap-3 border-b px-5 py-4 last:border-b-0 hover:bg-muted/35";
+  const content = (
+    <>
       <span className="grid size-7 place-items-center rounded-full bg-muted text-xs font-semibold text-foreground">
         {index}
       </span>
@@ -601,7 +618,16 @@ function CoachingPriority({
         <span className="block font-semibold text-foreground">{title}</span>
         <span className="mt-1 block text-sm leading-5 text-muted-foreground">{detail}</span>
       </span>
-      <ChevronRight className="mt-1 size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      {action ?? (
+        <ChevronRight className="mt-1 size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      )}
+    </>
+  );
+  return action ? (
+    <div className="grid gap-3 border-b px-5 py-4 last:border-b-0">{content}</div>
+  ) : (
+    <Link href={href!} prefetch={false} className={className}>
+      {content}
     </Link>
   );
 }

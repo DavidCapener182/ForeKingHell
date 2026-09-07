@@ -66,7 +66,10 @@ describe("Phase 5 product-page contract", () => {
       expect(coach).toContain(`label="${label}"`);
     }
     expect(coach).toContain("Supporting evidence");
-    expect(coach).toContain('practiceHref("latest_weakness", topClub)');
+    expect(coach).toContain("<CoachPracticeAction coach={coach} card={topClub} />");
+    expect(coach).toContain("{drill.target} {drill.winCondition}");
+    const draftForm = source("src/app/coach/practice-draft-form.tsx");
+    expect(draftForm).toContain("Save this drill as a practice draft");
     expect(coach).toContain("topClub.drill");
     expect(coach).not.toContain('label="Expected gain"');
   });

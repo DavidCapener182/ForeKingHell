@@ -12,6 +12,7 @@ export type AppNavItem = {
   label: string;
   icon: AppRouteMetadata["icon"];
   badge?: string;
+  searchKeywords?: string[];
   isActive: (pathname: string) => boolean;
 };
 
@@ -26,6 +27,7 @@ function toNavItem(item: AppRouteMetadata): AppNavItem {
     label: item.shortTitle,
     icon: item.icon,
     badge: item.badge,
+    searchKeywords: [item.pageTitle, ...item.searchAliases],
     isActive: (pathname) => findRouteMetadata(pathname)?.id === item.id,
   };
 }
@@ -95,6 +97,10 @@ const adminIds = [
 ] as const;
 
 export function buildDesktopNavGroups(isAdmin: boolean): AppNavGroup[] {
+  return buildNavGroups(isAdmin, false);
+}
+
+function buildNavGroups(isAdmin: boolean, includeSecondary: boolean): AppNavGroup[] {
   const availableIds = new Set(routesAvailableTo(isAdmin).map((route) => route.id));
   const definitions = [
     ...desktopAreaDefinitions,
@@ -109,6 +115,7 @@ export function buildDesktopNavGroups(isAdmin: boolean): AppNavGroup[] {
         .map((id) => itemFor(id))
         .filter(
           (item) =>
+            includeSecondary ||
             appRouteMetadata.find((route) => route.route === item.href)?.desktopVisible !== false,
         ),
     }))
@@ -139,7 +146,7 @@ export const mobilePrimaryItems: AppNavItem[] = mobilePrimaryDefinitions.map(
  */
 export function buildMobileMoreGroups(isAdmin = false): AppNavGroup[] {
   const primaryRoutes = new Set(mobilePrimaryItems.map((item) => item.href));
-  const groups = buildDesktopNavGroups(isAdmin)
+  const groups = buildNavGroups(isAdmin, true)
     .map((group) => ({
       ...group,
       items: group.items

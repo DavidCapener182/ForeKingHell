@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Item, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
 import { PageHeader, PageShell } from "@/components/premium";
+import { feedPageHref, validFeedDate } from "@/lib/feed-pagination";
 import { getFeedPageData } from "@/lib/social";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,8 @@ type FeedPageProps = {
     q?: string;
     from?: string;
     to?: string;
+    after?: string;
+    before?: string;
   }>;
 };
 
@@ -32,23 +35,12 @@ type FeedFilter = "following" | "friends" | "groups" | "achievements" | "me" | "
 export default async function FeedPage({ searchParams }: FeedPageProps) {
   const params = await searchParams;
   const activeFilter = parseFeedFilter(params?.filter);
-  const data = await getFeedPageData();
-  const scopedItems = filterFeedItems(data.items, activeFilter, {
-    viewerUserId: data.viewerUserId,
-    friendIds: data.friendIds,
-    followingIds: data.followingIds,
-  });
   const query = params?.q?.trim() ?? "";
   const from = validDate(params?.from);
   const to = validDate(params?.to);
-  const filteredItems = scopedItems.filter(
-    (item) =>
-      `${item.profile.displayName} ${item.profile.username} ${item.headline} ${item.context ?? ""} ${item.metricLabel ?? ""} ${item.metricValue ?? ""}`
-        .toLowerCase()
-        .includes(query.toLowerCase()) &&
-      (!from || item.createdAt.toISOString().slice(0, 10) >= from) &&
-      (!to || item.createdAt.toISOString().slice(0, 10) <= to),
-  );
+  const options = { filter: activeFilter, query, from, to };
+  const data = await getFeedPageData({ ...options, after: params?.after, before: params?.before });
+  const filteredItems = data.items;
   const exportHref = buildFeedActivityCsvHref(filteredItems);
 
   return (
@@ -115,7 +107,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                     Latest activity
                   </h2>
                   <p className="text-xs text-muted-foreground">
-                    Newest first · up to 40 loaded visible activities
+                    Newest first · 40 activities per page
                   </p>
                 </div>
                 <Badge variant="outline">
@@ -134,6 +126,36 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                 exportItemCount={filteredItems.length}
               />
               <FeedCardList items={filteredItems} />
+              <nav aria-label="Activity pages" className="flex flex-wrap items-center gap-3">
+                {data.newerCursor ? (
+                  <Button asChild variant="outline">
+                    <Link
+                      href={feedPageHref({ ...options, before: data.newerCursor })}
+                      prefetch={false}
+                    >
+                      Newer activity
+                    </Link>
+                  </Button>
+                ) : null}
+                {data.olderCursor ? (
+                  <Button asChild variant="outline">
+                    <Link
+                      href={feedPageHref({ ...options, after: data.olderCursor })}
+                      prefetch={false}
+                    >
+                      Older activity
+                    </Link>
+                  </Button>
+                ) : null}
+                {params?.after || params?.before ? (
+                  <Link
+                    className="focus-aaa min-h-11 inline-flex items-center"
+                    href={feedPageHref(options)}
+                  >
+                    Newest activity
+                  </Link>
+                ) : null}
+              </nav>
             </section>
           </div>
 
@@ -258,38 +280,8 @@ function parseFeedFilter(value: string | undefined): FeedFilter {
   return feedFilters.some((filter) => filter.key === value) ? (value as FeedFilter) : "following";
 }
 
-function filterFeedItems(
-  items: Awaited<ReturnType<typeof getFeedPageData>>["items"],
-  filter: FeedFilter,
-  network: { viewerUserId: string; friendIds: string[]; followingIds: string[] },
-) {
-  const friendIds = new Set(network.friendIds);
-  const followingIds = new Set(network.followingIds);
-
-  switch (filter) {
-    case "following":
-      return items.filter(
-        (item) => item.userId === network.viewerUserId || followingIds.has(item.userId),
-      );
-    case "friends":
-      return items.filter((item) => friendIds.has(item.userId));
-    case "groups":
-      return items.filter((item) => item.itemType.startsWith("group_"));
-    case "achievements":
-      return items.filter(
-        (item) => item.itemType === "achievement_unlock" || item.itemType === "level_up",
-      );
-    case "me":
-      return items.filter((item) => item.userId === network.viewerUserId);
-    default:
-      return items;
-  }
-}
-
 const numberFormatter = new Intl.NumberFormat("en-GB");
 
 function validDate(value?: string) {
-  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value))
-    ? value
-    : "";
+  return validFeedDate(value) ?? "";
 }

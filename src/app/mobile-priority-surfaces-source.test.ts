@@ -48,7 +48,9 @@ describe("priority authenticated responsive surfaces", () => {
   it("bounds the real companion practice carousel to the phone viewport", () => {
     expect(practiceCompanionSource).toContain("<PageHeader");
     expect(practiceCompanionSource).toContain("<Carousel");
-    expect(practiceCompanionSource).toContain('className="w-full min-w-0 max-w-full"');
+    expect(practiceCompanionSource).toContain(
+      'className="w-full min-w-0 max-w-full [&>[data-slot=carousel-content]]:overflow-clip"',
+    );
     expect(practiceCompanionSource).toContain("basis-[calc(100%-2rem)]");
     expect(practiceCompanionSource).toContain("<Textarea");
     expect(practiceCompanionSource).not.toContain("<textarea");

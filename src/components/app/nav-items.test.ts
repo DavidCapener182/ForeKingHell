@@ -56,6 +56,14 @@ describe("application navigation hierarchy", () => {
       expect(actual).toContain("/billing");
       expect(actual).toContain("/providers");
       expect(actual).toContain("/equipment");
+      for (const secondary of [
+        "/rapsodo",
+        "/achievements",
+        "/feed",
+        "/social-intelligence",
+        "/analyse/session-impact",
+      ])
+        expect(actual).toContain(secondary);
       expect(actual.includes("/admin")).toBe(isAdmin);
       expect(actual.some((href) => href.startsWith("/admin/"))).toBe(isAdmin);
     }

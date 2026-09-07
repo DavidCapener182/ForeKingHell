@@ -37,7 +37,9 @@ describe("professional Coach workspace", () => {
     expect(source).toContain("index={1}");
     expect(source).toContain("index={2}");
     expect(source).toContain("index={3}");
-    expect(source).toContain('practiceHref("latest_weakness", topClub)');
+    expect(source).toContain("<CoachPracticeAction coach={coach} card={topClub} />");
+    expect(source).toContain("<CoachPracticeAction coach={coach} card={secondaryClub} />");
+    expect(source).toContain("{drill.target} {drill.winCondition}");
     expect(source).toContain('practiceHref("confidence", secondaryClub)');
     expect(source).toContain('practiceHref("scoring")');
     expect(source).not.toContain("Open in Practice");

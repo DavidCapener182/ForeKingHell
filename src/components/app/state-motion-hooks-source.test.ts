@@ -102,7 +102,9 @@ describe("authenticated app state motion hooks", () => {
     const toolbar = readSource("src/app/sessions/history-toolbar.tsx");
     expect(sessions).toContain("count={visible.length}");
     expect(toolbar).toContain('role="status"');
-    expect(toolbar).toContain("{count} of {sessions.length} loaded sessions");
+    expect(toolbar).toContain("${matchingTotal} matching sessions · ${count} on this page");
+    expect(toolbar).toContain("Searching saved history…");
+    expect(toolbar).toContain("aria-busy={pending}");
     for (const path of ["src/app/admin/admin-bulk-action-submit.tsx"]) {
       const source = readSource(path);
 

@@ -27,7 +27,11 @@ describe("strokes-gained lifecycle evidence", () => {
     "src/lib/coach-sql-context.ts",
     "src/lib/ai/user-data-chat-context.ts",
   ])("keeps manual events but filters linked shot events in %s", (path) => {
-    const consumer = source(path);
+    const consumer =
+      source(path) +
+      (path === "src/app/(app)/strokes-gained/page.tsx"
+        ? source("src/lib/strokes-gained-practice-data.ts")
+        : "");
 
     const link = consumer.indexOf("eq(shots.id, strokesGainedShotEvents.shotId)");
     const limit = consumer.indexOf(".limit(", link);

@@ -2,7 +2,7 @@
 
 import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { reportServerFailure } from "@/lib/server-observability";
@@ -21,7 +21,11 @@ import {
   users,
 } from "@/db/schema";
 import { buildCoachSummary } from "@/lib/coach";
-import { coachReportTemplates, hashReportPassword } from "@/lib/coach-report-access";
+import {
+  coachReportTemplates,
+  hashReportPassword,
+  verifyReportPassword,
+} from "@/lib/coach-report-access";
 import {
   buildCoachReportSnapshot,
   parseCoachReportSections,
@@ -37,6 +41,26 @@ const LOOKBACK_DAYS = 28;
 async function persistCoachReport(formData: FormData) {
   const db = getDb();
   const userId = await requireCurrentUserId();
+  const suppliedRequestId = formData.get("requestId");
+  if (
+    suppliedRequestId !== null &&
+    (typeof suppliedRequestId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        suppliedRequestId,
+      ))
+  ) {
+    throw new ReportInputError("This report attempt is invalid. Review the draft and try again.");
+  }
+  const requestId = typeof suppliedRequestId === "string" ? suppliedRequestId : randomUUID();
+  const requestFingerprint = createHash("sha256")
+    .update(
+      JSON.stringify(
+        [...formData.entries()]
+          .filter(([key]) => key !== "requestId" && key !== "password")
+          .sort(([a, av], [b, bv]) => a.localeCompare(b) || String(av).localeCompare(String(bv))),
+      ),
+    )
+    .digest("hex");
   let selectedSections = parseCoachReportSections(formData.getAll("sections"));
   const hideExactShotData = formData.get("hideExactShotData") === "on";
   if (hideExactShotData)
@@ -289,12 +313,13 @@ async function persistCoachReport(formData: FormData) {
   if (requestedTitle) snapshot.title = requestedTitle;
   const token = createShareToken();
   const expiryDays = parseExpiryDays(formData.get("expiryDays"));
-  const sourceId = randomUUID();
+  const sourceId = requestId;
   const template = coachReportTemplates.some((item) => item.value === formData.get("template"))
     ? String(formData.get("template"))
     : "coach";
   const accessConfig = {
     selectedSections,
+    requestFingerprint,
     template,
     passwordHash: hashReportPassword(String(formData.get("password") ?? "")),
     disableDownload: formData.get("disableDownload") === "on",
@@ -303,7 +328,40 @@ async function persistCoachReport(formData: FormData) {
     accessHistory: [] as string[],
   };
 
-  await db.transaction(async (tx) => {
+  const outcome = await db.transaction(async (tx) => {
+    // A retry may arrive concurrently or after the first response was lost.
+    // Keep the identity scoped to the authenticated owner and the frozen draft.
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${`coach-report:${userId}:${requestId}`}, 0))`,
+    );
+    const [existing] = await tx
+      .select({ id: contentExports.id, config: contentExports.renderConfigJson })
+      .from(contentExports)
+      .where(
+        and(
+          eq(contentExports.userId, userId),
+          eq(contentExports.sourceType, "coach_report"),
+          eq(contentExports.sourceId, sourceId),
+        ),
+      )
+      .limit(1);
+    if (existing) {
+      const existingConfig = record(existing.config);
+      const passwordMatches =
+        typeof existingConfig.passwordHash === "string"
+          ? verifyReportPassword(
+              String(formData.get("password") ?? ""),
+              existingConfig.passwordHash,
+            )
+          : String(formData.get("password") ?? "") === "";
+      if (existingConfig.requestFingerprint !== requestFingerprint || !passwordMatches) {
+        throw new ReportInputError(
+          "This attempt already saved a different draft. Start a new report to change its scope.",
+        );
+      }
+      // Raw share tokens are deliberately never stored or reconstructed.
+      return { reportId: existing.id, recovered: true as const };
+    }
     const [contentExport] = await tx
       .insert(contentExports)
       .values({
@@ -329,10 +387,11 @@ async function persistCoachReport(formData: FormData) {
       expiresAt: getShareExpiry(expiryDays, now),
       updatedAt: now,
     });
+    return { reportId: contentExport.id, shareToken: token };
   });
 
   refreshReportListAfterCommit();
-  return token;
+  return outcome;
 }
 
 async function persistReportRevocation(formData: FormData) {
@@ -425,17 +484,21 @@ function snapshotNumber(value: unknown) {
 
 class ReportInputError extends Error {}
 export type CoachReportFormResult =
-  | { ok: true; shareToken?: string }
+  | { ok: true; shareToken?: string; reportId?: string; recovered?: boolean }
   | { ok: false; error: string };
 export async function createCoachReportAction(formData: FormData) {
-  let token: string;
+  let outcome: Awaited<ReturnType<typeof persistCoachReport>>;
   try {
-    token = await persistCoachReport(formData);
+    outcome = await persistCoachReport(formData);
   } catch (error) {
     if (error instanceof ReportInputError) redirect("/coach/reports?error=select_sections");
     throw error;
   }
-  redirect(`/coach/reports?share=${encodeURIComponent(token)}`);
+  redirect(
+    outcome.shareToken
+      ? `/coach/reports?share=${encodeURIComponent(outcome.shareToken)}`
+      : "/coach/reports?recovered=1",
+  );
 }
 export async function revokeCoachReportAction(formData: FormData) {
   await persistReportRevocation(formData);
@@ -444,7 +507,7 @@ export async function createCoachReportWithStateAction(
   formData: FormData,
 ): Promise<CoachReportFormResult> {
   try {
-    return { ok: true, shareToken: await persistCoachReport(formData) };
+    return { ok: true, ...(await persistCoachReport(formData)) };
   } catch (error) {
     return reportFormFailure(error);
   }

@@ -36,7 +36,7 @@ export function FeedFilterControls({
         {from ? <input type="hidden" name="from" value={from} /> : null}
         {to ? <input type="hidden" name="to" value={to} /> : null}
         <Label className="min-w-0 flex-1">
-          Search loaded activity
+          Search activity
           <Input name="q" defaultValue={query} placeholder="Golfer, update or result" />
         </Label>
         <Button type="submit" disabled={!ready} className="self-end">
@@ -60,7 +60,7 @@ export function FeedFilterControls({
         </p>
         {from || to ? (
           <p className="text-sm">
-            {from || "Earliest loaded"} to {to || "Latest loaded"} · UTC dates
+            {from || "Earliest"} to {to || "Latest"} · UTC dates
           </p>
         ) : null}
         {count || query ? (
@@ -70,7 +70,7 @@ export function FeedFilterControls({
         ) : null}
         <Button asChild variant="outline">
           <a href={exportHref} download={exportFileName}>
-            Export {exportItemCount} as CSV
+            Export this page ({exportItemCount}) as CSV
           </a>
         </Button>
       </div>
