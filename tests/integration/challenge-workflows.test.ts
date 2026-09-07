@@ -1,7 +1,13 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { closeDb } from "@/db/client";
-import { createChallenge, joinChallenge, leaveChallenge, getChallengeDetailData } from "@/lib/challenges";
+import {
+  inviteFriendToChallenge,
+  createChallenge,
+  joinChallenge,
+  leaveChallenge,
+  getChallengeDetailData,
+} from "@/lib/challenges";
 const actor = vi.hoisted(() => ({ id: "" }));
 vi.mock("@/lib/current-user", () => ({ requireCurrentUserId: async () => actor.id }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -28,23 +34,65 @@ describe.skipIf(!enabled)("imported challenge workflow", () => {
     await sql.end();
   });
   it("rejects unavailable joins and invalid creation dates without adding records", async () => {
-    ids = (await sql`insert into fkh_users(name) values('Synthetic challenge creator'),('Synthetic challenger') returning id`).map((r) => r.id);
+    ids = (
+      await sql`insert into fkh_users(name) values('Synthetic challenge creator'),('Synthetic challenger') returning id`
+    ).map((r) => r.id);
     actor.id = ids[1];
-    templateId = (await sql`insert into fkh_challenge_templates(slug,name,description,challenge_type,rules_json) values(${crypto.randomUUID()},'Synthetic dates','Fixture','longest_drive','{}'::jsonb) returning id`)[0].id;
+    templateId = (
+      await sql`insert into fkh_challenge_templates(slug,name,description,challenge_type,rules_json) values(${crypto.randomUUID()},'Synthetic dates','Fixture','longest_drive','{}'::jsonb) returning id`
+    )[0].id;
+    const [friendA, friendB] = [...ids].sort();
+    await sql`insert into fkh_friendships(user_a_id,user_b_id) values(${friendA},${friendB})`;
     for (const status of ["closed", "draft", "completed", "open"]) {
-      const id = (await sql`insert into fkh_challenges(template_id,creator_user_id,title,visibility,status,starts_at,ends_at) values(${templateId},${ids[0]},'Synthetic unavailable','public',${status},now()-interval '2 days',now()-interval '1 day') returning id`)[0].id;
-      if (status !== "open") await sql`update fkh_challenges set ends_at=now()+interval '1 day' where id=${id}`;
+      const id = (
+        await sql`insert into fkh_challenges(template_id,creator_user_id,title,visibility,status,starts_at,ends_at) values(${templateId},${ids[0]},'Synthetic unavailable','public',${status},now()-interval '2 days',now()-interval '1 day') returning id`
+      )[0].id;
+      if (status !== "open")
+        await sql`update fkh_challenges set ends_at=now()+interval '1 day' where id=${id}`;
       await expect(joinChallenge(id)).rejects.toThrow("This challenge is no longer open to join.");
-      expect(await sql`select id from fkh_challenge_entries where challenge_id=${id}`).toHaveLength(0);
+      expect(await sql`select id from fkh_challenge_entries where challenge_id=${id}`).toHaveLength(
+        0,
+      );
+      actor.id = ids[0];
+      await expect(inviteFriendToChallenge(id, ids[1])).rejects.toThrow(
+        "This challenge is no longer open to invitations.",
+      );
+      expect(await sql`select id from fkh_challenge_invites where challenge_id=${id}`).toHaveLength(
+        0,
+      );
+      actor.id = ids[1];
     }
     for (const [startsAt, endsAt] of [
       [new Date("2026-09-10"), new Date("2026-09-09")],
       [new Date("2026-09-10"), new Date("2026-09-10")],
       [new Date("invalid"), new Date("2026-09-10")],
     ]) {
-      await expect(createChallenge({ templateId, title: "Invalid dates", visibility: "public", startsAt, endsAt })).rejects.toThrow(/Challenge dates/);
+      await expect(
+        createChallenge({
+          templateId,
+          title: "Invalid dates",
+          visibility: "public",
+          startsAt,
+          endsAt,
+        }),
+      ).rejects.toThrow(/Challenge dates/);
     }
-    expect(await sql`select id from fkh_challenges where creator_user_id=${actor.id}`).toHaveLength(0);
+    expect(await sql`select id from fkh_challenges where creator_user_id=${actor.id}`).toHaveLength(
+      0,
+    );
+    const openId = (
+      await sql`insert into fkh_challenges(template_id,creator_user_id,title,visibility,status,starts_at,ends_at) values(${templateId},${ids[0]},'Synthetic open invitation','public','open',now(),now()+interval '1 day') returning id`
+    )[0].id;
+    await expect(inviteFriendToChallenge(openId, ids[0])).rejects.toThrow(
+      "Only the challenge creator can invite friends.",
+    );
+    actor.id = ids[0];
+    await inviteFriendToChallenge(openId, ids[1]);
+    await inviteFriendToChallenge(openId, ids[1]);
+    const invitations =
+      await sql`select invitee_user_id,status from fkh_challenge_invites where challenge_id=${openId}`;
+    expect(invitations).toHaveLength(1);
+    expect(invitations[0]).toMatchObject({ invitee_user_id: ids[1], status: "pending" });
   });
   it("updates the joined leaderboard from eligible imported shots and removes a departed entrant", async () => {
     ids = (
@@ -72,7 +120,9 @@ describe.skipIf(!enabled)("imported challenge workflow", () => {
     ] as const)
       await sql`insert into fkh_shots(user_id,session_id,club_id,club_type,shot_at,shot_number,total_yd,review_status,source_raw_json) values(${actor.id},${sessionId},${clubId},'driver',now(),${distance},${distance},${status},'{}'::jsonb)`;
     await sql`insert into fkh_shots(user_id,session_id,club_id,club_type,shot_at,shot_number,total_yd,review_status,source_raw_json) values(${actor.id},${sessionId},${clubId},'driver',now()+interval '1 day',999,500,'included','{}'::jsonb)`;
-    const simulatedSessionId = (await sql`insert into fkh_sessions(user_id,source,type,date,raw_csv_text) values(${actor.id},'course_twin_live','simulated_course',now(),'Synthetic modelled evidence') returning id`)[0].id;
+    const simulatedSessionId = (
+      await sql`insert into fkh_sessions(user_id,source,type,date,raw_csv_text) values(${actor.id},'course_twin_live','simulated_course',now(),'Synthetic modelled evidence') returning id`
+    )[0].id;
     await sql`insert into fkh_shots(user_id,session_id,club_id,club_type,shot_at,shot_number,total_yd,quality_tag,review_status,source_raw_json) values(${actor.id},${simulatedSessionId},${clubId},'driver',now(),1,999,'modelled','included','{}'::jsonb)`;
     const detail = await getChallengeDetailData(challengeId);
     expect(detail?.attempts[0].attempt.metricValue).toBe(250);

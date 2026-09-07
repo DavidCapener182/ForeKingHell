@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-315 desktop / 315 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P59 Challenge detail**, next P60 Tournaments. 177 UI entries remain. Continue the UI pass with acceptance gaps retained.
+322 desktop / 322 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P60 Tournaments**, next P61 Tournament detail. 170 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P59 Challenge detail**, next **P60 Tournaments**. P58-C01–C06 are implemented with partial verification; acceptance remains outstanding.
+Current: **P60 Tournaments**, next **P61 Tournament detail**. P59-C01–C07 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -325,3 +325,11 @@ P58-C01–C06 implemented/partial,315 total/0fullyaccepted. Shared full responsi
 Browser challenges-browser-final.log PASS59.7s: both surfaces×six sizes,12 actual public creates preserve exact privacy/dates/template rules and zero invites. Types/lint pass,1440board+390review captures inspected. Earlier failures preserved: Rules prehydration click fixed readiness; Next development indicator overlapped Cancel, test makes only that dev portal noninteractive and asserts no pageerrors; no app click forced. Backend9targetedtests pass.
 Files: challenges/page, loading/error, new challenge-workspace.tsx, actions/date test, lib/challenges+lifecycle test, integration challenge workflow, ui-upgrade-challenges browser fixture. Outstanding per tracker: positive rank browser/search edge cases/private/friend/invitation fixtures/savefailure idempotence/immutable final snapshot/AT/zoom/theme/loadingerrors.
 Resume: load P59 seven detailed prompts only; implement full detail actions/results/evidence/comments/invitations desktop/mobile, use authorised isolated fixtures for external-style mutations. Coordinate other agent before shared backend edits. NextP60. Preserve CSV rows and regenerate Excel. Keepupgradebranch/no merge/deploy.
+
+
+## P59 Challenge detail — 7 September
+P59-C01–C07 implemented/partial;322total,0fullacceptance. Full shared page has Board/Command/Rules/Attempts/Chat, retained URL panels, desktop table/fullmobile ranked proof details, personally highlighted result, canonical qualifying source session link, joined-status confirmation, creator-only searchable review invitation and chronological confirmed comments. No arbitrary ?invite=sent success shown.
+challenge-detail-browser-role.log PASS2.2m both surfaces×six: exact250yd qualifying import rather than excluded999; textarea draft retained across tabs, confirmed save clears composer and creates one row; invitation Cancel inert/review explicit/onepending; friend JoinCancel/Join/LeaveCancel/Leave exactrows; source shot data unchanged. Types/lint pass,390workbench capture inspected. Earlier two failures were label locator absence, not proved lost draft; snapshots retained text. Native history switches now preserve mounted panels; role selector verifies input. Nextdevportal pointer interception excluded only in test; pageerrors asserted empty.
+Changed detail page, detail-sections, comment-composer, invite-review, membership-dialog and join/leave adapters; actions state wrappers and redirects; narrow invitation closed/expiry guard + tests. No external users contacted: only local synthetic fixture invitations/comments.
+Open: per-rejected-shot ledger absent/current aggregate disclosed, closed results recomputed not immutable, full tie/low-wins/multi-player browser/savedview/export/permission edge cases/idempotent comment retry/AT/zoom/theme/nativekeyboard. Broad unit snapshot now168failed/2462passed/111pending and73files failing assertions; defer reconciliation untilUIpass per user.
+Resume next: read P60 three prompts, implement tournaments index bothsurfaces with real status/scope, fullcards/table/proof detail and create CTA. Other agent owns narrow tournament join guard currently; coordinate freeze before browser. Then P61. Keep branch, trackers and existing completed work; no merge/deploy.

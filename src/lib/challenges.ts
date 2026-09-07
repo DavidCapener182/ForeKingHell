@@ -586,6 +586,10 @@ export async function inviteFriendToChallenge(challengeId: string, inviteeUserId
     throw new Error("Only the challenge creator can invite friends.");
   }
 
+  if (challenge.status !== "open" || (challenge.endsAt && challenge.endsAt <= new Date())) {
+    throw new Error("This challenge is no longer open to invitations.");
+  }
+
   if (!(await areFriends(inviterUserId, inviteeUserId))) {
     throw new Error("You can only invite friends.");
   }
