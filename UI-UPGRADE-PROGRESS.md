@@ -685,3 +685,15 @@ Next/current: restore saved views, columns and filtered CSV controls to SharedSe
 - analyse-atmosphere.log PASS34.9s: both surfaces/six sizes, loaded image/no overflow and existing provenance drawer/links. 1440desktop/360mobile screenshots inspected; types/lint clean. P22 entries remain partial acceptance.
 - Changed: Analyse page, analyse-atmosphere.module.css, ui-upgrade-analyse.spec.ts, tracker/workbook/checkpoint.
 - Next: prepare clean preview deployment snapshot for explicit Vercel upload approval (previous automatic review rejected unspecified source/config upload). Continue Best Shots selection race and session-review integration while deployment permission is unresolved.
+
+## 2026-09-07 — Preview deployment authorised and uploaded
+- User explicitly approved uploading application source, configuration and public assets to Vercel preview. Earlier automatic-review permission blocker is resolved.
+- Isolated package /tmp/fkh-upgrade-preview-20260907 contains1595 files from base5bbd6205 plus recorded working-tree UI; exact manifest output/deployment/preview-upload-manifest.json. No local credentials, fixtures, logs, git history or workbooks uploaded.
+- Explicit Vercel team selection resolved initial CLI Not authorized. Upload succeeded; preview build in progress at https://lm-world-tour-mhfaukjqw-capener182-gmailcoms-projects.vercel.app (deployment dpl_APisVN9UaM3VhvaQUMfqR2ZTXNZX). Production remains unchanged.
+- Resume: check this deployment build result before claiming ready. Local Best Shots selection race and session-review integration remain pending and are not fixed by deploying this snapshot.
+
+## 2026-09-07 — Hosted preview READY
+- https://lm-world-tour-r9rxjuxun-capener182-gmailcoms-projects.vercel.app/analyse
+- Deployment dpl_B3rfcHEvcQYMDxiTMQ8pyHGr3sUa verified READY through CLI exit0 and Vercel API; target:null confirms preview. No production alias/main changes.
+- Build compiled57s; TypeScript67s;25staticpages generated. Initial package build failed on omitted root proxy.ts; added unchanged file, verified no unresolved relative imports, manifest now1596files. No local credentials/test data uploaded.
+- Full hosted interaction/permission acceptance remains outstanding; this preview is for user review, not492-entry overall completion. Pending UI defects include Best Shots selected metric race, session-history Focus selector and remaining session-review integration.
