@@ -580,3 +580,9 @@ challenge-status-browser-verified.log PASS2.1m all12surface/viewports: Available
 Shared report/twin source-contract reconciliation7PASS175ms: retain expiry/revocation/ownerjoin/token scope, canonical readOnly renderer, full mobile report reuse, password invalid-description relationship/alert semantics. Root-owned3testfiles now match current composition; prior DB/browser checks remain separate. No security gate removed.
 
 Current: continue other-agent integration queue and remaining acceptance matrices. No root browser/build running. Latest full-unit snapshot243failed/93files is historical relative to new targeted passes; do not subtract counts or claim clean suite without rerun. User instruction is keep implementing/verifying, not end with status-only response.
+
+### Shared selected-tab resize fix
+
+Settled-page geometry check confirmed selected Closed tab clipped after1440→390resize (selected-tab-resize.log). UntitledTabs now observes strip/list size and reveals selected label without changing selection, URL or vertical scrolling. Actual regression PASS38.0s bothsurfaces×6sizes +390reload; types/lint clean (selected-tab-resize-final.log). Earlier per-viewport fullreload test exceeded180s after7passingcontexts; refactored test to test actualresize rather than repeatedcoldloads. No source workaround for hydration added.
+
+Current root: reviewed backend integration manifest, starting billing network recovery. Other agent continues source/behavioral unit reconciliation. No active root browser/build. Billing diff only catches rejected fetch/invalidJSON into existing error destinations; original realDB/mockedStripe7tests pass logbilling-state-final. No live payment or subscription creation claimed.

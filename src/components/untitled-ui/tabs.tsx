@@ -22,12 +22,20 @@ export function UntitledTabs({
   const strip = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const root = strip.current;
-    const active = root?.querySelector<HTMLElement>('[aria-selected="true"]');
-    if (!root || !active) return;
-    const left = active.offsetLeft;
-    if (left < root.scrollLeft) root.scrollLeft = left;
-    else if (left + active.offsetWidth > root.scrollLeft + root.clientWidth)
-      root.scrollLeft = left + active.offsetWidth - root.clientWidth;
+    if (!root) return;
+    const revealSelected = () => {
+      const active = root.querySelector<HTMLElement>('[aria-selected="true"]');
+      if (!active) return;
+      const left = active.offsetLeft;
+      if (left < root.scrollLeft) root.scrollLeft = left;
+      else if (left + active.offsetWidth > root.scrollLeft + root.clientWidth)
+        root.scrollLeft = left + active.offsetWidth - root.clientWidth;
+    };
+    revealSelected();
+    const observer = new ResizeObserver(revealSelected);
+    observer.observe(root);
+    if (root.firstElementChild) observer.observe(root.firstElementChild);
+    return () => observer.disconnect();
   }, [selectedKey]);
   return (
     <Tabs
