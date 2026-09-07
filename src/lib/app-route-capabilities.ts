@@ -93,11 +93,7 @@ export const mobileCapabilities = {
     "Social Intelligence is available in the full workbench.",
   ),
   profile: summaryMore(),
-  equipment: desktopOnly(
-    "Open Quick Bag",
-    "/quick-bag",
-    "Equipment setup and experiments are available in the full workbench.",
-  ),
+  equipment: companionMore(),
   rapsodo: companionMore(),
   providers: desktopOnly(
     "Import or sync",
@@ -166,7 +162,7 @@ const desktopOnlyPrefixes = [
   "/coach/workspace",
 ] as const;
 
-const companionExactRoutes = ["/courses"] as const;
+const companionExactRoutes = ["/courses", "/equipment", "/equipment/experiments"] as const;
 const companionExceptions = ["/courses/strategy"] as const;
 const summaryOnlyPrefixes = [
   "/coach",

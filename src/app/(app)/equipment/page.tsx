@@ -1,3 +1,11 @@
+import { EquipmentRecords } from "@/app/equipment/equipment-records";
+import {
+  EquipmentEditSheet,
+  EquipmentInlineForm,
+  EquipmentRetire,
+} from "@/app/equipment/equipment-form-panels";
+import { UntitledSelect } from "@/components/untitled-ui/form-controls";
+import { UrlTabs } from "@/components/untitled-ui/url-tabs";
 import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
@@ -8,7 +16,6 @@ import {
   CalendarDays,
   CircleDot,
   Gauge,
-  Save,
   ShieldCheck,
   Sparkles,
   Target,
@@ -17,16 +24,13 @@ import {
 } from "lucide-react";
 
 import {
-  captureEquipmentSnapshotAction,
-  createBallModelAction,
-  retireClubAction,
-  saveEquipmentHistoryAction,
+  captureEquipmentSnapshotWithStateAction,
+  createBallModelWithStateAction,
+  saveEquipmentHistoryWithStateAction,
 } from "@/app/equipment/actions";
 import { BagOrderForm, type BagOrderClubItem } from "@/app/equipment/bag-order-form";
 import { BagFeaturePanel } from "@/components/features/feature-panels";
-import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
 import { ClubArtwork } from "@/components/visuals/club-artwork";
-import { PageArtwork } from "@/components/visuals/page-artwork";
 import {
   DataPanel,
   DataPair,
@@ -41,13 +45,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import {
   DesktopWorkbenchLayout,
   DesktopSavedViewSuggestion,
@@ -82,6 +80,7 @@ export const dynamic = "force-dynamic";
 type EquipmentPageProps = {
   searchParams?: Promise<{
     saved?: string;
+    clubId?: string;
   }>;
 };
 
@@ -161,8 +160,8 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
 
         <PageHeader
           eyebrow={<StatusPill tone="sky">Equipment centre</StatusPill>}
-          title="My Bag"
-          description="See whether the current setup is helping your golf, where the weak window is, and what upgrade would move the bag first."
+          title="Equipment"
+          description="Manage your active setup, retain dated changes and review measured evidence separately from projected fit."
           actions={
             <Button asChild variant="outline">
               <Link href="/equipment/experiments">
@@ -171,7 +170,6 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
               </Link>
             </Button>
           }
-          visual={<PageArtwork variant="equipment" alt="" className="h-full min-h-36" priority />}
           metrics={[
             {
               label: "Bag fit",
@@ -208,117 +206,168 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
           </Alert>
         ) : null}
 
-        <CurrentSetupStrip setup={intelligence.setup} ballModel={data.ballModels[0] ?? null} />
-        <VisualBagSlotsSection
-          clubs={buildBagOrderItems(intelligence.activeProfiles)}
-          snapshots={data.snapshots}
-        />
-        <CurrentBagScorePanel intelligence={intelligence} />
-        <BagFeaturePanel data={featureData} />
-        <ClubIntelligenceSection profiles={intelligence.activeProfiles} />
-        <BagTimelineSection profiles={intelligence.activeProfiles} />
-        <EquipmentImpactSection impacts={intelligence.impacts} />
-        <BagBuilderSection scenarios={intelligence.builderScenarios} />
-
-        {intelligence.retiredProfiles.length > 0 ? (
-          <ClubHistorySection
-            retiredProfiles={intelligence.retiredProfiles}
-            activeProfiles={intelligence.activeProfiles}
-          />
-        ) : null}
-
-        <section id="equipment-forms" className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-          <DataPanel>
-            <SectionHeader
-              title="Add ball model"
-              description="Use this when you switch balls and want to compare before/after launch data."
-              action={<CircleDot className="size-5 text-primary" />}
-            />
-            <CardContent>
-              <form action={createBallModelAction} className="grid gap-3">
-                <FormField label="Brand" name="brand" placeholder="Titleist" />
-                <FormField label="Model" name="model" placeholder="Pro V1" required />
-                <Button type="submit" className="w-full rounded-lg sm:w-fit">
-                  <Save className="size-4" />
-                  Save ball
-                </Button>
-              </form>
-            </CardContent>
-          </DataPanel>
-
-          <DataPanel>
-            <SectionHeader
-              title="Add club specification"
-              description="Saving a new active setup automatically closes the previous active setup for that club."
-              action={<Wrench className="size-5 text-[var(--status-information-foreground)]" />}
-            />
-            <CardContent>
-              <form action={saveEquipmentHistoryAction} className="grid gap-3">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <SelectField
-                    label="Club"
-                    name="clubId"
-                    values={data.activeClubs.map((club) => ({
-                      value: club.id,
-                      label: formatClubType(club.type),
-                    }))}
+        <UrlTabs
+          label="Equipment tasks"
+          queryKey="equipmentView"
+          defaultTabKey="setup"
+          tabs={[
+            {
+              id: "setup",
+              label: "Current setup",
+              content: (
+                <div className="grid gap-4">
+                  <CurrentSetupStrip
+                    setup={intelligence.setup}
+                    ballModel={data.ballModels[0] ?? null}
                   />
-                  <SelectField
-                    label="Ball model"
-                    name="ballModelId"
-                    optionalLabel="No ball model"
-                    values={data.ballModels.map((ball) => ({
-                      value: ball.id,
-                      label: [ball.brand, ball.model].filter(Boolean).join(" "),
-                    }))}
-                  />
+                  <CurrentBagScorePanel intelligence={intelligence} />
+                  <ClubIntelligenceSection profiles={intelligence.activeProfiles} />
+                  <BagTimelineSection profiles={intelligence.activeProfiles} />
                 </div>
-                <div className="grid gap-3 sm:grid-cols-4">
-                  <FormField label="Effective from" name="effectiveFrom" type="date" />
-                  <FormField label="Loft" name="loftDeg" type="number" step="0.1" />
-                  <FormField label="Lie" name="lieDeg" type="number" step="0.1" />
-                  <FormField label="Swing weight" name="swingWeight" placeholder="D3" />
-                </div>
-                <FormField label="Shaft" name="shaft" placeholder="Project X 6.0" />
-                <FormField
-                  label="Notes"
-                  name="notes"
-                  placeholder="Grip, length, adapter setting, build notes"
+              ),
+            },
+            {
+              id: "order",
+              label: "Order & snapshots",
+              content: (
+                <VisualBagSlotsSection
+                  clubs={buildBagOrderItems(intelligence.activeProfiles)}
+                  snapshots={data.snapshots}
                 />
-                <Button type="submit" className="w-full rounded-lg sm:w-fit">
-                  <Save className="size-4" />
-                  Save specification
-                </Button>
-              </form>
-            </CardContent>
-          </DataPanel>
-        </section>
+              ),
+            },
+            {
+              id: "edit",
+              label: "Edit equipment",
+              content: (
+                <>
+                  {" "}
+                  <section id="equipment-forms" className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+                    <DataPanel>
+                      <SectionHeader
+                        title="Add ball model"
+                        description="Use this when you switch balls and want to compare before/after launch data."
+                        action={<CircleDot className="size-5 text-primary" />}
+                      />
+                      <CardContent>
+                        <EquipmentEditSheet
+                          action={createBallModelWithStateAction}
+                          title="Add ball model"
+                          description="Save the ball model for dated setup comparisons."
+                          submitLabel="Save ball"
+                        >
+                          <FormField label="Brand" name="brand" placeholder="Titleist" />
+                          <FormField label="Model" name="model" placeholder="Pro V1" required />
+                        </EquipmentEditSheet>
+                      </CardContent>
+                    </DataPanel>
 
-        {data.retiredClubs.length > 0 ? (
-          <DataPanel>
-            <SectionHeader
-              title="Retired clubs"
-              description="Clubs no longer in the active bag. Historic shots stay available for before/after comparisons."
-              action={<Archive className="size-5 text-muted-foreground" />}
-            />
-            <CardContent>
-              <RetiredClubsTable retired={data.retiredClubs} />
-            </CardContent>
-          </DataPanel>
-        ) : null}
+                    <DataPanel>
+                      <SectionHeader
+                        title="Add club specification"
+                        description="Saving a new active setup automatically closes the previous active setup for that club."
+                        action={
+                          <Wrench className="size-5 text-[var(--status-information-foreground)]" />
+                        }
+                      />
+                      <CardContent>
+                        <EquipmentEditSheet
+                          action={saveEquipmentHistoryWithStateAction}
+                          title="Add club specification"
+                          description="A new active setup closes the previous active period for this selected club."
+                          submitLabel="Save specification"
+                        >
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <SelectField
+                              label="Club"
+                              name="clubId"
+                              initialValue={params?.clubId}
+                              values={data.activeClubs.map((club) => ({
+                                value: club.id,
+                                label: formatClubType(club.type),
+                              }))}
+                            />
+                            <SelectField
+                              label="Ball model"
+                              name="ballModelId"
+                              optionalLabel="No ball model"
+                              values={data.ballModels.map((ball) => ({
+                                value: ball.id,
+                                label: [ball.brand, ball.model].filter(Boolean).join(" "),
+                              }))}
+                            />
+                          </div>
+                          <div className="grid gap-3 sm:grid-cols-4">
+                            <FormField label="Effective from" name="effectiveFrom" type="date" />
+                            <FormField label="Loft" name="loftDeg" type="number" step="0.1" />
+                            <FormField label="Lie" name="lieDeg" type="number" step="0.1" />
+                            <FormField label="Swing weight" name="swingWeight" placeholder="D3" />
+                          </div>
+                          <FormField label="Shaft" name="shaft" placeholder="Project X 6.0" />
+                          <FormField
+                            label="Notes"
+                            name="notes"
+                            placeholder="Grip, length, adapter setting, build notes"
+                          />
+                        </EquipmentEditSheet>
+                      </CardContent>
+                    </DataPanel>
+                  </section>
+                </>
+              ),
+            },
+            {
+              id: "evidence",
+              label: "Changes & projections",
+              content: (
+                <div className="grid gap-4">
+                  <EquipmentImpactSection impacts={intelligence.impacts} />
+                  <BagBuilderSection scenarios={intelligence.builderScenarios} />
+                  <BagFeaturePanel data={featureData} />
+                </div>
+              ),
+            },
+            {
+              id: "history",
+              label: "History & retired clubs",
+              content: (
+                <div className="grid gap-4">
+                  {intelligence.retiredProfiles.length > 0 ? (
+                    <ClubHistorySection
+                      retiredProfiles={intelligence.retiredProfiles}
+                      activeProfiles={intelligence.activeProfiles}
+                    />
+                  ) : null}
+                  {data.retiredClubs.length > 0 ? (
+                    <DataPanel>
+                      <SectionHeader
+                        title="Retired clubs"
+                        description="Clubs no longer in the active bag. Historic shots stay available for before/after comparisons."
+                        action={<Archive className="size-5 text-muted-foreground" />}
+                      />
+                      <CardContent>
+                        <RetiredClubsTable retired={data.retiredClubs} />
+                      </CardContent>
+                    </DataPanel>
+                  ) : null}
 
-        <DataPanel>
-          <SectionHeader
-            title="Setup history"
-            description="A timeline of club and ball setups used by the account."
-          />
-          <CardContent>
-            <EquipmentHistoryTable
-              history={data.history}
-              includeRetiredClubs={data.retiredClubs.length > 0}
-            />
-          </CardContent>
-        </DataPanel>
+                  <DataPanel>
+                    <SectionHeader
+                      title="Setup history"
+                      description="A timeline of club and ball setups used by the account."
+                    />
+                    <CardContent>
+                      <EquipmentHistoryTable
+                        history={data.history}
+                        includeRetiredClubs={data.retiredClubs.length > 0}
+                      />
+                    </CardContent>
+                  </DataPanel>
+                </div>
+              ),
+            },
+          ]}
+        />
       </DesktopWorkbenchLayout>
     </PageShell>
   );
@@ -385,7 +434,7 @@ function CurrentSetupStrip({
               </p>
             </div>
             <p className="text-xs leading-5 text-muted-foreground">
-              Current ball model for setup comparisons.
+              Latest saved ball model. Dated club setups identify which ball was used.
             </p>
           </CardContent>
         </Card>
@@ -411,22 +460,16 @@ function VisualBagSlotsSection({
       <CardContent className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
         <BagOrderForm clubs={clubs} />
         <div className="grid content-start gap-3">
-          <form
-            action={captureEquipmentSnapshotAction}
-            className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-3"
+          <EquipmentInlineForm
+            action={captureEquipmentSnapshotWithStateAction}
+            submitLabel="Capture snapshot"
           >
-            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-              <FormField label="Snapshot label" name="label" placeholder="Pre-fitting bag" />
-              <Button type="submit" className="rounded-lg">
-                <Save className="size-4" />
-                Capture
-              </Button>
-            </div>
-          </form>
+            <FormField label="Snapshot label" name="label" placeholder="Pre-fitting bag" />
+          </EquipmentInlineForm>
 
           <div className="grid gap-2">
             {snapshots.length > 0 ? (
-              snapshots.slice(0, 4).map((snapshot) => (
+              snapshots.map((snapshot) => (
                 <div
                   key={snapshot.id}
                   className="rounded-lg border border-border bg-card p-3 shadow-sm"
@@ -441,7 +484,7 @@ function VisualBagSlotsSection({
                     <StatusPill tone="sky">{snapshot.items.length} clubs</StatusPill>
                   </div>
                   <div className="mt-3 grid gap-1.5">
-                    {snapshot.items.slice(0, 4).map((item) => (
+                    {snapshot.items.map((item) => (
                       <div
                         key={`${snapshot.id}-${item.clubId}`}
                         className="flex items-center justify-between gap-3 text-sm"
@@ -476,7 +519,7 @@ function CurrentBagScorePanel({ intelligence }: { intelligence: EquipmentIntelli
     <DataPanel>
       <SectionHeader
         title="Current bag score"
-        description="The quick read on what is trusted, what is weak, and which equipment move improves the setup first."
+        description="Current measured coverage and a modelled fit assessment. Candidate improvements are projections, not observed results."
         action={
           <StatusPill tone={intelligence.bagFitTone}>
             Bag fit {intelligence.bagFitScore}%
@@ -675,11 +718,11 @@ function EquipmentImpactSection({ impacts }: { impacts: EquipmentImpact[] }) {
     <DataPanel>
       <SectionHeader
         title="Equipment intelligence"
-        description="Before/after signals answer whether the club has actually changed performance."
+        description="Observed same-slot associations, not evidence that equipment caused a change. Up to 1,600 loaded eligible shots; conditions and sessions are not matched."
         action={<ShieldCheck className="size-5 text-primary" />}
       />
       <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        {impacts.slice(0, 4).map((impact) => (
+        {impacts.map((impact) => (
           <div
             key={`${impact.clubLabel}-${impact.equipmentName}-${impact.addedLabel}`}
             className={`grid gap-3 rounded-lg border bg-card p-3 ${toneBorderClass(impact.tone)}`}
@@ -689,14 +732,40 @@ function EquipmentImpactSection({ impacts }: { impacts: EquipmentImpact[] }) {
                 <p className="font-semibold tracking-normal">{impact.equipmentName}</p>
                 <p className="text-sm text-muted-foreground">{impact.clubLabel}</p>
               </div>
-              <StatusPill tone={impact.tone}>{impact.verdict}</StatusPill>
+              <StatusPill tone="slate">
+                {impact.beforeCount < 5 || impact.afterCount < 5
+                  ? "Insufficient sample"
+                  : "Observed association"}
+              </StatusPill>
             </div>
             <div className="grid gap-2">
-              <DataPair label="Added" value={impact.addedLabel} />
+              <DataPair label="Setup boundary" value={impact.addedLabel} />
+              <DataPair
+                label="Eligible samples"
+                value={`${impact.beforeCount} before · ${impact.afterCount} after`}
+              />
               <DataPair label="Carry" value={formatDeltaYards(impact.carryDeltaYd)} />
               <DataPair label="Offline" value={formatOfflineChange(impact)} />
             </div>
-            <p className="text-sm leading-5 text-muted-foreground">{impact.detail}</p>
+            <p className="text-sm leading-5 text-muted-foreground">
+              {impact.detail} Confidence in a causal improvement is not established.
+            </p>
+            <details>
+              <summary className="min-h-11 cursor-pointer">
+                Source sessions · {impact.sourceSessionIds.length}
+              </summary>
+              <div className="grid gap-2">
+                {impact.sourceSessionIds.map((id) => (
+                  <Link
+                    key={id}
+                    href={`/sessions/${id}`}
+                    className="flex min-h-11 items-center break-all text-sm text-primary"
+                  >
+                    Session {id}
+                  </Link>
+                ))}
+              </div>
+            </details>
           </div>
         ))}
       </CardContent>
@@ -709,7 +778,7 @@ function BagBuilderSection({ scenarios }: { scenarios: BuilderScenario[] }) {
     <DataPanel>
       <SectionHeader
         title="Bag builder"
-        description="Projected fit changes for the most obvious setup moves."
+        description="Modelled candidates and assumptions, not saved clubs or measured gains. Adding equipment requires an explicit setup save."
         action={<Sparkles className="size-5 text-[var(--status-information-foreground)]" />}
       />
       <CardContent className="grid gap-3 md:grid-cols-3">
@@ -720,7 +789,7 @@ function BagBuilderSection({ scenarios }: { scenarios: BuilderScenario[] }) {
           >
             <div className="flex items-start justify-between gap-3">
               <p className="font-semibold tracking-normal">{scenario.label}</p>
-              <StatusPill tone={scenario.tone}>{scenario.score}%</StatusPill>
+              <StatusPill tone={scenario.tone}>{scenario.score}% projected fit</StatusPill>
             </div>
             <p className="text-sm leading-5 text-muted-foreground">{scenario.detail}</p>
           </div>
@@ -745,7 +814,7 @@ function ClubHistorySection({
         action={<Archive className="size-5 text-muted-foreground" />}
       />
       <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {retiredProfiles.slice(0, 6).map((profile) => {
+        {retiredProfiles.map((profile) => {
           const replacement = activeProfiles.find(
             (active) => active.club.type === profile.club.type,
           );
@@ -767,17 +836,17 @@ function ClubHistorySection({
               </div>
               <div className="grid gap-2">
                 <DataPair
-                  label="Retired"
+                  label="Last recorded shot"
                   value={
                     profile.lastShotAt ? compactDateFormatter.format(profile.lastShotAt) : "--"
                   }
                 />
                 <DataPair
-                  label="Replaced by"
+                  label="Current same-type club"
                   value={replacement ? replacement.equipmentName : "No active replacement"}
                 />
                 <DataPair
-                  label="Performance gain"
+                  label="Carry difference · unmatched samples"
                   value={gain === null ? "--" : formatDeltaYards(gain)}
                 />
               </div>
@@ -794,6 +863,19 @@ async function RetiredClubsTable({ retired }: { retired: RetiredClub[] }) {
 
   return (
     <section id="retired-clubs-table" className="grid gap-3" data-workbench-scope="retired-clubs">
+      <EquipmentRecords
+        label="retired clubs"
+        rows={retired.map((club) => ({
+          id: club.id,
+          title: `${formatClubType(club.type)} · ${formatEquipmentName(club)}`,
+          href: `/bag/${club.id}`,
+          fields: [
+            ["Status", "Retired"],
+            ["Shots", String(club.shotCount)],
+            ["Last recorded shot", formatDate(club.lastShotAt)],
+          ],
+        }))}
+      />
       <DesktopTableWorkbenchControls
         viewKey="retired-clubs"
         scope="retired-clubs"
@@ -863,26 +945,17 @@ async function RetiredClubsTable({ retired }: { retired: RetiredClub[] }) {
   );
 }
 
-function RetireClubForm({ club, compact = false }: { club: ActiveClub; compact?: boolean }) {
-  const label = [formatClubType(club.type), club.brand, club.model].filter(Boolean).join(" ");
-
+function RetireClubForm({ club }: { club: ActiveClub; compact?: boolean }) {
   return (
-    <form action={retireClubAction}>
-      <input type="hidden" name="clubId" value={club.id} />
-      <ConfirmSubmitButton
-        type="submit"
-        variant="outline"
-        size={compact ? "sm" : "default"}
-        className="min-h-11 border-destructive/35 text-destructive hover:bg-destructive/10 hover:text-destructive"
-        aria-label={`Retire ${label}`}
-        confirmTitle="Retire club"
-        confirmMessage={`Retire ${label}? The club leaves your active bag but its shot and equipment history remain available.`}
-        confirmActionLabel="Retire club"
-      >
-        <Archive className="size-4" />
-        Retire
-      </ConfirmSubmitButton>
-    </form>
+    <div className="flex flex-wrap gap-2">
+      <Button asChild variant="outline">
+        <Link href={`/equipment?equipmentView=edit&clubId=${club.id}`}>Edit specification</Link>
+      </Button>
+      <EquipmentRetire
+        id={club.id}
+        label={`${formatClubType(club.type)} ${[club.brand, club.model].filter(Boolean).join(" ")}`}
+      />
+    </div>
   );
 }
 
@@ -932,6 +1005,7 @@ async function getEquipmentData() {
         .select({
           clubId: shots.clubId,
           clubType: shots.clubType,
+          sessionId: shots.sessionId,
           shotAt: shots.shotAt,
           carryYd: shots.carryYd,
           totalYd: shots.totalYd,
@@ -950,8 +1024,7 @@ async function getEquipmentData() {
         .select()
         .from(equipmentSnapshots)
         .where(eq(equipmentSnapshots.userId, userId))
-        .orderBy(desc(equipmentSnapshots.capturedAt))
-        .limit(6),
+        .orderBy(desc(equipmentSnapshots.capturedAt)),
     ]);
 
   const evidenceShotRows = recentShotRows.filter(isShotEvidenceEligible);
@@ -1029,6 +1102,9 @@ type ClubProfile = {
 };
 type EquipmentImpact = {
   clubLabel: string;
+  beforeCount: number;
+  afterCount: number;
+  sourceSessionIds: string[];
   equipmentName: string;
   addedLabel: string;
   carryDeltaYd: number | null;
@@ -1500,6 +1576,9 @@ function buildEquipmentImpact({
 
   return {
     clubLabel: formatClubType(club.type),
+    beforeCount: before.length,
+    afterCount: after.length,
+    sourceSessionIds: [...new Set([...before, ...after].map((shot) => shot.sessionId))],
     equipmentName: formatEquipmentName(club),
     addedLabel,
     carryDeltaYd,
@@ -1850,6 +1929,23 @@ async function EquipmentHistoryTable({
       className="grid gap-3"
       data-workbench-scope="equipment-history"
     >
+      <EquipmentRecords
+        label="setup history"
+        rows={history.map((row) => ({
+          id: row.id,
+          title: `${formatDate(row.effectiveFrom)} · ${formatClubType(row.clubType ?? "")}`,
+          href: `/bag/${row.clubId}`,
+          fields: [
+            ["Effective from", formatDate(row.effectiveFrom)],
+            ["Effective to", row.effectiveTo ? formatDate(row.effectiveTo) : "Open period"],
+            ["Ball", formatBall(row.ballBrand, row.ballModel)],
+            ["Loft / lie (deg)", `${formatNumber(row.loftDeg)} / ${formatNumber(row.lieDeg)}`],
+            ["Shaft", row.shaft ?? "—"],
+            ["Swing weight", row.swingWeight ?? "—"],
+            ["Notes", row.notes ?? "—"],
+          ],
+        }))}
+      />
       <DesktopTableWorkbenchControls
         viewKey="equipment-history"
         scope="equipment-history"
@@ -1897,7 +1993,7 @@ async function EquipmentHistoryTable({
                   </TableCell>
                   <TableCell data-column="dates">
                     {formatDate(row.effectiveFrom)} -{" "}
-                    {row.effectiveTo ? formatDate(row.effectiveTo) : "current"}
+                    {row.effectiveTo ? formatDate(row.effectiveTo) : "open period"}
                   </TableCell>
                   <TableCell data-column="ball">
                     {formatBall(row.ballBrand, row.ballModel)}
@@ -1909,7 +2005,7 @@ async function EquipmentHistoryTable({
                   <TableCell data-column="swing-weight">{row.swingWeight ?? "--"}</TableCell>
                   <TableCell data-column="status">
                     <StatusPill tone={row.effectiveTo ? "slate" : "green"}>
-                      {row.effectiveTo ? "Retired" : "Active"}
+                      {row.effectiveTo ? "Closed period" : "Open period"}
                     </StatusPill>
                   </TableCell>
                 </TableRow>
@@ -1949,33 +2045,28 @@ function SelectField({
   name,
   values,
   optionalLabel,
+  initialValue,
 }: {
+  initialValue?: string;
   label: string;
   name: string;
   values: Array<{ value: string; label: string }>;
   optionalLabel?: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-medium">
-      <span>{label}</span>
-      <Select
-        name={name}
-        defaultValue={optionalLabel ? "__none__" : values[0]?.value}
-        required={!optionalLabel}
-      >
-        <SelectTrigger className="min-h-11 w-full bg-card">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {optionalLabel ? <SelectItem value="__none__">{optionalLabel}</SelectItem> : null}
-          {values.map((value) => (
-            <SelectItem key={value.value} value={value.value}>
-              {value.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </label>
+    <UntitledSelect
+      label={label}
+      name={name}
+      defaultValue={
+        values.some((item) => item.value === initialValue)
+          ? initialValue
+          : optionalLabel
+            ? "__none__"
+            : values[0]?.value
+      }
+      required={!optionalLabel}
+      options={optionalLabel ? [{ value: "__none__", label: optionalLabel }, ...values] : values}
+    />
   );
 }
 

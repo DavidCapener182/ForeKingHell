@@ -45,3 +45,7 @@
     min-width: 380px;
   }
 }
+
+.panel[data-inert] {
+  display: none;
+}
