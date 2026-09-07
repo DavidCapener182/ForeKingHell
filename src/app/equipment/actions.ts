@@ -34,7 +34,7 @@ async function persistCreateBallModel(formData: FormData) {
       },
     });
 
-  revalidatePath("/equipment");
+  refreshEquipmentPathAfterCommit("/equipment");
 }
 
 async function persistSaveEquipmentHistory(formData: FormData) {
@@ -99,8 +99,8 @@ async function persistSaveEquipmentHistory(formData: FormData) {
     });
   });
 
-  revalidatePath("/equipment");
-  revalidatePath("/bag");
+  refreshEquipmentPathAfterCommit("/equipment");
+  refreshEquipmentPathAfterCommit("/bag");
 }
 
 async function persistRetireClub(formData: FormData) {
@@ -147,11 +147,11 @@ async function persistRetireClub(formData: FormData) {
       );
   });
 
-  revalidatePath("/equipment");
-  revalidatePath("/bag");
-  revalidatePath("/dashboard");
-  revalidatePath("/progress");
-  revalidatePath("/rapsodo");
+  refreshEquipmentPathAfterCommit("/equipment");
+  refreshEquipmentPathAfterCommit("/bag");
+  refreshEquipmentPathAfterCommit("/dashboard");
+  refreshEquipmentPathAfterCommit("/progress");
+  refreshEquipmentPathAfterCommit("/rapsodo");
 }
 
 async function persistSaveBagOrder(formData: FormData) {
@@ -219,9 +219,9 @@ async function persistCaptureEquipmentSnapshot(formData: FormData) {
 }
 
 function revalidateEquipmentSurfaces() {
-  revalidatePath("/equipment");
-  revalidatePath("/bag");
-  revalidatePath("/dashboard");
+  refreshEquipmentPathAfterCommit("/equipment");
+  refreshEquipmentPathAfterCommit("/bag");
+  refreshEquipmentPathAfterCommit("/dashboard");
 }
 
 function requiredString(formData: FormData, key: string) {
@@ -348,4 +348,12 @@ export async function captureEquipmentSnapshotWithStateAction(
   formData: FormData,
 ): Promise<EquipmentFormResult> {
   return equipmentResult(() => persistCaptureEquipmentSnapshot(formData));
+}
+
+function refreshEquipmentPathAfterCommit(path: string) {
+  try {
+    revalidatePath(path);
+  } catch (error) {
+    reportServerFailure("equipment_refresh_after_commit_failed", error);
+  }
 }
