@@ -16,6 +16,7 @@ test("Shared round keeps public scorecard complete on every surface and rejects 
       info.project.name !== "chromium",
   );
   test.setTimeout(240000);
+  page.setDefaultTimeout(15000);
   const db = postgres(value!, { max: 1 });
   let owner = "";
   const errors: string[] = [];
@@ -67,6 +68,13 @@ test("Shared round keeps public scorecard complete on every surface and rejects 
         await expect(page.getByRole("rowheader", { name: "Hole 18", exact: true })).toBeAttached();
         await expect(page.getByRole("cell", { name: "2 · manual", exact: true })).toBeAttached();
         await expect(page.getByRole("button", { name: /edit|delete/i })).toHaveCount(0);
+        if (surface === "companion") {
+          await page.locator("summary").filter({ hasText: "Round details" }).click();
+          const table = page.getByRole("region", { name: "Shared scorecard table", exact: true });
+          await table.focus();
+          await page.keyboard.press("ArrowRight");
+          await expect(page.getByRole("rowheader", { name: "Hole 18", exact: true })).toBeVisible();
+        }
         await expect(page.getByText("Shared equipment note", { exact: true })).toBeVisible();
         await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
         expect(

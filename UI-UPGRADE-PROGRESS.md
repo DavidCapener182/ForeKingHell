@@ -666,3 +666,10 @@ Next/current: restore saved views, columns and filtered CSV controls to SharedSe
 - Changed: shared-session-ledger.tsx, mobile-nav.tsx, shared-account-data.ts, shared-account-data.test.ts, ui-upgrade-shared-account.spec.ts, tracker/workbook/checkpoint.
 - Current: P88 mobile shared scorecard restored as independent complete composition; browser verification running. Next: finish P88 browser/checkpoint/commit, then session history and session-detail integration.
 - Resume: preserve492 entries and upgrade branch; inspect shared-round-companion-browser.log and current scoped diffs, repair failures before recording pass. No overall acceptance claim: native AT/device/theme/zoom and wider error matrices remain open.
+
+## 2026-09-07 — Independent public mobile scorecard
+- P88-C01/C02/C03 verified current UI in both surfaces/six sizes; full acceptance remains partial. Restored independent companion graph, native pinned-hole scorecard with every permitted field, manual putt provenance, partial-result gates and native round-details disclosure. No workbench dependency or breakpoint-hidden public body.
+- Fixed actual first-run blank wide companion (MobileAppShell required private-shell surface marker) by using explicit public layout. Replaced hydration-sensitive disclosure with native details/summary.
+- shared-round-companion-native.log PASS6.2s; four source graph/privacy assertions PASS, scoped lint/types clean;360px screenshot inspected. Revoked link, noindex, no mutations, missing scores and all18rows checked. Native AT/device/theme and wider error/empty/expired cases remain open.
+- Changed: shared-round-companion.tsx, page-source.test.ts, ui-upgrade-shared-round.spec.ts, tracker/workbook/checkpoint.
+- Current/next: integrate session-history deduplication and session-detail UI. New session-history-plan-links.test.ts already PASS932ms against disposable DB; verifies2distinctsessions despite2linkedplans, latest80/100result,3shots unchanged and separate foreign history. Review remaining session-page diff/dependencies and run session-detail browser before committing that UI group.
