@@ -1,71 +1,84 @@
-import { ArrowRight, BriefcaseBusiness, CalendarDays, Flag, Target } from "lucide-react";
-
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AppSurfaceLink } from "@/components/app/app-surface-link";
-import { IOSGroupedList, IOSListRow, IOSSectionHeader } from "@/components/app/ios-mobile";
 import { findRouteMetadata } from "@/components/app/route-metadata";
-import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
-import { PageShell } from "@/components/premium";
+import { PageHeader, PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
+import { companionDestination, hasDirectCompanionRoute } from "@/lib/companion-destination";
+import { appSurfaceHref } from "@/lib/app-surface-navigation";
 
 export default async function CompanionHandoffPage({
   searchParams,
 }: {
   searchParams: Promise<{ from?: string }>;
 }) {
-  const requestedPath = safeRequestedPath((await searchParams).from);
-  const pathname = requestedPath.split("?")[0] ?? "/today";
-  const route = findRouteMetadata(pathname);
-  const title = route?.pageTitle ?? "This workspace";
-  const explanation =
-    route?.mobileExplanation ??
-    "This workspace needs the detailed filtering and larger tables available in the full site.";
-  const fallbackRoute = route?.mobileFallbackRoute ?? "/today";
-  const fallbackLabel = route?.mobileFallbackLabel ?? "Go to Today";
-
+  const requestedPath = companionDestination((await searchParams).from);
+  if (hasDirectCompanionRoute(requestedPath)) redirect(requestedPath);
+  const route = findRouteMetadata(new URL(requestedPath, "https://companion.invalid").pathname);
+  const alternatives = [
+    {
+      label: route?.mobileFallbackLabel ?? "Go to Today",
+      href: route?.mobileFallbackRoute ?? "/today",
+    },
+    { label: "Review sessions", href: "/sessions" },
+    { label: "Prepare for a round", href: "/play" },
+    { label: "Open Quick Bag", href: "/quick-bag" },
+  ];
   return (
     <PageShell>
-      <MobileAppShell className="gap-5" data-companion-desktop-handoff>
-        <MobileTopBar title="Full-site workspace" />
-
-        <section className="ios-grouped-list grid gap-4 p-5">
-          <span className="grid size-12 place-items-center rounded-2xl bg-secondary text-primary">
-            <BriefcaseBusiness className="size-6" aria-hidden />
-          </span>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-              Desktop workbench
-            </p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">
-              {title} is available on the full desktop site.
-            </h1>
-            <p className="mt-2 text-[15px] leading-6 text-muted-foreground">{explanation}</p>
+      <div className="grid min-w-0 gap-5 pb-28" data-companion-desktop-handoff>
+        <PageHeader
+          title="Choose how to continue"
+          description="This request does not yet have a complete companion task here. Open its full workspace or choose an available task below."
+          actions={
+            <Button asChild className="h-auto min-h-11 whitespace-normal">
+              <AppSurfaceLink href={appSurfaceHref("workbench", requestedPath)}>
+                Open Full Site
+              </AppSurfaceLink>
+            </Button>
+          }
+        />
+        <section
+          className="grid gap-3 rounded-xl border p-5"
+          aria-labelledby="requested-task-title"
+        >
+          <h2 id="requested-task-title" className="text-lg font-semibold">
+            {route?.pageTitle ?? "Requested workspace"}
+          </h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Your selected destination and comparison filters are retained when switching. If the
+            destination is no longer available, use one of the tasks below.
+          </p>
+          <details>
+            <summary className="min-h-11 cursor-pointer py-3 text-sm">
+              Requested destination
+            </summary>
+            <p className="break-all text-sm text-muted-foreground">{requestedPath}</p>
+          </details>
+        </section>
+        <section aria-labelledby="alternatives-title" className="grid gap-3">
+          <h2 id="alternatives-title" className="text-lg font-semibold">
+            Available companion tasks
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {alternatives
+              .filter(
+                (item, index, all) =>
+                  all.findIndex((candidate) => candidate.href === item.href) === index,
+              )
+              .map((item) => (
+                <Button
+                  key={item.href}
+                  asChild
+                  variant="outline"
+                  className="h-auto min-h-12 justify-start whitespace-normal"
+                >
+                  <Link href={item.href}>{item.label}</Link>
+                </Button>
+              ))}
           </div>
-          <Button asChild className="min-h-12 rounded-xl">
-            <AppSurfaceLink href={`/surface/workbench?next=${encodeURIComponent(requestedPath)}`}>
-              Open Full Site
-              <ArrowRight className="size-4" aria-hidden />
-            </AppSurfaceLink>
-          </Button>
         </section>
-
-        <section className="grid gap-2.5">
-          <IOSSectionHeader
-            title="Useful companion alternatives"
-            description="Keep moving with the jobs designed for the course or range."
-          />
-          <IOSGroupedList label="Companion alternatives">
-            <IOSListRow icon={Target} label={fallbackLabel} href={fallbackRoute} />
-            <IOSListRow icon={CalendarDays} label="Review latest session" href="/sessions" />
-            <IOSListRow icon={Flag} label="Prepare for a round" href="/play" />
-            <IOSListRow icon={Target} label="Open Quick Bag" href="/quick-bag" />
-          </IOSGroupedList>
-        </section>
-      </MobileAppShell>
+      </div>
     </PageShell>
   );
-}
-
-function safeRequestedPath(value: string | undefined) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/today";
-  return value;
 }

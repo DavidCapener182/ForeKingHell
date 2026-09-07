@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-475 desktop / 475 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P91 Desktop handoff**, next P92 Companion summary router. 17 UI entries remain. Continue the UI pass with acceptance gaps retained.
+477 desktop / 477 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P92 Companion summary router**, next P93 Course record redirect. 15 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P91 Desktop handoff**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P92 Companion summary router**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -484,3 +484,7 @@ P89-C01–C03 UI implemented with partial verification. Extracted shared-twin-vi
 ## P90 Shared coach report UI pass, 7 September
 
 P90-C01–C03 implemented partial on both surfaces. Full frozen report view reused on mobile, table regions labelled/focusable/pinned identity with units/rawquality, selectedscope/date, publicreturn and dedicated safe404/error/loading. Passwordstate adapter preserves exactservervalidation and cookieredirect; controlled draft/visibility/pending/inlineerror/reducedmotion. shared-report-browser-ready.log1PASS16.5s all12 surface/viewports actualsyntheticreport, wrongpassword draft retained, no prior report data, correct unlock, selectedevidence only, nooverflow/errors and revoked link hidesreport. Initial tests corrected broadNextalert locator then newadapterwording; no corresponding runtime failure. Types/lint clean;390capture inspected. Backend6unit/1DBaccess/2DBhistory tests pass; fullsection/physical/theme/AT states outstanding. Changed view/form/localboundaries/actionadapter; preserve otheragent dirty report/page.tsx/viewhistory helper. Resume P91 thenP92 then canonicalredirect routes, finally revisit7shared in-progress UI rows before broaderacceptance.
+
+## P91 Desktop handoff UI pass, 7 September
+
+P91-C01–C02 UI implemented partial. Removed mobile-only wrapper; onefullwidth title/actions/context and usefulalternatives. Existingnowdirect98documented route patterns +actualproxycapabilitygates redirect tocanonical, normalize/rejectexternal/internalself/backslash/control paths andretainquery/repeatedfilters/hash. Newcompanion-destination.ts and3unitPASS;unknown descendants do not implyknownpage. Actualbrowserall6fallback/nooverflow andexactProgressURLassertions passed, but handoff-browser-ready.log overallFAIL finalpageerror: Next Performance.measure CompanionHandoffPage negative timestamp. Sameerror repeatedafterwarmrun, no suppression/workaround; earliestredirect testtimeout wascoldrender. Types/lint clean;390capture inspected. Preserve this outstandingruntimeverificationdefect while continuing UI-first. Next P92 reusehelper/fullcontext; thenP93–P98 then7sharedUIstatus reconciliation.

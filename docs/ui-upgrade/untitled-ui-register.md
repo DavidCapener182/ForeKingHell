@@ -170,3 +170,6 @@ Previously checked official headers, select/tooltips and empty/loading/alerts. P
 
 ## P90 Shared coach report
 Checked official form, section/divider and empty/loading/alert references reused. Paid advanced examples unavailable. Accessible local alternatives: labelled stateful native password form, full frozen evidence sections, keyboard-focusable table regions with pinned identity and explicit public recovery. Existing server permission/cookie contracts retained; no paid installation.
+
+## P91 Desktop handoff
+Checked official section/badge/button domain lists and empty/loading/alerts reused. Paid advanced examples unavailable. Accessible alternative: one semantic full-width header, native preserved-context disclosure and large native route/surface links. Unsupported underlying tasks are not marked complete.
