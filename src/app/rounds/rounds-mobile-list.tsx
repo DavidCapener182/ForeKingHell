@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
+import { useRoundUrlFilter } from "./round-url-filter";
 import { ChevronRight, Flag, Search } from "lucide-react";
 
 import type { RoundsWorkspaceRound } from "@/app/rounds/rounds-workspace";
@@ -28,8 +29,8 @@ const filters: Array<{ label: string; value: RoundFilter }> = [
 ];
 
 export function RoundsMobileList({ rounds }: { rounds: RoundsWorkspaceRound[] }) {
-  const [activeFilter, setActiveFilter] = useState<RoundFilter>("all");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useRoundUrlFilter<RoundFilter>("roundType", "all");
+  const [searchTerm, setSearchTerm] = useRoundUrlFilter("q", "" as string);
   const filteredRounds = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
 

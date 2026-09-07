@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-243 desktop / 243 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P43 Rounds. Next: P44 Add round. P34 wrapped actual-app matrix passed 21.9s and P37 mocked-provider matrix passed 19.9s across both surfaces and all six requested sizes. P35/P36 earlier UI preserved. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
+247 desktop / 247 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P44 Add round. Next: P45 Round review and live scoring. P34 wrapped actual-app matrix passed 21.9s and P37 mocked-provider matrix passed 19.9s across both surfaces and all six requested sizes. P35/P36 earlier UI preserved. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
 
 # UI upgrade progress
 
@@ -263,3 +263,6 @@ P39-C01–C02 and P40-C01–C03 reconciled with canonical importer and marked im
 
 
 P42-C01–C03 now UI implemented partial. Course selections route internally to the existing canonical RapsodoSyncClient seeded with the exact preview, owned validated practicePlanId and initial scorecard/matching states. No desktop handoff. Companion quick-range preview remains mounted when closed, exposes Resume, catches thrown save errors; failed connection retains fields. Mocked course fixture PASS19.7s on12views checks exact session/plan, retained club and saved warning; final types clean. Quick-range catch follow-up not browser-exercised. CurrentP43 prompts read, current rounds-scoring-index/mobile-list inspected but not edited; coordinate ownership then implement URL-preserved filters and source-scoped trend while preserving previous redesign. NextP44.
+
+
+P43-C01–C04 UI implemented partial. Rounds preserves earlier mobile redesign and canonical review links; URL filters survive reload, desktop trend now uses existing comparableScoringRounds for same source/9-or18holes and excludes incomplete rounds. Added full trend evidence sheet, wrapped names and desktop type filter; mobile Import action now reachable. rounds-browser-ready.log PASS14.8s both surfaces x6sizes; final Import/source-label follow-up only typechecked. CurrentP44: first prompt read, remainder /tmp/fkh-p44-rest.txt must read before edits. Latest full unit refresh now134 failures/61files,2484passed/490files,83skipped (full-unit-refresh.log); full lint and fresh typecheck passed in other thread,83backendintegrationtests passed8.77s. 11bundlebudget failures remain. Nextcontinue P44/P45 without resetting any tracker state.
