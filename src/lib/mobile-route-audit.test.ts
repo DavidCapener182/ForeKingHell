@@ -49,19 +49,19 @@ describe("authenticated mobile route audit", () => {
       route: "/dashboard",
       runtimePath: "/dashboard",
       auditResolution: "redirect",
-      owner: "desktop-only",
+      owner: "companion",
     },
     {
       route: "/admin/users",
       runtimePath: "/admin/users",
       auditResolution: "redesign",
-      owner: "desktop-only",
+      owner: "companion",
     },
     {
       route: "/analyse/session-impact",
       runtimePath: "/analyse/session-impact",
       auditResolution: "specialist",
-      owner: "desktop-only",
+      owner: "companion",
     },
     {
       route: "/bag",
@@ -84,7 +84,7 @@ describe("authenticated mobile route audit", () => {
       expect(existsSync(join(root, audit!.file))).toBe(true);
       expect(audit!.resolution).toBe(auditResolution);
       expect(findRouteMetadata(runtimePath)?.mobileExperience).toBe(owner);
-      expect(isDesktopOnlyCompanionPath(runtimePath)).toBe(owner === "desktop-only");
+      expect(isDesktopOnlyCompanionPath(runtimePath)).toBe(false);
     },
   );
 });

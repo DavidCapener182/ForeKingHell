@@ -12,20 +12,21 @@ export const mobileCapabilities = {
   today: companionPrimary(),
   dashboard: companionMore(),
   sessions: companionPrimary(),
-  rounds: { mobileExperience: "summary" },
+  rounds: { mobileExperience: "companion" },
   import: companionMore(),
   courses: companionMore(),
   "course-twins": { mobileExperience: "companion" },
   "course-strategy": companionPrimary(),
   "play-companion": companionPrimary(),
   analyse: companionMore(),
-  "session-impact": desktopOnly(
+  "session-impact": companionHidden(
     "Review latest session",
     "/sessions",
     "Session-impact comparison is available in the full workbench.",
   ),
   shots: companionMore(),
   bag: companionPrimary(),
+  "best-shots": { mobileExperience: "companion" },
   compare: companionMore(),
   progress: companionMore(),
   "strokes-gained": companionMore(),
@@ -37,71 +38,71 @@ export const mobileCapabilities = {
   "quick-range": { mobileExperience: "companion" },
   speed: companionMore(),
   "training-load": companionMore(),
-  goals: summaryMore(),
+  goals: companionMore(),
   "data-chat": companionMore(),
   challenges: companionMore(),
-  tournaments: summaryMore(),
-  leaderboard: summaryMore(),
-  "course-records": desktopOnly(
+  tournaments: companionMore(),
+  leaderboard: companionMore(),
+  "course-records": companionHidden(
     "Prepare for a round",
     "/play",
     "Record administration and proof review are available in the workbench.",
   ),
-  groups: desktopOnly(
+  groups: companionHidden(
     "Open current challenges",
     "/challenges",
     "Group management is available in the full workbench.",
   ),
-  achievements: summaryMore(),
-  friends: desktopOnly(
+  achievements: companionMore(),
+  friends: companionHidden(
     "Open profile",
     "/profile",
     "Social management is available in the full workbench.",
   ),
-  feed: desktopOnly(
+  feed: companionHidden(
     "Open profile",
     "/profile",
     "The activity feed is available in the full workbench.",
   ),
-  "social-intelligence": desktopOnly(
+  "social-intelligence": companionHidden(
     "Open profile",
     "/profile",
     "Social Intelligence is available in the full workbench.",
   ),
-  profile: summaryMore(),
+  profile: companionMore(),
   equipment: companionMore(),
   rapsodo: companionMore(),
   providers: companionMore(),
   billing: companionMore(),
   settings: companionMore(),
-  notifications: summaryMore(),
-  admin: desktopOnly("Go to Today", "/today", "Administration is available in the full workbench."),
-  partners: desktopOnly(
+  notifications: companionMore(),
+  admin: companionHidden("Go to Today", "/today", "Administration is available in the full workbench."),
+  partners: companionHidden(
     "Go to Today",
     "/today",
     "Partner operations are available in the full workbench.",
   ),
-  "admin-system": desktopOnly(
+  "admin-system": companionHidden(
     "Go to Today",
     "/today",
     "System checks are available in the full workbench.",
   ),
-  "admin-users": desktopOnly(
+  "admin-users": companionHidden(
     "Go to Today",
     "/today",
     "User administration is available in the full workbench.",
   ),
-  "admin-moderation": desktopOnly(
+  "admin-moderation": companionHidden(
     "Go to Today",
     "/today",
     "Moderation is available in the full workbench.",
   ),
-  "admin-billing": desktopOnly(
+  "admin-billing": companionHidden(
     "Go to Today",
     "/today",
     "Billing operations are available in the full workbench.",
   ),
-  "admin-challenges": desktopOnly(
+  "admin-challenges": companionHidden(
     "Go to Today",
     "/today",
     "Challenge operations are available in the full workbench.",
@@ -133,7 +134,6 @@ const companionExactRoutes = ["/partners", "/admin/system-checks", "/admin/chall
 const companionExceptions = ["/profile", "/groups", "/courses/strategy"] as const;
 const summaryOnlyPrefixes = [
   "/coach",
-  "/goals",
   "/leaderboard",
   "/achievements",
 ] as const;
@@ -164,20 +164,9 @@ function companionMore(): MobileRouteCapability {
   return { mobileExperience: "companion", mobileNav: "more" };
 }
 
-function summaryMore(): MobileRouteCapability {
-  return { mobileExperience: "summary", mobileNav: "more" };
-}
-
-function desktopOnly(
-  fallbackLabel: string,
-  fallbackRoute: string,
-  explanation: string,
-): MobileRouteCapability {
-  return {
-    mobileExperience: "desktop-only",
-    mobileNav: false,
-    mobileFallbackLabel: fallbackLabel,
-    mobileFallbackRoute: fallbackRoute,
-    mobileExplanation: explanation,
-  };
+// These pages are available directly, but remain outside the mobile navigation.
+// Route authorization and unknown nested-path handoffs are controlled separately.
+function companionHidden(fallbackLabel: string, fallbackRoute: string, explanation: string): MobileRouteCapability {
+  return { mobileExperience: "companion", mobileNav: false,
+    mobileFallbackLabel: fallbackLabel, mobileFallbackRoute: fallbackRoute, mobileExplanation: explanation };
 }

@@ -552,3 +552,9 @@ Isolated production snapshot /tmp/fkh-ui-production-check-20260907: first build 
 Exact resume: read terminal build log; await other agent unit/metadata reconciliation; run strengthened Handicap browser after build ends; inspect/fix JSON stack if reproduced. Preserve branch/CSV/workbook and all other dirty source. Stage only owned card delta via /tmp/fkh-club-card-owned.patch; other agent prior club edits remain separate.
 
 Isolated production build terminal PASS: compiled2.3m, TypeScript17.7s,25static pages1.9s, traces/routes complete (isolated-production-build-types-fixed.log). This is webpack snapshot validation with synthetic auth/localDB; no live deployment or authenticated production runtime acceptance. Snapshot predates latest Handicap/Challenges/Card changes.
+
+### Integration checkpoint — Handicap and metadata
+
+handicap-link-no-errors.log PASS29.1s after strengthening pageerror assertions: all12contexts, saved-view exactURL/retainedquery/selectedtab, original shot values unchanged, zero browser errors. Earlier JSON error not reproduced, root cause unproven; do not repeat unchanged tests. Route metadata reconciled to canonical companion implementations while preserving hidden/admin nav and unknown-nested fallback fields/gates;20testsPASS1.51s plus types/lint. Root reviewed diff; prior best-shots/goals gate changes preserved.
+
+Current: other agent continues targeted unit/source-contract reconciliation; root continues acceptance and integration. No active root browser/build. Isolated production snapshot passed as qualified above. Latest source wrappers need representative UI checks; full native/AT/state matrices remain outstanding. All492rows still partial,0fullyaccepted.

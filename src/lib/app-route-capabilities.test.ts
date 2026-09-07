@@ -16,12 +16,13 @@ describe("companion route capabilities", () => {
     expect(mobileCapabilities.bag.mobileNav).toBe("primary");
   });
 
-  it("hands desktop workbenches off before their route loaders run", () => {
-    expect(isDesktopOnlyCompanionPath("/strokes-gained")).toBe(true);
-    expect(isDesktopOnlyCompanionPath("/compare")).toBe(true);
-    expect(isDesktopOnlyCompanionPath("/providers/jobs/1")).toBe(true);
-    expect(isDesktopOnlyCompanionPath("/admin/users")).toBe(true);
-    expect(isDesktopOnlyCompanionPath("/coach/reports")).toBe(true);
+  it("opens upgraded routes directly while retaining unsupported workbench handoffs", () => {
+    for (const path of ["/strokes-gained", "/compare", "/providers/jobs/1", "/admin/users", "/coach/reports"]) {
+      expect(isDesktopOnlyCompanionPath(path), path).toBe(false);
+    }
+    for (const path of ["/admin/unsupported", "/compare/unsupported", "/coach/reports/unsupported"]) {
+      expect(isDesktopOnlyCompanionPath(path), path).toBe(true);
+    }
   });
 
   it("preserves the approved companion and immersive paths", () => {
@@ -32,7 +33,7 @@ describe("companion route capabilities", () => {
     expect(isDesktopOnlyCompanionPath("/play/course-id")).toBe(false);
     expect(isDesktopOnlyCompanionPath("/courses/strategy")).toBe(false);
     expect(isDesktopOnlyCompanionPath("/courses")).toBe(false);
-    expect(isDesktopOnlyCompanionPath("/courses/course-id/holes")).toBe(true);
+    expect(isDesktopOnlyCompanionPath("/courses/course-id/holes")).toBe(false);
     expect(mobileCapabilities.courses.mobileExperience).toBe("companion");
     expect(mobileCapabilities.courses.mobileNav).toBe("more");
     expect(isDesktopOnlyCompanionPath("/quick-bag")).toBe(false);
@@ -47,10 +48,12 @@ describe("companion route capabilities", () => {
     expect(isSummaryOnlyCompanionPath("/tournaments/tournament-id")).toBe(false);
   });
 
-  it("routes summary-only phone pages through the compact read-only surface", () => {
-    expect(isSummaryOnlyCompanionPath("/coach")).toBe(true);
-    expect(isSummaryOnlyCompanionPath("/goals/example")).toBe(true);
-    expect(isSummaryOnlyCompanionPath("/leaderboard")).toBe(true);
+  it("opens upgraded summary routes directly and retains nested fallback boundaries", () => {
+    expect(isSummaryOnlyCompanionPath("/coach")).toBe(false);
+    expect(isSummaryOnlyCompanionPath("/goals/example")).toBe(false);
+    expect(mobileCapabilities.goals.mobileExperience).toBe("companion");
+    expect(isSummaryOnlyCompanionPath("/leaderboard")).toBe(false);
     expect(isSummaryOnlyCompanionPath("/settings")).toBe(false);
+    expect(isSummaryOnlyCompanionPath("/coach/unsupported")).toBe(true);
   });
 });
