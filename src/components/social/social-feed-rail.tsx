@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isHiddenRoute } from "./social-feed-routes";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
@@ -117,46 +118,6 @@ const itemDateFormatter = new Intl.DateTimeFormat("en-GB", {
 });
 
 const numberFormatter = new Intl.NumberFormat("en-GB");
-const hiddenRoutePrefixes = [
-  "/login",
-  "/auth",
-  "/privacy",
-  "/play",
-  "/share",
-  "/shared",
-  "/settings/invitations",
-  "/feed",
-  "/today",
-  "/dashboard",
-  "/sessions",
-  "/progress",
-  "/analyse",
-  "/bag",
-  "/rounds",
-  "/strokes-gained",
-  "/shots",
-  "/compare",
-  "/simulator-lab",
-  "/speed",
-  "/stats/training-over-time",
-  "/equipment",
-  "/handicap",
-  "/courses",
-  "/course-records",
-  "/tournaments",
-  "/practice",
-  "/coach",
-  "/data-chat",
-  "/achievements",
-  "/challenges",
-  "/import",
-  "/rapsodo",
-  "/providers",
-  "/billing",
-  "/settings",
-  "/admin",
-  "/partners",
-];
 const seenStorageKey = "fkh-social-feed-seen-at";
 
 export function SocialFeedRail() {
@@ -1025,11 +986,4 @@ function readSeenAt() {
   } catch {
     return 0;
   }
-}
-
-function isHiddenRoute(pathname: string) {
-  const normalizedPathname = pathname.replace(/\/+$/, "") || "/";
-  return hiddenRoutePrefixes.some(
-    (prefix) => normalizedPathname === prefix || normalizedPathname.startsWith(`${prefix}/`),
-  );
 }

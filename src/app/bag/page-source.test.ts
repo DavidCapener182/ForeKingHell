@@ -21,51 +21,28 @@ const mobileYardageCarouselSource = readFileSync(
 );
 
 describe("bag desktop workbench source", () => {
-  it("keeps Yardages and Target primary while moving Benchmarks to secondary disclosure", () => {
-    expect(source).toContain("data-bag-mobile-full");
-    expect(source).not.toContain("data-bag-mobile-quick-only");
-    expect(source).toContain('title="Bag"');
-    expect(source).toContain("<MobilePageTabs");
-    expect(source).toContain('label: "Yardages"');
-    expect(source).toContain('label: "Target"');
-    const mobileTabsStart = source.indexOf("<MobilePageTabs");
-    const mobileTabsEnd = source.indexOf("\n        />", mobileTabsStart);
-    const mobileTabs = source.slice(mobileTabsStart, mobileTabsEnd);
-    expect(mobileTabs).not.toContain('label: "Benchmarks"');
-    expect(source).toContain('<p className="font-semibold text-foreground">Benchmarks</p>');
-    expect(source).toContain("mobile=benchmarks#bag-benchmarks");
+  it("makes distances and club selection discoverable with deeper benchmark evidence", () => {
+    expect(source).toContain("<UrlTabs");
+    expect(source).toContain('label="Bag workspace"');
+    expect(source).toContain('id: "distances"');
+    expect(source).toContain('id: "clubs"');
+    expect(source).toContain('id: "evidence"');
+    expect(source).toContain("<BestShotsEntry />");
     expect(source).toContain("<MobileBagLadder clubs={quickBagClubs}");
-    expect(source).toContain("<DistanceBenchmarkPanel");
     expect(source).toContain("<QuickBagClient");
     expect(source).toContain("row.latestReliableCarryP25Yd");
     expect(source).toContain("row.targetMessage");
   });
 
-  it("splits companion data work at the request surface boundary", () => {
-    const companion =
-      source.match(/async function BagCompanionPage[\s\S]*?async function BagWorkbenchPage/)?.[0] ??
-      "";
-
-    expect(source).toContain('import { getRequestAppSurface } from "@/lib/app-surface-server"');
-    expect(source.indexOf("getRequestAppSurface()")).toBeLessThan(
-      source.indexOf("<BagCompanionPage"),
+  it("uses one owned bag data set and defers peer comparison queries", () => {
+    expect(source).toContain(
+      "return <BagWorkbenchPage searchParams={resolvedSearchParams} surface={surface} />",
     );
-    expect(companion).toContain(
-      'mobileBenchmarksLoaded ? getBag({ scope: "companion-benchmarks" }) : Promise.resolve([])',
-    );
-    expect(companion).toContain("getMobileQuickBag()");
-    expect(companion).not.toContain("buildQuickBagClubs(bag)");
-    expect(companion).toContain("mobileBenchmarksLoaded ? buildBenchmarkRows(bag) : []");
-    expect(companion).not.toContain("getFeatureIdeasData()");
-    expect(companion).not.toContain("getBagSpeedSummary()");
-    expect(companion).not.toContain("getBagEquipmentContext()");
-    expect(companion).not.toContain("buildWedgeMatrix(bag)");
-    expect(companion).not.toContain("buildShotPatternOverlaySummaries(bag)");
-    expect(companion).not.toContain("buildConfidenceHeatMaps(bag)");
-    expect(source).toContain('const includeBenchmarkEvidence = scope !== "companion"');
-    expect(source).toContain('const includePersonalBest = scope === "workbench"');
+    expect(source).toContain("requireCurrentUserId()");
+    expect(source).toContain("getMobileQuickBag()");
+    expect(source).toContain("benchmarkRows.length > 0 && peerBenchmarksLoaded");
+    expect(source).toContain("? await getPeerBenchmarkSummary(benchmarkRows)");
     expect(source).toContain("includePersonalBest && allClubMemberIds.length > 0");
-    expect(source).toContain("includeBenchmarkEvidence\n      ? db");
   });
 
   it("uses only lifecycle-eligible evidence for personal bests and peer benchmarks", () => {
@@ -105,17 +82,12 @@ describe("bag desktop workbench source", () => {
     );
   });
 
-  it("derives mobile Bag selection from the URL and keeps the summary compact", () => {
-    const summary =
-      source.match(/function MobileBagPage[\s\S]*?function BagSupportingEvidence/)?.[0] ?? "";
-
-    expect(source).toContain("parseMobileBagPrimaryView(searchParams.view)");
-    expect(source).toContain("initialValue={initialView}");
-    expect(source).toContain('href: "/bag?view=yardages#bag-yardages"');
-    expect(source).toContain('href: "/bag?view=target#bag-quick"');
-    expect(summary).toContain("{trustedClubCount} trusted clubs");
-    expect(summary).toContain("{averageConfidence}% average confidence");
-    expect(summary).not.toContain("ios-grouped-row");
+  it("preserves legacy target and benchmark links in the unified workspace tabs", () => {
+    expect(source).toContain("const activeTab = parseBagWorkspaceTab(");
+    expect(source).toContain("resolvedSearchParams.tab ??");
+    expect(source).toMatch(/resolvedSearchParams.view === "target"\s*\? "clubs"/);
+    expect(source).toMatch(/resolvedSearchParams.mobile === "benchmarks"\s*\? "evidence"/);
+    expect(source).toContain("defaultTabKey={activeTab}");
   });
 
   it("contains every mobile Bag section within the phone content width", () => {
@@ -142,10 +114,10 @@ describe("bag desktop workbench source", () => {
     );
 
     expect(source).toContain("data-bag-health-card");
-    expect(source).toContain("<ConnectedMetricBar");
+    expect(source).toContain("<PageHeader");
     expect(source).toContain("<AppEmptyState");
     for (const tab of ["distances", "clubs", "scoring", "fitting", "history", "evidence"]) {
-      expect(source).toContain(`value="${tab}"`);
+      expect(source).toContain(`id: "${tab}"`);
     }
     expect(clubPanel).toContain("<ResponsiveDetailPanel");
     expect(clubPanel).toContain("<EntityCombobox");
@@ -170,7 +142,9 @@ describe("bag desktop workbench source", () => {
     const healthSignal =
       source.match(/function BagHealthSignal[\s\S]*?function BagScoreTrendPanel/)?.[0] ?? "";
 
-    expect(healthHero).toMatch(/<ConnectedMetricBar\s+embedded/);
+    expect(healthHero).toContain("<PageHeader");
+    expect(healthHero).toContain('label: "Average trust"');
+    expect(healthHero).toContain('value: shots ? `${confidence}%` : "Building"');
     expect(healthHero).toContain("<section");
     expect(healthHero).not.toContain("<Card");
     expect(healthSignal).toContain("<div");
@@ -181,7 +155,7 @@ describe("bag desktop workbench source", () => {
 
   it("keeps each desktop tab decision-first and groups secondary evidence", () => {
     const workspace = source.slice(
-      source.indexOf("<Tabs defaultValue={activeTab}"),
+      source.indexOf("<UrlTabs"),
       source.indexOf("function BagSupportingEvidence"),
     );
 
@@ -205,9 +179,9 @@ describe("bag desktop workbench source", () => {
     expect(supportingEvidence).not.toContain("<CardContent");
 
     const tabWithoutSupportingEvidence = (value: string) => {
-      const start = workspace.indexOf(`<TabsContent value="${value}"`);
-      const nextTab = workspace.indexOf('<TabsContent value="', start + 1);
-      const end = nextTab === -1 ? workspace.indexOf("</Tabs>", start) : nextTab;
+      const start = workspace.indexOf(`id: "${value}",`);
+      const nextTab = workspace.indexOf('                    id: "', start + 1);
+      const end = nextTab === -1 ? workspace.length : nextTab;
       const tab = workspace.slice(start, end);
       return tab.replace(/<BagSupportingEvidence[\s\S]*?<\/BagSupportingEvidence>/g, "");
     };
@@ -328,7 +302,7 @@ describe("bag desktop workbench source", () => {
     const gappingBlock =
       source.match(/function CarryGappingTable[\s\S]*?function GappingRecommendations/)?.[0] ?? "";
 
-    expect(source).toContain('<TabsContent value="distances"');
+    expect(source).toContain('id: "distances"');
     expect(gappingBlock).not.toContain("<details");
     expect(gappingBlock).toContain("DesktopTableWorkbenchControls");
     expect(gappingBlock).toContain('data-workbench-scope="bag"');
@@ -444,53 +418,14 @@ describe("bag desktop workbench source", () => {
 });
 
 describe("bag desktop and Quick Bag boundary", () => {
-  it("keeps the full workbench desktop-only and makes Quick Bag the mobile surface", () => {
-    for (const obsoleteSymbol of [
-      "MobileTabBar",
-      "MobileBentoSummary",
-      "MobileAccordionSection",
-      "MobileDataCard",
-      "MobileDataList",
-      "StickyMobileAction",
-      "NativeListSection",
-      "IOSDisclosureGroup",
-      "IOSGroupedList",
-      "IOSInlineStatus",
-      "IOSListRow",
-      "IOSSectionHeader",
-      "MobileBagGappingDetails",
-      "MobileBagBenchmarkDetails",
-      "MobileBagMethodology",
-      "MobileClubArtworkCarousel",
-      "mobileClubSignal",
-      "mobileBenchmarkMetricSummary",
-      "mobileBagStatusTone",
-    ]) {
-      expect(source).not.toContain(obsoleteSymbol);
-    }
-
-    expect(source).not.toContain("@/components/app/ios-mobile");
-    expect(source).toContain("@/components/app/mobile-screen");
-    expect(source).toContain("<MobileLargeTitle");
-    expect(source).toContain('<section className="grid gap-5" data-bag-mobile-full>');
-    expect(source).toContain("<QuickBagClient");
-    expect(source).not.toContain("data-bag-mobile-quick-only");
-    expect(source).toContain("data-bag-mobile-surface");
-    expect(source).toContain("data-bag-desktop-surface");
-    expect(source).toContain("<DesktopWorkbenchLayout");
-    expect(source).toContain('scope="bag"');
-    expect(source).toContain("styles.mobileSurface");
-    expect(source).toContain("styles.desktopSurface");
-    expect(responsiveStyles).not.toContain("@media (min-width: 64rem)");
-    expect(responsiveStyles).toContain(".mobileSurface");
-    expect(responsiveStyles).toContain(".mobileSurface > section");
-    expect(responsiveStyles).toContain(".desktopSurface");
-    expect(source).toContain('if (surface === "companion")');
-    expect(source).toContain("return <BagCompanionPage");
-    expect(source).toContain("return <BagWorkbenchPage");
-    expect(source).not.toContain('href="/dashboard"');
-    expect(source).not.toContain("Import CSV");
+  it("shares the complete workspace and selects appropriate distance views per surface", () => {
     expect(source).toContain("data-bag-workspace");
+    expect(source).toContain('<DesktopWorkbenchLayout scope="bag">');
+    expect(source).toContain("<QuickBagClient");
+    expect(source).toContain('surface === "companion" ? undefined : styles.phoneExplorer');
+    expect(source).toContain('surface === "companion" ? styles.wideLadder : undefined');
+    expect(source).toContain("<MobileBagDistanceExplorer clubs={quickBagClubs}");
+    expect(source).not.toMatch(/max-w-(?:6xl|7xl|\[1500px\])/);
   });
 
   it("keeps the target selector desktop-only, shadcn-controlled and theme semantic", () => {

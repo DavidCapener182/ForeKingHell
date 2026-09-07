@@ -8,10 +8,16 @@ const source = readFileSync(
 );
 
 describe("club profile desktop shot evidence table", () => {
-  it("ships only the open desktop analysis workbench", () => {
-    expect(source).toContain("data-desktop-club-analysis");
-    expect(source).toContain('className="grid scroll-mt-28 gap-3"');
-    expect(source).toContain("afterDispersion ?");
+  it("exposes analysis sections through persistent URL tabs", () => {
+    expect(source).toContain("<UrlTabs");
+    expect(source).toContain('label="Club analysis"');
+    expect(source).toContain('queryKey="clubView"');
+    expect(source).toContain("afterDispersion ?? (");
+    const tabs = readFileSync(
+      join(process.cwd(), "src/components/untitled-ui/url-tabs.tsx"),
+      "utf8",
+    );
+    expect(tabs).toContain("keepMounted");
 
     for (const unreachableMobileSymbol of [
       "mobileSupport",
@@ -83,7 +89,9 @@ describe("club profile desktop shot evidence table", () => {
     expect(source).toContain("<ToggleGroupItem");
     expect(source).toContain("<Badge");
     expect(source).toContain("<Button");
-    expect(source).not.toContain("<button");
+    expect(source).toMatch(
+      /<button\s*key={shot.id}\s*type="button"\s*aria-pressed={shot.id === selectedShotId}/,
+    );
     expect(source).toContain("shadow-[1px_0_0_hsl(var(--border))]");
     expect(source).toContain("var(--status-success-surface)");
     expect(specialistCharts).toContain('fill="#f7f8fb"');

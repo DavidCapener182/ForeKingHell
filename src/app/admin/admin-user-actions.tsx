@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { DesktopWorkbenchControls } from "@/components/app/desktop-workbench-controls";
 import { AdminOperationForm } from "@/app/admin/admin-operation-form";
 import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { Button } from "@/components/ui/button";
@@ -34,111 +35,145 @@ export function AdminUserDirectory({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = users.find((user) => user.id === selectedId) ?? null;
   return (
-    <>
+    <section data-workbench-scope="admin-users" className="grid min-w-0 gap-3">
+      <DesktopWorkbenchControls
+        viewKey={`admin-users:${currentUserId}`}
+        scope="admin-users"
+        currentViewLabel="Account search"
+        resultLabel={`${users.length} matching loaded accounts`}
+        exportFileName="admin-users-filtered.csv"
+        columns={[
+          { id: "user", label: "Account", locked: true },
+          { id: "email", label: "Email" },
+          { id: "plan", label: "Plan" },
+          { id: "activity", label: "Activity" },
+          { id: "admin", label: "Admin role / status" },
+          { id: "created", label: "Created" },
+          { id: "action", label: "Actions", locked: true },
+        ]}
+      />
       <div className={layout.desktop}>
-        <table className="w-full text-left text-sm" data-workbench-export-table="admin-users">
-          <caption className="sr-only">
-            Selected account search results: identity, plan, activity, administrator role, creation
-            and details.
-          </caption>
-          <thead>
-            <tr>
-              <th
-                scope="col"
-                aria-sort={
-                  order.startsWith("user_")
-                    ? order.endsWith("asc")
-                      ? "ascending"
-                      : "descending"
-                    : undefined
-                }
-              >
-                Account
-              </th>
-              <th scope="col">Email</th>
-              <th
-                scope="col"
-                aria-sort={
-                  order.startsWith("plan_")
-                    ? order.endsWith("asc")
-                      ? "ascending"
-                      : "descending"
-                    : undefined
-                }
-              >
-                Plan
-              </th>
-              <th
-                scope="col"
-                aria-sort={
-                  order.startsWith("activity_")
-                    ? order.endsWith("asc")
-                      ? "ascending"
-                      : "descending"
-                    : undefined
-                }
-              >
-                Activity
-              </th>
-              <th
-                scope="col"
-                aria-sort={
-                  order.startsWith("admin_")
-                    ? order.endsWith("asc")
-                      ? "ascending"
-                      : "descending"
-                    : undefined
-                }
-              >
-                Admin role / status
-              </th>
-              <th
-                scope="col"
-                aria-sort={
-                  order.startsWith("created_")
-                    ? order.endsWith("asc")
-                      ? "ascending"
-                      : "descending"
-                    : undefined
-                }
-              >
-                Created
-              </th>
-              <th scope="col">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id}>
-                <th scope="row">
-                  {user.displayName}
-                  <span className="block text-xs font-normal">
-                    {user.username ?? "No username"}
-                  </span>
+        <div
+          className="overflow-x-auto"
+          role="region"
+          aria-label="Admin user accounts table"
+          tabIndex={0}
+        >
+          <table className="w-full text-left text-sm" data-workbench-export-table="admin-users">
+            <caption className="sr-only">
+              Selected account search results: identity, plan, activity, administrator role,
+              creation and details.
+            </caption>
+            <thead>
+              <tr>
+                <th
+                  data-column="user"
+                  scope="col"
+                  aria-sort={
+                    order.startsWith("user_")
+                      ? order.endsWith("asc")
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
+                >
+                  Account
                 </th>
-                <td className="break-all">{user.email ?? "No email"}</td>
-                <td>{user.activePlan}</td>
-                <td>
-                  {user.sessionCount} sessions · {user.feedCount} feed cards
-                </td>
-                <td>
-                  {user.adminRole ?? "No admin role"} · {user.adminStatus ?? "Standard"}
-                </td>
-                <td>{user.createdLabel}</td>
-                <td>
-                  <Button
-                    variant="outline"
-                    disabled={!ready}
-                    onClick={() => setSelectedId(user.id)}
-                    aria-label={`Account details for ${user.displayName}`}
-                  >
-                    Details
-                  </Button>
-                </td>
+                <th data-column="email" scope="col">
+                  Email
+                </th>
+                <th
+                  data-column="plan"
+                  scope="col"
+                  aria-sort={
+                    order.startsWith("plan_")
+                      ? order.endsWith("asc")
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
+                >
+                  Plan
+                </th>
+                <th
+                  data-column="activity"
+                  scope="col"
+                  aria-sort={
+                    order.startsWith("activity_")
+                      ? order.endsWith("asc")
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
+                >
+                  Activity
+                </th>
+                <th
+                  data-column="admin"
+                  scope="col"
+                  aria-sort={
+                    order.startsWith("admin_")
+                      ? order.endsWith("asc")
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
+                >
+                  Admin role / status
+                </th>
+                <th
+                  data-column="created"
+                  scope="col"
+                  aria-sort={
+                    order.startsWith("created_")
+                      ? order.endsWith("asc")
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
+                >
+                  Created
+                </th>
+                <th data-column="action" scope="col">
+                  Actions
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.id}>
+                  <th scope="row" data-column="user">
+                    {user.displayName}
+                    <span className="block text-xs font-normal">
+                      {user.username ?? "No username"}
+                    </span>
+                  </th>
+                  <td data-column="email" className="break-all">
+                    {user.email ?? "No email"}
+                  </td>
+                  <td data-column="plan">{user.activePlan}</td>
+                  <td data-column="activity">
+                    {user.sessionCount} sessions · {user.feedCount} feed cards
+                  </td>
+                  <td data-column="admin">
+                    {user.adminRole ?? "No admin role"} · {user.adminStatus ?? "Standard"}
+                  </td>
+                  <td data-column="created">{user.createdLabel}</td>
+                  <td data-column="action">
+                    <Button
+                      variant="outline"
+                      disabled={!ready}
+                      onClick={() => setSelectedId(user.id)}
+                      aria-label={`Account details for ${user.displayName}`}
+                    >
+                      Details
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
       <div className={layout.mobile}>
         {users.map((user) => (
@@ -150,10 +185,21 @@ export function AdminUserDirectory({
             onClick={() => setSelectedId(user.id)}
           >
             <span className="min-w-0 break-words">
-              {user.displayName}
-              <span className="block break-all text-xs font-normal">{user.email ?? user.id}</span>
-              <span className="block text-xs">
-                {user.activePlan} · {user.adminRole ?? "No admin role"}
+              <span data-column="user">{user.displayName}</span>
+              <span data-column="email" className="block break-all text-xs font-normal">
+                {user.email ?? user.id}
+              </span>
+              <span data-column="plan" className="block text-xs">
+                Plan: {user.activePlan}
+              </span>
+              <span data-column="activity" className="block text-xs">
+                {user.sessionCount} sessions · {user.feedCount} feed cards
+              </span>
+              <span data-column="admin" className="block text-xs">
+                {user.adminRole ?? "No admin role"} · {user.adminStatus ?? "Standard"}
+              </span>
+              <span data-column="created" className="block text-xs">
+                Created: {user.createdLabel}
               </span>
             </span>
             <span className="ml-2 shrink-0">Details</span>
@@ -257,7 +303,7 @@ export function AdminUserDirectory({
           </div>
         ) : null}
       </ResponsiveDetailPanel>
-    </>
+    </section>
   );
 }
 export function AdminAccessDialog({ canManageOwners }: { canManageOwners: boolean }) {

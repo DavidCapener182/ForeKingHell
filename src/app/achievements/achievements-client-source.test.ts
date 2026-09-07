@@ -62,7 +62,7 @@ describe("achievements desktop unlock ledger", () => {
   });
 
   it("keeps achievements as a hub page without a persistent AI rail", () => {
-    expect(pageSource).toContain('scope="achievements"');
+    expect(pageSource).toContain("<PageShell>");
     expect(pageSource).not.toContain("DesktopInsightRail");
     expect(pageSource).not.toContain("rail={");
   });
@@ -72,22 +72,16 @@ describe("achievements desktop unlock ledger", () => {
       "const [mobileTab, setMobileTab] = useState<MobileAchievementTab>(() =>",
     );
     expect(clientSource).toContain('focusAchievementId ? "catalogue" : "next"');
-    expect(pageSource).toContain('key={focusAchievementId || "achievement-hub"}');
+    expect(pageSource).toContain('key={focus || "achievement-hub"}');
   });
 
-  it("selects one achievements composition from the request surface", () => {
-    expect(pageSource).toContain("getRequestAppSurface()");
-    expect(pageSource).toContain('if (surface === "companion")');
-    expect(pageSource).toContain(
-      '<MobileRouteHeader title="Achievements" group="improve" activeKey="achievements" />',
-    );
-    expect(pageSource).toContain("data-achievements-companion");
-    expect(pageSource).toContain('presentation="companion"');
-    expect(pageSource).toContain("data-achievements-workbench");
+  it("renders one full-width achievement hub with owned share evidence", () => {
+    expect(pageSource.match(/<AchievementsClient/g)).toHaveLength(1);
+    expect(pageSource).toContain("data-achievements-workspace");
     expect(pageSource).toContain('presentation="workbench"');
-    expect(pageSource).toContain('import("@/components/app/desktop-workbench")');
-    expect(pageSource).not.toMatch(/(?:^|\s)(?:lg:hidden|hidden lg:)/);
-    expect(clientSource).not.toMatch(/(?:^|\s)(?:lg:hidden|hidden lg:)/);
+    expect(pageSource).toContain("item.userId === userId");
+    expect(pageSource).toContain("focusAchievementId={focus || null}");
+    expect(pageSource).not.toMatch(/max-w-(?:6xl|7xl|\[1500px\])/);
   });
 
   it("loads desktop table controls only for the workbench presentation", () => {
@@ -121,7 +115,7 @@ describe("achievements desktop unlock ledger", () => {
     expect(clientSource).toContain("data-achievement-view-tabs");
     expect(clientSource).toContain("data-achievement-calendar-day");
     expect(clientSource).toContain('variant={cell.isSelected ? "default" : "outline"}');
-    expect(clientSource).not.toContain("<button");
+    expect(clientSource).toMatch(/<DialogTrigger asChild>\s*<button\s*type="button"/);
     expect(clientSource).not.toContain("hover:bg-amber-50/70");
     expect(clientSource).not.toContain('cell.isSelected ? "bg-white text-zinc-900"');
     expect(clientSource).not.toContain("border-border bg-white hover:bg-[#f3f4f6]");
@@ -174,7 +168,11 @@ describe("achievements desktop unlock ledger", () => {
         /export function AchievementCard[\s\S]*?function AchievementBadgeIcon/,
       )?.[0] ?? "";
 
-    expect(catalogueResult).toContain("<Item");
+    expect(catalogueResult).toContain("<DialogTrigger asChild>");
+    expect(catalogueResult).toContain("<DialogTitle>{achievement.displayName}</DialogTitle>");
+    expect(catalogueResult).toContain(
+      "<RecentUnlockEvidence achievement={achievement} source={achievement.source} />",
+    );
     expect(catalogueResult).toContain("data-achievement-catalogue-item");
     expect(catalogueResult).not.toMatch(/<Card(?:\s|>)/);
     expect(catalogueResult).toContain("var(--status-success-border)");
@@ -190,7 +188,7 @@ describe("achievements desktop unlock ledger", () => {
 
   it("preserves translucent overlays inside intentional dark surfaces", () => {
     expect(clientSource).toContain("data-mobile-preserve-dark");
-    expect(notificationSource).toContain("data-mobile-preserve-dark");
+    expect(notificationSource).toContain("bg-card");
     expect(globalsSource).toContain('[data-mobile-preserve-dark] [class*="bg-white/"]');
   });
 });

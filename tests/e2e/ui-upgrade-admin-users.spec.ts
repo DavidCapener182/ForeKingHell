@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 test("Account management preserves filter query and exact account role updates on both surfaces", async ({
   page,
@@ -76,6 +77,42 @@ test("Account management preserves filter query and exact account role updates o
           page.getByRole("textbox", { name: "Search accounts", exact: true }),
         ).toHaveValue(email);
         await expect(filter).toHaveCount(0);
+        const register = page.locator('section[data-workbench-scope="admin-users"]');
+        const downloadReady = page.waitForEvent("download");
+        await register.locator("[data-export-table-id]").click();
+        const csv = await readFile((await (await downloadReady).path())!, "utf8");
+        expect(csv).toContain(email);
+        expect(csv).toContain("Synthetic managed player");
+        expect(csv).not.toContain("account-owner@example.invalid");
+        await register.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitemcheckbox", { name: "Email", exact: true }).click();
+        await page.keyboard.press("Escape");
+        const viewName = `Accounts ${surface} ${width}`;
+        await register.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.getByRole("menuitem", { name: "Save current view", exact: true }).click();
+        const saveView = page.getByRole("dialog", { name: "Save table view" });
+        await saveView.getByRole("textbox", { name: "View name" }).fill(viewName);
+        await saveView.getByRole("button", { name: "Save view", exact: true }).click();
+        await page.goto("/admin/users?q=account-owner", { waitUntil: "domcontentloaded" });
+        await register.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.getByRole("menuitem", { name: new RegExp(`^${viewName} `) }).click();
+        await expect(page).toHaveURL(/plan=free/, { timeout: 60000 });
+        await page.reload();
+        await expect(
+          page.getByRole("textbox", { name: "Search accounts", exact: true }),
+        ).toHaveValue(email);
+        await expect(register.locator('[data-column="email"]:visible')).toHaveCount(0);
+        const hiddenReady = page.waitForEvent("download");
+        await register.locator("[data-export-table-id]").click();
+        const hiddenCsv = await readFile((await (await hiddenReady).path())!, "utf8");
+        expect(hiddenCsv).toContain("Synthetic managed player");
+        expect(hiddenCsv).not.toContain(email);
+        await register.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitem", { name: "Show all columns", exact: true }).click();
+        await page.keyboard.press("Escape");
+        await expect(page.getByRole("menu")).toHaveCount(0);
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({ path: info.outputPath(`P77-register-${surface}-${width}.png`) });
         const trigger =
           width < 768
             ? page.getByRole("button", { name: /Synthetic managed player.*Details/ })
@@ -114,8 +151,6 @@ test("Account management preserves filter query and exact account role updates o
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         ).toBe(true);
-        await page.evaluate(() => window.scrollTo(0, 0));
-        await page.screenshot({ path: info.outputPath(`P77-${surface}-${width}.png`) });
       }
     expect((await db`select role from fkh_admin_users where user_id=${users[0]}`)[0].role).toBe(
       "owner",

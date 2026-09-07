@@ -1,7 +1,10 @@
 "use client";
 import { useState } from "react";
 import { CompanionRangeImport } from "./companion-range-import";
-import { ImportForm } from "./import-form";
+import dynamic from "next/dynamic";
+const ImportForm = dynamic(() => import("./import-form").then((module) => module.ImportForm), {
+  loading: () => <p role="status">Loading full import workflow…</p>,
+});
 import { Button } from "@/components/ui/button";
 import type { DistanceUnit } from "@/lib/rapsodo/parser";
 
@@ -15,6 +18,7 @@ export function ImportWorkspaceChoice({
   sample?: boolean;
 }) {
   const [full, setFull] = useState(sample);
+  const [fullVisited, setFullVisited] = useState(sample);
   return (
     <div className="grid min-w-0 gap-4">
       <div role="group" aria-label="Import workflow" className="grid grid-cols-2 gap-2">
@@ -31,7 +35,10 @@ export function ImportWorkspaceChoice({
           type="button"
           variant={full ? "default" : "outline"}
           aria-pressed={full}
-          onClick={() => setFull(true)}
+          onClick={() => {
+            setFullVisited(true);
+            setFull(true);
+          }}
           className="min-h-11 whitespace-normal"
         >
           Full import workflow
@@ -45,11 +52,13 @@ export function ImportWorkspaceChoice({
         <CompanionRangeImport practicePlanId={practicePlanId} />
       </div>
       <div hidden={!full}>
-        <ImportForm
-          defaultDistanceUnit={defaultDistanceUnit}
-          startWithSampleData={sample}
-          practicePlanId={practicePlanId}
-        />
+        {fullVisited ? (
+          <ImportForm
+            defaultDistanceUnit={defaultDistanceUnit}
+            startWithSampleData={sample}
+            practicePlanId={practicePlanId}
+          />
+        ) : null}
       </div>
     </div>
   );

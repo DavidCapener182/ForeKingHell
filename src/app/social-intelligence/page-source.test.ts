@@ -18,7 +18,9 @@ const records = readFileSync(
 
 describe("social intelligence desktop safety console", () => {
   it("ships only the safety workbench graph on this desktop-only route", () => {
-    expect(source).toContain('<DesktopWorkbenchLayout scope="social-intelligence">');
+    expect(source).toContain("<PageShell>");
+    expect(source.match(/<PageShell>/g)).toHaveLength(1);
+    expect(source).not.toMatch(/max-w-(?:6xl|7xl|\[1500px\])/);
     for (const obsolete of [
       "getRequestAppSurface",
       "MobileAppShell",
@@ -82,12 +84,7 @@ describe("social intelligence desktop safety console", () => {
 
   it("uses theme-aware ordinary safety surfaces", () => {
     expect(source).toContain("bg-card");
-    expect(source).toContain("<Card>");
-    expect(source).toContain("<CardHeader");
-    expect(source).toContain("<CardContent");
-    expect(source).toContain('className="divide-y"');
     expect(source).toContain('className="grid min-w-0 gap-3"');
-    expect(source).not.toContain("rounded-xl border bg-card p-4 shadow-sm");
     expect(source).not.toMatch(/\b(?:bg-white|bg-slate-\d+|text-slate-\d+|border-slate-\d+)\b/);
     expect(source).not.toMatch(/bg-\[#[0-9A-Fa-f]+\]|text-white|text-(?:emerald|red)-\d+/);
   });

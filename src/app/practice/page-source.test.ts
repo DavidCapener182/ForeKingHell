@@ -31,7 +31,8 @@ describe("practice planner desktop workflow", () => {
     expect(routeSource).toContain('await import("./practice-workbench-page")');
     expect(companionSource).toContain("practiceActivityPresentation");
     expect(companionSource).toContain("data-active-range-mode");
-    expect(companionSource).toContain("MobileLargeTitle");
+    expect(companionSource).toContain('title="Practice"');
+    expect(companionSource).toContain("<PageHeader");
     expect(companionSource).toContain("<Progress");
     expect(companionSource).toContain("<Drawer");
     expect(companionSource).toContain("<AlertDialog");
@@ -57,7 +58,7 @@ describe("practice planner desktop workflow", () => {
     expect(companionSource).toContain("detail={decision.actual}");
     expect(companionSource).toContain("<IOSInlineStatus");
     expect(companionSource).toContain("Every eligible launch-monitor shot from the practice day");
-    expect(companionSource).toContain("Today's uploads");
+    expect(companionSource).toContain("Practice-day uploads");
     expect(companionSource).toContain("Build next practice");
     expect(companionSource).toContain("data-practice-finished");
     expect(companionSource).toContain("<FieldGroup");

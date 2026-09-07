@@ -32,15 +32,32 @@ describe("companion local-control adoption", () => {
     }
   });
 
-  it("keeps data-already-loaded page sections mounted during tab changes", () => {
+  it("keeps loaded detail sections mounted while directory navigation preserves filters", () => {
     for (const path of [
-      "src/app/(app)/challenges/page.tsx",
-      "src/app/(app)/challenges/[challengeId]/page.tsx",
-      "src/app/(app)/tournaments/page.tsx",
+      "src/app/challenges/challenge-detail-sections.tsx",
+      "src/app/tournaments/tournament-detail-sections.tsx",
+    ]) {
+      expect(read(path)).toContain("keepMounted");
+      expect(read(path)).toContain("popstate");
+    }
+    for (const path of [
       "src/app/leaderboard/mobile-leaderboard.tsx",
       "src/app/(app)/rounds/[sessionId]/page.tsx",
-    ]) {
+    ])
       expect(read(path)).toContain("MobilePageTabs");
-    }
+    const challenges = read("src/app/challenges/challenge-workspace.tsx");
+    expect(read("src/app/(app)/challenges/page.tsx")).toContain("<ChallengeWorkspace");
+    expect(challenges).toContain("<UntitledTabs");
+    expect(challenges).toContain('url.searchParams.set("q", q)');
+    expect(challenges).toContain("<CreateChallenge templates={templates} freePlan={freePlan} />");
+    expect(challenges.indexOf("<CreateChallenge")).toBeLessThan(
+      challenges.indexOf("<UntitledTabs"),
+    );
+    const tournaments = read("src/app/tournaments/tournament-index-controls.tsx");
+    expect(read("src/app/(app)/tournaments/page.tsx")).toContain("<TournamentIndexControls");
+    expect(tournaments).toContain("new URL(window.location.href)");
+    expect(tournaments).toContain('url.searchParams.set("tab", key)');
+    expect(tournaments).toContain("key={`${courseId}:${q}:${sort}`}");
+    expect(tournaments).toContain("content: key === active ? children : null");
   });
 });

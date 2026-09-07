@@ -80,6 +80,18 @@ test("Companion import entry preserves source and full CSV workspace at every wi
         fullPage: true,
         animations: "disabled",
       });
+      await page.goto("/companion-runtime/import/csv");
+      await expect(
+        page.getByRole("button", { name: "Quick range import", exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
+      await expect(page.locator("[data-import-ready]")).toHaveCount(0);
+      await page.getByRole("button", { name: "Full import workflow", exact: true }).click();
+      await expect(page.locator('[data-import-ready="true"]')).toBeVisible({ timeout: 60000 });
+      await page.getByRole("button", { name: "Quick range import", exact: true }).click();
+      await expect(page.locator('[data-import-ready="true"]')).toHaveCount(1);
+      await expect(page.locator('[data-import-ready="true"]')).toBeHidden();
+      await page.getByRole("button", { name: "Full import workflow", exact: true }).click();
+      await expect(page.locator('[data-import-ready="true"]')).toBeVisible();
       await page.goto("/companion-runtime/import/csv?source=sample");
       await expect(page.locator('[data-import-ready="true"]')).toBeVisible({ timeout: 60000 });
       await expect(page.locator("[data-import-shot-preview]")).toContainText("5 parsed shots");

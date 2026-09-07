@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/tournaments/page.tsx"), "utf8");
+const controls = readFileSync(
+  join(process.cwd(), "src/app/tournaments/tournament-index-controls.tsx"),
+  "utf8",
+);
 const tournamentDataSource = readFileSync(join(process.cwd(), "src/lib/tournaments.ts"), "utf8");
 const courseAliasSource = readFileSync(
   join(process.cwd(), "src/app/(app)/courses/[courseId]/tournaments/page.tsx"),
@@ -10,27 +14,21 @@ const courseAliasSource = readFileSync(
 );
 
 describe("tournaments event index", () => {
-  it("selects one request surface before loading the desktop workbench", () => {
-    const staticWorkbenchImport =
-      source.match(
-        /import(?: type)? \{[^}]*\} from "@\/components\/app\/desktop-workbench";/,
-      )?.[0] ?? "";
-
-    expect(source).toContain("getRequestAppSurface()");
-    expect(source).toContain(
-      'surface === "workbench" ? await import("@/components/app/desktop-workbench") : null',
-    );
-    expect(source).toContain('surface === "companion" ? (');
-    expect(source).toContain('surface === "workbench" && DesktopWorkbenchLayout ? (');
-    expect(staticWorkbenchImport).not.toContain("DesktopWorkbenchLayout");
+  it("shares the filtered event population across responsive compositions", () => {
+    expect(source).toContain("className={boardStyles.desktop}");
+    expect(source).toContain("className={boardStyles.mobile}");
+    expect(source).toContain("<TournamentEventTable events={events}");
+    expect(source).toContain("<TournamentMobileList events={events}");
+    expect(source).toContain("filterTournamentEvents(filtered, tab)");
+    expect(source).toContain("<TournamentIndexControls");
   });
 
   it("uses the requested event states and removes promotional event-card grids", () => {
     expect(source).toContain('type TournamentIndexTab = "upcoming" | "active" | "completed"');
-    expect(source).toContain('{ key: "upcoming", label: "Upcoming" }');
-    expect(source).toContain('{ key: "active", label: "Active" }');
-    expect(source).toContain('{ key: "completed", label: "Completed" }');
-    expect(source).toContain('aria-label="Tournament status"');
+    expect(source).toContain('filterTournamentEvents(filtered, "upcoming")');
+    expect(source).toContain('filterTournamentEvents(filtered, "active")');
+    expect(source).toContain('filterTournamentEvents(filtered, "completed")');
+    expect(controls).toContain('label="Tournament status"');
     expect(source).toContain("tournamentEventState");
     expect(source).not.toContain("ScheduledTournamentCard");
     expect(source).not.toContain("EventHeroCard");
@@ -57,18 +55,22 @@ describe("tournaments event index", () => {
 
   it("uses the same real event collection for the mobile status tabs and list", () => {
     expect(source).toContain("<TournamentMobileList events={events}");
-    expect(source).toContain("<MobilePageTabs");
+    expect(controls).toContain("<UntitledTabs");
+    expect(controls).toContain('url.searchParams.set("tab", key)');
     expect(source).not.toContain("MobileRouteTabs");
     expect(source).toContain("tournamentYourState(event)");
     expect(source).toContain("formatTournamentWindow(event)");
   });
 
   it("preserves course-scoped tournament aliases and clearing", () => {
-    expect(courseAliasSource).toContain("courseId=${encodeURIComponent(courseId)}");
+    expect(courseAliasSource).toContain(
+      'canonicalRouteHref("/tournaments", await searchParams, { courseId })',
+    );
     expect(tournamentDataSource).toContain("courseId: input.tournament.courseId");
-    expect(source).toContain("tournament.courseId === courseId");
-    expect(source).toContain("tournamentIndexHref");
-    expect(source).toContain("Clear course filter");
+    expect(source).toContain("event.courseId === courseId");
+    expect(controls).toContain("new URL(window.location.href)");
+    expect(controls).toContain("Clear filters");
+    expect(controls).toContain("router.push(`/tournaments?tab=${active}`");
   });
 
   it("keeps full-width and semantic app surfaces", () => {

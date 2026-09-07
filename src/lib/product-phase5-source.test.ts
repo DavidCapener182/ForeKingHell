@@ -77,7 +77,7 @@ describe("Phase 5 product-page contract", () => {
     const navigation = source("src/app/progress/progress-navigation.ts");
     const tabs = source("src/app/progress/progress-tabs.tsx");
     expect(progress).toContain("<ProgressTabs");
-    expect(tabs).toContain("content:panels[tab.value]");
+    expect(tabs).toMatch(/content:\s*panels\[tab\.value\]/);
     for (const [value, label] of [
       ["performance", "Performance"],
       ["goals", "Goals"],

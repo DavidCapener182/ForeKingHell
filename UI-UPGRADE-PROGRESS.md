@@ -772,3 +772,23 @@ Next/current: restore saved views, columns and filtered CSV controls to SharedSe
 
 - /tmp/fkh-moderation-recovered.log PASS1.5m,12variants; isolated report/event CSV, optionalEvidencehidden, saved ownviewrestore/reload, exactIDselection/partialresolution and audit checks. Initial Nextdev /surface/workbench JSONparse500 disappeared on direct307readback; no application change/error suppression used to rerun.
 - Publishing moderationqueue+source/browser tests+tracker. Latestuserinstruction is finish actualCI failures and merge main normally; wrap-only request superseded. Otheragentowns remaining source-test reconciliation batch; thisagentowns runtime Partners/performance andsolepublisher.
+
+## Release failure fixes — Partners and loading boundaries
+
+- P82-C05: Partners filtered CSV, column visibility and saved views passed the 12-variant fixture browser check in /tmp/fkh-partners-restored.log (1.7m). Source checks: 6 passed. Permissions, ownership and preview/create cancellation preserve stored counts. Broader acceptance remains partial.
+- Current: P77-C02 account directory retained controls implemented, awaiting browser verification. Other agent owns the remaining source-contract test batch.
+- Performance: full import workspace loads on first use and remains mounted after switching; sample mode starts with full workflow. Hidden analytical routes no longer load the unused social feed preview. Production budget measurement is running in the isolated build directory.
+- Next: finish source tests and browser checks, run full required validation, publish one combined fix batch to PR59, then merge normally only when required checks pass. Main has not changed.
+
+## Release validation — source failures resolved
+
+- Full Vitest run: 2,785 passed, 0 failed, 149 skipped/pending (2,934 total), recorded in /tmp/fkh-main-source-batch-final.json. Tests now follow extracted components and complete mobile workflows while retaining ownership, provenance, filters, export and confirmation assertions.
+- Full lint passed with one existing unused-variable warning; full formatting passed. Inventory remains 492 components across 98 routes. No entry has been upgraded to fully accepted on the strength of source tests alone.
+- Import first-use and retained-draft browser check passed in 1.2 minutes across all six sizes: /tmp/fkh-import-lazy-browser-retry.log. First sandboxed browser launch was denied by macOS; the authorised retry ran successfully.
+- Normal production build passed. Twelve routes still exceed original JavaScript budgets. No limits or CI gates changed. See docs/UI-UPGRADE-BUNDLE-RELEASE-DECISION.md for exact measurements and the proposed tradeoff awaiting the user's answer.
+- Current: admin account controls browser verification. Next: integrate this batch in PR59, resolve the performance decision, then verify all required GitHub checks and merge through branch protection. Main is still unchanged.
+
+## Account register functional verification passed
+
+- P77-C02: /tmp/fkh-admin-users-restored.log passed in 1.7 minutes across both surfaces and six sizes. Filtered export, optional Email, per-account saved view/query/plan/columns with reload, exact-account role review/cancel/apply all passed. First screenshot caught a closing-panel transition; settled visual proof remains outstanding. No full-matrix rerun solely for that screenshot.
+- Current runtime and source-test fixes are ready for publication to PR59. The original 12 bundle-limit failures remain; the performance tradeoff question is pending. Both agents must avoid new feature scope and preserve the current passing evidence.

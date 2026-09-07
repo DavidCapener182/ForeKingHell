@@ -1,6 +1,6 @@
 import { AchievementNotificationProvider } from "@/components/achievement-notifications";
 import { PwaRegister } from "@/components/pwa-register";
-import { SocialFeedRail } from "@/components/social/social-feed-rail";
+import { SocialFeedRailLoader } from "@/components/social/social-feed-rail-loader";
 import { ThemeBootstrapScript } from "@/components/theme-bootstrap-script";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { AppShellData } from "@/lib/app-shell-data";
@@ -37,7 +37,7 @@ export async function PrivateAppShell({
       />
       <TooltipProvider delayDuration={200}>
         {shellContent}
-        {surface === "workbench" ? <SocialFeedRail /> : null}
+        {surface === "workbench" ? <SocialFeedRailLoader /> : null}
       </TooltipProvider>
     </>
   );

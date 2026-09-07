@@ -7,7 +7,21 @@ const source = readFileSync(
   "utf8",
 );
 
+const routes = readFileSync(
+  join(process.cwd(), "src/components/social/social-feed-routes.ts"),
+  "utf8",
+);
+const loader = readFileSync(
+  join(process.cwd(), "src/components/social/social-feed-rail-loader.tsx"),
+  "utf8",
+);
+
 describe("social feed rail route suppression", () => {
+  it("checks route suppression before mounting the dynamic rail", () => {
+    expect(loader).toContain('dynamic(() => import("./social-feed-rail")');
+    expect(loader).toContain("pathname && !isHiddenRoute(pathname) ? <Rail");
+    expect(loader).toContain('from "./social-feed-routes"');
+  });
   it("keeps the floating social preview off analytical workflow and platform pages", () => {
     for (const route of [
       "/import",
@@ -27,13 +41,13 @@ describe("social feed rail route suppression", () => {
       "/admin",
       "/partners",
     ]) {
-      expect(source).toContain(`"${route}"`);
+      expect(routes).toContain(`"${route}"`);
     }
   });
 
   it("keeps social graph destinations available instead of hiding every social route", () => {
     for (const route of ["/friends", "/groups", "/profile", "/leaderboard"]) {
-      expect(source).not.toContain(`"${route}"`);
+      expect(routes).not.toContain(`"${route}"`);
     }
   });
 

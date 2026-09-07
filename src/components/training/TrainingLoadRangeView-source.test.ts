@@ -77,7 +77,7 @@ describe("TrainingLoadRangeView readiness experience", () => {
     expect(chartLoading).not.toContain(">Loading {label.toLowerCase()}…</div>");
   });
 
-  it("keeps one golfer-facing decision and moves deeper history off mobile", () => {
+  it("keeps one golfer-facing decision and collapses the full ledger behind explicit disclosure", () => {
     const recommendation = componentBody("ReadinessRecommendation", "TrainingRhythmWorkbench");
     const rhythm = componentBody("TrainingRhythmWorkbench", "GradeRow");
 
@@ -88,9 +88,11 @@ describe("TrainingLoadRangeView readiness experience", () => {
     expect(source).toContain('decision: "Technical only"');
     expect(source).toContain('decision: "Recovery"');
     expect(source).toContain("className={styles.desktopRanges}");
-    expect(source).toContain("className={styles.desktopHistory}");
-    expect(source).toContain("const isDesktopViewport = useDesktopViewport()");
-    expect(source).toContain("{isDesktopViewport ? (");
+    expect(source).toMatch(
+      /<details>\s*<summary[^>]*>\s*Full training ledger and export\s*<\/summary>\s*<TrainingSessionLedger sessions={displayData.sessions} rangeKey={activeRangeKey} \/>\s*<\/details>/,
+    );
+    expect(source).toContain("<LabEvidenceList");
+    expect(source).toContain("rows={displayData.sessions.map");
     expect(source).not.toContain("RecoveryWorkbench");
     expect(source).not.toContain("buildNext48Plan");
 

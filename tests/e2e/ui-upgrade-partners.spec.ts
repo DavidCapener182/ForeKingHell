@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 test("Partners preserves full sponsor and offer fields without tracking previews", async ({
   page,
   context,
@@ -36,6 +37,10 @@ test("Partners preserves full sponsor and offer fields without tracking previews
       await db`insert into fkh_sponsors(owner_user_id,name,slug,contact_email,website_url) values(${users[0]},'Synthetic sponsor',${`ui-${randomUUID()}`},'sponsor@example.invalid','https://example.invalid/sponsor') returning id`
     )[0].id;
     sponsorIds.push(sponsor);
+    const otherSponsor = (
+      await db`insert into fkh_sponsors(owner_user_id,name,slug) values(${users[1]},'Synthetic excluded sponsor',${`excluded-${randomUUID()}`}) returning id`
+    )[0].id;
+    sponsorIds.push(otherSponsor);
     const offer = (
       await db`insert into fkh_partner_offers(sponsor_id,title,description,offer_type,target_context,offer_url,coupon_code) values(${sponsor},'Synthetic complete offer','Synthetic full terms: discount is valid for the named golf fixture only.','affiliate','wedge practice','https://example.invalid/offer','GOLF20') returning id`
     )[0].id;
@@ -132,6 +137,53 @@ test("Partners preserves full sponsor and offer fields without tracking previews
         await expect(detail).toContainText("https://example.invalid/sponsor");
         await page.keyboard.press("Escape");
         await expect(detail).toHaveCount(0);
+        const register = page.getByRole("region", { name: "Sponsor pipeline", exact: true });
+        await register
+          .getByRole("combobox", { name: "Ownership", exact: true })
+          .selectOption("owned");
+        const downloadReady = page.waitForEvent("download");
+        await register.locator("[data-export-table-id]").click();
+        const csv = await readFile((await (await downloadReady).path())!, "utf8");
+        expect(csv).toContain(sponsor);
+        expect(csv).toContain("sponsor@example.invalid");
+        expect(csv).not.toContain(otherSponsor);
+        await register.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitemcheckbox", { name: "Contact email", exact: true }).click();
+        await page.keyboard.press("Escape");
+        const viewName = `Sponsors ${surface} ${width}`;
+        await register.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.getByRole("menuitem", { name: "Save current view", exact: true }).click();
+        const saveView = page.getByRole("dialog", { name: "Save table view" });
+        await saveView.getByRole("textbox", { name: "View name" }).fill(viewName);
+        await saveView.getByRole("button", { name: "Save view", exact: true }).click();
+        await register
+          .getByRole("textbox", { name: "Search sponsors", exact: true })
+          .fill("no-matching-sponsor");
+        await register
+          .getByRole("combobox", { name: "Ownership", exact: true })
+          .selectOption("all");
+        await register.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.getByRole("menuitem", { name: new RegExp(`^${viewName} `) }).click();
+        await page.reload();
+        await expect(
+          register.getByRole("textbox", { name: "Search sponsors", exact: true }),
+        ).toHaveValue("Synthetic sponsor");
+        await expect(
+          register.getByRole("combobox", { name: "Ownership", exact: true }),
+        ).toHaveValue("owned");
+        await expect(
+          register.locator('[data-column="contactEmail"]').filter({ visible: true }),
+        ).toHaveCount(0);
+        const hiddenReady = page.waitForEvent("download");
+        await register.locator("[data-export-table-id]").click();
+        const hiddenCsv = await readFile((await (await hiddenReady).path())!, "utf8");
+        expect(hiddenCsv).toContain(sponsor);
+        expect(hiddenCsv).not.toContain("sponsor@example.invalid");
+        await register.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitem", { name: "Show all columns", exact: true }).click();
+        await expect(page.getByRole("menu")).toHaveCount(0);
+        await register.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: info.outputPath(`P82-register-${surface}-${width}.png`) });
         await expect(
           page.locator(
             '[data-slot="drawer-content"], [data-slot="sheet-content"], [data-slot="drawer-overlay"], [data-slot="sheet-overlay"]',
