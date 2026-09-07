@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
   };
   response.cookies.set(SELECTED_COURSE_COOKIE, selected.id, cookieOptions);
   if (selectedTee) response.cookies.set(SELECTED_TEE_COOKIE, selectedTee.id, cookieOptions);
+  else response.cookies.delete(SELECTED_TEE_COOKIE);
   response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
