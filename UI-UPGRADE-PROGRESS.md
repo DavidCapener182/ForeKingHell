@@ -697,3 +697,8 @@ Next/current: restore saved views, columns and filtered CSV controls to SharedSe
 - Deployment dpl_B3rfcHEvcQYMDxiTMQ8pyHGr3sUa verified READY through CLI exit0 and Vercel API; target:null confirms preview. No production alias/main changes.
 - Build compiled57s; TypeScript67s;25staticpages generated. Initial package build failed on omitted root proxy.ts; added unchanged file, verified no unresolved relative imports, manifest now1596files. No local credentials/test data uploaded.
 - Full hosted interaction/permission acceptance remains outstanding; this preview is for user review, not492-entry overall completion. Pending UI defects include Best Shots selected metric race, session-history Focus selector and remaining session-review integration.
+
+## Follow-up — Best Shots selection integrity
+- Fixed stale carousel callback overwriting the selected carry/total metric. Callback only updates club from current URL; record controls disabled until hydrated.
+- Other agent expanded ui-upgrade-longest.spec.ts; reviewed exact pressed-state/URL/evidence/source assertions. longest-all-clubs-retest.log PASS18.6s, allfixtureclubs/bothmetrics/bothsurfaces/sixsizes. Types/lint clean; settled carousel screenshot/AT remains open.
+- P11 entries updated but remain partial. Hosted preview predates this local fix. Current: History Focus selector restored; history-focus-browser.log running. Next: finish Focus and session-review integration, then three missing admin register control groups.

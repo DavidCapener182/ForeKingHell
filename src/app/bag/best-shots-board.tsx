@@ -2,6 +2,7 @@
 import { ShotEvidenceSheet } from "@/app/shots/shot-evidence-sheet";
 
 import Link from "next/link";
+import { useClientReady } from "@/hooks/use-client-ready";
 import { HighlightCarousel } from "@/components/app/highlight-carousel";
 import { useSearchParams } from "next/navigation";
 import { ArrowRight, ArrowUpRight, Flag, Trophy } from "lucide-react";
@@ -21,6 +22,7 @@ export function BestShotsBoard({
   totalShots: LongestShot[];
   preferredUnits: DistanceUnitPreference;
 }) {
+  const ready = useClientReady();
   const params = useSearchParams();
   const metric: Metric = params.get("metric") === "total" ? "total" : "carry";
   const allClubs = [
@@ -37,7 +39,7 @@ export function BestShotsBoard({
   const largest = Math.max(1, ...records.map((shot) => distance(shot, metric) ?? 0));
 
   function select(clubId: string, nextMetric: Metric) {
-    const next = new URLSearchParams(params.toString());
+    const next = new URLSearchParams(window.location.search);
     next.set("club", clubId);
     next.set("metric", nextMetric);
     window.history.pushState(null, "", `?${next.toString()}`);
@@ -49,6 +51,7 @@ export function BestShotsBoard({
         <label>
           Club
           <select
+            disabled={!ready}
             aria-label="Choose club"
             value={club.clubId}
             onChange={(event) => select(event.target.value, metric)}
@@ -63,6 +66,7 @@ export function BestShotsBoard({
         <label>
           Record
           <select
+            disabled={!ready}
             aria-label="Choose distance record"
             value={metric}
             onChange={(event) => select(club.clubId, event.target.value as Metric)}
@@ -77,10 +81,12 @@ export function BestShotsBoard({
         selectedIndex={allClubs.findIndex((item) => item.clubId === club.clubId)}
         onSelected={(index) => {
           const nextClub = allClubs[index];
-          if (!nextClub || nextClub.clubId === club.clubId) return;
-          const next = new URLSearchParams(params.toString());
+          if (!nextClub) return;
+          // Carousel callbacks may finish after a record click. Only synchronise
+          // the club; never restore a metric captured by an earlier render.
+          const next = new URLSearchParams(window.location.search);
+          if (next.get("club") === nextClub.clubId) return;
           next.set("club", nextClub.clubId);
-          next.set("metric", metric);
           window.history.replaceState(null, "", `?${next.toString()}`);
         }}
         slides={allClubs.map((item) => ({
@@ -136,6 +142,7 @@ export function BestShotsBoard({
                     <button
                       type="button"
                       key={kind}
+                      disabled={!ready}
                       onClick={() => select(item.clubId, kind)}
                       aria-label={`${formatClubType(item.clubType)} longest ${kind}: ${formatStoredYards(shot ? distance(shot, kind) : null, preferredUnits)}`}
                       aria-pressed={isSelected && metric === kind}
