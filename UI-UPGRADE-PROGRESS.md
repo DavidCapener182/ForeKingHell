@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-477 desktop / 477 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P92 Companion summary router**, next P93 Course record redirect. 15 UI entries remain. Continue the UI pass with acceptance gaps retained.
+479 desktop / 479 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P93 Course record redirect**, next P94 Course tournament redirect. 13 UI entries remain (6 route entries and7 shared rows). Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P92 Companion summary router**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P93 Course record redirect**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -488,3 +488,7 @@ P90-C01–C03 implemented partial on both surfaces. Full frozen report view reus
 ## P91 Desktop handoff UI pass, 7 September
 
 P91-C01–C02 UI implemented partial. Removed mobile-only wrapper; onefullwidth title/actions/context and usefulalternatives. Existingnowdirect98documented route patterns +actualproxycapabilitygates redirect tocanonical, normalize/rejectexternal/internalself/backslash/control paths andretainquery/repeatedfilters/hash. Newcompanion-destination.ts and3unitPASS;unknown descendants do not implyknownpage. Actualbrowserall6fallback/nooverflow andexactProgressURLassertions passed, but handoff-browser-ready.log overallFAIL finalpageerror: Next Performance.measure CompanionHandoffPage negative timestamp. Sameerror repeatedafterwarmrun, no suppression/workaround; earliestredirect testtimeout wascoldrender. Types/lint clean;390capture inspected. Preserve this outstandingruntimeverificationdefect while continuing UI-first. Next P92 reusehelper/fullcontext; thenP93–P98 then7sharedUIstatus reconciliation.
+
+## P92 Companion summary UI pass, 7 September
+
+P92-C01–C02 UIimplemented partial. Shared safe documented-route helper opens promotedfulltask; remaining summary has onefullwidth header/primary, exactrequestedquery context, semanticrows, clear limitation andfullworkspace/Todayreturn. Driverpanel nowonly explicitdriverquery andnative supportingdisclosure. Existingdata/math preserved. summary-browser.log1PASS20.8s all12size/surface actualemptyachievementfixture, correctfullhref/noirrelevantdriver/nooverflow/errors;390reviewed. Types/lint clean. Populated/state/physical/AT/themes remain; P91redirectruntimeerror notresolved. ResumeP93–P98 sequentialprompts, thenG04parentbreadcrumbs/44px,G13retry44px,G14wrap/dismiss44px andsource-reconciledG08/G09/G11/G12verificationgaps.

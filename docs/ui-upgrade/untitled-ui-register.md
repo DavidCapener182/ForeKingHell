@@ -173,3 +173,6 @@ Checked official form, section/divider and empty/loading/alert references reused
 
 ## P91 Desktop handoff
 Checked official section/badge/button domain lists and empty/loading/alerts reused. Paid advanced examples unavailable. Accessible alternative: one semantic full-width header, native preserved-context disclosure and large native route/surface links. Unsupported underlying tasks are not marked complete.
+
+## P92 Companion summary
+Checked official section/badge/button domain-list references reused. Paid advanced examples unavailable. Accessible alternatives: native destination disclosure, semantic full current-evidence rows, explicit preserved-context surface navigation and optional route-specific driver disclosure. No deeper task acceptance inferred.
