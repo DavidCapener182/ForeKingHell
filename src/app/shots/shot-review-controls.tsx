@@ -57,12 +57,14 @@ export function ShotReviewButton({
   trigger,
   intent = "review",
   companion = false,
+  onComplete,
 }: {
   shotId: string;
   reviewStatus: ShotReviewStatus;
   trigger?: ReactNode;
   intent?: "review" | "exclude";
   companion?: boolean;
+  onComplete?: () => void;
 }) {
   const reasonId = useId();
   const [open, setOpen] = useState(false);
@@ -91,6 +93,7 @@ export function ShotReviewButton({
           });
         }
         setOpen(false);
+        onComplete?.();
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Could not review this shot.");
       }

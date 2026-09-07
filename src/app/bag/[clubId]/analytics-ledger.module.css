@@ -1,0 +1,2 @@
+.mobile { display: grid; gap: .75rem; min-width: 0; }
+@media(min-width:1024px) { .mobile { display: none; } }

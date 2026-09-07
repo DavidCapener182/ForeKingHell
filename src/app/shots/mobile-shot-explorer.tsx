@@ -1,18 +1,17 @@
 "use client";
-import { ShotFlightEvidence } from "@/components/analysis/shot-flight-evidence";
 
 import Link from "next/link";
+import { csvCell } from "@/lib/csv";
 import { useRouter } from "next/navigation";
 import { correctShotClubAction } from "@/app/(app)/shots/actions";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { ChevronDown } from "lucide-react";
-import type { ShotMasterDetailRow } from "./shots-master-detail-table";
+import { SelectedShotDetail, type ShotMasterDetailRow } from "./shots-master-detail-table";
 import { ShotReviewButton, ShotBulkReviewButton } from "./shot-review-controls";
-import { MobileLargeTitle, MobileMetric, MobileSection } from "@/components/app/mobile-screen";
 import { MobileGroupedList, MobileStatus } from "@/components/app/mobile-primitives";
 import { Button } from "@/components/ui/button";
-import { MobileShotFilters, type MobileShotFiltersValue } from "./mobile-shot-filters";
-import { hasShotMetric, mobileShotMetrics, visibleShotSelection } from "./mobile-shot-evidence";
+import { type MobileShotFiltersValue } from "./mobile-shot-filters";
+import { hasShotMetric, visibleShotSelection } from "./mobile-shot-evidence";
 import {
   Drawer,
   DrawerContent,
@@ -30,6 +29,7 @@ type Props = {
   categories: Option[];
   filters: MobileShotFiltersValue;
   total: number;
+  accountShotCount: number;
   page: number;
   pages: number;
   previousHref: string;
@@ -38,34 +38,24 @@ type Props = {
 
 export function MobileShotExplorer({
   shots,
-  clubs,
   correctionClubs,
-  sessions,
-  categories,
   filters,
   total,
+  accountShotCount,
   page,
   pages,
   previousHref,
   nextHref,
 }: Props) {
+  const focusReturn = useRef<HTMLButtonElement | null>(null);
+  const [tab, setTab] = useState<"overview" | "source" | "history">("overview");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [reviewing, setReviewing] = useState(false);
   const visibleSelection = visibleShotSelection(selectedIds, shots);
   const selected = shots.find((shot) => shot.id === selectedId);
   return (
-    <section className="grid min-w-0 gap-5 lg:hidden" data-mobile-shot-explorer>
-      <MobileLargeTitle
-        title={filters.review ? "Review shots" : "Shots"}
-        detail={`${total.toLocaleString("en-GB")} matching shots`}
-      />
-      <MobileShotFilters
-        filters={filters}
-        clubs={clubs}
-        sessions={sessions}
-        categories={categories}
-      />
+    <section className="grid min-w-0 gap-5" data-mobile-shot-explorer>
       <div className="flex items-center justify-between gap-3">
         <Link
           className="flex min-h-11 items-center text-sm font-semibold text-primary"
@@ -90,6 +80,57 @@ export function MobileShotExplorer({
           onComplete={() => setSelectedIds([])}
         />
       ) : null}
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <Button
+          variant="outline"
+          disabled={!shots.length}
+          onClick={() => {
+            const rows = [
+              [
+                "Shot ID",
+                "Club",
+                "Session",
+                "Shot number",
+                "Date",
+                "Carry (yd)",
+                "Total (yd)",
+                "Side (yd)",
+                "Ball speed (mph)",
+                "Club speed (mph)",
+                "Launch (deg)",
+                "Review state",
+              ],
+              ...shots.map((shot) => [
+                shot.id,
+                shot.clubLabel,
+                shot.fileNameLabel,
+                shot.shotNumberLabel,
+                shot.shotAtLabel,
+                shot.carryYd === null ? "" : String(shot.carryYd),
+                shot.totalLabel,
+                shot.sideLabel,
+                shot.ballSpeedLabel,
+                shot.clubSpeedLabel,
+                shot.launchLabel,
+                shot.reviewStatusLabel,
+              ]),
+            ];
+            const url = URL.createObjectURL(
+              new Blob([rows.map((row) => row.map(csvCell).join(",")).join("\r\n")], {
+                type: "text/csv;charset=utf-8",
+              }),
+            );
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `shots-page-${page}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+        >
+          Export {shots.length} shots on this page
+        </Button>
+        <span>Sort applies to all {total} matching shots.</span>
+      </div>
       {shots.length ? (
         <MobileGroupedList label="Measured shots">
           {shots.map((shot) => (
@@ -114,7 +155,11 @@ export function MobileShotExplorer({
               <button
                 type="button"
                 className="mobile-shot-row"
-                onClick={() => setSelectedId(shot.id)}
+                onClick={(event) => {
+                  focusReturn.current = event.currentTarget;
+                  setTab("overview");
+                  setSelectedId(shot.id);
+                }}
                 aria-label={`${shot.clubTypeLabel}, ${shot.carryYd !== null ? `${Math.round(shot.carryYd)} yards carry` : "carry not recorded"}, ${shot.evidenceStatus === "trusted" ? "included" : "needs review"}, view shot`}
               >
                 <span className="min-w-0">
@@ -161,16 +206,20 @@ export function MobileShotExplorer({
         </MobileGroupedList>
       ) : (
         <div role="status" className="py-6">
-          <h2 className="font-semibold">No matching shots</h2>
+          <h2 className="font-semibold">
+            {accountShotCount ? "No matching shots" : "Import your first measured shots"}
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Change the filters or import a measured session.
           </p>
           <Button asChild className="mt-3">
-            <Link href="/import">Import session</Link>
+            <Link href={accountShotCount ? "/shots" : "/import"}>
+              {accountShotCount ? "Clear filters" : "Import session"}
+            </Link>
           </Button>
         </div>
       )}
-      <nav aria-label="Shot pages" className="flex items-center justify-between">
+      <nav aria-label="Shot pages" className="flex flex-wrap items-center justify-between gap-3">
         {page > 1 ? (
           <Button asChild variant="outline">
             <Link href={previousHref}>Previous</Link>
@@ -179,7 +228,8 @@ export function MobileShotExplorer({
           <span />
         )}
         <span className="text-sm tabular-nums">
-          {page} / {pages}
+          {total ? (page - 1) * 50 + 1 : 0}–{Math.min(page * 50, total)} of {total} · Page {page} /{" "}
+          {pages}
         </span>
         {page < pages ? (
           <Button asChild variant="outline">
@@ -195,7 +245,13 @@ export function MobileShotExplorer({
           if (!open) setSelectedId(null);
         }}
       >
-        <DrawerContent className="max-h-[92dvh]">
+        <DrawerContent
+          className="max-h-[92dvh]"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            focusReturn.current?.focus();
+          }}
+        >
           <DrawerHeader className="flex-none">
             <div className="flex items-center justify-between gap-3">
               <DrawerTitle>
@@ -211,44 +267,13 @@ export function MobileShotExplorer({
           </DrawerHeader>
           {selected ? (
             <div className="grid min-h-0 gap-5 overflow-y-auto px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-              {selected.carryYd !== null ? (
-                <MobileMetric value={Math.round(selected.carryYd)} unit="yd" label="carry" />
-              ) : (
-                <p className="text-sm text-muted-foreground">Carry not recorded</p>
-              )}
-              <dl className="grid grid-cols-2 gap-4">
-                {mobileShotMetrics(selected).map(([label, value]) => (
-                  <div key={label}>
-                    <dt className="text-xs text-muted-foreground">{label}</dt>
-                    <dd className="font-semibold tabular-nums">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-              {selected.flightEvidence && (
-                <ShotFlightEvidence
-                  evidence={selected.flightEvidence}
-                  sessionId={selected.sessionId}
-                  shotId={selected.id}
-                />
-              )}
-              <MobileSection title="Evidence">
-                <MobileStatus
-                  label={
-                    selected.evidenceStatus === "trusted"
-                      ? "Included"
-                      : `${selected.reviewStatusLabel} · not trusted`
-                  }
-                  tone={selected.evidenceStatus === "trusted" ? "positive" : "attention"}
-                />
-                <p className="text-sm">
-                  {selected.reviewReason ?? selected.evidenceReasons.join(" · ")}
-                </p>
-                {hasShotMetric(selected.reviewConfidenceLabel) ? (
-                  <p className="text-xs text-muted-foreground">
-                    Review confidence · {selected.reviewConfidenceLabel}
-                  </p>
-                ) : null}
-              </MobileSection>
+              <SelectedShotDetail
+                key={selected.id}
+                shot={selected}
+                tab={tab}
+                onTabChange={setTab}
+                showActions={false}
+              />
               <ClubCorrection key={selected.id} shotId={selected.id} clubs={correctionClubs} />
               <ShotReviewButton
                 companion
@@ -276,7 +301,15 @@ export function MobileShotExplorer({
   );
 }
 
-export function ClubCorrection({ shotId, clubs }: { shotId: string; clubs: Option[] }) {
+export function ClubCorrection({
+  shotId,
+  clubs,
+  onComplete,
+}: {
+  shotId: string;
+  clubs: Option[];
+  onComplete?: () => void;
+}) {
   const router = useRouter();
   const [clubId, setClubId] = useState("");
   const [undoId, setUndoId] = useState<string | null>(null);
@@ -286,8 +319,16 @@ export function ClubCorrection({ shotId, clubs }: { shotId: string; clubs: Optio
     startTransition(async () => {
       try {
         const result = await correctShotClubAction(shotId, value);
-        setUndoId(result.previousClubId);
-        setMessage("Club updated. Both clubs’ trusted distances have been recalculated.");
+        // A refresh retry can be a no-op. Keep the original club available for Undo.
+        setUndoId((previous) =>
+          result.previousClubId === value ? previous : result.previousClubId,
+        );
+        setMessage(
+          result.warning
+            ? `Club updated. ${result.warning}`
+            : "Club updated. Both clubs’ trusted distances have been recalculated.",
+        );
+        onComplete?.();
         router.refresh();
       } catch (error) {
         setMessage(

@@ -1,47 +1,19 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import styles from "./shot-explorer.module.css";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  CalendarDays,
-  ChevronsUpDown,
-  ListFilter,
-  Search,
-  SlidersHorizontal,
-  X,
-} from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { UntitledSelect, UntitledTextField } from "@/components/untitled-ui/form-controls";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
 
 export type ShotFilterState = {
   q: string;
@@ -54,504 +26,263 @@ export type ShotFilterState = {
   sort: string;
   dir: "asc" | "desc";
   group: "none" | "club" | "session";
+  review?: string;
+  shotId?: string;
 };
-
-type FilterOption = { value: string; label: string };
+type Option = { value: string; label: string };
+const defaults: ShotFilterState = {
+  q: "",
+  club: "",
+  sessionId: "",
+  category: "",
+  from: "",
+  to: "",
+  trust: "all",
+  sort: "recent",
+  dir: "desc",
+  group: "none",
+  review: "",
+  shotId: "",
+};
+export const shotFilterSortOptions = [
+  ["recent", "Date"],
+  ["shot", "Shot number"],
+  ["carry", "Carry"],
+  ["total", "Total"],
+  ["side", "Side"],
+  ["ballSpeed", "Ball speed"],
+  ["clubSpeed", "Club speed"],
+  ["launch", "Launch"],
+  ["launchDirection", "Launch direction"],
+  ["apex", "Apex"],
+  ["attack", "Attack"],
+  ["path", "Path"],
+  ["face", "Face angle"],
+  ["descent", "Descent"],
+  ["smash", "Smash"],
+].map(([value, label]) => ({ value, label }));
+const reviews = [
+  "included",
+  "suggested_exclusion",
+  "user_excluded",
+  "warm_up",
+  "calibration",
+  "launch_monitor_error",
+  "restored",
+].map((value) => ({ value, label: value.replaceAll("_", " ") }));
 
 export function ShotFilterToolbar({
   initial,
   clubs,
   sessions,
   categories,
-  sortOptions,
+  sortOptions = shotFilterSortOptions,
   resultLabel,
 }: {
   initial: ShotFilterState;
-  clubs: FilterOption[];
-  sessions: FilterOption[];
-  categories: FilterOption[];
-  sortOptions: FilterOption[];
+  clubs: Option[];
+  sessions: Option[];
+  categories: Option[];
+  sortOptions?: Option[];
   resultLabel: string;
 }) {
   const router = useRouter();
-  const [filters, setFilters] = useState(initial);
-  const [clubOpen, setClubOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-
-  const setFilter = <Key extends keyof ShotFilterState>(key: Key, value: ShotFilterState[Key]) =>
-    setFilters((current) => ({ ...current, [key]: value }));
-
-  const activeFilters = buildActiveFilters(filters, clubs, sessions, categories);
-
+  const [draft, setDraft] = useState(initial);
+  const [sheetDraft, setSheetDraft] = useState(initial);
+  const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const active = Object.entries(initial).filter(
+    ([key, value]) => value && value !== defaults[key as keyof ShotFilterState],
+  );
   function navigate(next: ShotFilterState) {
-    setFilters(next);
-    const params = filterParams(next);
-    router.push(params.size ? `/shots?${params.toString()}` : "/shots");
+    const params = new URLSearchParams(window.location.search);
+    Object.keys(defaults).forEach((key) => params.delete(key));
+    params.delete("page");
+    Object.entries(next).forEach(([key, value]) => {
+      if (value && value !== defaults[key as keyof ShotFilterState])
+        params.set(key, key === "q" ? value.trim().slice(0, 120) : value);
+    });
+    setDraft(next);
+    setOpen(false);
+    startTransition(() =>
+      router.push(`/shots${params.size ? `?${params}` : ""}`, { scroll: false }),
+    );
   }
-
-  function apply(event?: FormEvent) {
-    event?.preventDefault();
-    navigate(filters);
-    setMoreOpen(false);
-  }
-
-  function clearFilters() {
-    navigate(emptyFilters());
-    setMoreOpen(false);
-  }
-
-  function removeFilter(id: string) {
-    const next = { ...filters };
-
-    if (id === "date") {
-      next.from = "";
-      next.to = "";
-    } else if (id === "sort") {
-      next.sort = "recent";
-      next.dir = "desc";
-    } else if (id in next) {
-      (next as Record<string, string>)[id] = id === "trust" ? "all" : id === "group" ? "none" : "";
-    }
-
-    navigate(next);
-  }
-
-  return (
-    <form
-      onSubmit={apply}
-      className="sticky top-[4.25rem] z-40 grid min-w-0 gap-2 border-y bg-background/96 py-3 shadow-[0_8px_24px_-24px_hsl(var(--foreground))] backdrop-blur supports-[backdrop-filter]:bg-background/88"
-      data-shot-filter-toolbar
-    >
-      <div className="overflow-x-auto overscroll-x-contain pb-1">
-        <div
-          className="flex min-w-max items-center gap-2 px-0.5"
-          role="toolbar"
-          aria-label="Shot filters"
-        >
-          <InputGroup className="h-9 w-64 shrink-0 bg-card">
-            <InputGroupAddon>
-              <Search className="size-4" aria-hidden />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={filters.q}
-              onChange={(event) => setFilter("q", event.target.value)}
-              placeholder="Search source or course"
-              aria-label="Search shots"
-            />
-            {filters.q ? (
-              <InputGroupAddon align="inline-end">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Clear search"
-                  onClick={() => setFilter("q", "")}
-                >
-                  <X className="size-3.5" aria-hidden />
-                </Button>
-              </InputGroupAddon>
-            ) : null}
-          </InputGroup>
-
-          <ClubCombobox
-            open={clubOpen}
-            onOpenChange={setClubOpen}
-            value={filters.club}
-            options={clubs}
-            onChange={(value) => setFilter("club", value)}
-          />
-
-          <FilterSelect
-            label="Session"
-            value={filters.sessionId || "__all"}
-            onValueChange={(value) => setFilter("sessionId", value === "__all" ? "" : value)}
-            options={sessions}
-            allLabel="All sessions"
-            className="w-44"
-          />
-
-          <FilterSelect
-            label="Shot type"
-            value={filters.category || "__all"}
-            onValueChange={(value) => setFilter("category", value === "__all" ? "" : value)}
-            options={categories}
-            allLabel="All shot types"
-            className="w-36"
-          />
-
-          <DateRangePopover
-            from={filters.from}
-            to={filters.to}
-            onFromChange={(value) => setFilter("from", value)}
-            onToChange={(value) => setFilter("to", value)}
-          />
-
-          <Select
-            value={filters.trust}
-            onValueChange={(value) => setFilter("trust", value as ShotFilterState["trust"])}
-          >
-            <SelectTrigger className="h-9 w-40 shrink-0 bg-card" aria-label="Evidence status">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All evidence</SelectItem>
-              <SelectItem value="trusted">Trusted</SelectItem>
-              <SelectItem value="untrusted">Untrusted</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-            <SheetTrigger asChild>
-              <Button type="button" variant="outline" size="sm" className="h-9 shrink-0 bg-card">
-                <SlidersHorizontal className="size-4" aria-hidden />
-                More filters
-                {filters.group !== "none" || filters.sort !== "recent" ? (
-                  <Badge variant="secondary" className="ml-0.5 px-1.5">
-                    {[filters.group !== "none", filters.sort !== "recent"].filter(Boolean).length}
-                  </Badge>
-                ) : null}
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="sm:max-w-md">
-              <SheetHeader className="border-b pr-12">
-                <SheetTitle>More shot filters</SheetTitle>
-                <SheetDescription>
-                  Control grouping and default order without crowding the evidence table.
-                </SheetDescription>
-              </SheetHeader>
-              <div className="grid gap-5 overflow-y-auto px-4">
-                <Field>
-                  <FieldLabel>Group rows</FieldLabel>
-                  <Select
-                    value={filters.group}
-                    onValueChange={(value) => setFilter("group", value as ShotFilterState["group"])}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No grouping</SelectItem>
-                      <SelectItem value="club">Club</SelectItem>
-                      <SelectItem value="session">Session</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field>
-                  <FieldLabel>Default sort</FieldLabel>
-                  <Select value={filters.sort} onValueChange={(value) => setFilter("sort", value)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sortOptions.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field>
-                  <FieldLabel>Sort direction</FieldLabel>
-                  <Select
-                    value={filters.dir}
-                    onValueChange={(value) => setFilter("dir", value as "asc" | "desc")}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="desc">High to low</SelectItem>
-                      <SelectItem value="asc">Low to high</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </Field>
-              </div>
-              <SheetFooter className="border-t sm:flex-row">
-                <Button type="button" variant="ghost" onClick={clearFilters}>
-                  Clear all
-                </Button>
-                <Button type="button" className="sm:ml-auto" onClick={() => apply()}>
-                  Apply filters
-                </Button>
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
-
-          <Button type="submit" size="sm" className="h-9 shrink-0 px-4">
-            <ListFilter className="size-4" aria-hidden />
-            Apply
-          </Button>
-
-          <span className="px-1 text-xs font-medium text-muted-foreground">{resultLabel}</span>
-        </div>
-      </div>
-
-      {activeFilters.length > 0 ? (
-        <div className="flex min-h-7 flex-wrap items-center gap-1.5" aria-label="Active filters">
-          <span className="mr-1 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-            Active
-          </span>
-          {activeFilters.map((filter) => (
-            <Badge key={filter.id} variant="secondary" className="gap-1 rounded-md pl-2.5 pr-1">
-              {filter.label}
-              <button
-                type="button"
-                className="focus-aaa rounded-sm p-0.5 outline-none"
-                onClick={() => removeFilter(filter.id)}
-                aria-label={`Remove ${filter.label} filter`}
-              >
-                <X className="size-3" aria-hidden />
-              </button>
-            </Badge>
-          ))}
-          <Button type="button" variant="ghost" size="sm" className="h-7" onClick={clearFilters}>
-            Clear all
-          </Button>
-        </div>
-      ) : null}
-    </form>
-  );
-}
-
-function ClubCombobox({
-  open,
-  onOpenChange,
-  value,
-  options,
-  onChange,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  value: string;
-  options: FilterOption[];
-  onChange: (value: string) => void;
-}) {
-  const label = options.find((item) => item.value === value)?.label ?? "All clubs";
-
-  return (
-    <Popover open={open} onOpenChange={onOpenChange}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          role="combobox"
-          aria-expanded={open}
-          aria-label="Club filter"
-          className="h-9 w-36 shrink-0 justify-between bg-card font-normal"
-        >
-          <span className="truncate">{label}</span>
-          <ChevronsUpDown className="size-3.5 opacity-50" aria-hidden />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-64 p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Find a club…" />
-          <CommandList>
-            <CommandEmpty>No club found.</CommandEmpty>
-            <CommandGroup heading="Club">
-              <CommandItem
-                value="All clubs"
-                data-checked={!value}
-                onSelect={() => {
-                  onChange("");
-                  onOpenChange(false);
-                }}
-              >
-                All clubs
-              </CommandItem>
-              {options.map((item) => (
-                <CommandItem
-                  key={item.value}
-                  value={`${item.label} ${item.value}`}
-                  data-checked={value === item.value}
-                  onSelect={() => {
-                    onChange(item.value);
-                    onOpenChange(false);
-                  }}
-                >
-                  {item.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function FilterSelect({
-  label,
-  value,
-  onValueChange,
-  options,
-  allLabel,
-  className,
-}: {
-  label: string;
-  value: string;
-  onValueChange: (value: string) => void;
-  options: FilterOption[];
-  allLabel: string;
-  className?: string;
-}) {
-  return (
-    <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className={cn("h-9 shrink-0 bg-card", className)} aria-label={label}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="__all">{allLabel}</SelectItem>
-        {options.map((item) => (
-          <SelectItem key={item.value} value={item.value}>
-            {item.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function DateRangePopover({
-  from,
-  to,
-  onFromChange,
-  onToChange,
-}: {
-  from: string;
-  to: string;
-  onFromChange: (value: string) => void;
-  onToChange: (value: string) => void;
-}) {
-  const label = from || to ? [from || "Any", to || "Today"].join(" – ") : "Any date";
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9 w-40 shrink-0 justify-start bg-card font-normal"
-          aria-label="Date filter"
-        >
-          <CalendarDays className="size-4" aria-hidden />
-          <span className="truncate">{label}</span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80" align="start">
-        <div className="grid gap-4">
-          <div>
-            <p className="font-semibold">Shot date</p>
-            <p className="text-xs text-muted-foreground">
-              Use either edge or set a complete range.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field>
-              <FieldLabel>From</FieldLabel>
+  function fields(
+    value: ShotFilterState,
+    change: (next: ShotFilterState) => void,
+    advanced: boolean,
+  ) {
+    const select = (key: keyof ShotFilterState, label: string, options: Option[], all?: string) => (
+      <UntitledSelect
+        key={key}
+        label={label}
+        name={`shot-${key}`}
+        value={value[key] || "__all"}
+        onValueChange={(v) => change({ ...value, [key]: v === "__all" ? "" : v })}
+        options={[...(all ? [{ value: "__all", label: all }] : []), ...options]}
+      />
+    );
+    return (
+      <>
+        {select("club", "Club", clubs, "All clubs")}
+        {select("sessionId", "Session", sessions, "All sessions")}
+        {select("trust", "Evidence", [
+          { value: "all", label: "All evidence" },
+          { value: "trusted", label: "Trusted" },
+          { value: "untrusted", label: "Untrusted" },
+        ])}
+        {advanced && (
+          <>
+            {select("category", "Shot type", categories, "All shot types")}
+            {select("review", "Review state", reviews, "All review states")}
+            {select("sort", "Sort by", sortOptions)}
+            {select("dir", "Order", [
+              { value: "desc", label: "Highest / newest first" },
+              { value: "asc", label: "Lowest / oldest first" },
+            ])}
+            {select("group", "Group rows", [
+              { value: "none", label: "No grouping" },
+              { value: "club", label: "Club" },
+              { value: "session", label: "Session" },
+            ])}
+            <label className="grid gap-2 text-sm font-medium">
+              From
               <Input
+                className="min-h-11"
                 type="date"
-                value={from}
-                onChange={(event) => onFromChange(event.target.value)}
+                value={value.from}
+                max={value.to || undefined}
+                onChange={(e) => change({ ...value, from: e.target.value })}
               />
-            </Field>
-            <Field>
-              <FieldLabel>To</FieldLabel>
-              <Input type="date" value={to} onChange={(event) => onToChange(event.target.value)} />
-            </Field>
-          </div>
-          {from || to ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="justify-start"
-              onClick={() => {
-                onFromChange("");
-                onToChange("");
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              To
+              <Input
+                className="min-h-11"
+                type="date"
+                value={value.to}
+                min={value.from || undefined}
+                onChange={(e) => change({ ...value, to: e.target.value })}
+              />
+            </label>
+          </>
+        )}
+      </>
+    );
+  }
+  function label(key: string, value: string) {
+    const options =
+      key === "club"
+        ? clubs
+        : key === "sessionId"
+          ? sessions
+          : key === "category"
+            ? categories
+            : key === "sort"
+              ? sortOptions
+              : [];
+    return `${({ q: "Search", sessionId: "Session", shotId: "Exact shot", dir: "Order" } as Record<string, string>)[key] ?? key}: ${options.find((o) => o.value === value)?.label ?? value.replaceAll("_", " ")}`;
+  }
+  return (
+    <section
+      className="grid min-w-0 gap-3 rounded-xl border bg-card p-3"
+      data-shot-filter-toolbar
+      aria-busy={pending}
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          navigate(draft);
+        }}
+        className="flex flex-wrap items-end gap-3"
+      >
+        <UntitledTextField
+          className="min-w-0 flex-1 basis-48"
+          label="Search shots"
+          name="shot-q"
+          type="search"
+          value={draft.q}
+          onValueChange={(q) => setDraft({ ...draft, q })}
+          placeholder="Source file or course"
+        />
+        <div className={styles.quickFilters}>
+          {fields(draft, setDraft, false)}
+        </div>
+        <Button className="min-h-11" type="submit" disabled={pending}>
+          {pending ? "Applying…" : "Search / apply"}
+        </Button>
+        <Sheet
+          open={open}
+          onOpenChange={(v) => {
+            setOpen(v);
+            if (v) setSheetDraft(draft);
+          }}
+        >
+          <SheetTrigger asChild>
+            <Button type="button" className="min-h-11" variant="outline">
+              Filters{active.length ? ` · ${active.length}` : ""}
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="w-full sm:max-w-lg">
+            <SheetHeader className="border-b pr-12">
+              <SheetTitle>Filter shots</SheetTitle>
+              <SheetDescription>
+                Apply a complete evidence scope. Sorting covers every matching shot.
+              </SheetDescription>
+            </SheetHeader>
+            <form
+              className="flex min-h-0 flex-1 flex-col"
+              onSubmit={(e) => {
+                e.preventDefault();
+                navigate(sheetDraft);
               }}
             >
-              <X className="size-4" aria-hidden />
-              Clear dates
+              <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4">
+                {fields(sheetDraft, setSheetDraft, true)}
+              </div>
+              <div className="flex flex-wrap gap-2 border-t p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <Button type="button" variant="ghost" onClick={() => setSheetDraft(defaults)}>
+                  Reset
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={pending}>
+                  Apply filters
+                </Button>
+              </div>
+            </form>
+          </SheetContent>
+        </Sheet>
+      </form>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-sm font-medium" role="status">
+          {pending ? "Updating results…" : resultLabel}
+        </p>
+        {active.length > 0 && (
+          <Button variant="ghost" className="min-h-11" onClick={() => navigate(defaults)}>
+            Clear all
+          </Button>
+        )}
+      </div>
+      {active.length > 0 && (
+        <div aria-label="Active filters" className="flex flex-wrap gap-2">
+          {active.map(([key, value]) => (
+            <Button
+              key={key}
+              variant="outline"
+              className="h-auto min-h-11 max-w-full whitespace-normal break-words text-left"
+              onClick={() =>
+                navigate({ ...initial, [key]: defaults[key as keyof ShotFilterState] })
+              }
+              aria-label={`Remove ${label(key, value)}`}
+            >
+              {label(key, value)} ×
             </Button>
-          ) : null}
+          ))}
         </div>
-      </PopoverContent>
-    </Popover>
+      )}
+    </section>
   );
-}
-
-function buildActiveFilters(
-  filters: ShotFilterState,
-  clubs: FilterOption[],
-  sessions: FilterOption[],
-  categories: FilterOption[],
-) {
-  return [
-    filters.q ? { id: "q", label: `Search: ${filters.q}` } : null,
-    filters.club
-      ? {
-          id: "club",
-          label: clubs.find((item) => item.value === filters.club)?.label ?? filters.club,
-        }
-      : null,
-    filters.sessionId
-      ? {
-          id: "sessionId",
-          label: sessions.find((item) => item.value === filters.sessionId)?.label ?? "Session",
-        }
-      : null,
-    filters.category
-      ? {
-          id: "category",
-          label:
-            categories.find((item) => item.value === filters.category)?.label ?? filters.category,
-        }
-      : null,
-    filters.from || filters.to
-      ? { id: "date", label: `${filters.from || "Any"} – ${filters.to || "Today"}` }
-      : null,
-    filters.trust !== "all"
-      ? { id: "trust", label: filters.trust === "trusted" ? "Trusted" : "Untrusted" }
-      : null,
-    filters.group !== "none" ? { id: "group", label: `Group: ${filters.group}` } : null,
-    filters.sort !== "recent" ? { id: "sort", label: `Sort: ${filters.sort}` } : null,
-  ].filter((item): item is { id: string; label: string } => item !== null);
-}
-
-function emptyFilters(): ShotFilterState {
-  return {
-    q: "",
-    club: "",
-    sessionId: "",
-    category: "",
-    from: "",
-    to: "",
-    trust: "all",
-    sort: "recent",
-    dir: "desc",
-    group: "none",
-  };
-}
-
-function filterParams(filters: ShotFilterState) {
-  const params = new URLSearchParams();
-
-  if (filters.q) params.set("q", filters.q.trim().slice(0, 120));
-  if (filters.club) params.set("club", filters.club);
-  if (filters.sessionId) params.set("sessionId", filters.sessionId);
-  if (filters.category) params.set("category", filters.category);
-  if (filters.from) params.set("from", filters.from);
-  if (filters.to) params.set("to", filters.to);
-  if (filters.trust !== "all") params.set("trust", filters.trust);
-  if (filters.group !== "none") params.set("group", filters.group);
-  if (filters.sort !== "recent") {
-    params.set("sort", filters.sort);
-    if (filters.dir !== "desc") params.set("dir", filters.dir);
-  }
-
-  return params;
 }

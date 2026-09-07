@@ -1,0 +1,7 @@
+.compactRows { display:block; min-width:0; }
+.workbench, .quickFilters { display:none; }
+@media (min-width:1024px) {
+ .compactRows { display:none; }
+ .workbench { display:grid; min-width:0; gap:1rem; }
+ .quickFilters { display:grid; min-width:0; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.75rem; flex:1; }
+}
