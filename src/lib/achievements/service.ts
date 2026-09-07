@@ -1053,6 +1053,7 @@ async function loadAchievementContext(userId: string) {
           type: sessions.type,
           date: sessions.date,
           scorecardJson: sessions.scorecardJson,
+          roundStatus: sessions.roundStatus,
         })
         .from(sessions)
         .where(eq(sessions.userId, userId))

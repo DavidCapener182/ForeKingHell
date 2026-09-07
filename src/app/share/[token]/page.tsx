@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
-import { sessions, shareLinks, teeSets, users } from "@/db/schema";
+import { courses, sessions, shareLinks, teeSets, users } from "@/db/schema";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import type { AppSurface } from "@/lib/app-surface";
 import { calculateRoundDifferential } from "@/lib/round-handicap";
@@ -92,7 +92,14 @@ async function getSharedRound(token: string) {
       ownerName: users.name,
     })
     .from(sessions)
-    .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
+    .leftJoin(
+      courses,
+      and(
+        eq(sessions.courseId, courses.id),
+        or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, link.userId)),
+      ),
+    )
+    .leftJoin(teeSets, and(eq(sessions.teeSetId, teeSets.id), eq(teeSets.courseId, courses.id)))
     .innerJoin(users, eq(sessions.userId, users.id))
     .where(and(eq(sessions.id, link.resourceId), eq(sessions.userId, link.userId)))
     .limit(1);

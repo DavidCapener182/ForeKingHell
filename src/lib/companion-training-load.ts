@@ -33,6 +33,7 @@ export async function getCompanionTrainingLoad(userId: string) {
   const latest = series.at(-1) ?? null;
 
   return {
+    hasTrainingData: dailyRows.length > 0,
     latest,
     status: latest
       ? getTrainingStatus(latest.fitness, latest.fatigue, latest.form)

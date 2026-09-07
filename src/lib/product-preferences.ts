@@ -87,6 +87,17 @@ export async function getProductPreferences(userId: string): Promise<ProductPref
 }
 
 export async function updateProductPreferences(userId: string, patch: Partial<ProductPreferences>) {
+  return mutateProductPreferences(userId, () => patch);
+}
+
+/** Build collection edits from the latest locked state so simultaneous changes are retained. */
+export async function mutateProductPreferences(
+  userId: string,
+  update: (
+    current: ProductPreferences,
+    db: Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0],
+  ) => Partial<ProductPreferences> | Promise<Partial<ProductPreferences>>,
+) {
   await getDb().transaction(async (db) => {
     await db
       .insert(userFeaturePreferences)
@@ -99,6 +110,7 @@ export async function updateProductPreferences(userId: string, patch: Partial<Pr
       .limit(1)
       .for("update");
     const current = record(existing?.settings);
+    const patch = await update(parseProductPreferences(current), db);
     const now = new Date();
     const next = {
       ...current,
@@ -181,6 +193,8 @@ export function parseSeasonGoal(value: unknown, index = 0): SeasonGoal | null {
   const startingValue = finiteNumber(goal.startingValue, 0);
   const currentValue = finiteNumber(goal.currentValue, startingValue);
   const targetValue = finiteNumber(goal.targetValue, currentValue);
+  const project = record(goal.project);
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return {
     id: cleanId(goal.id, `goal-${index + 1}`),
     type,
@@ -191,8 +205,27 @@ export function parseSeasonGoal(value: unknown, index = 0): SeasonGoal | null {
     targetValue,
     unit: cleanText(goal.unit, defaultGoalUnit(type), 20),
     targetDate: parseDate(goal.targetDate),
-    evidenceSource: cleanText(goal.evidenceSource, "Imported session evidence", 120),
+    evidenceSource: cleanText(goal.evidenceSource, "Manually saved goal value", 120),
     nextAction: cleanText(goal.nextAction, defaultGoalAction(type), 180),
+    ...(goal.project && typeof goal.project === "object"
+      ? {
+          project: {
+            baselineSessionId:
+              typeof project.baselineSessionId === "string" && uuid.test(project.baselineSessionId)
+                ? project.baselineSessionId
+                : null,
+            practicePlanIds: Array.isArray(project.practicePlanIds)
+              ? [
+                  ...new Set(
+                    project.practicePlanIds.filter(
+                      (id): id is string => typeof id === "string" && uuid.test(id),
+                    ),
+                  ),
+                ]
+              : [],
+          },
+        }
+      : {}),
   };
 }
 

@@ -30,6 +30,10 @@ export type SeasonGoal = {
   targetDate: string;
   evidenceSource: string;
   nextAction: string;
+  project?: {
+    baselineSessionId: string | null;
+    practicePlanIds: string[];
+  };
 };
 
 export function goalTypeLabel(type: GoalType) {

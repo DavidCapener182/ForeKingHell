@@ -16,6 +16,10 @@ import {
 import { getOptionalCurrentUserId } from "@/lib/current-user";
 import { readBoundedJsonBody } from "@/lib/api-protection";
 import { runIdempotentOfflineOperation } from "@/lib/offline-operation-ledger";
+import {
+  OfflineRoundConflict,
+  withOfflineRoundPrecondition,
+} from "@/lib/offline-round-precondition";
 import { getDb } from "@/db/client";
 import { sessions } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
@@ -68,38 +72,68 @@ export async function POST(request: NextRequest) {
       }
 
       const formData = offlineRoundEditPayloadToFormData(payload);
+      let warning: string | undefined;
 
-      switch (payload.editKind) {
-        case "round-context":
-          await updateRoundContextAction(formData);
-          break;
-        case "round-course-link":
-          await updateRoundCourseLinkAction(formData);
-          break;
-        case "round-complete":
-          await completeLiveRoundAction(formData);
-          break;
-        case "round-hole":
-          await updateRoundHoleAction(formData);
-          break;
-        case "shot-club":
-          await updateShotClubAction(formData);
-          break;
-        case "club":
-          await updateClubAction(formData);
-          break;
-        case "resplit-round":
-          await resplitRoundAction(formData);
-          break;
+      try {
+        await withOfflineRoundPrecondition(
+          {
+            userId,
+            sessionId: versionCheck.sessionId,
+            expectedVersion: versionCheck.expectedVersion,
+          },
+          async () => {
+            switch (payload.editKind) {
+              case "round-context":
+                await updateRoundContextAction(formData);
+                break;
+              case "round-course-link":
+                await updateRoundCourseLinkAction(formData);
+                break;
+              case "round-complete":
+                await completeLiveRoundAction(formData);
+                break;
+              case "round-hole":
+                await updateRoundHoleAction(formData);
+                break;
+              case "shot-club":
+                ({ warning } = await updateShotClubAction(formData));
+                break;
+              case "club":
+                ({ warning } = await updateClubAction(formData));
+                break;
+              case "resplit-round":
+                await resplitRoundAction(formData);
+                break;
+            }
+          },
+        );
+      } catch (error) {
+        if (error instanceof OfflineRoundConflict) {
+          return {
+            status: 409,
+            body: {
+              ok: false,
+              code: "offline_edit_conflict",
+              message: error.message,
+              currentVersion: error.currentVersion,
+            },
+          };
+        }
+        throw error;
       }
-
-      const nextVersion = new Date();
-      await getDb()
-        .update(sessions)
-        .set({ updatedAt: nextVersion })
-        .where(and(eq(sessions.id, versionCheck.sessionId), eq(sessions.userId, userId)));
-
-      return { status: 200, body: { ok: true, recordVersion: nextVersion.toISOString() } };
+      const [saved] = await getDb()
+        .select({ updatedAt: sessions.updatedAt })
+        .from(sessions)
+        .where(and(eq(sessions.id, versionCheck.sessionId), eq(sessions.userId, userId)))
+        .limit(1);
+      return {
+        status: 200,
+        body: {
+          ok: true,
+          recordVersion: saved?.updatedAt.toISOString() ?? null,
+          ...(warning ? { warning } : {}),
+        },
+      };
     },
   });
 }
@@ -119,6 +153,6 @@ async function checkRoundEditVersion(userId: string, fields: Array<[string, stri
   const currentVersion = round?.updatedAt.toISOString() ?? null;
 
   return currentVersion === new Date(expectedUpdatedAt).toISOString()
-    ? { ok: true as const, sessionId }
+    ? { ok: true as const, sessionId, expectedVersion: currentVersion }
     : { ok: false as const, currentVersion };
 }

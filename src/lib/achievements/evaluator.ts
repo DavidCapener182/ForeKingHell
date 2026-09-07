@@ -1887,10 +1887,12 @@ function evaluateRoundScorecard(collector: Collector, session: AchievementSessio
 
   const scoredHoles = holes.filter((hole) => isNumber(hole.score));
   const puttHoles = holes.filter((hole) => isNumber(hole.putts));
+  // Legacy imported scorecards have no explicit lifecycle status.
+  const roundFinished = !session.roundStatus || session.roundStatus === "complete";
   const fullScoreRound =
-    holes.length >= 18 && holes.slice(0, 18).every((hole) => isNumber(hole.score));
+    roundFinished && holes.length >= 18 && holes.slice(0, 18).every((hole) => isNumber(hole.score));
   const fullPuttRound =
-    holes.length >= 18 && holes.slice(0, 18).every((hole) => isNumber(hole.putts));
+    roundFinished && holes.length >= 18 && holes.slice(0, 18).every((hole) => isNumber(hole.putts));
   const frontNine = holes.slice(0, 9);
   const backNine = holes.slice(9, 18);
   const completeNines = [frontNine, backNine].filter(
@@ -2136,7 +2138,9 @@ function evaluateRoundStats(
 
   const penaltyHoles = holes.slice(0, 18).filter((hole) => isNumber(hole.penalties));
   if (
+    (!session.roundStatus || session.roundStatus === "complete") &&
     holes.length >= 18 &&
+    holes.slice(0, 18).every((hole) => isNumber(hole.score)) &&
     penaltyHoles.length >= 18 &&
     penaltyHoles.every((hole) => hole.penalties === 0)
   ) {

@@ -1132,7 +1132,8 @@ export async function createFeedItem(input: {
           metricValue: values.metricValue,
           context: values.context,
           proofUrl: values.proofUrl,
-          visibility: values.visibility,
+          // Replaying an event refreshes its evidence, not its chosen audience.
+          // Audience changes go through the ownership-checked visibility action.
           verificationLabel: values.verificationLabel,
           metadataJson: values.metadataJson,
           updatedAt: now,
