@@ -792,3 +792,41 @@ Next/current: restore saved views, columns and filtered CSV controls to SharedSe
 
 - P77-C02: /tmp/fkh-admin-users-restored.log passed in 1.7 minutes across both surfaces and six sizes. Filtered export, optional Email, per-account saved view/query/plan/columns with reload, exact-account role review/cancel/apply all passed. First screenshot caught a closing-panel transition; settled visual proof remains outstanding. No full-matrix rerun solely for that screenshot.
 - Current runtime and source-test fixes are ready for publication to PR59. The original 12 bundle-limit failures remain; the performance tradeoff question is pending. Both agents must avoid new feature scope and preserve the current passing evidence.
+
+## Published fix checkpoint
+
+- Pushed and verified remote parity: 9ccd4507fd0d567ffc98bc4b9d62c6f7b31fa9fd on upgrade/untitled-ui-migration. PR59 remains open; main is cf9de4018e0273a7f86a0ae69791af4ff414d29c.
+- Current GitHub runs: CI 34155129252, Security 34155129253. Format/lint and migrations passed when last inspected; other steps were running. Do not infer their final outcome.
+- Admin account settled rerun was already running when the stop-extra-checks instruction arrived; it passed in 1.4 minutes (/tmp/fkh-admin-users-settled.log), fixture cleanup completed, and the verification agent inspected the clean 390px screenshot. No remaining account runtime defect identified.
+- The optional-select lazy-loading experiment in /private/tmp/fkh-budget-20260907-183257 reduced four more budget failures, leaving eight, but it is NOT applied or behavior-validated. Its form fallback and focus semantics require further review; do not copy it into the repository as a verified fix. Log: /tmp/fkh-lazy-select-budgets.log. The repository still has 12 measured budget failures.
+- Exact next steps: read the user's answer to the pending performance-limit question. If larger bundles are explicitly accepted, apply only the documented route caps, clearly record the deviation, rerun the normal production checker and required CI, then merge PR59 with the exact verified head SHA. If original caps remain required, continue measured loading optimisation and functional verification; do not weaken the gate. Preserve 2,785 passing tests, existing fixture evidence, and all partial tracker statuses. No new feature scope. Other agent is idle; this agent alone publishes.
+
+## Parallel performance completion — ownership transferred
+
+- User requested safe shutdown of the previous agent and explicit parallel assistance to finish the bundle fixes. Previous agent confirmed no active process, complete fixture cleanup, and no further edits or polling.
+- Unpublished budget increases have been withdrawn. Original caps remain enforced; no release tradeoff is presumed accepted.
+- Primary agent owns integration, isolated production measurement, CI and main publication. Three bounded agents own optional-select loading; Today/Sessions/Bag loading; and import-result/Rapsodo/round-detail/Speed loading respectively. Coordinate shared files before edits and retain complete mobile workflows and drafts.
+- Current head remains 9ccd4507. Full unit suite and other required jobs previously passed; original 12 bundle failures remain until measured fixes prove otherwise.
+
+## Parallel loading fixes — intermediate verification
+
+- Former external agent is safely stopped; primary agent coordinates three bounded workers and is the sole publisher. Original route budgets are unchanged.
+- Implemented first-use loading for optional Select menus, session evidence, stock sample review, Bag tools, Rapsodo extended workflow and Speed projection. Isolated club correction imports avoid loading the complete shot explorer. Tabs retain React Aria accessibility using public hooks.
+- Sessions and session detail passed both surfaces at all six requested sizes; browser caught and fixed carousel position loss when returning to a retained tab, and History Clear all pre-hydration readiness. Stock drawer filters survive reopening; the warmed stock rerun passed after an initial dev compile timeout. Evidence: `/tmp/fkh-session-bag-lazy-fixed.log`, `/tmp/fkh-stock-lazy-settled.log`.
+- Select/form suites passed after module separation; tabs keyboard/draft checks passed; Rapsodo, Speed and receipt first-use workflows passed. Full unit run found one source-path assertion following filter extraction; updated it to inspect the new module with identical acceptance assertions, then all 17 tests in that file passed.
+- Normal production build passes. Latest original-cap measurement `/tmp/fkh-module-boundaries-check.log` has four failures: Today 1089/1035 KiB, History 948/938 KiB, session detail 948/913 KiB, import receipt 909/908 KiB. Agents own those exact remaining loading boundaries; no limit increase is authorised or applied.
+- Current: final four bundle reductions. Next: integrate stable files, rerun production budgets and final project checks, update tracker/workbook, push PR59, verify all six required checks at the exact new head, then merge normally into main. Do not claim main changed before remote readback. All 492 tracker entries retain partial acceptance.
+
+## Original bundle limits passed — release integration
+
+- Normal production build and TypeScript passed: `/tmp/fkh-final-route-build.log`. All24 configured route budgets passed: `/tmp/fkh-final-route-check.log`. Existing caps are unchanged. Today public workbench1028/1035KiB and internal companion951/1035KiB now compile separately; proxy preserves the publicURL/query and existing authenticated surface selection.
+- Genuine loading reductions retain full task access and visited state. Today evidence/comparison drawers passed six-size first-open/reopen, Done/Escape and exact-trigger focus restoration in `/tmp/fkh-today-drawers-fixed-browser.log`. An actual focus-return defect was fixed during that check.
+- Current: final Today public-route fixture, full unit rerun after internal-route inventory additions, and release metadata. Primary agent alone publishes. No previous budget proposal was applied.
+- Next: if final browser/unit checks pass, stage the performance source/tests/docs/tracker/workbook while excluding the user's spreadsheet lock; commit and push PR59; verify all six required GitHub jobs at the exact new SHA; merge normally into main and verify remote readback. Main is not yet changed.
+- Remaining migration acceptance: all492 entries are still partially verified. Do not reset their accumulated evidence or label the full upgrade complete from a release gate pass.
+
+## Performance batch ready to publish
+
+- Final full suite:2788passed,0failed,149skipped/pending of2937 (`/tmp/fkh-release-unit-complete.json`). Formatting passed, lint has0errors and one existing unused-variable warning. Build/types and all24 original/equal-cap budget checks passed.
+- Public Today route browser PASS20.3s (`/tmp/fkh-today-route-isolation-retry.log`):12surface/viewport variants, URL/query/history retained, ownedevidence200/foreignevidence404, noJSerrors/overflow; fixture cleaned up. Earlier navigation timeout was a stalled disposable dev compile, resolved by restarting only3116. User app3000untouched.
+- Source/tests/runtime are frozen. Primary agent will publish this batch to PR59 and merge only after all required latest-head checks pass. Full492-component acceptance remains partial.

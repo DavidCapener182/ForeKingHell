@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { UntitledPageHeader, UntitledSectionHeader } from "@/components/untitled-ui/headers";
 import { Button } from "@/components/ui/button";
-import { PageShell } from "@/components/premium";
+import { PageShell } from "@/components/app/page-shell";
 import type { getPracticePlanReviewForSourceSession } from "@/lib/practice-planner";
 import {
   Table,

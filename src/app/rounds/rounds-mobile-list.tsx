@@ -14,7 +14,7 @@ import {
 } from "@/components/app/ios-mobile";
 import { MobileSegmentedControl } from "@/components/app/mobile-controls";
 import { comparableScoringRounds, roundHistoryScore } from "@/lib/round-history-evidence";
-import { MobileFilterSheet } from "@/components/premium";
+import { MobileFilterSheet } from "@/components/mobile-filter-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 

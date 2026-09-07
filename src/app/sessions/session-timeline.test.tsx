@@ -72,7 +72,10 @@ describe("SessionTimeline golf history", () => {
     expect(markup).toContain("72 gross");
     expect(markup).toContain("All");
     expect(markup).toContain("Practice");
-    expect(markup).toContain("Rounds");
+    // Closed optional filters render the selected value; options load on activation.
+    expect(markup).toContain('name="historyType" value="all"');
+    expect(markup).toContain("Inspect shot measurements and source");
+    expect(markup).not.toContain("Loading shot evidence");
     expect(markup).toContain("Source");
     expect(markup).toContain("Club");
     expect(markup).toContain("Period");

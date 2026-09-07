@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HistoryToolbar } from "./history-toolbar";
-import { SessionShotPreview } from "./session-shot-preview";
+import { SessionShotPreviewDisclosure } from "./session-shot-preview";
 import {
   deriveSessionHistoryView,
   pruneSessionComparisonSelection,
@@ -468,12 +468,7 @@ function SessionPreview({
           </dl>
         </div>
 
-        <details>
-          <summary className="flex min-h-11 cursor-pointer items-center font-medium">
-            Inspect shot measurements and source
-          </summary>
-          <SessionShotPreview key={session.id} sessionId={session.id} />
-        </details>
+        <SessionShotPreviewDisclosure key={session.id} sessionId={session.id} />
 
         <div className="flex flex-wrap gap-2">
           <Button asChild className="flex-1">

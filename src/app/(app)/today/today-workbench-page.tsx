@@ -1,3 +1,4 @@
+import { PageShell } from "@/components/app/page-shell";
 import { HighlightCarousel } from "@/components/app/highlight-carousel";
 import { TodayHighlightCard } from "@/components/app/today-highlight-card";
 import { buildTodayHighlights } from "@/lib/today-highlights";
@@ -31,7 +32,6 @@ import {
   DataPanel,
   DataTableFrame,
   PageHeader,
-  PageShell,
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
@@ -43,13 +43,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Input } from "@/components/ui/input";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { UntitledSelect } from "@/components/untitled-ui/form-controls";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import { DataToolbar } from "@/components/app/data-toolbar";
 import {
@@ -3208,38 +3202,30 @@ function TodayScopeFields({ data }: { data: TodayPracticeData }) {
           className="h-9 w-full min-w-0 bg-card/90 text-sm"
         />
       </label>
-      <label className="grid min-w-0 gap-1 text-sm font-medium">
-        Session
-        <Select name="session" defaultValue={data.filters.sessionId || "all"}>
-          <SelectTrigger className="h-9 w-full min-w-0 bg-card/90">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All sessions for this practice date</SelectItem>
-            {data.sessions.map((session) => (
-              <SelectItem key={session.id} value={session.id}>
-                {session.label} ({session.shotCount})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </label>
-      <label className="grid min-w-0 gap-1 text-sm font-medium">
-        Club
-        <Select name="club" defaultValue={data.filters.club || "all"}>
-          <SelectTrigger className="h-9 w-full min-w-0 bg-card/90">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All clubs</SelectItem>
-            {data.clubs.map((club) => (
-              <SelectItem key={club.type} value={club.type}>
-                {club.label} ({formatClubOptionShotCount(club)})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </label>
+      <UntitledSelect
+        label="Session"
+        name="session"
+        defaultValue={data.filters.sessionId || "all"}
+        options={[
+          { value: "all", label: "All sessions for this practice date" },
+          ...data.sessions.map((session) => ({
+            value: session.id,
+            label: `${session.label} (${session.shotCount})`,
+          })),
+        ]}
+      />
+      <UntitledSelect
+        label="Club"
+        name="club"
+        defaultValue={data.filters.club || "all"}
+        options={[
+          { value: "all", label: "All clubs" },
+          ...data.clubs.map((club) => ({
+            value: club.type,
+            label: `${club.label} (${formatClubOptionShotCount(club)})`,
+          })),
+        ]}
+      />
     </>
   );
 }

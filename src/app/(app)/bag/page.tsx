@@ -74,7 +74,12 @@ import {
   userProfiles,
 } from "@/db/schema";
 import { LazyBagSimulator } from "@/app/bag/lazy-bag-simulator";
-import { QuickBagClient } from "@/app/quick-bag/quick-bag-client";
+import {
+  LazyQuickBagClient as QuickBagClient,
+  LazyDistanceBenchmarkPanel as DistanceBenchmarkPanel,
+  LazyTargetDistanceSelector as TargetDistanceSelector,
+  LazyClubIntelligencePanel as ClubIntelligencePanel,
+} from "@/app/bag/lazy-bag-tools";
 import { getDb } from "@/db/client";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { reportServerFailure } from "@/lib/server-observability";
@@ -134,12 +139,8 @@ import {
   type StockCarryTrend,
   type StockShot,
 } from "@/lib/stock-yardage";
-import { DistanceBenchmarkPanel } from "@/app/bag/distance-benchmark-panel";
-import { TargetDistanceSelector, type TargetDistanceRow } from "@/app/bag/target-distance-selector";
-import {
-  ClubIntelligencePanel,
-  type ClubIntelligenceItem,
-} from "@/app/bag/club-intelligence-panel";
+import type { TargetDistanceRow } from "@/app/bag/target-distance-selector";
+import type { ClubIntelligenceItem } from "@/app/bag/club-intelligence-panel";
 
 import styles from "./bag-page.module.css";
 

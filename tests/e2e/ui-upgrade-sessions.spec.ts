@@ -5,6 +5,10 @@ test("P04 History UI and scoped shot detail", async ({ page }, info) => {
   test.setTimeout(180000);
   page.setDefaultTimeout(15000);
   const errors: string[] = [];
+  let previewRequests = 0;
+  page.on("request", (request) => {
+    if (request.url().includes("/preview-shots")) previewRequests += 1;
+  });
   page.on("pageerror", (error) => {
     errors.push(error.stack ?? error.message);
     console.log(error.stack);
@@ -40,6 +44,7 @@ test("P04 History UI and scoped shot detail", async ({ page }, info) => {
       const selectedUrl = page.url();
       await page.reload();
       await expect(page).toHaveURL(selectedUrl);
+      await expect(page.locator("[data-session-toolbar]")).toHaveAttribute("data-ready", "true");
       await page.getByRole("button", { name: "Clear all", exact: true }).click();
       await expect(page).not.toHaveURL(/session=/);
       await page.screenshot({ path: info.outputPath(`P04-${surface}-${width}.png`) });
@@ -47,6 +52,8 @@ test("P04 History UI and scoped shot detail", async ({ page }, info) => {
         false,
       );
     }
+    // Closed evidence controls must not fetch a workflow that has not been opened.
+    expect(previewRequests).toBe(0);
     await page.setViewportSize({ width: 390, height: 844 });
     if (surface === "workbench")
       await page.getByText("Inspect shot measurements and source", { exact: true }).click();
@@ -69,6 +76,15 @@ test("P04 History UI and scoped shot detail", async ({ page }, info) => {
     }
     if (surface === "companion")
       await page.getByRole("button", { name: "Close preview", exact: true }).click();
+    else {
+      const requestsAfterOpen = previewRequests;
+      await page.getByText("Inspect shot measurements and source", { exact: true }).click();
+      await expect(preview).toBeHidden();
+      await page.getByText("Inspect shot measurements and source", { exact: true }).click();
+      await expect(preview).toContainText(/\d+ shots · Page/);
+      expect(previewRequests).toBe(requestsAfterOpen);
+    }
+    previewRequests = 0;
     await page
       .getByRole("searchbox", { name: "Search history" })
       .fill("no-such-session-ui-fixture");

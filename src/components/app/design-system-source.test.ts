@@ -90,7 +90,7 @@ describe("composable analysis design primitives", () => {
   });
 
   it("keeps app shells full-width and centralises semantic surface tokens", () => {
-    const premium = source("src/components/premium.tsx");
+    const premium = source("src/components/app/page-shell.tsx");
     const globals = source("src/app/globals.css");
 
     expect(premium).toContain('"!max-w-none"');

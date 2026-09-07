@@ -21,8 +21,8 @@ import { ShieldAlert } from "lucide-react";
 
 import { LazyMobileShotPatternCharts as MobileShotPatternCharts } from "@/components/app/lazy-mobile-shot-pattern-charts";
 import { TodayPrimaryAnswer } from "@/components/app/today-primary-answer";
-import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
-import { PageShell } from "@/components/premium";
+import { MobileAppShell, MobileTopBar } from "@/components/app/mobile-app-shell";
+import { PageShell } from "@/components/app/page-shell";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getDb } from "@/db/client";
 import { sessions, clubs } from "@/db/schema";

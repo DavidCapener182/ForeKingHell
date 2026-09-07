@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { MobileLargeTitle } from "@/components/app/mobile-screen";
-import { MobileAppShell } from "@/components/mobile-sports";
-import { PageShell } from "@/components/premium";
+import { MobileAppShell } from "@/components/app/mobile-app-shell";
+import { PageShell } from "@/components/app/page-shell";
 import { Button } from "@/components/ui/button";
 import { RouteNotFoundState } from "@/components/route-state";
 

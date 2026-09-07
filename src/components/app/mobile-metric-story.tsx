@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Carousel,
   CarouselContent,
@@ -16,15 +16,28 @@ export function MobileMetricStory({
 }) {
   const [api, setApi] = useState<CarouselApi>();
   const [index, setIndex] = useState(0);
+  const selectedSnap = useRef(0);
   useEffect(() => {
     if (!api) return;
-    const update = () => setIndex(api.selectedScrollSnap());
+    const update = () => {
+      // A hidden retained tab has no layout; its temporary zero snap is not a selection.
+      if (!api.rootNode().getClientRects().length) return;
+      selectedSnap.current = api.selectedScrollSnap();
+      setIndex(selectedSnap.current);
+    };
+    const restore = () => {
+      if (!api.rootNode().getClientRects().length) return;
+      const next = Math.min(selectedSnap.current, Math.max(0, api.scrollSnapList().length - 1));
+      api.scrollTo(next, true);
+      selectedSnap.current = next;
+      setIndex(next);
+    };
     update();
     api.on("select", update);
-    api.on("reInit", update);
+    api.on("reInit", restore);
     return () => {
       api.off("select", update);
-      api.off("reInit", update);
+      api.off("reInit", restore);
     };
   }, [api]);
   if (!metrics.length) return null;

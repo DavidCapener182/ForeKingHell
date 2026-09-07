@@ -25,6 +25,11 @@ describe("route JavaScript budgets", () => {
     }
   });
 
+  it("retains the same Today budget on its isolated companion route", () => {
+    expect(budgets["/today"]).toBe(1060000);
+    expect(budgets["/companion-runtime/today"]).toBe(budgets["/today"]);
+  });
+
   it("uses Next build diagnostics and blocks CI regressions", () => {
     expect(script).toContain("route-bundle-stats.json");
     expect(script).toContain("firstLoadUncompressedJsBytes");

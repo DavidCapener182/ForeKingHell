@@ -62,6 +62,7 @@ test("Bag stock sample drawer retains full evidence controls", async ({ page }, 
   await page.getByRole("button", { name: "Review stock sample", exact: true }).first().click();
   const sheet = page.getByRole("dialog");
   await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole("searchbox")).toBeVisible();
   for (const [width, height] of [
     [1440, 900],
     [1280, 800],
@@ -77,6 +78,11 @@ test("Bag stock sample drawer retains full evidence controls", async ({ page }, 
     await page.screenshot({ path: info.outputPath(`P08-stock-${width}.png`) });
   }
   await sheet.getByRole("searchbox").fill("no-stock-match-876");
+  await expect(sheet).toContainText("No matching sample rows");
+  await sheet.getByRole("button", { name: "Close sample review", exact: true }).click();
+  await expect(sheet).toHaveCount(0);
+  await page.getByRole("button", { name: "Review stock sample", exact: true }).first().click();
+  await expect(sheet.getByRole("searchbox")).toHaveValue("no-stock-match-876");
   await expect(sheet).toContainText("No matching sample rows");
   await sheet.getByRole("button", { name: "Reset sample view", exact: true }).click();
   await expect(

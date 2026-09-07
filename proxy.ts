@@ -175,6 +175,7 @@ function protectedAppResponse(request: NextRequest) {
 }
 
 function companionRuntimePathFor(pathname: string, importSource: string | null) {
+  if (pathname === "/today") return "/companion-runtime/today";
   if (pathname === "/import/result") return "/companion-runtime/import/result";
   if (pathname === "/import" && (importSource === "csv" || importSource === "sample")) {
     return "/companion-runtime/import/csv";

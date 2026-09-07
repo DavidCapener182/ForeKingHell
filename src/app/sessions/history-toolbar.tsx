@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useClientReady } from "@/hooks/use-client-ready";
 import { Button } from "@/components/ui/button";
 import { UntitledSelect, UntitledTextField } from "@/components/untitled-ui/form-controls";
 import {
@@ -33,6 +34,7 @@ export function HistoryToolbar({
   onChange: (patch: SessionHistoryFilterPatch) => void;
   onClear: () => void;
 }) {
+  const ready = useClientReady();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(filters);
   const active = [
@@ -120,6 +122,7 @@ export function HistoryToolbar({
       className="grid min-w-0 gap-3 rounded-xl border bg-card p-3"
       aria-label="Filter session history"
       data-session-toolbar
+      data-ready={ready}
     >
       <div className="grid min-w-0 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
         <UntitledTextField
@@ -196,7 +199,7 @@ export function HistoryToolbar({
               {label}
             </span>
           ))}
-          <Button variant="ghost" className="min-h-11" onClick={onClear}>
+          <Button variant="ghost" className="min-h-11" disabled={!ready} onClick={onClear}>
             Clear all
           </Button>
         </div>

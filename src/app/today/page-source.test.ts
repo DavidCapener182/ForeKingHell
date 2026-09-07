@@ -30,10 +30,18 @@ const tabsSource = readFileSync(
   "utf8",
 );
 describe("latest practice desktop dashboard", () => {
-  it("branches before importing the focused companion or full workbench", () => {
-    expect(routeSource).toContain('surface === "companion"');
-    expect(routeSource).toContain('await import("./today-companion-page")');
-    expect(routeSource).toContain('await import("./today-workbench-page")');
+  it("keeps companion and workbench in separate compiled routes", () => {
+    expect(routeSource).toContain('from "./today-workbench-page"');
+    expect(routeSource).not.toContain("today-companion-page");
+    const runtime = readFileSync(
+      join(process.cwd(), "src/app/(app)/companion-runtime/today/page.tsx"),
+      "utf8",
+    );
+    expect(runtime).toContain('from "../../today/today-companion-page"');
+    expect(runtime).not.toContain("today-workbench-page");
+    expect(readFileSync(join(process.cwd(), "proxy.ts"), "utf8")).toContain(
+      'if (pathname === "/today") return "/companion-runtime/today"',
+    );
     expect(companionSource).toContain("data-today-companion");
     expect(companionSource).toContain("TodayPrimaryAnswer");
     expect(primaryAnswerSource).toContain("data-primary-recommendation");

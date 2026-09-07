@@ -1,32 +1,47 @@
 # UI release bundle measurements
 
-Measured on 7 September 2026 using the normal Next.js 16.3 Turbopack production build. These measurements include the import first-use and social-preview loading fixes. No configured limit has been changed.
+Measured on 7 September 2026 using the normal Next.js 16.3 Turbopack production build. The checker counts each initial JavaScript chunk once, uncompressed; these are not measured network transfer or interaction times.
 
-The existing checker measures uncompressed initial JavaScript, counting each route chunk once. Approximate gzip values below compress each chunk independently; they are not measured network transfer or interaction timing.
+## Original limits retained
 
-| Route                              | Existing cap (bytes) | Measured initial bytes | Approximate gzip bytes | Proposed release cap (bytes) |
-| ---------------------------------- | -------------------: | ---------------------: | ---------------------: | ---------------------------: |
-| `/today`                           |              1060000 |                1227526 |                 384401 |                      1240000 |
-| `/dashboard`                       |              1050000 |                1096119 |                 343070 |                      1110000 |
-| `/import`                          |              1180000 |                1230784 |                 385481 |                      1250000 |
-| `/companion-runtime/import/result` |               930000 |                 984817 |                 306958 |                      1000000 |
-| `/companion-runtime/rapsodo`       |               930000 |                1022748 |                 316812 |                      1040000 |
-| `/sessions`                        |               960000 |                1200539 |                 373770 |                      1220000 |
-| `/sessions/[sessionId]`            |               935000 |                1212287 |                 379557 |                      1230000 |
-| `/rounds/[sessionId]`              |               980000 |                1026455 |                 318286 |                      1040000 |
-| `/progress`                        |              1050000 |                1099766 |                 344158 |                      1120000 |
-| `/bag`                             |              1130000 |                1369336 |                 424143 |                      1390000 |
-| `/shots`                           |              1150000 |                1182365 |                 367767 |                      1200000 |
-| `/speed`                           |              1050000 |                1071003 |                 333574 |                      1090000 |
+The earlier proposal to raise limits was withdrawn. No configured limit or CI gate has changed. Optional workflows now load when requested; visited tabs retain state, complete phone tasks remain available, and shared components use narrow import boundaries.
 
-## Changes already measured
+Final production build: `/tmp/fkh-final-route-build.log`; checker: `/tmp/fkh-final-route-check.log`. **All 24 capped routes pass.** Every pre-existing limit is unchanged; the newly separated internal companion Today route has the same 1,060,000-byte cap as public Today. Public URLs, query parameters and authenticated surface selection are preserved.
 
-- Deferring the full companion import workspace until first use preserves visited drafts. Browser checks passed at all six requested widths.
-- Analytical routes no longer load the unused social feed preview. A production build passed; the quick import route now passes its original cap.
-- Package-import optimisation, splitting form adapters, and direct Tabs/RadioGroup imports did not materially improve route sizes. Those experiments were not applied to the repository.
+| Route                              | Original cap (bytes) | Initial bytes | Result |
+| ---------------------------------- | -------------------: | ------------: | ------ |
+| `/`                                |               700000 |        583820 | PASS   |
+| `/login`                           |               800000 |        583831 | PASS   |
+| `/today`                           |              1060000 |       1052442 | PASS   |
+| `/companion-runtime/today`         |              1060000 |        973508 | PASS   |
+| `/dashboard`                       |              1050000 |        933555 | PASS   |
+| `/import`                          |              1180000 |       1084140 | PASS   |
+| `/companion-runtime/import`        |               950000 |        939832 | PASS   |
+| `/companion-runtime/import/result` |               930000 |        903513 | PASS   |
+| `/companion-runtime/rapsodo`       |               930000 |        871524 | PASS   |
+| `/analyse`                         |              1050000 |        858217 | PASS   |
+| `/coach`                           |              1050000 |        927151 | PASS   |
+| `/practice`                        |              1120000 |       1090731 | PASS   |
+| `/play`                            |               915000 |        858407 | PASS   |
+| `/sessions`                        |               960000 |        916281 | PASS   |
+| `/sessions/[sessionId]`            |               935000 |        923626 | PASS   |
+| `/quick-bag`                       |               925000 |        851675 | PASS   |
+| `/rounds/[sessionId]`              |               980000 |        938467 | PASS   |
+| `/progress`                        |              1050000 |        978931 | PASS   |
+| `/bag`                             |              1130000 |       1026422 | PASS   |
+| `/shots`                           |              1150000 |       1051734 | PASS   |
+| `/play/[courseId]`                 |              1050000 |        850995 | PASS   |
+| `/stats/training-over-time`        |              1500000 |        972554 | PASS   |
+| `/shots/review`                    |              1150000 |        894354 | PASS   |
+| `/speed`                           |              1050000 |        983247 | PASS   |
 
-## Decision still required
+## Preserved behaviour
 
-The proposed caps above would accept the current larger UI bundles with about 1 percent headroom, rounded to 10,000 bytes. This is a performance requirement change, not proof that the original budgets passed. Keep all original limits unless the user explicitly accepts that tradeoff.
+- Required Select fields keep native validation and a usable failure fallback; the enhanced menu retains keyboard, focus and form contracts.
+- Tabs use public React Aria hooks with preserved panel associations, disabled state and retained drafts.
+- Unopened session evidence does not fetch or download its full workflow; first use exposes the complete task and reopening retains loaded content.
+- Bag stock review keeps filters across closing, and the session carousel keeps its selected card across tab changes.
+- Optional Bag, Rapsodo and Speed workspaces load when selected while preserving source data, calculations and first-use task controls.
+- Narrow server shell imports avoid unrelated mobile controls without changing the page layout.
 
-Further reduction requires changing loading boundaries around the new complete workspaces and their accessible controls. React Aria-containing chunks contribute substantial initial code to Today, Sessions and Bag, but this is not evidence that every byte is unavoidable. The budget checker and CI gate remain unchanged.
+Scoped browser evidence is recorded in the completion tracker. Passing budgets is a release gate, not completion of the full migration acceptance matrix.

@@ -49,6 +49,13 @@ export const mobileRouteAudit = [
     note: "Internal authenticated rewrite isolates the immediate mobile verdict and chart review.",
   },
   {
+    file: "src/app/(app)/companion-runtime/today/page.tsx",
+    route: "/companion-runtime/today",
+    classification: 1,
+    resolution: "preserve",
+    note: "Internal authenticated rewrite keeps the complete Today companion task on public /today while excluding the workbench client bundle; query parameters and the original JavaScript budget are preserved.",
+  },
+  {
     file: "src/app/(app)/companion-runtime/rapsodo/page.tsx",
     route: "/companion-runtime/rapsodo",
     classification: 1,

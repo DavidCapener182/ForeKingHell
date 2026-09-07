@@ -221,3 +221,9 @@ Official Underline tabs reference remains at canonical P60 tournament index. Que
 ## P95–P98 tournament aliases
 
 Reuse the P61 accessible canonical tab composition and official Untitled UI tabs reference already registered there. Redirect routes introduce no separate paid component or duplicate page. Paid entitlement remains unavailable; existing local accessible composition is the recorded alternative.
+
+## Performance adapter verification — 7 September
+
+The namespaced tabs remain a local composition of the official free [Underline tabs](https://www.untitledui.com/react/components/tabs). They now use the installed public React Aria hooks (`useTabList`, `useTab`, `useTabPanel`, `useFocusRing`, `mergeProps`) and React Stately (`useTabListState`, `Item`), avoiding the heavier collection component layer. Direct dependencies declare the existing resolved versions `react-aria@3.52.1` and `react-stately@3.50.0`, both Apache-2.0. No paid vendor source was introduced.
+
+The Select adapter loads its existing React Aria menu at first use, with a labelled native required-field/loading-failure fallback. Form names, disabled options, controlled values and native validation remain supported. Six-viewport browser checks passed for keyboard activation, selection, nested-dialog Escape/focus restoration, disabled controls, chunk failure, required validation and pending-load focus cancellation. Tabs checks passed for arrow/Home/End navigation, selected panel associations, disabled state, horizontal reveal and retained drafts. Public form exports are preserved through separate client modules. Logs: `/tmp/fkh-form-adapter-split.log` and `/tmp/fkh-tabs-hooks-browser.log`. These are scoped regression checks, not full application acceptance.

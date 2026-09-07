@@ -1,4 +1,4 @@
-import { PageShell } from "@/components/premium";
+import { PageShell } from "@/components/app/page-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SessionsLoading() {

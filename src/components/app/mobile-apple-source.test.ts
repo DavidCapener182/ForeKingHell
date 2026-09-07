@@ -4,8 +4,17 @@ import { describe, expect, it } from "vitest";
 
 const root = process.cwd();
 const mobileNavSource = readFileSync(join(root, "src/components/app/mobile-nav.tsx"), "utf8");
-const mobileSportsSource = readFileSync(join(root, "src/components/mobile-sports.tsx"), "utf8");
-const premiumSource = readFileSync(join(root, "src/components/premium.tsx"), "utf8");
+const mobileSportsSource = [
+  "src/components/mobile-sports.tsx",
+  "src/components/app/mobile-app-shell.tsx",
+]
+  .map((file) => readFileSync(join(root, file), "utf8"))
+  .join("\n");
+const premiumSource = readFileSync(join(root, "src/components/app/page-shell.tsx"), "utf8");
+const mobileFilterSource = readFileSync(
+  join(root, "src/components/mobile-filter-sheet.tsx"),
+  "utf8",
+);
 const drawerSource = readFileSync(join(root, "src/components/ui/drawer.tsx"), "utf8");
 const appleCssSource = readFileSync(join(root, "src/app/mobile-apple.css"), "utf8");
 const globalsCssSource = readFileSync(join(root, "src/app/globals.css"), "utf8");
@@ -101,9 +110,11 @@ describe("Apple mobile shell contract", () => {
     expect(appleCssSource).toContain("@media (prefers-reduced-motion: reduce)");
     expect(appleCssSource).toContain("animation: none !important;");
     expect(mobileSportsSource).toContain('className="max-h-[86dvh]"');
-    expect(premiumSource).toContain('className="max-h-[86dvh]"');
+    expect(mobileFilterSource).toContain('className="max-h-[86dvh]"');
     expect(drawerSource).toContain("max-h-[80dvh]");
-    expect(`${mobileSportsSource}${premiumSource}${drawerSource}`).not.toContain("max-h-[86vh]");
+    expect(`${mobileSportsSource}${mobileFilterSource}${drawerSource}`).not.toContain(
+      "max-h-[86vh]",
+    );
   });
 
   it("keeps shared bottom-sheet and proof-badge chrome on semantic theme tokens", () => {

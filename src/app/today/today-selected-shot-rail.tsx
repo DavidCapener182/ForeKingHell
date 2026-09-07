@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Ban, RotateCcw, X } from "lucide-react";
 
-import { ClubCorrection } from "@/app/shots/mobile-shot-explorer";
+import { ClubCorrection } from "@/app/shots/club-correction";
 import { ShotDeleteButton, ShotReviewButton } from "@/app/shots/shot-review-controls";
 import {
   SelectedShotDetail,

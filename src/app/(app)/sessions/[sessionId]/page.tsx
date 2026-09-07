@@ -4,7 +4,7 @@ import { clubs as clubTable } from "@/db/schema";
 import { getTodayShotDetailRows } from "@/lib/today-shot-detail-data";
 import { formatClubType } from "@/lib/club-format";
 import { ImportPracticeReview } from "@/app/import/import-result-sections";
-import { SessionShotPreview } from "@/app/sessions/session-shot-preview";
+import { SessionShotPreview } from "@/app/sessions/session-shot-preview-lazy";
 import { TodayDataQuality } from "@/app/today/today-data-quality";
 import { SessionAlignmentPanel } from "@/components/analysis/session-alignment-panel";
 import { mobileComparisonSummary } from "@/lib/mobile-review-copy";
@@ -18,7 +18,8 @@ import { MobileUnmeasuredSession } from "@/app/sessions/mobile-unmeasured-sessio
 import { ArrowRight, Target, TrendingDown, TrendingUp, Trophy } from "lucide-react";
 
 import { MobileSection } from "@/components/app/mobile-screen";
-import { MobileSessionPattern, MobileSessionStory } from "@/app/sessions/mobile-session-story";
+import { MobileSessionPattern } from "@/app/sessions/mobile-session-pattern";
+import { SessionReviewStory as MobileSessionStory } from "@/app/sessions/session-review-story";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import { LazyMobileShotPatternCharts as MobileShotPatternCharts } from "@/components/app/lazy-mobile-shot-pattern-charts";
 import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
@@ -28,8 +29,9 @@ import {
   mobileSessionVerdict,
   sessionPracticeHref,
 } from "@/lib/mobile-session-review";
-import { MobileAppShell } from "@/components/mobile-sports";
-import { PageShell, PageHeader } from "@/components/premium";
+import { MobileAppShell } from "@/components/app/mobile-app-shell";
+import { PageShell } from "@/components/app/page-shell";
+import { UntitledPageHeader as PageHeader } from "@/components/untitled-ui/headers";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

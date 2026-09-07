@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Crosshair, MoveUpRight } from "lucide-react";
-import { ClubCorrection } from "@/app/shots/mobile-shot-explorer";
+import { ClubCorrection } from "@/app/shots/club-correction";
 import { Button } from "@/components/ui/button";
 
 type RoundShot = {

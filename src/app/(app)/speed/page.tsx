@@ -26,7 +26,7 @@ import {
   updateSpeedGoalsWithStateAction,
 } from "@/app/speed/actions";
 import { ClubSpeedFocus } from "@/app/speed/club-speed-focus";
-import { FutureBagSlider } from "@/app/speed/future-bag-slider";
+import { LazyFutureBagSlider as FutureBagSlider } from "@/app/speed/lazy-future-bag-slider";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";

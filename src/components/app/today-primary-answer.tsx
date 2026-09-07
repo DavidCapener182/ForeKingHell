@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type ReactNode,
@@ -18,15 +19,11 @@ import styles from "./mobile-companion.module.css";
 import { listOfflineActions, type OfflineActionRecord } from "@/lib/offline-queue";
 import { getTodaySyncOverride, type TodayPrimaryState } from "@/lib/today-sync-state";
 
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerClose,
-} from "@/components/ui/drawer";
+import dynamic from "next/dynamic";
+const TodayEvidenceDrawer = dynamic(
+  () => import("./today-drawers").then((module) => module.TodayEvidenceDrawer),
+  { loading: () => <p role="status">Loading evidence…</p> },
+);
 
 type TodayFact = { label: string; value: string };
 
@@ -47,7 +44,10 @@ export function TodayPrimaryAnswer({
   compact?: boolean;
   highlights?: TodayHighlight[];
 }) {
+  const evidenceTrigger = useRef<HTMLButtonElement>(null);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [evidenceVisited, setEvidenceVisited] = useState(false);
+  if (evidenceOpen && !evidenceVisited) setEvidenceVisited(true);
   const isOnline = useSyncExternalStore(subscribeOnline, onlineSnapshot, serverOnlineSnapshot);
   const [actions, setActions] = useState<OfflineActionRecord[]>([]);
 
@@ -174,6 +174,7 @@ export function TodayPrimaryAnswer({
                   id="today-evidence"
                   className={styles.focusEvidence}
                   onClick={() => setEvidenceOpen(true)}
+                  ref={evidenceTrigger}
                   aria-label={evidenceTitle}
                 >
                   <span>
@@ -196,28 +197,21 @@ export function TodayPrimaryAnswer({
         ]}
       />
 
-      <Drawer open={evidenceOpen} onOpenChange={setEvidenceOpen}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>{evidenceTitle}</DrawerTitle>
-            <DrawerDescription>
-              {serverState.status === "Low"
-                ? "The current sample is too small to call a reliable weakness. This focus helps build evidence."
-                : serverState.reason}
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="min-h-0 overflow-y-auto px-4 pb-4">
-            {evidenceOpen ? evidenceContent : null}
-          </div>
-          <DrawerFooter>
-            <DrawerClose asChild>
-              <Button variant="outline" className="min-h-11">
-                Done
-              </Button>
-            </DrawerClose>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+      {evidenceVisited ? (
+        <TodayEvidenceDrawer
+          open={evidenceOpen}
+          onOpenChange={setEvidenceOpen}
+          onRestoreFocus={() => evidenceTrigger.current?.focus()}
+          title={evidenceTitle}
+          description={
+            serverState.status === "Low"
+              ? "The current sample is too small to call a reliable weakness. This focus helps build evidence."
+              : serverState.reason
+          }
+        >
+          {evidenceOpen ? evidenceContent : null}
+        </TodayEvidenceDrawer>
+      ) : null}
     </div>
   );
 }

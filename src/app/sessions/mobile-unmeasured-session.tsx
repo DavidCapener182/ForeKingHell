@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { MobileSection } from "@/components/app/mobile-screen";
 import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
-import { MobileAppShell } from "@/components/mobile-sports";
-import { PageShell, PageHeader } from "@/components/premium";
+import { MobileAppShell } from "@/components/app/mobile-app-shell";
+import { PageShell } from "@/components/app/page-shell";
+import { UntitledPageHeader as PageHeader } from "@/components/untitled-ui/headers";
 import { Button } from "@/components/ui/button";
 import type { SessionReviewMetadata } from "@/lib/session-review-metadata";
 

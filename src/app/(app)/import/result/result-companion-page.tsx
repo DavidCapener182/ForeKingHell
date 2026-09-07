@@ -4,7 +4,7 @@ import { ImportResultRecovery, ImportPracticeReview } from "@/app/import/import-
 import { UntitledPageHeader } from "@/components/untitled-ui/headers";
 import { ArrowRight, CheckCircle2, Target } from "lucide-react";
 
-import { MobileSessionPattern } from "@/app/sessions/mobile-session-story";
+import { MobileSessionPattern } from "@/app/sessions/mobile-session-pattern";
 import { MobileSection } from "@/components/app/mobile-screen";
 import {
   MobileDisclosure,

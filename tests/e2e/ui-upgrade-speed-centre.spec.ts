@@ -119,7 +119,11 @@ test("Speed Centre saves exact readings and retains validation drafts on both su
         const projection = page.getByRole("spinbutton", { name: /Target.*speed \(mph\)/ }).first();
         await expect(projection).toBeVisible();
         const current = await projection.inputValue();
-        await projection.fill(String(Number(current) + 0.1));
+        const adjusted = String(Number(current) + 0.1);
+        await projection.fill(adjusted);
+        await page.getByRole("tab", { name: "Club focus", exact: true }).click();
+        await page.getByRole("tab", { name: "Evidence & projections", exact: true }).click();
+        await expect(projection).toHaveValue(adjusted);
         await page.getByRole("button", { name: "Reset projection", exact: true }).click();
         await expect(projection).toHaveValue(current);
         await page.getByRole("tab", { name: "Train", exact: true }).click();
@@ -134,6 +138,18 @@ test("Speed Centre saves exact readings and retains validation drafts on both su
           animations: "disabled",
         });
       }
+      await page.goto(
+        `/surface/companion?next=${encodeURIComponent(`/companion-runtime/import/result?sessionId=${session.id}`)}`,
+      );
+      await page.locator("summary").filter({ hasText: "saved shots · review and correct" }).click();
+      await page.getByRole("button", { name: "Full evidence", exact: true }).first().click();
+      const evidence = page.getByRole("dialog");
+      await expect(evidence.getByRole("tab", { name: "Source", exact: true })).toBeVisible();
+      await evidence.getByRole("tab", { name: "Source", exact: true }).click();
+      await evidence.locator("summary").filter({ hasText: "Correct club" }).click();
+      await expect(evidence.getByRole("combobox", { name: "Club", exact: true })).toBeVisible();
+      await evidence.getByRole("button", { name: "Close evidence", exact: true }).click();
+      await expect(page.getByRole("dialog")).toHaveCount(0);
     }
     const saved =
       await db`select id,max_speed_mph,swing_count from fkh_speed_training_sessions where user_id=${owner!} and title='UI exact speed session'`;

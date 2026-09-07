@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { RapsodoSyncClient } from "./rapsodo-sync-client";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Cloud, MoreHorizontal } from "lucide-react";
@@ -54,6 +53,17 @@ type ConnectionStatus = {
   expiresAt: string | null;
   profile: Record<string, unknown> | null;
 };
+
+const RapsodoSyncClient = dynamic(
+  () => import("./rapsodo-sync-client").then((module) => module.RapsodoSyncClient),
+  {
+    loading: () => (
+      <p role="status" className="p-4">
+        Loading session import…
+      </p>
+    ),
+  },
+);
 
 const RapsodoCompanionPreview = dynamic(
   () =>

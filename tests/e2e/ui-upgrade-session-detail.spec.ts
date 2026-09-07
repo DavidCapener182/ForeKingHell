@@ -82,6 +82,21 @@ test("Session review retains source-linked practice and complete shot details on
               "aria-selected",
               "true",
             );
+            if (name === "Clubs & shots") {
+              const story = page.getByRole("region", { name: "Session metric story" });
+              await check(story).toBeVisible();
+              if (width === 390) {
+                const nextMetric = story.getByRole("button", { name: "Next", exact: true });
+                if (await nextMetric.isEnabled()) {
+                  await nextMetric.click();
+                  await expect(story.getByRole("status")).not.toHaveText(/^1 of /);
+                }
+                const position = await story.getByRole("status").textContent();
+                await page.getByRole("tab", { name: "Next practice", exact: true }).click();
+                await page.getByRole("tab", { name: "Clubs & shots", exact: true }).click();
+                await expect(story.getByRole("status")).toHaveText(position!);
+              }
+            }
           }
         }
         expect(

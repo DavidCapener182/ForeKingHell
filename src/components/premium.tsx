@@ -1,75 +1,16 @@
 import Link from "next/link";
 import { Children } from "react";
 import type { ReactNode } from "react";
-import {
-  ArrowRight,
-  ChevronDown,
-  ChevronRight,
-  SlidersHorizontal,
-  type LucideIcon,
-} from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronRight, type LucideIcon } from "lucide-react";
 
 import { EmptyState as AppEmptyState } from "@/components/app/empty-state";
 import { IOSDisclosureGroup } from "@/components/app/ios-mobile";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerClose,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-const shellWidths = {
-  "6xl": "max-w-none",
-  "7xl": "max-w-none",
-  wide: "max-w-none",
-  full: "max-w-none",
-};
-
-type PageShellProps = {
-  children: ReactNode;
-  className?: string;
-  contentClassName?: string;
-  size?: keyof typeof shellWidths;
-};
-
-export function PageShell({
-  children,
-  className,
-  contentClassName,
-  size = "full",
-}: PageShellProps) {
-  return (
-    <main
-      id="main-content"
-      suppressHydrationWarning
-      className={cn(
-        "min-h-screen px-4 py-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:pt-6 lg:px-8 lg:pb-8",
-        className,
-      )}
-    >
-      <div
-        className={cn(
-          // Keep app content full-width; see AGENTS.md layout contract.
-          "mx-auto flex min-w-0 w-full flex-col gap-4 sm:gap-5 lg:gap-6 [&>*]:min-w-0",
-          shellWidths[size],
-          contentClassName,
-          "!max-w-none",
-        )}
-      >
-        {children}
-      </div>
-    </main>
-  );
-}
+export { PageShell } from "./app/page-shell";
 
 // Compatibility names retain every existing route import and action contract.
 export { UntitledPageHeader as PageHeader } from "@/components/untitled-ui/headers";
@@ -238,79 +179,6 @@ export function ActiveFilterChips({
           <span key={item.label}>{content}</span>
         );
       })}
-    </div>
-  );
-}
-
-export function MobileFilterSheet({
-  children,
-  label = "Filter",
-  activeCount = 0,
-  className,
-}: {
-  children: ReactNode;
-  label?: string;
-  activeCount?: number;
-  className?: string;
-}) {
-  return (
-    <div className={cn("lg:hidden", className)}>
-      <Drawer>
-        <DrawerTrigger
-          type="button"
-          className={cn(
-            buttonVariants({ variant: "outline" }),
-            "premium-command-surface min-h-11 w-full justify-center rounded-lg shadow-sm",
-          )}
-        >
-          <SlidersHorizontal className="size-4" aria-hidden />
-          {label}
-          {activeCount > 0 ? (
-            <Badge variant="secondary" className="ml-1 rounded-full px-1.5 py-0 text-[11px]">
-              {activeCount}
-            </Badge>
-          ) : null}
-        </DrawerTrigger>
-        <DrawerContent className="max-h-[86dvh]">
-          <DrawerHeader className="text-left">
-            <div className="flex items-center justify-between gap-3">
-              <DrawerTitle>{label}</DrawerTitle>
-              <DrawerClose className="min-h-11 min-w-11 px-2 text-sm font-semibold text-primary">
-                Done
-              </DrawerClose>
-            </div>
-            <DrawerDescription>Refine the current view without leaving the page.</DrawerDescription>
-          </DrawerHeader>
-          <ScrollArea className="overflow-y-auto px-4 pb-[calc(7rem+env(safe-area-inset-bottom))]">
-            {children}
-          </ScrollArea>
-        </DrawerContent>
-      </Drawer>
-    </div>
-  );
-}
-
-export function MobileFilterCommandSheet({
-  children,
-  chips,
-  label = "Filter",
-  activeCount,
-  className,
-}: {
-  children: ReactNode;
-  chips?: Array<{ label: string; href?: string }>;
-  label?: string;
-  activeCount?: number;
-  className?: string;
-}) {
-  const count = activeCount ?? chips?.length ?? 0;
-
-  return (
-    <div className={cn("grid gap-3 lg:hidden", className)}>
-      <MobileFilterSheet label={label} activeCount={count}>
-        {children}
-      </MobileFilterSheet>
-      {chips?.length ? <ActiveFilterChips items={chips} /> : null}
     </div>
   );
 }

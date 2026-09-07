@@ -130,7 +130,7 @@ export type ShotMiniDispersionPoint = {
 
 type DetailTab = "overview" | "source" | "history";
 
-import { ClubCorrection } from "./mobile-shot-explorer";
+import { ClubCorrection } from "./club-correction";
 
 export function ShotsMasterDetailTable({
   shots,

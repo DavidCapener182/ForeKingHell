@@ -10,8 +10,19 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
-import { SelectedShotDetail, type ShotMasterDetailRow } from "./shots-master-detail-table";
-import { ClubCorrection } from "./mobile-shot-explorer";
+import dynamic from "next/dynamic";
+import type { ShotMasterDetailRow } from "./shots-master-detail-table";
+const SelectedShotDetail = dynamic(
+  () => import("./shots-master-detail-table").then((module) => module.SelectedShotDetail),
+  {
+    loading: () => (
+      <p role="status" className="p-4">
+        Loading shot detail…
+      </p>
+    ),
+  },
+);
+import { ClubCorrection } from "./club-correction";
 export function ShotEvidenceSheet({
   shotId,
   title,

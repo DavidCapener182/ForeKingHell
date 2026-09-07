@@ -4,7 +4,8 @@ import { CalendarDays, Upload } from "lucide-react";
 
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { Button } from "@/components/ui/button";
-import { PageHeader, PageShell } from "@/components/premium";
+import { PageShell } from "@/components/app/page-shell";
+import { UntitledPageHeader as PageHeader } from "@/components/untitled-ui/headers";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { UrlBackedSessionTimeline } from "@/app/sessions/session-timeline";
 import { loadHistoryPage, HistoryLoadMore } from "@/app/sessions/history-page-data";
