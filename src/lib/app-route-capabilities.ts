@@ -29,11 +29,7 @@ export const mobileCapabilities = {
   compare: companionMore(),
   progress: companionMore(),
   "strokes-gained": companionMore(),
-  "simulator-lab": desktopOnly(
-    "Review latest session",
-    "/sessions",
-    "Simulator Performance Lab is a full analytical workspace.",
-  ),
+  "simulator-lab": companionMore(),
   handicap: summaryMore(),
   coach: companionMore(),
   practice: companionPrimary(),
@@ -142,7 +138,7 @@ const desktopOnlyPrefixes = [
   "/coach/workspace",
 ] as const;
 
-const companionExactRoutes = ["/strokes-gained", "/compare", "/analyse", "/analyse/workspace", "/analyse/session-impact", "/analyse/conditions", "/analyse/compare", "/data-chat", "/coach/workspace", "/coach/reports", "/coach/diagnosis", "/coach", "/courses", "/equipment", "/equipment/experiments"] as const;
+const companionExactRoutes = ["/simulator-lab", "/strokes-gained", "/compare", "/analyse", "/analyse/workspace", "/analyse/session-impact", "/analyse/conditions", "/analyse/compare", "/data-chat", "/coach/workspace", "/coach/reports", "/coach/diagnosis", "/coach", "/courses", "/equipment", "/equipment/experiments"] as const;
 const companionExceptions = ["/courses/strategy"] as const;
 const summaryOnlyPrefixes = [
   "/coach",

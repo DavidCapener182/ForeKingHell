@@ -69,6 +69,10 @@ describe("simulator lab analytics", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       clubType: "7i",
+      latestEvidence: { snapshot: { shotCount: 3, carryAverageYd: 160, ballSpeedAverageMph: 125 } },
+      baselineEvidence: {
+        snapshot: { shotCount: 5, carryAverageYd: 154, ballSpeedAverageMph: 120 },
+      },
       latestShotCount: 3,
       baselineShotCount: 5,
       carryDeltaYd: 6,
@@ -145,6 +149,14 @@ describe("simulator lab analytics", () => {
     const firstImpact = impacts.find((impact) => impact.id === "history-1");
 
     expect(firstImpact).toMatchObject({
+      beforeEvidence: {
+        snapshot: { shotCount: 5, carryAverageYd: 220 },
+        window: { end: firstChange, endExclusive: true },
+      },
+      afterEvidence: {
+        snapshot: { shotCount: 5, carryAverageYd: 230 },
+        window: { start: firstChange, end: nextChange, endExclusive: true },
+      },
       equipmentLabel: "9 deg loft / Sleeve down",
       beforeShotCount: 5,
       afterShotCount: 5,
@@ -247,7 +259,10 @@ describe("simulator lab analytics", () => {
     expect(gapping[0]).toMatchObject({ sampleSize: 6, bestStockCarryYd: 150 });
 
     const deltas = buildSessionDeltaRows(
-      [...eligible.slice(0, 3).map((shot) => ({ ...shot, carryYd: 160 })), ...excluded],
+      [
+        ...eligible.slice(0, 3).map((shot) => ({ ...shot, carryYd: 160 })),
+        ...excluded.map((shot) => ({ ...shot, sessionId: "excluded-session" })),
+      ],
       eligible.slice(0, 5),
     );
     expect(deltas[0]).toMatchObject({
@@ -255,6 +270,9 @@ describe("simulator lab analytics", () => {
       baselineShotCount: 5,
       carryDeltaYd: 10,
     });
+
+    expect(deltas[0].latestEvidence?.sessionIds).toEqual(["session-1"]);
+    expect(deltas[0].latestEvidence?.snapshot.carryAverageYd).toBe(160);
 
     const facts = buildSessionRoastFacts(
       session(),

@@ -7,6 +7,7 @@ import {
   ChartAccessibleFallback,
   type ChartFallbackRow,
 } from "@/components/app/chart-accessible-fallback";
+import { ComparisonSearchSheet } from "@/app/analyse/compare/comparison-search-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { GappingMatrixRow, SimulatorLabTone } from "@/lib/simulator-lab";
@@ -44,8 +45,20 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
 
   return (
     <div className="grid gap-4">
+      <ComparisonSearchSheet
+        label="Selected club"
+        entity="club"
+        description="Search clubs with indoor gapping evidence. Recommended carry remains separate from best stock and latest reliable."
+        value={selectedClubId}
+        onValueChange={setSelectedClubId}
+        options={rows.map((row) => ({
+          value: row.clubId,
+          label: row.clubLabel,
+          description: `${row.sampleSize} shots · ${row.confidenceLabel}`,
+        }))}
+      />
       {selected ? (
-        <aside className="apple-panel-strong grid gap-4 rounded-lg p-4 xl:grid-cols-[minmax(12rem,0.65fr)_minmax(28rem,1.25fr)_minmax(16rem,0.8fr)] xl:items-center">
+        <aside className="apple-panel-strong grid gap-4 rounded-lg p-4 2xl:grid-cols-[minmax(0,0.65fr)_minmax(0,1.25fr)_minmax(0,0.8fr)] xl:items-center">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
@@ -67,6 +80,7 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
             <Metric label="Best stock" value={formatYards(selected.bestStockCarryYd)} />
             <Metric label="Latest reliable" value={formatYards(selected.latestReliableCarryYd)} />
             <Metric label="Confidence" value={`${selected.confidenceScore}%`} />
+            <Metric label="Usable shots" value={String(selected.sampleSize)} />
           </div>
           <div className="rounded-lg border border-border bg-card/70 p-3 text-sm">
             <p className="font-medium">{selected.gapLabel}</p>
@@ -84,14 +98,15 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
 
       <div className="space-y-2">
         {rows.map((row) => {
-          const carry = row.recommendedCarryYd ?? row.bestStockCarryYd;
-          const width = carry === null ? 8 : Math.max(8, (carry / maxCarry) * 100);
+          const carry = row.recommendedCarryYd;
+          const width = carry === null ? 0 : (carry / maxCarry) * 100;
           const isSelected = row.clubId === selected?.clubId;
 
           return (
             <Button
               key={row.clubId}
               type="button"
+              aria-pressed={isSelected}
               onClick={() => setSelectedClubId(row.clubId)}
               variant="outline"
               className={cn(

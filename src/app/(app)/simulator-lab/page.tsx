@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { UrlTabs } from "@/components/untitled-ui/url-tabs";
+import { LabEvidenceList, LabShotEvidence } from "@/app/simulator-lab/lab-evidence";
 import type { ReactNode } from "react";
 import {
   Activity,
@@ -51,6 +53,7 @@ import {
   getSimulatorLabData,
   type EquipmentChangeImpact,
   type SessionDeltaRow,
+  type ComparisonEvidence,
 } from "@/lib/simulator-lab";
 import type {
   CostlyShotGroup,
@@ -210,102 +213,131 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
           </DataPanel>
         ) : null}
 
-        <RangeRealityCockpit
-          reality={data.rangeReality}
-          rangeClub={rangeClub}
-          rangeMiss={rangeMiss}
-        />
-
-        <section className="grid gap-4">
-          <DataPanel>
-            <SectionHeader
-              title="WITB gapping matrix"
-              description="Recommended carry is plotted first; best stock and latest reliable stay visible for trust checks."
-              action={<Target className="size-5 text-primary" />}
-            />
-            <CardContent>
-              <GappingMatrixClient rows={data.gappingRows} />
-            </CardContent>
-          </DataPanel>
-        </section>
-
-        <section className="grid items-start gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-          <DataPanel>
-            <SectionHeader
-              title="Session deltas"
-              description="Latest indoor session against the prior 30 days for the same clubs."
-              action={<Activity className="size-5 text-[var(--status-information-foreground)]" />}
-            />
-            <CardContent>
-              <SessionDeltaTable rows={data.sessionDeltas} />
-            </CardContent>
-          </DataPanel>
-
-          <div className="grid gap-4">
-            <DataPanel>
-              <SectionHeader
-                title="Tinkering ledger"
-                description="Dated setup changes compared with 30-day before and after windows."
-                action={<SlidersHorizontal className="size-5 text-primary" />}
-              />
-              <CardContent>
-                <EquipmentImpactTable impacts={data.equipmentImpacts} />
-              </CardContent>
-            </DataPanel>
-
-            <DataPanel>
-              <SectionHeader
-                title="Next actions"
-                description="Keep the lab useful by feeding it comparable sessions and dated setup changes."
-                action={<Radar className="size-5 text-muted-foreground" />}
-              />
-              <CardContent>
-                <CompactReadoutGrid
-                  columnsClassName="grid-cols-1"
-                  items={[
-                    {
-                      label: "Import",
-                      value: "Save TrackMan, Square or Rapsodo CSVs",
-                      tone: "green",
-                    },
-                    {
-                      label: "Retest",
-                      value: "Build 3 latest and 5 baseline shots per club",
-                      tone: "sky",
-                    },
-                    {
-                      label: "Prove",
-                      value: "Log loft, shaft or ball changes before testing",
-                      tone: "amber",
-                    },
-                  ]}
+        <UrlTabs
+          label="Performance Lab sections"
+          defaultTabKey="analysis"
+          tabs={[
+            {
+              id: "analysis",
+              label: "Analysis",
+              content: (
+                <RangeRealityCockpit
+                  reality={data.rangeReality}
+                  rangeClub={rangeClub}
+                  rangeMiss={rangeMiss}
                 />
-              </CardContent>
-            </DataPanel>
-          </div>
-        </section>
+              ),
+            },
+            {
+              id: "bag",
+              label: "Gapping",
+              content: (
+                <section className="grid gap-4">
+                  <DataPanel>
+                    <SectionHeader
+                      title="WITB gapping matrix"
+                      description="Recommended carry is plotted first; best stock and latest reliable stay visible for trust checks."
+                      action={<Target className="size-5 text-primary" />}
+                    />
+                    <CardContent>
+                      <GappingMatrixClient rows={data.gappingRows} />
+                    </CardContent>
+                  </DataPanel>
+                </section>
+              ),
+            },
+            {
+              id: "changes",
+              label: "Session & setup",
+              content: (
+                <section className="grid items-start gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+                  <DataPanel>
+                    <SectionHeader
+                      title="Session deltas"
+                      description="Latest indoor session against the prior 30 days for the same clubs."
+                      action={
+                        <Activity className="size-5 text-[var(--status-information-foreground)]" />
+                      }
+                    />
+                    <CardContent>
+                      <SessionDeltaTable rows={data.sessionDeltas} />
+                    </CardContent>
+                  </DataPanel>
 
-        <DataPanel>
-          <SectionHeader
-            title="Community extras"
-            description="Optional, private session banter kept away from the coaching workflow."
-            action={<Flame className="size-5 text-destructive" />}
-          />
-          <CardContent>
-            <Collapsible className="rounded-lg border bg-card/70 p-3">
-              <CollapsibleTrigger className="w-full cursor-pointer text-left text-sm font-semibold">
-                Roast draft
-              </CollapsibleTrigger>
-              <CollapsibleContent
-                forceMount
-                outerClassName="data-[state=closed]:hidden"
-                className="mt-3"
-              >
-                <SessionRoastPanel session={data.latestSession} facts={data.roastFacts} />
-              </CollapsibleContent>
-            </Collapsible>
-          </CardContent>
-        </DataPanel>
+                  <div className="grid gap-4">
+                    <DataPanel>
+                      <SectionHeader
+                        title="Tinkering ledger"
+                        description="Dated setup changes compared with 30-day before and after windows."
+                        action={<SlidersHorizontal className="size-5 text-primary" />}
+                      />
+                      <CardContent>
+                        <EquipmentImpactTable impacts={data.equipmentImpacts} />
+                      </CardContent>
+                    </DataPanel>
+
+                    <DataPanel>
+                      <SectionHeader
+                        title="Next actions"
+                        description="Keep the lab useful by feeding it comparable sessions and dated setup changes."
+                        action={<Radar className="size-5 text-muted-foreground" />}
+                      />
+                      <CardContent>
+                        <CompactReadoutGrid
+                          columnsClassName="grid-cols-1"
+                          items={[
+                            {
+                              label: "Import",
+                              value: "Save TrackMan, Square or Rapsodo CSVs",
+                              tone: "green",
+                            },
+                            {
+                              label: "Retest",
+                              value: "Build 3 latest and 5 baseline shots per club",
+                              tone: "sky",
+                            },
+                            {
+                              label: "Prove",
+                              value: "Log loft, shaft or ball changes before testing",
+                              tone: "amber",
+                            },
+                          ]}
+                        />
+                      </CardContent>
+                    </DataPanel>
+                  </div>
+                </section>
+              ),
+            },
+            {
+              id: "extras",
+              label: "Optional banter",
+              content: (
+                <DataPanel>
+                  <SectionHeader
+                    title="Community extras"
+                    description="Optional, private session banter kept away from the coaching workflow."
+                    action={<Flame className="size-5 text-destructive" />}
+                  />
+                  <CardContent>
+                    <Collapsible className="rounded-lg border bg-card/70 p-3">
+                      <CollapsibleTrigger className="w-full cursor-pointer text-left text-sm font-semibold">
+                        Roast draft
+                      </CollapsibleTrigger>
+                      <CollapsibleContent
+                        forceMount
+                        outerClassName="data-[state=closed]:hidden"
+                        className="mt-3"
+                      >
+                        <SessionRoastPanel session={data.latestSession} facts={data.roastFacts} />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </CardContent>
+                </DataPanel>
+              ),
+            },
+          ]}
+        />
       </DesktopWorkbenchLayout>
     </PageShell>
   );
@@ -349,7 +381,7 @@ function RangeRealityCockpit({
             <div className="apple-panel-strong overflow-hidden p-5">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  Launch Monitor Handicap
+                  Unofficial range estimate
                 </p>
                 <span
                   className={cn(
@@ -360,7 +392,7 @@ function RangeRealityCockpit({
                   {trendPrefix}
                 </span>
               </div>
-              <p className="mt-3 text-[6rem] font-semibold leading-none tracking-normal sm:text-[7rem] xl:text-[8rem]">
+              <p className="mt-3 text-5xl font-semibold leading-none tracking-normal">
                 {estimate.label}
               </p>
               <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
@@ -415,7 +447,7 @@ function RangeRealityCockpit({
                   Estimate caveats ({estimate.caveats.length})
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2 grid gap-1.5 leading-6">
-                  {estimate.caveats.slice(0, 3).map((caveat) => (
+                  {estimate.caveats.map((caveat) => (
                     <p key={caveat}>{caveat}</p>
                   ))}
                 </CollapsibleContent>
@@ -519,7 +551,7 @@ function RangeRealityCockpit({
           <SectionHeader title="Bag truth" action={<Target className="size-5 text-primary" />} />
           <CardContent className="grid gap-3">
             {reality.bagTruth.length > 0 ? (
-              reality.bagTruth.slice(0, 4).map((item) => (
+              reality.bagTruth.map((item) => (
                 <div
                   key={item.clubType}
                   className="flex items-start justify-between gap-3 rounded-lg border p-3"
@@ -779,13 +811,11 @@ function ConfidenceTimeline({ reality }: { reality: RangeRealityHandicapData }) 
     (timeline.length === 1 ? plotWidth / 2 : (index / (timeline.length - 1)) * plotWidth);
   const yScale = (value: number) =>
     padding.top + ((value - minValue) / Math.max(1, maxValue - minValue)) * plotHeight;
-  const linePoints = timeline
-    .map((item, index) => (item.value === null ? null : { item, index }))
-    .filter((point): point is { item: (typeof timeline)[number]; index: number } => point !== null);
-  const linePath = linePoints
-    .map(
-      ({ item, index }, pointIndex) =>
-        `${pointIndex === 0 ? "M" : "L"} ${xScale(index)} ${yScale(item.value ?? 0)}`,
+  const linePath = timeline
+    .map((item, index) =>
+      item.value === null
+        ? ""
+        : `${index === 0 || timeline[index - 1].value === null ? "M" : "L"} ${xScale(index)} ${yScale(item.value)}`,
     )
     .join(" ");
   const confidencePath = [
@@ -802,63 +832,80 @@ function ConfidenceTimeline({ reality }: { reality: RangeRealityHandicapData }) 
 
   return (
     <div className="overflow-x-auto rounded-lg border bg-white p-3">
-      <svg
-        viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-        role="img"
-        aria-label="Range handicap confidence timeline"
-        className="block h-auto min-w-[48rem] w-full"
-      >
-        <rect x={0} y={0} width={chartWidth} height={chartHeight} fill="white" />
-        <path d={confidencePath} fill="#d1fae5" opacity={0.72} />
-        {[minValue, Math.round((minValue + maxValue) / 2), maxValue].map((tick) => (
-          <g key={tick}>
-            <line
-              x1={padding.left}
-              x2={chartWidth - padding.right}
-              y1={yScale(tick)}
-              y2={yScale(tick)}
-              stroke="#e5e7eb"
-            />
-            <text
-              x={padding.left - 10}
-              y={yScale(tick) + 4}
-              textAnchor="end"
-              className="fill-slate-600 text-[12px]"
-            >
-              {tick}
-            </text>
-          </g>
-        ))}
-        <path d={linePath} fill="none" stroke="#0B7A3B" strokeLinecap="round" strokeWidth={4} />
-        {timeline.map((item, index) =>
-          item.value === null ? null : (
-            <g key={item.id}>
-              <circle
-                cx={xScale(index)}
-                cy={yScale(item.value)}
-                r={6}
-                fill="#0B7A3B"
-                stroke="white"
-                strokeWidth={2}
+      <div className="overflow-x-auto">
+        <svg
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          role="img"
+          aria-label="Range handicap confidence timeline"
+          className="block h-auto w-full"
+        >
+          <rect x={0} y={0} width={chartWidth} height={chartHeight} fill="white" />
+          <path d={confidencePath} fill="#d1fae5" opacity={0.72} />
+          {[minValue, Math.round((minValue + maxValue) / 2), maxValue].map((tick) => (
+            <g key={tick}>
+              <line
+                x1={padding.left}
+                x2={chartWidth - padding.right}
+                y1={yScale(tick)}
+                y2={yScale(tick)}
+                stroke="#e5e7eb"
               />
               <text
-                x={xScale(index)}
-                y={chartHeight - 17}
-                textAnchor="middle"
+                x={padding.left - 10}
+                y={yScale(tick) + 4}
+                textAnchor="end"
                 className="fill-slate-600 text-[12px]"
               >
-                {item.label}
+                {tick}
               </text>
             </g>
-          ),
-        )}
-      </svg>
+          ))}
+          <path d={linePath} fill="none" stroke="#0B7A3B" strokeLinecap="round" strokeWidth={4} />
+          {timeline.map((item, index) =>
+            item.value === null ? null : (
+              <g key={item.id}>
+                <circle
+                  cx={xScale(index)}
+                  cy={yScale(item.value)}
+                  r={6}
+                  fill="#0B7A3B"
+                  stroke="white"
+                  strokeWidth={2}
+                />
+                <text
+                  x={xScale(index)}
+                  y={chartHeight - 17}
+                  textAnchor="middle"
+                  className="fill-slate-600 text-[12px]"
+                >
+                  {item.label}
+                </text>
+              </g>
+            ),
+          )}
+        </svg>
+      </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
         <p className="font-semibold">Latest {latest?.valueLabel}</p>
         <p className="text-muted-foreground">
           Shaded area shows confidence, line shows lower-is-better handicap estimate.
         </p>
       </div>
+      <dl className="mt-3 grid gap-2" aria-label="Monthly confidence values">
+        {timeline.map((item) => (
+          <div key={item.id} className="flex flex-wrap justify-between gap-2 border-t py-2 text-sm">
+            <dt>{item.label}</dt>
+            <dd>
+              {item.value === null ? "No supported estimate" : item.valueLabel} ·{" "}
+              {item.confidenceScore}% confidence
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Only actual monthly checkpoints are shown. Missing values are gaps; per-checkpoint sample
+        counts are unavailable in the current model output.
+      </p>
     </div>
   );
 }
@@ -882,16 +929,16 @@ function FlightLineMap({
   }
 
   const filteredLines = filterFlightLines(lines, rangeClub, rangeMiss);
-  const visibleLines = filteredLines.length > 0 ? filteredLines : lines;
+  const visibleLines = filteredLines;
   const chartWidth = 820;
   const chartHeight = 430;
   const padding = { top: 22, right: 36, bottom: 46, left: 54 };
   const plotWidth = chartWidth - padding.left - padding.right;
   const plotHeight = chartHeight - padding.top - padding.bottom;
-  const maxCarry = niceChartMax(Math.max(...visibleLines.map((line) => line.carryYd)), 25);
+  const maxCarry = niceChartMax(Math.max(1, ...visibleLines.map((line) => line.carryYd)), 25);
   const maxSide = Math.max(
     20,
-    niceChartMax(Math.max(...visibleLines.map((line) => Math.abs(line.sideYd))), 10),
+    niceChartMax(Math.max(0, ...visibleLines.map((line) => Math.abs(line.sideYd))), 10),
   );
   const targetSide = Math.min(10, maxSide);
   const yTicks = chartTicks(maxCarry, 4);
@@ -923,32 +970,32 @@ function FlightLineMap({
     },
     ...clubs.map((line) => ({
       key: `club-${line.clubType}`,
-      href: `/simulator-lab?rangeClub=${encodeURIComponent(line.clubType)}#range-reality`,
-      active: rangeClub === line.clubType && !rangeMiss,
+      href: `/simulator-lab?rangeClub=${encodeURIComponent(line.clubType)}${rangeMiss ? `&rangeMiss=${encodeURIComponent(rangeMiss)}` : ""}#range-reality`,
+      active: rangeClub === line.clubType,
       label: line.clubLabel,
     })),
     {
       key: "miss-left",
-      href: "/simulator-lab?rangeMiss=left#range-reality",
+      href: `/simulator-lab?rangeMiss=left${rangeClub ? `&rangeClub=${encodeURIComponent(rangeClub)}` : ""}#range-reality`,
       active: rangeMiss === "left",
       label: "Left miss",
     },
     {
       key: "miss-right",
-      href: "/simulator-lab?rangeMiss=right#range-reality",
+      href: `/simulator-lab?rangeMiss=right${rangeClub ? `&rangeClub=${encodeURIComponent(rangeClub)}` : ""}#range-reality`,
       active: rangeMiss === "right",
       label: "Right miss",
     },
     {
       key: "miss-danger",
-      href: "/simulator-lab?rangeMiss=danger#range-reality",
+      href: `/simulator-lab?rangeMiss=danger${rangeClub ? `&rangeClub=${encodeURIComponent(rangeClub)}` : ""}#range-reality`,
       active: rangeMiss === "danger",
       label: "Danger",
     },
   ];
 
   return (
-    <div className="space-y-3">
+    <LabShotEvidence lines={visibleLines}>
       <div className="flex flex-wrap gap-2" aria-label={`Shot filter · ${activeLabel.trim()}`}>
         {filterOptions.map((option) => (
           <FilterChip key={option.key} href={option.href} active={option.active}>
@@ -956,178 +1003,189 @@ function FlightLineMap({
           </FilterChip>
         ))}
       </div>
-      <div className="overflow-hidden rounded-lg border bg-white">
-        <svg
-          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          role="img"
-          aria-label="Range shot dispersion flight-line chart"
-          className="block h-auto w-full"
-        >
-          <rect x={0} y={0} width={chartWidth} height={chartHeight} fill="white" />
-          <rect
-            x={xScale(-targetSide)}
-            y={padding.top}
-            width={xScale(targetSide) - xScale(-targetSide)}
-            height={plotHeight}
-            fill="#ecfdf5"
-            opacity={0.72}
-          />
-          <text
-            x={xScale(-maxSide * 0.72)}
-            y={padding.top + 16}
-            textAnchor="middle"
-            className="fill-slate-500 text-[11px]"
+      {!visibleLines.length ? (
+        <p className="rounded-lg border p-4 text-sm">
+          No shots match this selection. Change the club or miss filter.
+        </p>
+      ) : (
+        <div className="overflow-hidden rounded-lg border bg-white">
+          <svg
+            viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+            role="img"
+            aria-label="Range shot dispersion flight-line chart"
+            className="block h-auto w-full"
           >
-            left miss
-          </text>
-          <text
-            x={xScale(maxSide * 0.72)}
-            y={padding.top + 16}
-            textAnchor="middle"
-            className="fill-slate-500 text-[11px]"
-          >
-            right miss
-          </text>
-          <text
-            x={xScale(0)}
-            y={padding.top + 14}
-            textAnchor="middle"
-            className="fill-emerald-700 text-[10px] font-semibold uppercase tracking-[0.08em]"
-          >
-            Target corridor
-          </text>
-          {yTicks.map((tick) => (
-            <g key={`y-${tick}`}>
-              <line
-                x1={padding.left}
-                x2={chartWidth - padding.right}
-                y1={yScale(tick)}
-                y2={yScale(tick)}
-                stroke="#e5e7eb"
-              />
-              <text
-                x={padding.left - 10}
-                y={yScale(tick) + 4}
-                textAnchor="end"
-                className="fill-slate-600 text-[12px]"
-              >
-                {tick}
-              </text>
-            </g>
-          ))}
-          {xTicks.map((tick) => (
-            <g key={`x-${tick}`}>
-              <line
-                x1={xScale(tick)}
-                x2={xScale(tick)}
-                y1={padding.top}
-                y2={chartHeight - padding.bottom}
-                stroke={tick === 0 ? "#111827" : "#e5e7eb"}
-                strokeDasharray={tick === 0 ? undefined : "4 4"}
-                opacity={tick === 0 ? 0.5 : 1}
-              />
-              <text
-                x={xScale(tick)}
-                y={chartHeight - 18}
-                textAnchor="middle"
-                className="fill-slate-600 text-[12px]"
-              >
-                {formatChartTick(tick)}
-              </text>
-            </g>
-          ))}
-          <text x={padding.left} y={18} className="fill-slate-600 text-[12px]">
-            carry yd
-          </text>
-          <text
-            x={chartWidth / 2}
-            y={chartHeight - 5}
-            textAnchor="middle"
-            className="fill-slate-600 text-[12px]"
-          >
-            left / right yd
-          </text>
-          {visibleLines.map((line) => (
-            <path
-              key={`trace-${line.id}`}
-              d={rangeShapePath({ line, xScale, yScale })}
-              fill="none"
-              stroke={flightLineColor(line)}
-              strokeLinecap="round"
-              strokeWidth={line.isDirectionalDamage ? 2.1 : line.included ? 1.55 : 1.05}
-              strokeOpacity={line.isDirectionalDamage ? 0.58 : line.included ? 0.32 : 0.22}
-            />
-          ))}
-          {visibleLines.map((line) => (
-            <circle
-              key={`point-${line.id}`}
-              cx={xScale(line.sideYd)}
-              cy={yScale(line.carryYd)}
-              r={line.isDirectionalDamage ? 5.8 : 4.8}
-              fill={flightLineColor(line)}
-              fillOpacity={line.isDirectionalDamage ? 0.94 : 0.84}
-              stroke="white"
-              strokeWidth={1.5}
-            >
-              <title>
-                {line.isDirectionalDamage
-                  ? `${line.clubLabel}: directional danger ${numberFormatter.format(Math.abs(line.sideYd))} yd offline`
-                  : line.isCostly
-                    ? `${line.clubLabel}: costly carry or strike shot +${numberFormatter.format(line.scoreCost)}`
-                    : `${line.clubLabel}: playable plotted shot`}
-              </title>
-            </circle>
-          ))}
-          <g>
-            <circle
-              cx={xScale(averageSide)}
-              cy={yScale(averageCarry)}
-              r={9}
-              fill="none"
-              stroke="#0f172a"
-              strokeWidth={2}
-            />
-            <line
-              x1={xScale(averageSide) - 13}
-              x2={xScale(averageSide) + 13}
-              y1={yScale(averageCarry)}
-              y2={yScale(averageCarry)}
-              stroke="#0f172a"
-              strokeWidth={2}
-            />
-            <line
-              x1={xScale(averageSide)}
-              x2={xScale(averageSide)}
-              y1={yScale(averageCarry) - 13}
-              y2={yScale(averageCarry) + 13}
-              stroke="#0f172a"
-              strokeWidth={2}
-            />
-            <circle
-              cx={xScale(averageSide) + 15}
-              cy={yScale(averageCarry) - 15}
-              r={9}
-              fill="#0f172a"
-              stroke="white"
-              strokeWidth={1.5}
+            <rect x={0} y={0} width={chartWidth} height={chartHeight} fill="white" />
+            <rect
+              x={xScale(-targetSide)}
+              y={padding.top}
+              width={xScale(targetSide) - xScale(-targetSide)}
+              height={plotHeight}
+              fill="#ecfdf5"
+              opacity={0.72}
             />
             <text
-              x={xScale(averageSide) + 15}
-              y={yScale(averageCarry) - 11}
+              x={xScale(-maxSide * 0.72)}
+              y={padding.top + 16}
               textAnchor="middle"
-              className="fill-white text-[10px] font-bold"
+              className="fill-slate-500 text-[11px]"
             >
-              1
+              left miss
             </text>
-          </g>
-        </svg>
-        <div className="flex items-center justify-between gap-3 border-t px-3 py-2 text-xs text-muted-foreground">
-          <span>{activeLabel.trim()} dispersion</span>
-          <span>{visibleLines.length} recent shots</span>
+            <text
+              x={xScale(maxSide * 0.72)}
+              y={padding.top + 16}
+              textAnchor="middle"
+              className="fill-slate-500 text-[11px]"
+            >
+              right miss
+            </text>
+            <text
+              x={xScale(0)}
+              y={padding.top + 14}
+              textAnchor="middle"
+              className="fill-emerald-700 text-[10px] font-semibold uppercase tracking-[0.08em]"
+            >
+              Target corridor
+            </text>
+            {yTicks.map((tick) => (
+              <g key={`y-${tick}`}>
+                <line
+                  x1={padding.left}
+                  x2={chartWidth - padding.right}
+                  y1={yScale(tick)}
+                  y2={yScale(tick)}
+                  stroke="#e5e7eb"
+                />
+                <text
+                  x={padding.left - 10}
+                  y={yScale(tick) + 4}
+                  textAnchor="end"
+                  className="fill-slate-600 text-[12px]"
+                >
+                  {tick}
+                </text>
+              </g>
+            ))}
+            {xTicks.map((tick) => (
+              <g key={`x-${tick}`}>
+                <line
+                  x1={xScale(tick)}
+                  x2={xScale(tick)}
+                  y1={padding.top}
+                  y2={chartHeight - padding.bottom}
+                  stroke={tick === 0 ? "#111827" : "#e5e7eb"}
+                  strokeDasharray={tick === 0 ? undefined : "4 4"}
+                  opacity={tick === 0 ? 0.5 : 1}
+                />
+                <text
+                  x={xScale(tick)}
+                  y={chartHeight - 18}
+                  textAnchor="middle"
+                  className="fill-slate-600 text-[12px]"
+                >
+                  {formatChartTick(tick)}
+                </text>
+              </g>
+            ))}
+            <text x={padding.left} y={18} className="fill-slate-600 text-[12px]">
+              carry yd
+            </text>
+            <text
+              x={chartWidth / 2}
+              y={chartHeight - 5}
+              textAnchor="middle"
+              className="fill-slate-600 text-[12px]"
+            >
+              left / right yd
+            </text>
+            {visibleLines.map((line) => (
+              <path
+                key={`trace-${line.id}`}
+                pointerEvents="none"
+                d={rangeShapePath({ line, xScale, yScale })}
+                fill="none"
+                stroke={flightLineColor(line)}
+                strokeLinecap="round"
+                strokeWidth={line.isDirectionalDamage ? 2.1 : line.included ? 1.55 : 1.05}
+                strokeOpacity={line.isDirectionalDamage ? 0.58 : line.included ? 0.32 : 0.22}
+              />
+            ))}
+            {visibleLines.map((line) => (
+              <circle
+                key={`point-${line.id}`}
+                data-lab-shot-id={line.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Inspect ${line.clubLabel} shot ${line.carryYd.toFixed(1)} yd carry`}
+                cx={xScale(line.sideYd)}
+                cy={yScale(line.carryYd)}
+                r={line.isDirectionalDamage ? 5.8 : 4.8}
+                fill={flightLineColor(line)}
+                fillOpacity={line.isDirectionalDamage ? 0.94 : 0.84}
+                stroke="white"
+                strokeWidth={1.5}
+              >
+                <title>
+                  {line.isDirectionalDamage
+                    ? `${line.clubLabel}: directional danger ${numberFormatter.format(Math.abs(line.sideYd))} yd offline`
+                    : line.isCostly
+                      ? `${line.clubLabel}: costly carry or strike shot +${numberFormatter.format(line.scoreCost)}`
+                      : `${line.clubLabel}: playable plotted shot`}
+                </title>
+              </circle>
+            ))}
+            <g pointerEvents="none">
+              <circle
+                cx={xScale(averageSide)}
+                cy={yScale(averageCarry)}
+                r={9}
+                fill="none"
+                stroke="#0f172a"
+                strokeWidth={2}
+              />
+              <line
+                x1={xScale(averageSide) - 13}
+                x2={xScale(averageSide) + 13}
+                y1={yScale(averageCarry)}
+                y2={yScale(averageCarry)}
+                stroke="#0f172a"
+                strokeWidth={2}
+              />
+              <line
+                x1={xScale(averageSide)}
+                x2={xScale(averageSide)}
+                y1={yScale(averageCarry) - 13}
+                y2={yScale(averageCarry) + 13}
+                stroke="#0f172a"
+                strokeWidth={2}
+              />
+              <circle
+                cx={xScale(averageSide) + 15}
+                cy={yScale(averageCarry) - 15}
+                r={9}
+                fill="#0f172a"
+                stroke="white"
+                strokeWidth={1.5}
+              />
+              <text
+                x={xScale(averageSide) + 15}
+                y={yScale(averageCarry) - 11}
+                textAnchor="middle"
+                className="fill-white text-[10px] font-bold"
+              >
+                1
+              </text>
+            </g>
+          </svg>
+          <div className="flex items-center justify-between gap-3 border-t px-3 py-2 text-xs text-muted-foreground">
+            <span>{activeLabel.trim()} dispersion</span>
+            <span>{visibleLines.length} recent shots</span>
+          </div>
         </div>
-      </div>
+      )}
       <CorridorSplit buckets={buckets} />
-    </div>
+    </LabShotEvidence>
   );
 }
 
@@ -1173,6 +1231,40 @@ function CorridorSplit({
   );
 }
 
+function labEvidenceFields(
+  label: string,
+  evidence: ComparisonEvidence | undefined,
+): Array<{ label: string; value: string; href?: string }> {
+  if (!evidence) return [{ label, value: "Detailed sample unavailable" }];
+  const metric = (value: number | null, unit: string) =>
+    value === null ? "Not recorded" : `${numberFormatter.format(value)} ${unit}`.trim();
+  return [
+    { label: `${label} shots`, value: String(evidence.snapshot.shotCount) },
+    { label: `${label} carry`, value: metric(evidence.snapshot.carryAverageYd, "yd") },
+    { label: `${label} ball speed`, value: metric(evidence.snapshot.ballSpeedAverageMph, "mph") },
+    { label: `${label} smash`, value: metric(evidence.snapshot.smashAverage, "") },
+    { label: `${label} absolute offline`, value: metric(evidence.snapshot.offlineAverageYd, "yd") },
+    { label: `${label} carry spread`, value: metric(evidence.snapshot.carrySpreadYd, "yd") },
+    {
+      label: `${label} observed dates`,
+      value: `${evidence.firstShotAt ? dateFormatter.format(evidence.firstShotAt) : "None"} to ${evidence.lastShotAt ? dateFormatter.format(evidence.lastShotAt) : "None"}`,
+    },
+    ...(evidence.window
+      ? [
+          {
+            label: `${label} window`,
+            value: `${evidence.window.start.toISOString()} to ${evidence.window.end?.toISOString() ?? "open ended"} (end exclusive)`,
+          },
+        ]
+      : []),
+    ...evidence.sessionIds.map((id, index) => ({
+      label: `${label} source session ${index + 1}`,
+      value: id,
+      href: `/sessions/${id}`,
+    })),
+  ];
+}
+
 function SessionDeltaTable({ rows }: { rows: SessionDeltaRow[] }) {
   if (rows.length === 0) {
     return (
@@ -1186,84 +1278,107 @@ function SessionDeltaTable({ rows }: { rows: SessionDeltaRow[] }) {
       className="grid scroll-mt-28 gap-3"
       data-workbench-scope="simulator-session-deltas"
     >
-      <DesktopTableWorkbenchControls
-        viewKey="simulator-session-deltas"
-        scope="simulator-session-deltas"
-        currentViewLabel="Latest session deltas"
-        resultLabel={`${rows.length.toLocaleString("en-GB")} clubs`}
-        columns={sessionDeltaColumns}
-        suggestedViews={sessionDeltaSuggestedViews}
-        exportTableId="simulator-session-deltas"
-        exportFileName="forekinghell-simulator-session-deltas.csv"
+      <LabEvidenceList
+        title="Session comparisons"
+        rows={rows.map((row) => ({
+          id: row.clubType,
+          title: row.clubLabel,
+          summary: `${row.latestShotCount} latest / ${row.baselineShotCount} baseline shots · ${verdictLabel(row.verdict)}`,
+          fields: [
+            { label: "Interpretation", value: row.summary },
+            ...labEvidenceFields("Latest", row.latestEvidence),
+            ...labEvidenceFields("Baseline", row.baselineEvidence),
+            { label: "Carry delta", value: formatDelta(row.carryDeltaYd, "yd") },
+            { label: "Ball speed delta", value: formatDelta(row.ballSpeedDeltaMph, "mph") },
+            { label: "Smash delta", value: formatDelta(row.smashDelta, "") },
+            { label: "Offline delta", value: formatDelta(row.offlineDeltaYd, "yd") },
+            { label: "Carry spread delta", value: formatDelta(row.carrySpreadDeltaYd, "yd") },
+          ],
+        }))}
       />
-      <DataTableFrame mainTable mainTableLabel="Simulator session delta table" stickyFirstColumn>
-        <Table
-          data-workbench-export-table="simulator-session-deltas"
-          aria-describedby="simulator-session-deltas-summary"
-        >
-          <TableCaption id="simulator-session-deltas-summary" className="sr-only">
-            Latest simulator session deltas against prior 30-day club baselines.
-          </TableCaption>
-          <TableHeader className="sticky top-0 z-10 bg-card">
-            <TableRow>
-              <TableHead data-column="club" className="sticky left-0 z-20 border-r bg-card">
-                Club
-              </TableHead>
-              <TableHead data-column="samples">Samples</TableHead>
-              <TableHead data-column="carry" className="text-right">
-                Carry
-              </TableHead>
-              <TableHead data-column="ball" className="text-right">
-                Ball
-              </TableHead>
-              <TableHead data-column="smash" className="text-right">
-                Smash
-              </TableHead>
-              <TableHead data-column="offline" className="text-right">
-                Offline
-              </TableHead>
-              <TableHead data-column="verdict">Verdict</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((row) => (
-              <TableRow
-                key={row.clubType}
-                tabIndex={0}
-                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <TableCell
-                  data-column="club"
-                  className="sticky left-0 z-10 border-r bg-card font-medium"
-                >
-                  <div>{row.clubLabel}</div>
-                  <div className="max-w-sm truncate text-xs font-normal text-muted-foreground">
-                    {row.summary}
-                  </div>
-                </TableCell>
-                <TableCell data-column="samples">
-                  {row.latestShotCount}/{row.baselineShotCount}
-                </TableCell>
-                <TableCell data-column="carry" className="text-right tabular-nums">
-                  {formatDelta(row.carryDeltaYd, "yd")}
-                </TableCell>
-                <TableCell data-column="ball" className="text-right tabular-nums">
-                  {formatDelta(row.ballSpeedDeltaMph, "mph")}
-                </TableCell>
-                <TableCell data-column="smash" className="text-right tabular-nums">
-                  {formatDelta(row.smashDelta, "")}
-                </TableCell>
-                <TableCell data-column="offline" className="text-right tabular-nums">
-                  {formatDelta(row.offlineDeltaYd, "yd")}
-                </TableCell>
-                <TableCell data-column="verdict" className={toneTextClass(row.tone)}>
-                  {verdictLabel(row.verdict)}
-                </TableCell>
+      <details className="min-w-0">
+        <summary className="cursor-pointer py-3 text-sm font-semibold">
+          Full session delta table and export
+        </summary>
+        <DesktopTableWorkbenchControls
+          viewKey="simulator-session-deltas"
+          scope="simulator-session-deltas"
+          currentViewLabel="Latest session deltas"
+          resultLabel={`${rows.length.toLocaleString("en-GB")} clubs`}
+          columns={sessionDeltaColumns}
+          suggestedViews={sessionDeltaSuggestedViews}
+          exportTableId="simulator-session-deltas"
+          exportFileName="forekinghell-simulator-session-deltas.csv"
+        />
+        <DataTableFrame mainTable mainTableLabel="Simulator session delta table" stickyFirstColumn>
+          <Table
+            data-workbench-export-table="simulator-session-deltas"
+            aria-describedby="simulator-session-deltas-summary"
+          >
+            <TableCaption id="simulator-session-deltas-summary" className="sr-only">
+              Latest simulator session deltas against prior 30-day club baselines.
+            </TableCaption>
+            <TableHeader className="sticky top-0 z-10 bg-card">
+              <TableRow>
+                <TableHead data-column="club" className="sticky left-0 z-20 border-r bg-card">
+                  Club
+                </TableHead>
+                <TableHead data-column="samples">Samples</TableHead>
+                <TableHead data-column="carry" className="text-right">
+                  Carry
+                </TableHead>
+                <TableHead data-column="ball" className="text-right">
+                  Ball
+                </TableHead>
+                <TableHead data-column="smash" className="text-right">
+                  Smash
+                </TableHead>
+                <TableHead data-column="offline" className="text-right">
+                  Offline
+                </TableHead>
+                <TableHead data-column="verdict">Verdict</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </DataTableFrame>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow
+                  key={row.clubType}
+                  tabIndex={0}
+                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <TableCell
+                    data-column="club"
+                    className="sticky left-0 z-10 border-r bg-card font-medium"
+                  >
+                    <div>{row.clubLabel}</div>
+                    <div className="max-w-sm truncate text-xs font-normal text-muted-foreground">
+                      {row.summary}
+                    </div>
+                  </TableCell>
+                  <TableCell data-column="samples">
+                    {row.latestShotCount}/{row.baselineShotCount}
+                  </TableCell>
+                  <TableCell data-column="carry" className="text-right tabular-nums">
+                    {formatDelta(row.carryDeltaYd, "yd")}
+                  </TableCell>
+                  <TableCell data-column="ball" className="text-right tabular-nums">
+                    {formatDelta(row.ballSpeedDeltaMph, "mph")}
+                  </TableCell>
+                  <TableCell data-column="smash" className="text-right tabular-nums">
+                    {formatDelta(row.smashDelta, "")}
+                  </TableCell>
+                  <TableCell data-column="offline" className="text-right tabular-nums">
+                    {formatDelta(row.offlineDeltaYd, "yd")}
+                  </TableCell>
+                  <TableCell data-column="verdict" className={toneTextClass(row.tone)}>
+                    {verdictLabel(row.verdict)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DataTableFrame>
+      </details>
     </div>
   );
 }
@@ -1271,7 +1386,10 @@ function SessionDeltaTable({ rows }: { rows: SessionDeltaRow[] }) {
 function EquipmentImpactTable({ impacts }: { impacts: EquipmentChangeImpact[] }) {
   if (impacts.length === 0) {
     return (
-      <EmptyPanel icon={AlertTriangle} text="Log a club setup and retest to prove the change." />
+      <EmptyPanel
+        icon={AlertTriangle}
+        text="Log a dated club setup and retest to compare associated changes."
+      />
     );
   }
 
@@ -1281,83 +1399,111 @@ function EquipmentImpactTable({ impacts }: { impacts: EquipmentChangeImpact[] })
       className="grid scroll-mt-28 gap-3"
       data-workbench-scope="simulator-equipment-impact"
     >
-      <DesktopTableWorkbenchControls
-        viewKey="simulator-equipment-impact"
-        scope="simulator-equipment-impact"
-        currentViewLabel="Equipment impact"
-        resultLabel={`${impacts.length.toLocaleString("en-GB")} changes`}
-        columns={equipmentImpactColumns}
-        suggestedViews={equipmentImpactSuggestedViews}
-        exportTableId="simulator-equipment-impact"
-        exportFileName="forekinghell-simulator-equipment-impact.csv"
+      <p className="text-sm text-muted-foreground">
+        Dated associations, not proof that a setup caused improvement. Latest 12 changes with
+        evidence are shown.
+      </p>
+      <LabEvidenceList
+        title="Setup comparisons"
+        rows={impacts.map((impact) => ({
+          id: impact.id,
+          title: `${impact.clubLabel} · ${dateFormatter.format(impact.effectiveFrom)}`,
+          summary: `${impact.equipmentLabel} · ${impact.beforeShotCount} before / ${impact.afterShotCount} after shots`,
+          href: `/equipment?clubId=${impact.clubId}`,
+          fields: [
+            { label: "Interpretation", value: impact.detail },
+            { label: "Association", value: impact.verdict },
+            ...labEvidenceFields("Before", impact.beforeEvidence),
+            ...labEvidenceFields("After", impact.afterEvidence),
+            { label: "Carry delta", value: formatDelta(impact.carryDeltaYd, "yd") },
+            { label: "Ball speed delta", value: formatDelta(impact.ballSpeedDeltaMph, "mph") },
+            { label: "Smash delta", value: formatDelta(impact.smashDelta, "") },
+            { label: "Offline delta", value: formatDelta(impact.offlineDeltaYd, "yd") },
+          ],
+        }))}
       />
-      <DataTableFrame label="Simulator equipment impact table" stickyFirstColumn>
-        <Table
-          data-workbench-export-table="simulator-equipment-impact"
-          aria-describedby="simulator-equipment-impact-summary"
-        >
-          <TableCaption id="simulator-equipment-impact-summary" className="sr-only">
-            Equipment changes with before and after simulator performance windows.
-          </TableCaption>
-          <TableHeader className="sticky top-0 z-10 bg-card">
-            <TableRow>
-              <TableHead data-column="change" className="sticky left-0 z-20 border-r bg-card">
-                Change
-              </TableHead>
-              <TableHead data-column="samples">Samples</TableHead>
-              <TableHead data-column="carry" className="text-right">
-                Carry
-              </TableHead>
-              <TableHead data-column="ball" className="text-right">
-                Ball
-              </TableHead>
-              <TableHead data-column="smash" className="text-right">
-                Smash
-              </TableHead>
-              <TableHead data-column="offline" className="text-right">
-                Offline
-              </TableHead>
-              <TableHead data-column="verdict">Verdict</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {impacts.map((impact) => (
-              <TableRow
-                key={impact.id}
-                tabIndex={0}
-                className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <TableCell data-column="change" className="sticky left-0 z-10 border-r bg-card">
-                  <div className="font-medium">
-                    {impact.clubLabel} / {dateFormatter.format(impact.effectiveFrom)}
-                  </div>
-                  <div className="max-w-sm truncate text-xs text-muted-foreground">
-                    {impact.equipmentLabel}
-                  </div>
-                </TableCell>
-                <TableCell data-column="samples">
-                  {impact.beforeShotCount}/{impact.afterShotCount}
-                </TableCell>
-                <TableCell data-column="carry" className="text-right tabular-nums">
-                  {formatDelta(impact.carryDeltaYd, "yd")}
-                </TableCell>
-                <TableCell data-column="ball" className="text-right tabular-nums">
-                  {formatDelta(impact.ballSpeedDeltaMph, "mph")}
-                </TableCell>
-                <TableCell data-column="smash" className="text-right tabular-nums">
-                  {formatDelta(impact.smashDelta, "")}
-                </TableCell>
-                <TableCell data-column="offline" className="text-right tabular-nums">
-                  {formatDelta(impact.offlineDeltaYd, "yd")}
-                </TableCell>
-                <TableCell data-column="verdict" className={toneTextClass(impact.tone)}>
-                  {impact.verdict}
-                </TableCell>
+      <details className="min-w-0">
+        <summary className="cursor-pointer py-3 text-sm font-semibold">
+          Full setup table and export
+        </summary>
+        <DesktopTableWorkbenchControls
+          viewKey="simulator-equipment-impact"
+          scope="simulator-equipment-impact"
+          currentViewLabel="Equipment impact"
+          resultLabel={`${impacts.length.toLocaleString("en-GB")} changes`}
+          columns={equipmentImpactColumns}
+          suggestedViews={equipmentImpactSuggestedViews}
+          exportTableId="simulator-equipment-impact"
+          exportFileName="forekinghell-simulator-equipment-impact.csv"
+        />
+        <DataTableFrame label="Simulator equipment impact table" stickyFirstColumn>
+          <Table
+            data-workbench-export-table="simulator-equipment-impact"
+            aria-describedby="simulator-equipment-impact-summary"
+          >
+            <TableCaption id="simulator-equipment-impact-summary" className="sr-only">
+              Equipment changes with before and after simulator performance windows.
+            </TableCaption>
+            <TableHeader className="sticky top-0 z-10 bg-card">
+              <TableRow>
+                <TableHead data-column="change" className="sticky left-0 z-20 border-r bg-card">
+                  Change
+                </TableHead>
+                <TableHead data-column="samples">Samples</TableHead>
+                <TableHead data-column="carry" className="text-right">
+                  Carry
+                </TableHead>
+                <TableHead data-column="ball" className="text-right">
+                  Ball
+                </TableHead>
+                <TableHead data-column="smash" className="text-right">
+                  Smash
+                </TableHead>
+                <TableHead data-column="offline" className="text-right">
+                  Offline
+                </TableHead>
+                <TableHead data-column="verdict">Verdict</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </DataTableFrame>
+            </TableHeader>
+            <TableBody>
+              {impacts.map((impact) => (
+                <TableRow
+                  key={impact.id}
+                  tabIndex={0}
+                  className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <TableCell data-column="change" className="sticky left-0 z-10 border-r bg-card">
+                    <div className="font-medium">
+                      {impact.clubLabel} / {dateFormatter.format(impact.effectiveFrom)}
+                    </div>
+                    <div className="max-w-sm truncate text-xs text-muted-foreground">
+                      {impact.equipmentLabel}
+                    </div>
+                  </TableCell>
+                  <TableCell data-column="samples">
+                    {impact.beforeShotCount}/{impact.afterShotCount}
+                  </TableCell>
+                  <TableCell data-column="carry" className="text-right tabular-nums">
+                    {formatDelta(impact.carryDeltaYd, "yd")}
+                  </TableCell>
+                  <TableCell data-column="ball" className="text-right tabular-nums">
+                    {formatDelta(impact.ballSpeedDeltaMph, "mph")}
+                  </TableCell>
+                  <TableCell data-column="smash" className="text-right tabular-nums">
+                    {formatDelta(impact.smashDelta, "")}
+                  </TableCell>
+                  <TableCell data-column="offline" className="text-right tabular-nums">
+                    {formatDelta(impact.offlineDeltaYd, "yd")}
+                  </TableCell>
+                  <TableCell data-column="verdict" className={toneTextClass(impact.tone)}>
+                    {impact.verdict}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DataTableFrame>
+      </details>
     </div>
   );
 }
