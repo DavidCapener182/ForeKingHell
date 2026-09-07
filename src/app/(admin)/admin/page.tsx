@@ -12,27 +12,16 @@ import {
 
 import { AdminNav, AdminNotice, formatDateTime, label } from "@/app/admin/admin-components";
 import {
-  OperationalBadge,
   OperationsPanel,
   OperationalStatusStrip,
   type OperationalStatus,
   type OperationalStatusItem,
 } from "@/app/admin/admin-overview-components";
-import { StatusTimeline } from "@/components/app/status-timeline";
-import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
+import { AdminAttention } from "@/app/admin/admin-attention";
+
 import { PageShell } from "@/components/premium";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { getAdminOverviewData } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
@@ -192,16 +181,6 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     },
   ];
 
-  const auditTimeline = data.recentAuditRows.map((row) => ({
-    id: row.id,
-    dateGroup: formatDateGroup(row.createdAt),
-    timestamp: formatDateTime(row.createdAt),
-    title: label(row.action),
-    description: `${row.actorEmail ?? "System actor"} · ${row.targetType ?? "Unknown target type"} · ${row.targetId ?? "Unknown target"}`,
-    status: "Audit event",
-    kind: "reviewed" as const,
-  }));
-
   return (
     <PageShell>
       <div className="grid gap-3">
@@ -209,7 +188,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         <AdminNotice status={params?.adminStatus} error={params?.adminError} />
       </div>
 
-      <DesktopWorkbenchLayout scope="admin">
+      <div className="grid min-w-0 gap-5 pb-28">
         <header className="border-b border-border pb-4 pt-1">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -231,15 +210,26 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         </header>
 
         <section aria-labelledby="operational-status-title">
-          <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
             <h2 id="operational-status-title" className="text-sm font-semibold">
               Operational status
             </h2>
             <p className="text-xs text-muted-foreground">
-              Database snapshot · not a live uptime check
+              Snapshot at {formatDateTime(new Date())} · live health unverified
             </p>
           </div>
-          <OperationalStatusStrip items={statusItems} />
+          <OperationalStatusStrip
+            items={statusItems.map((item, index) => ({
+              ...item,
+              href: [
+                "/admin/system-checks",
+                "/admin/billing",
+                "/admin/moderation",
+                "/admin/users",
+                "/admin/system-checks",
+              ][index],
+            }))}
+          />
         </section>
 
         {actualFailureCount > 0 ? (
@@ -259,39 +249,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             title="Attention required"
             description="Failures, open queues and verification gaps. Neutral rows mean no issue is recorded, not that a live service is healthy."
           >
-            <div className="overflow-x-auto">
-              <Table>
-                <TableCaption className="sr-only">
-                  Admin attention table showing area, status, evidence and next action.
-                </TableCaption>
-                <TableHeader className="[&_th]:bg-muted/65">
-                  <TableRow>
-                    <TableHead className="min-w-44">Area</TableHead>
-                    <TableHead className="min-w-40">Status</TableHead>
-                    <TableHead className="min-w-[28rem]">Evidence</TableHead>
-                    <TableHead className="min-w-36 text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {attentionRows.map((row) => (
-                    <TableRow key={row.id} tabIndex={0} className="focus-aaa outline-none">
-                      <TableCell className="font-medium">{row.area}</TableCell>
-                      <TableCell>
-                        <OperationalBadge status={row.status}>{row.statusLabel}</OperationalBadge>
-                      </TableCell>
-                      <TableCell className="text-sm leading-5 text-muted-foreground">
-                        {row.evidence}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button asChild variant="outline" size="sm">
-                          <Link href={row.href}>{row.action}</Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <AdminAttention rows={attentionRows} />
           </OperationsPanel>
 
           <OperationsPanel
@@ -299,16 +257,43 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             description="Latest recorded owner and operator audit events."
           >
             <div className="p-4">
-              <StatusTimeline
-                label="Recent admin audit events"
-                items={auditTimeline}
-                className="max-h-[31rem]"
-                empty={
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    No audit events are recorded. Activity outside this log is unknown.
-                  </p>
-                }
-              />
+              <p className="mb-3 text-xs text-muted-foreground">
+                Latest {data.recentAuditRows.length} recorded events, up to 8, newest first. An
+                audit record alone does not verify an external outcome.
+              </p>
+              {data.recentAuditRows.length ? (
+                <ol className="grid gap-3">
+                  {data.recentAuditRows.map((row) => (
+                    <li key={row.id}>
+                      <details className="rounded-xl border p-3">
+                        <summary className="min-h-11 cursor-pointer break-words">
+                          <span className="font-medium">{label(row.action)}</span>
+                          <span className="mt-1 block text-xs">
+                            {formatDateTime(row.createdAt)}
+                          </span>
+                        </summary>
+                        <dl className="mt-3 grid gap-3 text-sm">
+                          {Object.entries({
+                            Actor: row.actorEmail ?? "System actor",
+                            Action: label(row.action),
+                            "Target type": row.targetType ?? "Not recorded",
+                            Target: row.targetId ?? "Not recorded",
+                            Outcome: "Not recorded separately",
+                            Source: "Administrator audit log",
+                          }).map(([key, value]) => (
+                            <div key={key}>
+                              <dt className="text-muted-foreground">{key}</dt>
+                              <dd className="break-all">{value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </details>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p>No audit events are recorded. Activity outside this log is unknown.</p>
+              )}
             </div>
           </OperationsPanel>
         </section>
@@ -349,15 +334,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             })}
           </div>
         </section>
-      </DesktopWorkbenchLayout>
+      </div>
     </PageShell>
   );
-}
-
-function formatDateGroup(value: Date) {
-  return new Intl.DateTimeFormat("en-GB", {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-  }).format(value);
 }

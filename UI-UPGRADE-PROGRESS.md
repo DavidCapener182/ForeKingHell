@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-407 desktop / 407 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P76 Operations console**, next P77 Account management. 85 UI entries remain. Continue the UI pass with acceptance gaps retained.
+412 desktop / 412 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P77 Account management**, next P78 Moderation. 80 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P76 Operations console**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P77 Account management**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -400,3 +400,7 @@ Freeze RELEASED; root applies billing page/manage/checkout/history drafts. Other
 ## P75 Billing UI checkpoint
 P75-C01–C06 UI implemented partial;407/492UI,0 fullyaccepted. Savedplan/currentperiod preserved, native completecomparison andpracticalallowances, exactcatalogmonth/yearprice andconfiguredavailability, review/cancel beforeproviderhandoff, statefulpending/error, fullmobilehistory/details. No invoiceamounts/currencies/URLs in storedhistory; truthfulgapplusportalaccess. Querycheckoutsuccessnowneutralreturnnotice, nofalsepaymentconfirmation. billing-controls.log1PASS24.6s6sizes withmockedno-callCancel/exactretryparameters/providererrors. Actualbilling-browser-ready.log1PASS1.0m12surface/sizes savedpaidaccess/history/allowances/foreignprivacy, no payments. FirstactualearlyAccordionclicklost→nativedetails; nextstrictduplicatefeatureselectorfixed; nexthistoryclicklost→readyguard. Companion390inspected; neutralInfoiconfinalminorchangeaftercapture. Backendredesign/billing-state-final.log7PASS; safeerrormessagefollowup redesign/billing-safe-state.log7PASS2.37s, targetedlintclean. Billing-admin typesclean;3unusedimportwarningsinnewadminUIremoved.
 Runtimefreeze RELEASED. P76 page/nav/attention/strip applied, allP76promptsread; types/lint billing-admin logs running. Otheragentoverviewpermission/countread-onlytest5PASS2.77sredesign/admin-overview-integration.log. RunP76isolated+actualafterstablefreeze; nextP77. P75lib/billing onlyavailability additions shouldstage via baseline /tmp/fkh-billing-before-p75.ts; keep prior servicecatchdiffunstaged. Capabilitybillingcategory+exactexception onlyP75; /adminexactexceptionP76pending.
+
+## P76 Operations UI checkpoint
+P76-C01–C05 UIimplementedpartial;412/492UI,0fullyaccepted. Fullsharedconsole, collapsible/searchadminnav, datedfactualstatus/drilllinks, orderedqueue/fullmobiledetails, complete auditactor/action/target/source and explicitunknownoutcome, namedworkflowlinks. Isolated6sizePASSadmin-overview-browser.log; actualadmin-overview-browser-final.logreachedall12surface/sizes andscreenshots, thenFAILED finalinactiveadminreload90stimeout. Finalpageerrorsassertionnotreached. Backendredesign/admin-overview-integration.log5PASS2.77s authorization/exactcounts/no-readmutations. Companion390inspected. Typesbilling-admin-typesclean;3unusedimportsremoved. Originaltests/integration/admin-workflows.test.ts preexistinguntrackedbroaderworkleftunstaged; dedicatedoverviewtest extracted and redesign/admin-overview-extracted.log1PASS2.71s. Serverlog shows /admin307 then cold /todaycompile atfinalreload timeout; destinationrender unverified.
+Freeze RELEASED, P77page/directory/filters/stateformapplied; genericadminFormAction and optionalexpectedUserIdserviceguardpendingotheragent. Preserveoperatorgrant-to-nonadmin capability, owner-only lifetime/deactivate/ownerrole. P77querylimit100 explicit, newcoachfilter, no paginationrewrite. Runtypes/lint/statefixtures afteragentstablethenbrowser; nextP78. Exactcap/adminonlybelongsP76, /admin/userspendingP77; preserveotherdirtycapdiffs.

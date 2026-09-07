@@ -125,3 +125,6 @@ Specified Page/Section headers, Metrics/Tooltips and Tables/Paginations referenc
 
 ## P75 Billing
 Specified Metrics, Tables/Paginations, Radio groups/Buttons, Inputs/Select, Modals and Section headers/Content dividers reuse checked installed exports. Paid advanced billing examples unavailable; native labelled interval, semantic comparison with stacked plans and complete native phone disclosure, responsive reviewed handoff and full history detail panels are explicit accessible alternatives. No paid vendor source or invoice data invented.
+
+## P76 Operations
+Specified Sidebar navigations, Metrics/Tooltips, Tables/Paginations, Activity feeds/Dropdowns and domain-action references reuse current installed adapters. Paid advanced admin examples unavailable; searchable focus-managed section panel, factual semantic status rows, sortable queue table/full mobile detail panel and native chronological audit disclosures are the accessible alternatives. No paid source or broader admin permission implied.
