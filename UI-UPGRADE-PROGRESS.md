@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-398 desktop / 398 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P74 Shared account overview**, next P75 Plan and billing. 94 UI entries remain. Continue the UI pass with acceptance gaps retained.
+401 desktop / 401 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P75 Plan and billing**, next P76 Operations console. 91 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P74 Shared account overview**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P75 Plan and billing**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -392,3 +392,7 @@ Changed settings page/workspace module/draft/access/offline UI, theme-select44px
 ## P72/P73 UI checkpoint
 P72-C01–C03 and P73-C01–C02 UI implemented partial;398/492 UI,0 fully accepted. Notification full9categories/5toggles, stateful save/reset/errors and persisted labels. Invitation exact recipient/role/expiry review, Cancel, confirmed pending/error/success and unavailable states. Backend invitation-state-final.log5PASS. Types preferences-invitation-types-final.log and scoped lint clean. Actual notification-preferences-browser-final.log2PASS2.4m, both routes12surface/size combinations each; notification DB roundtrip + Settings parity, invitation Cancel/no membership and exact role acceptance. Invalid states390 checked. First notification test failed ambiguous Back link selector; corrected exact notification-section href. P73 companion390 inspected: neutral top capture/focus-header clearance outstanding. Broader acceptance remains CSV blockers.
 Changed notification and invitation pages, invitation-accept.tsx, settings acceptance state API, scoped tests, settings capability summary→companion. Freeze explicitly released for P74 loader and root UI. Next resumeP74 shared page/ledger/not-found applied; otheragent writing shared-account-data.ts plus scoped tests. Read allP74 prompts. Run types/lint/browser once agent stable, then continueP75. Keep existing bestshots/goals capability diffs unstaged. No main/deploy.
+
+## P74 UI checkpoint
+P74-C01–C03 UI implemented partial;401/492UI,0 fullyaccepted. Full shared identity/read-only role summary, source/sample metrics, loaded20 searchable/orderable session ledger, full mobile detail panel, scoped minimal loader and explicit unavailable route. Partial scorecard no longer presented as total. shared-account-types.log/scopedlintclean; backend shared-account-data-final.log1PASS1.14s allroles/owner/revoked/invalid/scoping/excludedshots/partialtotal. First browser fixture required raw_csv_text fixed. shared-account-browser-final.log thenFAILED before targetpage: /surface/workbench500 Unexpected end of JSON input in Next runtime,64s_errorcompile. Actualviewport/screenshots unverified; preserve logs/test, no restart/clean. UI-first continueP75.
+Freeze RELEASED; root applies billing page/manage/checkout/history drafts. Other agent applies confirmed checkout/portalstate APIs and exact availability; no livepayments. P75 prompts fullyread. CurrentP75,nextP76; preserve all401implemented and unrelateddirtychanges.

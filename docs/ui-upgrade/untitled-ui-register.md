@@ -119,3 +119,6 @@ Specified sidebar navigation, forms/select/toggles, tables/pagination, domain li
 
 ## P72/P73
 Specified Forms/Select/Toggles, Page headers and Modals/Buttons references reuse checked installed adapters. Paid advanced examples unavailable; explicit alternatives are labelled native category selects, existing Switch and confirmed state form, semantic invitation definition list and focus-managed ResponsiveDetailPanel. No paid export assumed or installed.
+
+## P74 Shared account
+Specified Page/Section headers, Metrics/Tooltips and Tables/Paginations references reuse installed local exports. Paid advanced examples unavailable; semantic identity and fact rows, sortable scoped ledger and focus-managed complete mobile detail panel are the accessible alternatives. No paid source or new owner mutation access claimed.
