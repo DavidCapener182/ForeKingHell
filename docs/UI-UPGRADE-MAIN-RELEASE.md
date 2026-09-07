@@ -17,7 +17,7 @@ The owner authorised finishing release failures and merging PR59 into main. This
 
 ## Release status
 
-PR59 is open at `9ccd4507fd0d567ffc98bc4b9d62c6f7b31fa9fd`; the performance batch is still local. Main remains `cf9de4018e0273a7f86a0ae69791af4ff414d29c`. The earlier required CI run passed Core Playwright, migrations and all three security jobs; its validate job failed only at original route budgets. The next commit must pass all required checks before a normal exact-head merge. No branch protection bypass is permitted.
+Performance commit `6ea9d12219c22f26faa67389f8987ed8cb1245e9` is pushed to PR59. Main remains `cf9de4018e0273a7f86a0ae69791af4ff414d29c`. At this commit, five required jobs passed. The validate job passed build, all route budgets and every prior step; its final auth smoke found three ambiguous Email selectors. A test-only correction targets the password field exactly and independently asserts the secure-link field. The full isolated auth smoke rerun passed:7tests,1existing live-fixture skip,0failures (`/tmp/fkh-auth-release-browser.log`). Publish the correction, then verify all six required checks before normal exact-head merge.
 
 ## Remaining acceptance work
 

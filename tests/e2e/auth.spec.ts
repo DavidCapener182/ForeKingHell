@@ -15,7 +15,8 @@ test.describe("authentication", () => {
   test("exposes magic-link and supported OAuth sign-in options", async ({ page }) => {
     await page.goto("/login");
 
-    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Email for a secure link", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /email me a secure link/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /continue with google/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /continue with apple/i })).toHaveCount(0);
@@ -40,7 +41,7 @@ test.describe("authentication", () => {
   test("shows a visible password sign-in failure message", async ({ page }) => {
     await page.goto("/login");
 
-    await page.getByLabel("Email").fill("not-a-real-player@example.com");
+    await page.getByLabel("Email", { exact: true }).fill("not-a-real-player@example.com");
     await page.getByLabel("Password").fill("wrong-password-for-test");
     await page.getByRole("button", { name: /sign in with password/i }).click();
 
@@ -59,7 +60,7 @@ test.describe("authentication", () => {
   }) => {
     await page.goto("/login");
 
-    await page.getByLabel("Email").fill("not-a-real-player@example.com");
+    await page.getByLabel("Email", { exact: true }).fill("not-a-real-player@example.com");
     await page.getByLabel("Password").fill("x");
     await page.getByRole("button", { name: /sign in with password/i }).click();
 

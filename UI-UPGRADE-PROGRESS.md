@@ -830,3 +830,11 @@ Next/current: restore saved views, columns and filtered CSV controls to SharedSe
 - Final full suite:2788passed,0failed,149skipped/pending of2937 (`/tmp/fkh-release-unit-complete.json`). Formatting passed, lint has0errors and one existing unused-variable warning. Build/types and all24 original/equal-cap budget checks passed.
 - Public Today route browser PASS20.3s (`/tmp/fkh-today-route-isolation-retry.log`):12surface/viewport variants, URL/query/history retained, ownedevidence200/foreignevidence404, noJSerrors/overflow; fixture cleaned up. Earlier navigation timeout was a stalled disposable dev compile, resolved by restarting only3116. User app3000untouched.
 - Source/tests/runtime are frozen. Primary agent will publish this batch to PR59 and merge only after all required latest-head checks pass. Full492-component acceptance remains partial.
+
+## Published performance batch — final smoke selector correction
+
+- Pushed6ea9d12219c22f26faa67389f8987ed8cb1245e9 and confirmed remote parity. PR59 remains open. GitHub Security34158134552 passed all3jobs; CI34158134591 passed CorePlaywright and migrations. Its validate job passed formatting/lint/types/fullunits/audit/productionbuild/allroutebudgets, then failed3authentication smoke cases.
+- All3failures were the same strict locator ambiguity: `getByLabel("Email")` matched both the password email and separate secure-link email fields. Runtime labels remain distinct. Updated tests to use exact Email and separately assert the secure-link field; no assertion skipped or auth behaviour changed.
+- Current: rerun full authentication smoke against disposable CI-like auth configuration. Next: publish only the selector correction plus this checkpoint after it passes; verify all6requiredjobs at the newSHA; merge PR59 with expectedhead and verify remote main. No bundle issue remains.
+
+- Authentication selector correction verified:7passed,1existing live-fixture skip,0failed in10.4s (`/tmp/fkh-auth-release-browser.log`). Includes both distinct email fields, protected redirect, wrong/short password errors, dropped-request retry and native JavaScript-disabled POST. Isolated3130 used synthetic auth pointed at127.0.0.1:9; server/buildfiles cleaned,3000and3116untouched. Publishing correction now; required CI rerun remains necessary.
