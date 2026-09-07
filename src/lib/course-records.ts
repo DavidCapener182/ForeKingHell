@@ -520,14 +520,26 @@ export async function getCourseRecordsHubData() {
               result: courseRecordResults,
               record: courseRecords,
               profile: userProfiles,
+              categoryName: courseRecordCategories.name,
+              proofStatus: courseRecordAttempts.proofStatus,
             })
             .from(courseRecordResults)
             .innerJoin(courseRecords, eq(courseRecordResults.recordId, courseRecords.id))
+            .innerJoin(
+              courseRecordCategories,
+              eq(courseRecords.categoryId, courseRecordCategories.id),
+            )
+            .leftJoin(
+              courseRecordAttempts,
+              eq(courseRecordResults.bestAttemptId, courseRecordAttempts.id),
+            )
             .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
             .where(
               and(
                 inArray(courseRecords.courseId, visibleCourseIds),
                 eq(courseRecordResults.rank, 1),
+                eq(courseRecordResults.status, "active"),
+                eq(courseRecordResults.verificationStatus, "verified"),
                 eq(courseRecords.scope, "public"),
                 eq(courseRecords.status, "active"),
               ),
@@ -544,10 +556,28 @@ export async function getCourseRecordsHubData() {
   ).filter((record): record is (typeof recordRows)[number] => Boolean(record));
   const uniqueRecordRows = dedupeCourseRecords(visibleRecordRows);
   const recordsByCourse = countBy(uniqueRecordRows.map((record) => record.courseId));
+  const visibleRecordIds = new Set(uniqueRecordRows.map((record) => record.id));
+  const attemptRows = visibleRecordIds.size
+    ? await db
+        .select({ courseId: courseRecordAttempts.courseId, count: sql<number>`count(*)::int` })
+        .from(courseRecordAttempts)
+        .where(inArray(courseRecordAttempts.recordId, [...visibleRecordIds]))
+        .groupBy(courseRecordAttempts.courseId)
+    : [];
+  const attemptsByCourse = new Map(attemptRows.map((row) => [row.courseId, Number(row.count)]));
   const teeByCourse = countBy(teeRows.map((teeSet) => teeSet.courseId));
   const leaderByCourse = new Map<string, (typeof resultRows)[number]>();
 
-  for (const row of resultRows) {
+  const featuredRows = resultRows
+    .filter((row) => visibleRecordIds.has(row.record.id) && row.profile)
+    .sort(
+      (a, b) =>
+        Number(b.record.period === "all_time") - Number(a.record.period === "all_time") ||
+        a.record.recordType.localeCompare(b.record.recordType) ||
+        a.record.id.localeCompare(b.record.id) ||
+        a.result.id.localeCompare(b.result.id),
+    );
+  for (const row of featuredRows) {
     if (!leaderByCourse.has(row.record.courseId)) {
       leaderByCourse.set(row.record.courseId, row);
     }
@@ -561,20 +591,29 @@ export async function getCourseRecordsHubData() {
         ...course,
         recordCount: recordsByCourse.get(course.id) ?? 0,
         teeSetCount: teeByCourse.get(course.id) ?? 0,
-        liveAttemptCount: uniqueRecordRows.filter((record) => record.courseId === course.id).length,
+        attemptCount: attemptsByCourse.get(course.id) ?? 0,
+        liveAttemptCount: attemptsByCourse.get(course.id) ?? 0,
         champion: leader?.profile
           ? {
               displayName: leader.profile.displayName,
               username: leader.profile.username,
               scoreLabel: leader.result.scoreLabel,
               verificationTier: leader.result.verificationTier,
+              verificationStatus: leader.result.verificationStatus,
+              proofStatus: leader.proofStatus,
+              recordId: leader.record.id,
+              recordType: leader.record.recordType,
+              categoryId: leader.record.categoryId,
+              categoryName: leader.categoryName,
+              period: leader.record.period,
+              periodStart: leader.record.periodStart,
+              periodEnd: leader.record.periodEnd,
             }
           : null,
       };
     }),
     totalRecords: uniqueRecordRows.length,
-    verifiedChampions: resultRows.filter((row) => row.result.verificationStatus === "verified")
-      .length,
+    verifiedChampions: leaderByCourse.size,
   };
 }
 

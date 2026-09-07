@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-259 desktop / 259 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P55 Course record boards**. 298 of492 UI implemented with partial verification; zero fully accepted. Continue UI work and preserve the separate verification gaps.
+259 desktop / 259 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P56 Records at a course**. 301 of492 UI implemented with partial verification; zero fully accepted. P55 hub now mobile-complete; P56/P57 downstream tasks are next.
 
 # UI upgrade progress
 
@@ -303,3 +303,6 @@ P53-C01–C05 UI implemented partial,294total. Requested-surface rendering (no d
 
 
 P54-C01–C04 UI implemented partial,298total. Existing3D math/renderer retained. Desktopfallback selected-hole/search/evidence, stagedViewOptions, visible drawer headings/touch targets, chat failed-draft retention/duplicate-send/reconnect/voice failures. twin-runtime-browser-wrapped.log PASS4.4s all12fixtureviews;15regressionsPASS95ms. Browser3D intentionally stubbed; actual3D/save/voice/positive-replay/sheetfocus acceptance open. Screenshot390 revealed long-name truncation and draft contrast, fixed and fullrerun/retaineddraftcapture inspected. Runtime fallback page overflow made scrollable. P53commitc1b06cf5. Next P55 full prompts /tmp/fkh-p55-prompts.txt read, source inspected. Backend agent reviewing course-records.ts hub liveAttemptCount wrongly counts boards and arbitrary/unverified leader; do not edit that file. Await canonical champion category/period/proof shape while implementing full mobile board and loaded80course scope. No browser freeze active. Same upgrade branch/no merge/deploy.
+
+
+P55-C01–C03 UI implemented partial,301total. Full responsive record browser, compact proof context, canonical category/period bounds and server verification, real submissions count. course-records-browser.log PASS15s all12actualappviews; types/lint pass;390 screenshot inspected. Backend hub11targeted+periodregression pass;107combined backend snapshot. PositiveverifiedleaderUI/downstreamP56P57/servererrors/80coursepagination/AT/sharednav acceptance open. Changed hubpage,newcourse-record-board.tsx/CSS,exactroutecapability,course-records.ts hubbackend and integrationtest. P54commitb507a2e2. Next P56 prompt /tmp/fkh-p56-prompts.txt read throughP56 (filealsoincludesstartP57), source partlyread throughpreviousrounds. Finish source then implement full responsive category table and existing scopeURLnavigation; await otherthread read-only semantics review before editing backend. No browser active, no deploy/merge.
