@@ -3,9 +3,14 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/speed/actions.ts"), "utf8");
-const transferAction = source.slice(
+const transferWrapper = source.slice(
   source.indexOf("export async function saveSpeedTransferTestAction"),
   source.indexOf("export async function deleteSpeedSessionAction"),
+);
+
+const transferAction = source.slice(
+  source.indexOf("async function saveSpeedTransferTest(formData"),
+  source.indexOf("async function deleteSpeedSession(formData"),
 );
 
 describe("speed server actions", () => {
@@ -17,7 +22,8 @@ describe("speed server actions", () => {
   });
 
   it("owner-checks an exact five-shot Driver transfer link on the server", () => {
-    expect(transferAction).toContain("await requireCurrentUserId()");
+    expect(transferWrapper).toContain("await requireCurrentUserId()");
+    expect(transferWrapper).toContain("saveSpeedTransferTest(formData, userId)");
     expect(transferAction).toContain('getAll("shotId")');
     expect(transferAction).toContain("shotIds.length !== 5");
     expect(transferAction).toContain("new Set(shotIds).size !== 5");
@@ -30,7 +36,8 @@ describe("speed server actions", () => {
     expect(transferAction).toContain("lt(shots.shotAt, earliestTransferShotAt)");
     expect(transferAction).toContain("corridor: transferCorridor");
     expect(transferAction).toContain("buildSpeedTransferMetadata");
-    expect(transferAction).toContain("failSpeedSession(");
+    expect(transferWrapper).toContain("failSpeedSession(");
+    expect(transferAction).toContain("rejectSpeedForm(");
   });
 
   it("clears an existing transfer link when an edited session changes club", () => {

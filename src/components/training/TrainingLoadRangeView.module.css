@@ -12,3 +12,18 @@
     display: contents;
   }
 }
+
+.desktopChart {
+  display: none;
+}
+.mobileChart {
+  display: block;
+}
+@media (min-width: 1024px) {
+  .desktopChart {
+    display: block;
+  }
+  .mobileChart {
+    display: none;
+  }
+}

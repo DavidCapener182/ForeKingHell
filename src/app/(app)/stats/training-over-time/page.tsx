@@ -1,5 +1,3 @@
-import { getRequestAppSurface } from "@/lib/app-surface-server";
-import { MobileTrainingLoad } from "@/components/training/mobile-training-load";
 import { getMobileTrainingSourceLinks } from "@/lib/training/mobile-training-source-links";
 import Link from "next/link";
 
@@ -27,19 +25,11 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
   const resolvedSearchParams = (await searchParams) ?? {};
   const rangeKey = normalizeTrainingRange(resolvedSearchParams.range);
   const userId = await requireCurrentUserId();
-  if ((await getRequestAppSurface()) === "companion") {
-    const data = await getTrainingOverTimeData(userId, "1y");
-    const sourceLinks = await getMobileTrainingSourceLinks(userId, data.sessions);
-    return (
-      <PageShell>
-        <MobileTrainingLoad data={data} initialRange={rangeKey} sourceLinks={sourceLinks} />
-      </PageShell>
-    );
-  }
   const [data, speedCoachData] = await Promise.all([
     getTrainingOverTimeData(userId, "1y"),
     getSpeedCoachCardData(userId),
   ]);
+  const sourceLinks = await getMobileTrainingSourceLinks(userId, data.sessions);
   const saved = Boolean(resolvedSearchParams.saved);
 
   return (
@@ -52,7 +42,7 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
             </span>
           }
           title="Training Load"
-          description="A golf-specific view of fitness, freshness and what your next session should be."
+          description="Review logged golf workload and choose your next session. Readiness is app guidance, not medical clearance."
         />
 
         {saved ? (
@@ -65,7 +55,7 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
 
         <SpeedReadinessPanel development={speedCoachData.development} />
 
-        <TrainingLoadRangeView data={data} initialRangeKey={rangeKey} />
+        <TrainingLoadRangeView data={data} initialRangeKey={rangeKey} sourceLinks={sourceLinks} />
       </DesktopWorkbenchLayout>
     </PageShell>
   );
@@ -78,7 +68,7 @@ function SpeedReadinessPanel({ development }: { development: SpeedDevelopmentSum
     <DataPanel id="speed-readiness">
       <SectionHeader
         title="Speed Readiness"
-        description="Why today is a speed, transfer or recovery day, using current golf load and speed evidence."
+        description="Current assessment as of today, using existing golf-load and speed windows. Changing the history range below does not backdate this recommendation."
         action={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <StatusPill tone={readiness.tone}>{readiness.label}</StatusPill>

@@ -55,9 +55,9 @@ export function RecentTrainingSessions({ sessions }: RecentTrainingSessionsProps
               return (
                 <article
                   key={session.id}
-                  className="grid grid-cols-[72px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-slate-200 bg-white/80 p-3"
+                  className="grid grid-cols-[72px_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-border bg-card p-3"
                 >
-                  <div className="rounded-md bg-slate-50 px-2 py-2 text-center">
+                  <div className="rounded-md bg-muted px-2 py-2 text-center">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                       {formatDate(session.sessionDate)}
                     </p>
@@ -91,7 +91,7 @@ export function RecentTrainingSessions({ sessions }: RecentTrainingSessionsProps
                         </StatusPill>
                       ) : null}
                     </div>
-                    <p className="mt-1 truncate text-sm font-semibold tracking-normal text-foreground">
+                    <p className="mt-1 text-sm font-semibold tracking-normal text-foreground">
                       {session.title}
                     </p>
                     {comparison ? (
@@ -127,7 +127,7 @@ export function RecentTrainingSessions({ sessions }: RecentTrainingSessionsProps
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md bg-slate-50 px-2 py-1.5">
+    <div className="rounded-md bg-muted px-2 py-1.5">
       <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </p>

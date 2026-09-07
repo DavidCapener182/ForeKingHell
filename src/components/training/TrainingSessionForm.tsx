@@ -1,9 +1,8 @@
-import { Save } from "lucide-react";
+import { SpeedForm } from "@/app/speed/speed-form";
 import type { ReactNode } from "react";
 
-import { createGolfTrainingSessionAction } from "@/app/stats/training-over-time/actions";
+import { createGolfTrainingSessionWithStateAction } from "@/app/stats/training-over-time/actions";
 import { RpeSelector } from "@/components/training/RpeSelector";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,7 +27,7 @@ export function TrainingSessionForm({
   idPrefix = "training-load",
 }: TrainingSessionFormProps) {
   return (
-    <form action={createGolfTrainingSessionAction} className="grid gap-4 p-4">
+    <SpeedForm action={createGolfTrainingSessionWithStateAction} label="Training Load">
       <input type="hidden" name="range" value={rangeKey} />
       <div className="grid gap-3 lg:grid-cols-[180px_180px_minmax(0,1fr)]">
         <Field label="Activity type">
@@ -152,14 +151,7 @@ export function TrainingSessionForm({
           className="min-h-24"
         />
       </Field>
-
-      <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-2 border-t border-border bg-background/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:static sm:mx-0 sm:flex-row sm:justify-end sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
-        <Button type="submit" className="premium-action min-h-11 w-full sm:w-auto">
-          <Save className="size-4" />
-          Save Training Load
-        </Button>
-      </div>
-    </form>
+    </SpeedForm>
   );
 }
 

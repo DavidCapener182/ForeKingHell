@@ -1,15 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { useClientReady } from "@/hooks/use-client-ready";
+import { MobileTrainingChart } from "./mobile-training-chart";
+import { LabEvidenceList } from "@/app/simulator-lab/lab-evidence";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetClose,
+} from "@/components/ui/sheet";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertTriangle,
   BarChart3,
   CheckCircle2,
   Flame,
   LineChart,
-  Plus,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -19,7 +29,6 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { DataTableFrame, SectionHeader, StatusPill, type Tone } from "@/components/premium";
 import { RecentTrainingSessions } from "@/components/training/RecentTrainingSessions";
 import { TrainingSessionForm } from "@/components/training/TrainingSessionForm";
@@ -66,6 +75,7 @@ const TrainingLoadBars = dynamic(
 type TrainingLoadRangeViewProps = {
   data: TrainingOverTimeData;
   initialRangeKey: TrainingRangeKey;
+  sourceLinks?: Record<string, { href: string; label: string }>;
 };
 
 const integerFormatter = new Intl.NumberFormat("en-GB", {
@@ -106,6 +116,7 @@ const trainingSessionSuggestedViews: DesktopSavedViewSuggestion[] = [
 ];
 
 const READINESS_RANGE_OPTIONS: Array<{ key: TrainingRangeKey; label: string }> = [
+  { key: "7d", label: "7 days" },
   { key: "4w", label: "4 weeks" },
   { key: "3m", label: "3 months" },
   { key: "6m", label: "6 months" },
@@ -126,12 +137,15 @@ function DeferredChartLoading({ label }: { label: string }) {
   );
 }
 
-export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRangeViewProps) {
-  const [activeRangeKey, setActiveRangeKey] = useState<TrainingRangeKey>(
-    initialRangeKey === "7d" ? "4w" : initialRangeKey,
-  );
-  const [logOpen, setLogOpen] = useState(false);
-  const isDesktopViewport = useDesktopViewport();
+export function TrainingLoadRangeView({
+  data,
+  initialRangeKey,
+  sourceLinks = {},
+}: TrainingLoadRangeViewProps) {
+  const ready = useClientReady();
+  const [activeRangeKey, setActiveRangeKey] = useState<TrainingRangeKey>(initialRangeKey);
+  const [rangeOpen, setRangeOpen] = useState(false);
+  const [draftRange, setDraftRange] = useState(initialRangeKey);
   const displayData = useMemo(
     () => selectTrainingRangeData(data, activeRangeKey),
     [activeRangeKey, data],
@@ -143,6 +157,71 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
 
   return (
     <>
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3">
+        <Button
+          variant="outline"
+          disabled={!ready}
+          onClick={() => {
+            setDraftRange(activeRangeKey);
+            setRangeOpen(true);
+          }}
+        >
+          History range:{" "}
+          {READINESS_RANGE_OPTIONS.find((option) => option.key === activeRangeKey)?.label}
+        </Button>
+        <p role="status" className="text-sm">
+          {displayData.sessions.length} logged entries · {displayData.chartStartDate} to{" "}
+          {displayData.today}
+        </p>
+        <Button variant="ghost" onClick={() => handleRangeChange("4w")}>
+          Clear range
+        </Button>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Current readiness uses the existing long-term model. The selected range scopes chart dates
+        and the entry ledger; unlogged activity is unknown, not proof of rest.
+      </p>
+      <Sheet open={rangeOpen} onOpenChange={setRangeOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Training history range</SheetTitle>
+            <SheetDescription>
+              Select a supported history window. Current readiness is not recalculated as a past
+              assessment.
+            </SheetDescription>
+          </SheetHeader>
+          <label className="grid gap-2 p-4">
+            History window
+            <select
+              className="min-h-11 rounded-lg border bg-background px-3"
+              value={draftRange}
+              onChange={(event) => setDraftRange(event.target.value as TrainingRangeKey)}
+            >
+              {READINESS_RANGE_OPTIONS.map((option) => (
+                <option key={option.key} value={option.key}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex flex-wrap gap-3 p-4">
+            <Button variant="outline" onClick={() => setDraftRange("4w")}>
+              Reset
+            </Button>
+            <SheetClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </SheetClose>
+            <Button
+              onClick={() => {
+                handleRangeChange(draftRange);
+                setRangeOpen(false);
+              }}
+            >
+              Apply range
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
       {!displayData.hasTrainingData ? (
         <TrainingEmptyState conditioningDays={displayData.conditioningDays} />
       ) : null}
@@ -185,96 +264,97 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
 
         <CardContent className="grid gap-0 p-0 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="min-w-0 px-3 py-4 sm:px-5 sm:py-6 lg:border-r lg:border-border/70 lg:px-6">
-            <TrainingOverTimeChart
-              data={displayData.series}
-              sessionMarkers={displayData.sessionMarkers}
-            />
+            <div className={styles.desktopChart}>
+              <TrainingOverTimeChart
+                data={displayData.series}
+                sessionMarkers={displayData.sessionMarkers}
+              />
+            </div>
+            <div className={styles.mobileChart}>
+              <MobileTrainingChart data={displayData.series} inspect />
+            </div>
           </div>
           <ReadinessRecommendation data={displayData} />
         </CardContent>
       </Card>
 
-      <ResponsiveDetailPanel
-        open={logOpen}
-        onOpenChange={setLogOpen}
-        title="Log golf training"
-        description="Add a round, practice block, speed session or manual workload entry."
-        trigger={
-          <Button type="button" className="min-h-11 w-full sm:w-fit" data-training-log-trigger>
-            <Plus className="size-4" aria-hidden="true" />
-            Log Training
-          </Button>
-        }
-      >
+      <details className="rounded-xl border" id="log-training">
+        <summary
+          className="min-h-12 cursor-pointer p-4 font-semibold text-primary"
+          data-training-log-trigger
+        >
+          Log Training
+        </summary>
         <TrainingSessionForm
           rangeKey={activeRangeKey}
           today={displayData.today}
           idPrefix="training-load"
         />
-      </ResponsiveDetailPanel>
+      </details>
 
-      {isDesktopViewport ? (
-        <div className={styles.desktopHistory} data-training-desktop-history>
-          <TrainingRhythmWorkbench data={displayData} streakData={data} />
+      <div className="grid min-w-0 gap-4" data-training-desktop-history>
+        <TrainingRhythmWorkbench data={displayData} streakData={data} />
 
-          <Card id="load" className="shadow-sm" data-training-daily-load-chart>
-            <SectionHeader
-              title="Daily swing load"
-              description="Each bar is the total session load logged for that day. Normal, heavy and very heavy bands keep workload changes easy to scan."
-              action={<BarChart3 className="size-5 text-primary" aria-hidden="true" />}
-            />
-            <CardContent className="grid gap-3">
-              <LoadLegend />
-              <TrainingLoadBars data={displayData.series} />
-            </CardContent>
-          </Card>
-
-          <TrainingSessionLedger sessions={displayData.sessions} rangeKey={activeRangeKey} />
-
-          <TrainingStatusCard
-            latest={displayData.latest}
-            status={displayData.status}
-            trend={displayData.trend}
-            confidence={displayData.confidence}
-            sessionFormSignal={displayData.sessionFormSignal}
+        <Card id="load" className="shadow-sm" data-training-daily-load-chart>
+          <SectionHeader
+            title="Daily swing load"
+            description="Each bar is the total session load logged for that day. Normal, heavy and very heavy bands keep workload changes easy to scan."
+            action={<BarChart3 className="size-5 text-primary" aria-hidden="true" />}
           />
+          <CardContent className="grid gap-3">
+            <LoadLegend />
+            <TrainingLoadBars data={displayData.series} />
+          </CardContent>
+        </Card>
 
-          <EfficiencyCards cards={displayData.efficiencyCards} />
+        <LabEvidenceList
+          title="Training entries"
+          rows={displayData.sessions.map((row) => ({
+            id: row.id,
+            title: row.title,
+            summary: `${row.sessionDate} · ${row.sourceType} · ${row.sessionLoad.toFixed(1)} load`,
+            href: row.sourceId ? sourceLinks[row.sourceId]?.href : undefined,
+            fields: Object.entries(row).map(([label, value]) => ({
+              label: label.replace(/([A-Z])/g, " $1"),
+              value: value === null ? "Not recorded" : String(value),
+            })),
+          }))}
+        />
+        <details>
+          <summary className="min-h-11 cursor-pointer py-3">
+            Full training ledger and export
+          </summary>
+          <TrainingSessionLedger sessions={displayData.sessions} rangeKey={activeRangeKey} />
+        </details>
 
-          <Card id="log-load" className="shadow-sm" data-training-load-actions>
-            <CardContent className="flex items-center justify-between gap-4 p-4">
-              <div>
-                <p className="font-semibold">Training history</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Review every round and practice entry behind this readiness signal.
-                </p>
-              </div>
-              <Button asChild variant="outline">
-                <Link href="/sessions">View session history</Link>
-              </Button>
-            </CardContent>
-          </Card>
+        <TrainingStatusCard
+          latest={displayData.latest}
+          status={displayData.status}
+          trend={displayData.trend}
+          confidence={displayData.confidence}
+          sessionFormSignal={displayData.sessionFormSignal}
+        />
 
-          <RecentTrainingSessions sessions={displayData.recentSessions} />
-        </div>
-      ) : null}
+        <EfficiencyCards cards={displayData.efficiencyCards} />
+
+        <Card id="log-load" className="shadow-sm" data-training-load-actions>
+          <CardContent className="flex items-center justify-between gap-4 p-4">
+            <div>
+              <p className="font-semibold">Training history</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Review every round and practice entry behind this readiness signal.
+              </p>
+            </div>
+            <Button asChild variant="outline">
+              <Link href="/sessions">View session history</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <RecentTrainingSessions sessions={displayData.sessions} />
+      </div>
     </>
   );
-}
-
-function useDesktopViewport() {
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const query = window.matchMedia("(min-width: 1024px)");
-    const update = () => setIsDesktop(query.matches);
-
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
-
-  return isDesktop;
 }
 
 function ReadinessRecommendation({ data }: { data: TrainingOverTimeData }) {

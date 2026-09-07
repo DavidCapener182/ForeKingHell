@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-208 desktop / 208 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P31 Speed session; next P32 Training Load. P29 matrix p29-browser-interaction.log passed35.3s; screenshot390companion inspected. Latest P28 actual fixture matrix passed19.0s; P27 passed34.8s. Full-unit baseline112failedtests (two backend stale assertions later fixed), details output/playwright/redesign/full-unit-current.log. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
+220 desktop / 220 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P33 Goals project integration; next P34 Handicap estimates. P29 matrix p29-browser-interaction.log passed35.3s; screenshot390companion inspected. Latest P28 actual fixture matrix passed19.0s; P27 passed34.8s. Full-unit baseline112failedtests (two backend stale assertions later fixed), details output/playwright/redesign/full-unit-current.log. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P31 Speed session**, next P32 Training Load. P10 advanced analytics nine entries and P11 Longest three entries now UI implemented with partial verification. Continue the UI pass; acceptance is still outstanding.
+Current: **P33 Goals project integration**, next P34 Handicap estimates. P10 advanced analytics nine entries and P11 Longest three entries now UI implemented with partial verification. Continue the UI pass; acceptance is still outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -227,3 +227,11 @@ P28 committed6d8b8c2b. P29commitpending. P30fullprompts read /tmp/fkh-p30-prompt
 208/492 UI implemented with partial verification on both surfaces;0 fully accepted. P30-C01–C09 browser23.2s all12surface/viewports, exactwarmup+maxreads single-save/goals validation+retry/projection precise/reset/providerdialogcancel. Screenshots speed-centre-browser-final,390companion inspected. Missing stock-yardage fixture caused initial projection test failure; supplied actual isolated stock row. Filtered starter no longer displays unfiltered sessions or stock averages. Shared mobile sticky-header overlap after scroll remains outstanding.
 
 Current P31-C01–C06 code in progress: common full responsive page, URLsections, truthful summary-only median/top-N, searchable all-field reading details, chart/native swing selection, complete retained edit/stateful transfer/delete. Typed backend wrappers supplied and independently DBtested. Next: run tests/e2e/ui-upgrade-speed-session.spec.ts on fixture3116, inspect screenshots, fix findings then record six entries and continue P32. Do not mark P31 implemented before checks. Fullunit baseline now119failedtests/2496passed,55failedfiles495passed19skipped; output/playwright/redesign/full-unit-current.log. P29 committed131202c1; P30+P31 source commit pending.
+
+## P31 UI pass saved / P32 active
+214/492implementedpartialboth,0accepted. P31C01–C06 browser21.9s12views, exact correction/recovery/draft/deletioncancel;390companionreview; small fatigue metric wrapping fix afterimages. Initialcoldhydratefailed, stable rerunpassed. Speed combinedsource22files committedfaefc2c6, previouscheckpoint8eb006f0.
+P32 code in progress: common fullpage, allmobilehistory, rangeSheet supported7d/4w/3m/6m/1y, unchangedcurrentreadiness labelled separately, owner-resolved sources/allfieldrecords, complete retained inline training form with stateaction, selectedseries mobilechart+allselecteddates. Next run P32 browser onfixture3116 and inspect types/lint before sixrowsupdated. Otheragentowns Training actions; root UI. P33missingGoalsprojectintegrationnext; preservepreviouslyimplementedGoalsrows.
+
+## P32 UI pass / P33 integration active
+220/492 UIimplementedpartialboth,0accepted. P32C01–C06 browser28.7s12views plus exact manual30minRPE5save/errorrecovery/sourceledger/draftdetailsretention. Training-load-browser-ready evidence390companioninspected. Current summary preservesdomainmodel; selectedrange scopes chart and allledgerrows. Fixed first cold unhydratedrangeclickdisabledguard. User UI-first scope unchanged; existingrecommendationmodels reconciliation/fullacceptance remain.
+P33 previouslyimplementedrows preserved; new goal-project-panel.tsx connects existingownedbaseline/practice/drills/completion/subsequent-qualified evidence/comparelinks. Goaldata/actions unchanged. Run ui-upgrade-goal-project.spec.ts fixture3116, maintainbrowserruntimefreeze with otheragent. Next P34 fullprompts onepage. Latestfullunit125failures/2492pass (58failedfiles/492pass/22skip) output/playwright/redesign/full-unit-latest.log; targeted66Speed/Trainingdomain pass.

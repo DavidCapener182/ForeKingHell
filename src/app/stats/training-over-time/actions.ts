@@ -1,5 +1,6 @@
 "use server";
 
+import { sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -17,8 +18,32 @@ const VALID_SOURCE_TYPES = new Set<TrainingSourceType>([
   "imported",
 ]);
 
+export type TrainingSessionFormResult = { ok: true } | { ok: false; error: string };
+class TrainingFormError extends Error {}
+export async function createGolfTrainingSessionWithStateAction(
+  formData: FormData,
+): Promise<TrainingSessionFormResult> {
+  const userId = await requireCurrentUserId();
+  try {
+    await createGolfTrainingSession(formData, userId);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof TrainingFormError
+          ? error.message
+          : "The training session could not be saved. Your entries are still available to retry.",
+    };
+  }
+}
 export async function createGolfTrainingSessionAction(formData: FormData) {
   const userId = await requireCurrentUserId();
+  await createGolfTrainingSession(formData, userId);
+  const range = encodeURIComponent(formValue(formData, "range") || "3m");
+  redirect(`/stats/training-over-time?range=${range}&saved=1#recent`);
+}
+async function createGolfTrainingSession(formData: FormData, userId: string) {
   const sourceType = parseSourceType(formData);
   const sourceId = emptyToNull(formValue(formData, "sourceId"));
   const title = formValue(formData, "title") || defaultTitle(formValue(formData, "activityType"));
@@ -66,32 +91,59 @@ export async function createGolfTrainingSessionAction(formData: FormData) {
     mentalPressure,
   });
 
-  await getDb().insert(golfTrainingSessions).values({
-    userId,
-    sourceType,
-    sourceId,
-    title,
-    sessionDate,
-    durationMinutes,
-    holesPlayed,
-    totalSwings,
-    fullSwings,
-    shortGameSwings,
-    puttingSwings,
-    walked,
-    usedCart,
-    competition,
-    rpe,
-    mentalPressure,
-    physicalDemand,
-    sessionLoad,
-    notes,
-    updatedAt: new Date(),
-  });
+  const db = getDb();
+  if (sourceId) {
+    const owned = await db.execute(sql`
+      select 1 from fkh_sessions where id::text = ${sourceId} and user_id = ${userId}
+      union all select 1 from fkh_practice_sessions where id::text = ${sourceId} and user_id = ${userId}
+      union all select 1 from fkh_speed_training_sessions where id::text = ${sourceId} and user_id = ${userId}
+      limit 1
+    `);
+    if (!owned.length)
+      throw new TrainingFormError("That source session is not available in your account.");
+  }
+  const inserted = await db
+    .insert(golfTrainingSessions)
+    .values({
+      userId,
+      sourceType,
+      sourceId,
+      title,
+      sessionDate,
+      durationMinutes,
+      holesPlayed,
+      totalSwings,
+      fullSwings,
+      shortGameSwings,
+      puttingSwings,
+      walked,
+      usedCart,
+      competition,
+      rpe,
+      mentalPressure,
+      physicalDemand,
+      sessionLoad,
+      notes,
+      updatedAt: new Date(),
+    })
+    .onConflictDoNothing({
+      target: [
+        golfTrainingSessions.userId,
+        golfTrainingSessions.sourceType,
+        golfTrainingSessions.sourceId,
+      ],
+    })
+    .returning({ id: golfTrainingSessions.id });
+  if (!inserted.length)
+    throw new TrainingFormError(
+      "This source session already has a training load. Open the existing entry to review it.",
+    );
 
-  revalidatePath("/stats/training-over-time");
-  const range = encodeURIComponent(formValue(formData, "range") || "3m");
-  redirect(`/stats/training-over-time?range=${range}&saved=1#recent`);
+  try {
+    revalidatePath("/stats/training-over-time");
+  } catch {
+    console.error("Training page refresh failed after saving.");
+  }
 }
 
 function parseSourceType(formData: FormData): TrainingSourceType {
@@ -142,9 +194,13 @@ function emptyToNull(value: string) {
 
 function parseDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new Error("Choose a valid session date.");
+    throw new TrainingFormError("Choose a valid session date.");
   }
 
+  const parsed = new Date(`${value}T12:00:00Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value) {
+    throw new TrainingFormError("Choose a valid session date.");
+  }
   return value;
 }
 
@@ -156,7 +212,7 @@ function nullablePositiveInteger(formData: FormData, key: string) {
 
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new Error(`${key} must be a positive whole number.`);
+    throw new TrainingFormError(`${key} must be a positive whole number.`);
   }
 
   return parsed;
@@ -166,7 +222,7 @@ function boundedInteger(formData: FormData, key: string, min: number, max: numbe
   const value = Number(formValue(formData, key));
 
   if (!Number.isInteger(value) || value < min || value > max) {
-    throw new Error(`${key} must be between ${min} and ${max}.`);
+    throw new TrainingFormError(`${key} must be between ${min} and ${max}.`);
   }
 
   return value;
