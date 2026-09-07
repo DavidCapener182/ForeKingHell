@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft, CalendarDays } from "lucide-react";
 import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 
+import { SessionImpactPicker } from "@/app/analyse/session-impact/session-impact-picker";
 import { SessionImpactClient } from "@/app/analyse/session-impact/session-impact-client";
 import { Button } from "@/components/ui/button";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
@@ -52,7 +53,12 @@ export default async function SessionImpactPage({ searchParams }: { searchParams
           </Button>
         }
       />
-      <SessionImpactClient shots={data.shots} />
+      <SessionImpactPicker selectedId={data.session?.id ?? ""} options={data.options} />
+      <SessionImpactClient
+        key={data.session?.id ?? "empty"}
+        shots={data.shots}
+        sessionId={data.session?.id}
+      />
     </PageShell>
   );
 }
@@ -60,6 +66,25 @@ export default async function SessionImpactPage({ searchParams }: { searchParams
 async function getSessionImpactData(requestedId?: string) {
   const userId = await requireCurrentUserId();
   const db = getDb();
+  const options = await db
+    .select({ id: sessions.id, label: sessions.fileName, date: sessions.date })
+    .from(sessions)
+    .where(eq(sessions.userId, userId))
+    .orderBy(desc(sessions.date))
+    .limit(100);
+  if (
+    requestedId &&
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedId)
+  )
+    return {
+      session: null,
+      shots: [],
+      options: options.map((row) => ({
+        id: row.id,
+        label: row.label ?? "Session",
+        date: row.date.toLocaleDateString("en-GB"),
+      })),
+    };
   const [session] = await db
     .select({
       id: sessions.id,
@@ -78,7 +103,16 @@ async function getSessionImpactData(requestedId?: string) {
     .orderBy(desc(sessions.date))
     .limit(1);
 
-  if (!session) return { session: null, shots: [] };
+  if (!session)
+    return {
+      session: null,
+      shots: [],
+      options: options.map((row) => ({
+        id: row.id,
+        label: row.label ?? "Session",
+        date: row.date.toLocaleDateString("en-GB"),
+      })),
+    };
 
   const rows = await db
     .select({
@@ -100,6 +134,11 @@ async function getSessionImpactData(requestedId?: string) {
     .limit(5_000);
 
   return {
+    options: options.map((row) => ({
+      id: row.id,
+      label: row.label ?? "Session",
+      date: row.date.toLocaleDateString("en-GB"),
+    })),
     session: {
       id: session.id,
       label: session.courseName ?? session.fileName ?? formatLabel(session.type),
