@@ -920,23 +920,31 @@ export function CompactReadoutGrid({
   items,
   columnsClassName = "md:grid-cols-2 xl:grid-cols-4",
   className,
+  wrapText = false,
 }: {
   items: CompactReadoutItem[];
   columnsClassName?: string;
   className?: string;
+  wrapText?: boolean;
 }) {
   return (
     <div className={cn("premium-rail-card overflow-hidden rounded-lg", className)}>
       <div className={cn("grid", columnsClassName)}>
         {items.map((item, index) => (
-          <CompactReadoutCell key={readoutKey(item, index)} item={item} />
+          <CompactReadoutCell key={readoutKey(item, index)} item={item} wrapText={wrapText} />
         ))}
       </div>
     </div>
   );
 }
 
-function CompactReadoutCell({ item }: { item: CompactReadoutItem }) {
+function CompactReadoutCell({
+  item,
+  wrapText = false,
+}: {
+  item: CompactReadoutItem;
+  wrapText?: boolean;
+}) {
   const tone = item.tone ?? "green";
   const content = (
     <>
@@ -946,17 +954,32 @@ function CompactReadoutCell({ item }: { item: CompactReadoutItem }) {
         className={cn("mt-1.5 size-2.5 shrink-0 rounded-full ring-4", compactToneClasses[tone])}
       />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+        <span
+          className={cn(
+            "block text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground",
+            wrapText ? "break-words" : "truncate",
+          )}
+        >
           {item.label}
         </span>
         <span
           data-operational-value
-          className="mt-1 block truncate text-base font-semibold tracking-normal text-foreground"
+          className={cn(
+            "mt-1 block text-base font-semibold tracking-normal text-foreground",
+            wrapText ? "break-words" : "truncate",
+          )}
         >
           {item.value}
         </span>
         {item.detail ? (
-          <span className="mt-0.5 block truncate text-sm text-muted-foreground">{item.detail}</span>
+          <span
+            className={cn(
+              "mt-0.5 block text-sm text-muted-foreground",
+              wrapText ? "break-words" : "truncate",
+            )}
+          >
+            {item.detail}
+          </span>
         ) : null}
       </span>
       {item.href ? (

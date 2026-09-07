@@ -30,7 +30,7 @@ export const mobileCapabilities = {
   progress: companionMore(),
   "strokes-gained": companionMore(),
   "simulator-lab": companionMore(),
-  handicap: summaryMore(),
+  handicap: companionMore(),
   coach: companionMore(),
   practice: companionPrimary(),
   "quick-bag": companionPrimary(),
@@ -142,7 +142,6 @@ const companionExactRoutes = ["/simulator-lab", "/strokes-gained", "/compare", "
 const companionExceptions = ["/courses/strategy"] as const;
 const summaryOnlyPrefixes = [
   "/coach",
-  "/handicap",
   "/goals",
   "/leaderboard",
   "/achievements",
