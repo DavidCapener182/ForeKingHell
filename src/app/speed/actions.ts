@@ -1,5 +1,6 @@
 "use server";
 
+import { importRapsodoSpeedSession, SpeedImportError } from "@/lib/rapsodo/import-speed-session";
 import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 
 import { redirect } from "next/navigation";
@@ -37,8 +38,98 @@ const IMPLEMENT_KINDS = new Set(["club", "speed_stick", "weighted_club", "other"
 const HANDEDNESS_VALUES = new Set(["dominant", "non_dominant", "both"]);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+export type SpeedFormResult = { ok: true; sessionId?: string } | { ok: false; error: string };
+class SpeedFormError extends Error {}
+function rejectSpeedForm(message: string): never {
+  throw new SpeedFormError(message);
+}
+
+export async function importRapsodoSpeedSessionWithStateAction(
+  providerSessionId: string,
+): Promise<SpeedFormResult> {
+  const userId = await requireCurrentUserId();
+  try {
+    const sessionId = await importRapsodoSpeedSession(userId, providerSessionId);
+    await refreshSavedSpeedAchievements(userId);
+    refreshSpeedPathAfterCommit("/speed");
+    return { ok: true, sessionId };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof SpeedImportError
+          ? error.message
+          : "R-Cloud speed readings could not be imported. Try again or record the session manually.",
+    };
+  }
+}
+
+export async function createManualSpeedSessionWithStateAction(
+  formData: FormData,
+): Promise<SpeedFormResult> {
+  const userId = await requireCurrentUserId();
+  try {
+    const result = await createManualSpeedSession(formData, userId);
+    return { ok: true, sessionId: result.sessionId };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof SpeedFormError
+          ? error.message
+          : "The speed session could not be saved. Your entries are still available to retry.",
+    };
+  }
+}
+export async function updateSpeedGoalsWithStateAction(
+  formData: FormData,
+): Promise<SpeedFormResult> {
+  const userId = await requireCurrentUserId();
+  try {
+    await updateSpeedGoals(formData, userId);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof SpeedFormError
+          ? error.message
+          : "The speed goals could not be saved. Your entries are still available to retry.",
+    };
+  }
+}
 export async function createManualSpeedSessionAction(formData: FormData) {
   const userId = await requireCurrentUserId();
+  let result: Awaited<ReturnType<typeof createManualSpeedSession>>;
+  try {
+    result = await createManualSpeedSession(formData, userId);
+  } catch (error) {
+    if (error instanceof SpeedFormError) fail(error.message);
+    throw error;
+  }
+  if (result.mobileSaveReceipt && result.sessionId)
+    redirect(`/speed?speed_saved=1&speed_session=${encodeURIComponent(result.sessionId)}`);
+  redirect("/speed?speed_saved=1");
+}
+export async function updateSpeedGoalsAction(formData: FormData) {
+  const userId = await requireCurrentUserId();
+  try {
+    await updateSpeedGoals(formData, userId);
+  } catch (error) {
+    if (error instanceof SpeedFormError) fail(error.message);
+    throw error;
+  }
+  redirect("/speed?speed_saved=goals");
+}
+async function refreshSavedSpeedAchievements(userId: string) {
+  try {
+    await syncSpeedAchievementsAndFlash(userId);
+  } catch {
+    console.error("Speed achievement refresh failed after saving.");
+  }
+}
+
+async function createManualSpeedSession(formData: FormData, userId: string) {
   const mobileSaveReceipt = readMobileSpeedSaveReceipt({
     draftId: formValue(formData, "mobileDraftId"),
     revision: Number(formValue(formData, "mobileDraftRevision")),
@@ -46,11 +137,11 @@ export async function createManualSpeedSessionAction(formData: FormData) {
   const phasedReadings = parsePhasedSpeedReadings(formData);
   const readings = phasedReadings.map((reading) => reading.clubSpeedMph);
   const readingSummary = summarizePhasedReadingsForPersistence(phasedReadings);
-  const fallbackSummary = buildFallbackSummary(formData);
+  const fallbackSummary = buildFallbackSummary(formData, rejectSpeedForm);
   const summary = readingSummary ?? fallbackSummary;
 
   if (!summary) {
-    fail("Add the swing speeds, or enter min, average, max and swing count.");
+    rejectSpeedForm("Add the swing speeds, or enter min, average, max and swing count.");
   }
 
   const db = getDb();
@@ -64,8 +155,8 @@ export async function createManualSpeedSessionAction(formData: FormData) {
     HANDEDNESS_VALUES,
     "dominant",
   );
-  const sessionDate = parseSessionDate(formValue(formData, "sessionDate"));
-  const targetSpeedMph = parseOptionalSpeed(formValue(formData, "targetSpeedMph"));
+  const sessionDate = parseSessionDate(formValue(formData, "sessionDate"), rejectSpeedForm);
+  const targetSpeedMph = parseOptionalSpeed(formValue(formData, "targetSpeedMph"), rejectSpeedForm);
   const notes = emptyToNull(formValue(formData, "notes"));
   const speedSystem = emptyToNull(formValue(formData, "speedSystem"));
   const clubIdInput = emptyToNull(formValue(formData, "clubId"));
@@ -84,7 +175,7 @@ export async function createManualSpeedSessionAction(formData: FormData) {
     : [null];
 
   if (clubIdInput && !club) {
-    fail("That club is not available in your bag.");
+    rejectSpeedForm("That club is not available in your bag.");
   }
 
   const implementLabel =
@@ -138,16 +229,13 @@ export async function createManualSpeedSessionAction(formData: FormData) {
     return session?.id;
   });
 
-  await syncSpeedAchievementsAndFlash(userId);
+  await refreshSavedSpeedAchievements(userId);
 
-  revalidatePath("/speed");
-  if (mobileSaveReceipt && savedSessionId)
-    redirect(`/speed?speed_saved=1&speed_session=${encodeURIComponent(savedSessionId)}`);
-  redirect("/speed?speed_saved=1");
+  refreshSpeedPathAfterCommit("/speed");
+  return { sessionId: savedSessionId!, mobileSaveReceipt };
 }
 
-export async function updateSpeedGoalsAction(formData: FormData) {
-  const userId = await requireCurrentUserId();
+async function updateSpeedGoals(formData: FormData, userId: string) {
   const db = getDb();
   const activeClubs = await db
     .select({ id: clubs.id })
@@ -160,8 +248,11 @@ export async function updateSpeedGoalsAction(formData: FormData) {
       userId,
       goalKey: "driver_global",
       clubId: null,
-      targetSpeedMph: parseOptionalSpeed(formValue(formData, "driverGlobalTarget")),
-      targetDate: parseOptionalDate(formValue(formData, "driverGlobalDate")),
+      targetSpeedMph: parseOptionalSpeed(
+        formValue(formData, "driverGlobalTarget"),
+        rejectSpeedForm,
+      ),
+      targetDate: parseOptionalDate(formValue(formData, "driverGlobalDate"), rejectSpeedForm),
       notes: emptyToNull(formValue(formData, "driverGlobalNotes")),
     });
 
@@ -170,26 +261,117 @@ export async function updateSpeedGoalsAction(formData: FormData) {
         userId,
         goalKey: clubGoalKey(clubId),
         clubId,
-        targetSpeedMph: parseOptionalSpeed(formValue(formData, `clubTarget:${clubId}`)),
-        targetDate: parseOptionalDate(formValue(formData, `clubTargetDate:${clubId}`)),
+        targetSpeedMph: parseOptionalSpeed(
+          formValue(formData, `clubTarget:${clubId}`),
+          rejectSpeedForm,
+        ),
+        targetDate: parseOptionalDate(
+          formValue(formData, `clubTargetDate:${clubId}`),
+          rejectSpeedForm,
+        ),
         notes: null,
       });
     }
   });
 
-  await syncSpeedAchievementsAndFlash(userId);
+  await refreshSavedSpeedAchievements(userId);
 
-  revalidatePath("/speed");
-  revalidatePath("/coach");
-  redirect("/speed?speed_saved=goals");
+  refreshSpeedPathAfterCommit("/speed");
+  refreshSpeedPathAfterCommit("/coach");
 }
 
+export async function updateSpeedSessionWithStateAction(
+  formData: FormData,
+): Promise<SpeedFormResult> {
+  const userId = await requireCurrentUserId();
+  try {
+    const result = await updateSpeedSession(formData, userId);
+    return { ok: true, sessionId: result.sessionId };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof SpeedFormError
+          ? error.message
+          : "The change could not be saved. Your entries are still available to retry.",
+    };
+  }
+}
 export async function updateSpeedSessionAction(formData: FormData) {
   const userId = await requireCurrentUserId();
+  let result;
+  try {
+    result = await updateSpeedSession(formData, userId);
+  } catch (error) {
+    if (error instanceof SpeedFormError) fail(error.message);
+    throw error;
+  }
+  redirect(`/speed/sessions/${result.sessionId}?speed_saved=${result.saved}`);
+}
+export async function saveSpeedTransferTestWithStateAction(
+  formData: FormData,
+): Promise<SpeedFormResult> {
+  const userId = await requireCurrentUserId();
+  try {
+    const result = await saveSpeedTransferTest(formData, userId);
+    return { ok: true, sessionId: result.sessionId };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof SpeedFormError
+          ? error.message
+          : "The change could not be saved. Your entries are still available to retry.",
+    };
+  }
+}
+export async function saveSpeedTransferTestAction(formData: FormData) {
+  const userId = await requireCurrentUserId();
+  let result;
+  try {
+    result = await saveSpeedTransferTest(formData, userId);
+  } catch (error) {
+    if (error instanceof SpeedFormError) {
+      const id = formValue(formData, "speedSessionId");
+      if (isSpeedTransferUuid(id)) failSpeedSession(id, error.message);
+      fail(error.message);
+    }
+    throw error;
+  }
+  redirect(`/speed/sessions/${result.sessionId}?speed_saved=${result.saved}`);
+}
+export async function deleteSpeedSessionWithStateAction(
+  formData: FormData,
+): Promise<SpeedFormResult> {
+  const userId = await requireCurrentUserId();
+  try {
+    const result = await deleteSpeedSession(formData, userId);
+    return { ok: true, sessionId: result.sessionId };
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof SpeedFormError
+          ? error.message
+          : "The change could not be saved. Your entries are still available to retry.",
+    };
+  }
+}
+export async function deleteSpeedSessionAction(formData: FormData) {
+  const userId = await requireCurrentUserId();
+  try {
+    await deleteSpeedSession(formData, userId);
+  } catch (error) {
+    if (error instanceof SpeedFormError) fail(error.message);
+    throw error;
+  }
+  redirect("/speed?speed_saved=deleted");
+}
+async function updateSpeedSession(formData: FormData, userId: string) {
   const sessionId = formValue(formData, "sessionId");
 
-  if (!sessionId) {
-    fail("Choose a speed session to update.");
+  if (!isSpeedTransferUuid(sessionId)) {
+    rejectSpeedForm("Choose a speed session to update.");
   }
 
   const db = getDb();
@@ -208,13 +390,13 @@ export async function updateSpeedSessionAction(formData: FormData) {
     .limit(1);
 
   if (!existingSession) {
-    fail("That speed session was not found.");
+    rejectSpeedForm("That speed session was not found.");
   }
 
   const phasedReadings = parsePhasedSpeedReadings(formData);
   const readings = phasedReadings.map((reading) => reading.clubSpeedMph);
   const readingSummary = summarizePhasedReadingsForPersistence(phasedReadings);
-  const fallbackSummary = buildFallbackSummary(formData);
+  const fallbackSummary = buildFallbackSummary(formData, rejectSpeedForm);
   const summary = readingSummary ??
     fallbackSummary ?? {
       count: existingSession.swingCount,
@@ -228,7 +410,7 @@ export async function updateSpeedSessionAction(formData: FormData) {
     summary.avgSpeedMph === null ||
     summary.maxSpeedMph === null
   ) {
-    fail("Add the swing speeds, or enter min, average, max and swing count.");
+    rejectSpeedForm("Add the swing speeds, or enter min, average, max and swing count.");
   }
 
   const sessionFields = await buildSessionFormFields({
@@ -296,16 +478,15 @@ export async function updateSpeedSessionAction(formData: FormData) {
     }
   });
 
-  await syncSpeedAchievementsAndFlash(userId);
+  await refreshSavedSpeedAchievements(userId);
 
-  revalidatePath("/speed");
-  revalidatePath(`/speed/sessions/${sessionId}`);
-  revalidatePath("/coach");
-  redirect(`/speed/sessions/${sessionId}?speed_saved=1`);
+  refreshSpeedPathAfterCommit("/speed");
+  refreshSpeedPathAfterCommit(`/speed/sessions/${sessionId}`);
+  refreshSpeedPathAfterCommit("/coach");
+  return { sessionId, saved: "1" };
 }
 
-export async function saveSpeedTransferTestAction(formData: FormData) {
-  const userId = await requireCurrentUserId();
+async function saveSpeedTransferTest(formData: FormData, userId: string) {
   const speedSessionId = formValue(formData, "speedSessionId");
   const shotSessionId = formValue(formData, "shotSessionId");
   const shotIds = formData
@@ -315,11 +496,11 @@ export async function saveSpeedTransferTestAction(formData: FormData) {
     .filter(Boolean);
 
   if (!isSpeedTransferUuid(speedSessionId)) {
-    fail("Choose a valid speed session.");
+    rejectSpeedForm("Choose a valid speed session.");
   }
 
   if (shotSessionId && !isSpeedTransferUuid(shotSessionId)) {
-    failSpeedSession(speedSessionId, "Choose a valid Driver transfer session.");
+    rejectSpeedForm("Choose a valid Driver transfer session.");
   }
 
   const db = getDb();
@@ -339,11 +520,11 @@ export async function saveSpeedTransferTestAction(formData: FormData) {
     .limit(1);
 
   if (!speedSession) {
-    fail("That speed session was not found.");
+    rejectSpeedForm("That speed session was not found.");
   }
 
   if (speedSession.clubType !== "driver" || !speedSession.clubId) {
-    fail("A transfer test can only be linked to a Driver speed session.");
+    rejectSpeedForm("A transfer test can only be linked to a Driver speed session.");
   }
 
   if (!shotSessionId) {
@@ -357,9 +538,9 @@ export async function saveSpeedTransferTestAction(formData: FormData) {
         and(eq(speedTrainingSessions.id, speedSessionId), eq(speedTrainingSessions.userId, userId)),
       );
 
-    revalidatePath("/speed");
-    revalidatePath(`/speed/sessions/${speedSessionId}`);
-    redirect(`/speed/sessions/${speedSessionId}?speed_saved=transfer_cleared`);
+    refreshSpeedPathAfterCommit("/speed");
+    refreshSpeedPathAfterCommit(`/speed/sessions/${speedSessionId}`);
+    return { sessionId: speedSessionId, saved: "transfer_cleared" };
   }
 
   if (
@@ -367,10 +548,7 @@ export async function saveSpeedTransferTestAction(formData: FormData) {
     new Set(shotIds).size !== 5 ||
     shotIds.some((shotId) => !isSpeedTransferUuid(shotId))
   ) {
-    failSpeedSession(
-      speedSessionId,
-      "Choose exactly five unique Driver shots for the transfer test.",
-    );
+    rejectSpeedForm("Choose exactly five unique Driver shots for the transfer test.");
   }
 
   const candidateRows = await db
@@ -408,10 +586,7 @@ export async function saveSpeedTransferTestAction(formData: FormData) {
   );
 
   if (transferShots.length !== 5) {
-    failSpeedSession(
-      speedSessionId,
-      "That session needs five included Driver shots with measured side carry.",
-    );
+    rejectSpeedForm("That session needs five included Driver shots with measured side carry.");
   }
 
   const earliestTransferShotAt = transferShots.reduce(
@@ -466,29 +641,30 @@ export async function saveSpeedTransferTestAction(formData: FormData) {
       and(eq(speedTrainingSessions.id, speedSessionId), eq(speedTrainingSessions.userId, userId)),
     );
 
-  revalidatePath("/speed");
-  revalidatePath(`/speed/sessions/${speedSessionId}`);
-  redirect(`/speed/sessions/${speedSessionId}?speed_saved=transfer`);
+  refreshSpeedPathAfterCommit("/speed");
+  refreshSpeedPathAfterCommit(`/speed/sessions/${speedSessionId}`);
+  return { sessionId: speedSessionId, saved: "transfer" };
 }
 
-export async function deleteSpeedSessionAction(formData: FormData) {
-  const userId = await requireCurrentUserId();
+async function deleteSpeedSession(formData: FormData, userId: string) {
   const sessionId = formValue(formData, "sessionId");
 
-  if (!sessionId) {
-    fail("Choose a speed session to delete.");
+  if (!isSpeedTransferUuid(sessionId)) {
+    rejectSpeedForm("Choose a speed session to delete.");
   }
 
   const db = getDb();
-  await db
+  const deleted = await db
     .delete(speedTrainingSessions)
-    .where(and(eq(speedTrainingSessions.id, sessionId), eq(speedTrainingSessions.userId, userId)));
+    .where(and(eq(speedTrainingSessions.id, sessionId), eq(speedTrainingSessions.userId, userId)))
+    .returning({ id: speedTrainingSessions.id });
+  if (!deleted.length) rejectSpeedForm("That speed session was not found.");
 
-  await syncSpeedAchievementsAndFlash(userId);
+  await refreshSavedSpeedAchievements(userId);
 
-  revalidatePath("/speed");
-  revalidatePath("/coach");
-  redirect("/speed?speed_saved=deleted");
+  refreshSpeedPathAfterCommit("/speed");
+  refreshSpeedPathAfterCommit("/coach");
+  return { sessionId, saved: "deleted" };
 }
 
 async function buildSessionFormFields(input: {
@@ -506,8 +682,11 @@ async function buildSessionFormFields(input: {
     HANDEDNESS_VALUES,
     "dominant",
   );
-  const sessionDate = parseSessionDate(formValue(input.formData, "sessionDate"));
-  const targetSpeedMph = parseOptionalSpeed(formValue(input.formData, "targetSpeedMph"));
+  const sessionDate = parseSessionDate(formValue(input.formData, "sessionDate"), rejectSpeedForm);
+  const targetSpeedMph = parseOptionalSpeed(
+    formValue(input.formData, "targetSpeedMph"),
+    rejectSpeedForm,
+  );
   const notes = emptyToNull(formValue(input.formData, "notes"));
   const speedSystem = emptyToNull(formValue(input.formData, "speedSystem"));
   const clubIdInput = emptyToNull(formValue(input.formData, "clubId"));
@@ -526,7 +705,7 @@ async function buildSessionFormFields(input: {
     : [null];
 
   if (clubIdInput && !club) {
-    fail("That club is not available in your bag.");
+    rejectSpeedForm("That club is not available in your bag.");
   }
 
   return {
@@ -545,24 +724,36 @@ async function buildSessionFormFields(input: {
   };
 }
 
-async function syncSpeedAchievementsAndFlash(userId: string) {
-  const achievementResult = await syncAchievementsForUser(userId);
-  await setAchievementUnlockFlash(achievementResult.unlockedAchievements);
-  revalidatePath("/achievements");
+function refreshSpeedPathAfterCommit(path: string) {
+  try {
+    revalidatePath(path);
+  } catch {
+    console.error("Speed page refresh failed after saving.");
+  }
 }
 
-function buildFallbackSummary(formData: FormData) {
-  const minSpeedMph = parseOptionalSpeed(formValue(formData, "minSpeedMph"));
-  const avgSpeedMph = parseOptionalSpeed(formValue(formData, "avgSpeedMph"));
-  const maxSpeedMph = parseOptionalSpeed(formValue(formData, "maxSpeedMph"));
-  const count = parseOptionalInteger(formValue(formData, "swingCount"));
+async function syncSpeedAchievementsAndFlash(userId: string) {
+  const achievementResult = await syncAchievementsForUser(userId);
+  try {
+    await setAchievementUnlockFlash(achievementResult.unlockedAchievements);
+  } catch {
+    console.error("Speed achievement notification failed after saving.");
+  }
+  refreshSpeedPathAfterCommit("/achievements");
+}
+
+function buildFallbackSummary(formData: FormData, onError: (message: string) => never = fail) {
+  const minSpeedMph = parseOptionalSpeed(formValue(formData, "minSpeedMph"), onError);
+  const avgSpeedMph = parseOptionalSpeed(formValue(formData, "avgSpeedMph"), onError);
+  const maxSpeedMph = parseOptionalSpeed(formValue(formData, "maxSpeedMph"), onError);
+  const count = parseOptionalInteger(formValue(formData, "swingCount"), onError);
 
   if (!minSpeedMph || !avgSpeedMph || !maxSpeedMph || !count) {
     return null;
   }
 
   if (minSpeedMph > avgSpeedMph || avgSpeedMph > maxSpeedMph) {
-    fail("Check the summary speeds: min should be below average, and average below max.");
+    onError("Check the summary speeds: min should be below average, and average below max.");
   }
 
   return {
@@ -598,21 +789,29 @@ function speedPhaseCounts(readings: Array<{ clubSpeedMph: number; phase: SpeedTr
   );
 }
 
-function parseSessionDate(value: string) {
+function isExactCalendarDate(value: string, parsed: Date) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(parsed.getTime())) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  return (
+    parsed.getFullYear() === year && parsed.getMonth() + 1 === month && parsed.getDate() === day
+  );
+}
+
+function parseSessionDate(value: string, onError: (message: string) => never = fail) {
   if (!value) {
     return new Date();
   }
 
   const parsed = new Date(`${value}T12:00:00`);
 
-  if (Number.isNaN(parsed.getTime())) {
-    fail("Choose a valid session date.");
+  if (!isExactCalendarDate(value, parsed)) {
+    onError("Choose a valid session date.");
   }
 
   return parsed;
 }
 
-function parseOptionalSpeed(value: string) {
+function parseOptionalSpeed(value: string, onError: (message: string) => never = fail) {
   if (!value.trim()) {
     return null;
   }
@@ -620,13 +819,13 @@ function parseOptionalSpeed(value: string) {
   const parsed = Number(value);
 
   if (!Number.isFinite(parsed) || parsed < 20 || parsed > 180) {
-    fail("Speed values need to be between 20 and 180 mph.");
+    onError("Speed values need to be between 20 and 180 mph.");
   }
 
   return Math.round(parsed * 10) / 10;
 }
 
-function parseOptionalInteger(value: string) {
+function parseOptionalInteger(value: string, onError: (message: string) => never = fail) {
   if (!value.trim()) {
     return null;
   }
@@ -634,21 +833,21 @@ function parseOptionalInteger(value: string) {
   const parsed = Number(value);
 
   if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 500) {
-    fail("Swing count needs to be a whole number between 1 and 500.");
+    onError("Swing count needs to be a whole number between 1 and 500.");
   }
 
   return parsed;
 }
 
-function parseOptionalDate(value: string) {
+function parseOptionalDate(value: string, onError: (message: string) => never = fail) {
   if (!value.trim()) {
     return null;
   }
 
   const parsed = new Date(`${value}T12:00:00`);
 
-  if (Number.isNaN(parsed.getTime())) {
-    fail("Choose a valid target date.");
+  if (!isExactCalendarDate(value, parsed)) {
+    onError("Choose a valid target date.");
   }
 
   return value;

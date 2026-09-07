@@ -93,6 +93,8 @@ export type SpeedShotSession = {
 };
 
 export type SpeedTrendPoint = {
+  sessionId?: string;
+  dateIso?: string;
   label: string;
   value: number;
 };
@@ -1340,6 +1342,8 @@ function buildTrendPoints(sessions: SpeedCentreSession[]): SpeedTrendPoint[] {
       new Date(session.sessionDateIso),
     ),
     value: session.avgSpeedMph,
+    sessionId: session.id,
+    dateIso: session.sessionDateIso,
   }));
 }
 

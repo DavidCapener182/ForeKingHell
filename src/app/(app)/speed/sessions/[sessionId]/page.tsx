@@ -1,22 +1,14 @@
 import Link from "next/link";
-import { getRequestAppSurface } from "@/lib/app-surface-server";
-import { SpeedSessionCompanion } from "@/app/speed/speed-session-companion";
 import { notFound } from "next/navigation";
-import {
-  Children,
-  isValidElement,
-  type ComponentProps,
-  type ReactElement,
-  type ReactNode,
-} from "react";
-import { ArrowLeft, Gauge, Link2, Save, Trash2 } from "lucide-react";
+import { type ComponentProps, type ReactNode } from "react";
+import { LabEvidenceList } from "@/app/simulator-lab/lab-evidence";
+import { UrlTabs } from "@/components/untitled-ui/url-tabs";
+import { MobileSpeedTransfer } from "@/app/speed/mobile-speed-transfer";
+import { SpeedForm } from "@/app/speed/speed-form";
+import { ArrowLeft, Gauge, Save, Trash2 } from "lucide-react";
 
-import {
-  deleteSpeedSessionAction,
-  saveSpeedTransferTestAction,
-  updateSpeedSessionAction,
-} from "@/app/speed/actions";
-import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
+import { updateSpeedSessionWithStateAction } from "@/app/speed/actions";
+import { DeleteSpeedSession } from "@/app/speed/delete-speed-session";
 import {
   DesktopWorkbenchLayout,
   DesktopTableWorkbenchControls,
@@ -26,13 +18,6 @@ import {
 import { SpeedFatigueChart } from "@/components/speed/speed-fatigue-chart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -119,34 +104,31 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
 
   const saved = firstSearchParam(resolvedSearchParams.speed_saved);
   const error = firstSearchParam(resolvedSearchParams.speed_error);
-  if ((await getRequestAppSurface()) === "companion")
-    return <SpeedSessionCompanion data={data} saved={saved} error={error} />;
   const peakSummary = data.peakSwingSummary;
-  const peakAverageFallback = peakSummary.swingCount === 0 ? data.session.avgSpeedMph : null;
   return (
     <PageShell>
       <DesktopWorkbenchLayout scope="speed-session">
         <PageHeader
           eyebrow={<StatusPill tone="sky">Speed session</StatusPill>}
           title={data.session.title ?? data.session.implementLabel}
-          description={`${data.session.implementLabel} · ${formatDate(data.session.sessionDateIso)}`}
+          description={`${data.session.implementLabel} · ${formatDate(data.session.sessionDateIso)} · ${data.session.source} · ${data.session.handedness.replaceAll("_", " ")} · ${data.session.swingCount} recorded`}
           metrics={[
             {
               label: "Median",
-              value: formatSpeed(peakSummary.medianSpeedMph ?? peakAverageFallback),
+              value: formatSpeed(peakSummary.medianSpeedMph),
               detail:
                 peakSummary.swingCount > 0
                   ? `${peakSummary.swingCount} maximum-speed swings`
-                  : "Manual speed summary",
+                  : "Summary only: individual median unavailable",
             },
             {
               label: "Top 3 average",
-              value: formatSpeed(peakSummary.bestThreeAvgMph ?? peakAverageFallback),
+              value: formatSpeed(peakSummary.bestThreeAvgMph),
               detail: "Three fastest swings",
             },
             {
               label: "Top 5 average",
-              value: formatSpeed(peakSummary.bestFiveAvgMph ?? peakAverageFallback),
+              value: formatSpeed(peakSummary.bestFiveAvgMph),
               detail: "Five fastest swings",
             },
             {
@@ -176,238 +158,270 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
           </div>
         ) : null}
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-          <DataPanel>
-            <SectionHeader
-              title="Swing detail"
-              description="Warm-up, peak speed, and late-session drop-off."
-              action={<StatusPill tone="green">{peakSummary.trendLabel}</StatusPill>}
-            />
-            <div className="grid gap-4 p-4">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-                <MetricCard
-                  label="Median"
-                  value={formatSpeed(peakSummary.medianSpeedMph ?? peakAverageFallback)}
-                />
-                <MetricCard
-                  label="Top 3 average"
-                  value={formatSpeed(peakSummary.bestThreeAvgMph ?? peakAverageFallback)}
-                />
-                <MetricCard
-                  label="Top 5 average"
-                  value={formatSpeed(peakSummary.bestFiveAvgMph ?? peakAverageFallback)}
-                />
-                <MetricCard
-                  label="Session best"
-                  value={formatSpeed(peakSummary.bestSwingMph ?? data.session.maxSpeedMph)}
-                />
-                <MetricCard
-                  label="Warm-up median"
-                  value={formatSpeed(data.phasedSummary.phases.warm_up.medianSpeedMph)}
-                />
-                <MetricCard label="Late change" value={formatGap(peakSummary.warmupGainMph)} />
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-3" aria-label="Speed session phases">
-                <PhaseCard
-                  title="Warm-up"
-                  count={data.phasedSummary.phases.warm_up.swingCount}
-                  value={formatSpeed(data.phasedSummary.phases.warm_up.medianSpeedMph)}
-                  detail="Progressive preparation"
-                />
-                <PhaseCard
-                  title="Maximum speed"
-                  count={data.phasedSummary.phases.max_speed.swingCount}
-                  value={formatSpeed(data.phasedSummary.phases.max_speed.sessionBestMph)}
-                  detail="Session ceiling"
-                />
-                <PhaseCard
-                  title="Transfer"
-                  count={data.transferTest?.playability.measuredShotCount ?? 0}
-                  value={
-                    data.transferTest
-                      ? `${data.transferTest.playability.inCorridorCount}/5`
-                      : "Not linked"
-                  }
-                  detail="Normal Driver shots"
-                />
-              </div>
-
-              {data.swings.length === 0 ? (
-                <EmptyState
-                  icon={<Gauge className="size-5" aria-hidden="true" />}
-                  title="No individual swings"
-                  description="This session only has summary numbers. Paste the swing readings below to rebuild detail."
-                />
-              ) : (
+        <UrlTabs
+          label="Speed session sections"
+          defaultTabKey="evidence"
+          tabs={[
+            {
+              id: "evidence",
+              label: "Readings & fatigue",
+              content: (
                 <>
-                  <SpeedFatigueChart
-                    readings={data.swings.map((swing) => ({
-                      swingNumber: swing.swingNumber,
-                      clubSpeedMph: swing.clubSpeedMph,
-                    }))}
-                  />
-                  <SwingLogWorkbench data={data} />
+                  <DataPanel>
+                    <SectionHeader
+                      title="Swing detail"
+                      description="Warm-up, peak speed, and late-session drop-off."
+                      action={<StatusPill tone="green">{peakSummary.trendLabel}</StatusPill>}
+                    />
+                    <div className="grid gap-4 p-4">
+                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                        <MetricCard
+                          label="Median"
+                          value={formatSpeed(peakSummary.medianSpeedMph)}
+                        />
+                        <MetricCard
+                          label="Top 3 average"
+                          value={formatSpeed(peakSummary.bestThreeAvgMph)}
+                        />
+                        <MetricCard
+                          label="Top 5 average"
+                          value={formatSpeed(peakSummary.bestFiveAvgMph)}
+                        />
+                        <MetricCard
+                          label="Session best"
+                          value={formatSpeed(peakSummary.bestSwingMph ?? data.session.maxSpeedMph)}
+                        />
+                        <MetricCard
+                          label="Warm-up median"
+                          value={formatSpeed(data.phasedSummary.phases.warm_up.medianSpeedMph)}
+                        />
+                        <MetricCard
+                          label="Late change"
+                          value={formatGap(peakSummary.warmupGainMph)}
+                        />
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-3" aria-label="Speed session phases">
+                        <PhaseCard
+                          title="Warm-up"
+                          count={data.phasedSummary.phases.warm_up.swingCount}
+                          value={formatSpeed(data.phasedSummary.phases.warm_up.medianSpeedMph)}
+                          detail="Progressive preparation"
+                        />
+                        <PhaseCard
+                          title="Maximum speed"
+                          count={data.phasedSummary.phases.max_speed.swingCount}
+                          value={formatSpeed(data.phasedSummary.phases.max_speed.sessionBestMph)}
+                          detail="Session ceiling"
+                        />
+                        <PhaseCard
+                          title="Transfer"
+                          count={data.transferTest?.playability.measuredShotCount ?? 0}
+                          value={
+                            data.transferTest
+                              ? `${data.transferTest.playability.inCorridorCount}/5`
+                              : "Not linked"
+                          }
+                          detail="Normal Driver shots"
+                        />
+                      </div>
+
+                      {data.swings.length === 0 ? (
+                        <EmptyState
+                          icon={<Gauge className="size-5" aria-hidden="true" />}
+                          title="No individual swings"
+                          description="This session only has summary numbers. Paste the swing readings below to rebuild detail."
+                        />
+                      ) : (
+                        <>
+                          <SpeedFatigueChart
+                            readings={data.swings.map((swing) => ({
+                              swingNumber: swing.swingNumber,
+                              clubSpeedMph: swing.clubSpeedMph,
+                            }))}
+                          />
+                          <SwingLogWorkbench data={data} />
+                        </>
+                      )}
+                    </div>
+                  </DataPanel>
                 </>
-              )}
-            </div>
-          </DataPanel>
-
-          <div className="grid gap-4">
-            {data.canLinkTransferTest ? <SpeedTransferTestPanel data={data} /> : null}
-
-            <DataPanel>
-              <SectionHeader
-                title="Edit session"
-                description="Correct club, implement, side, target, or readings."
-                action={<Save className="size-4 text-primary" aria-hidden="true" />}
-              />
-              <form action={updateSpeedSessionAction} className="grid gap-4 p-4">
-                <input type="hidden" name="sessionId" value={data.session.id} />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Date">
-                    <Input
-                      name="sessionDate"
-                      type="date"
-                      defaultValue={dateInputValue(data.session.sessionDateIso)}
+              ),
+            },
+            {
+              id: "transfer",
+              label: "Ball transfer",
+              content: (
+                <>
+                  {data.canLinkTransferTest ? (
+                    <SpeedTransferTestPanel data={data} />
+                  ) : (
+                    <p className="p-4">
+                      This session is not eligible for a Driver ball-transfer test.
+                    </p>
+                  )}
+                </>
+              ),
+            },
+            {
+              id: "edit",
+              label: "Edit session",
+              content: (
+                <>
+                  <DataPanel>
+                    <SectionHeader
+                      title="Edit session"
+                      description="Correct club, implement, side, target, or readings."
+                      action={<Save className="size-4 text-primary" aria-hidden="true" />}
                     />
-                  </Field>
-                  <Field label="Title">
-                    <Input name="title" defaultValue={data.session.title ?? ""} />
-                  </Field>
-                  <Field label="Implement">
-                    <NativeSelect name="implementKind" defaultValue={data.session.implementKind}>
-                      <option value="club">Golf club</option>
-                      <option value="speed_stick">Speed stick</option>
-                      <option value="weighted_club">Weighted club</option>
-                      <option value="other">Other</option>
-                    </NativeSelect>
-                  </Field>
-                  <Field label="Side">
-                    <NativeSelect name="handedness" defaultValue={data.session.handedness}>
-                      <option value="dominant">Dominant side</option>
-                      <option value="non_dominant">Non-dominant side</option>
-                      <option value="both">Both sides</option>
-                    </NativeSelect>
-                  </Field>
-                  <Field label="Speed system">
-                    <NativeSelect name="speedSystem" defaultValue={data.session.speedSystem ?? ""}>
-                      <option value="">Standard club speed</option>
-                      <option value="R-Speed">R-Speed</option>
-                      <option value="Light speed stick">Light speed stick</option>
-                      <option value="Medium speed stick">Medium speed stick</option>
-                      <option value="Heavy speed stick">Heavy speed stick</option>
-                      <option value="Stack">Stack</option>
-                      <option value="Other">Other</option>
-                    </NativeSelect>
-                  </Field>
-                  <Field label="Target">
-                    <Input
-                      name="targetSpeedMph"
-                      inputMode="decimal"
-                      defaultValue={numberInputValue(data.session.targetSpeedMph)}
+                    <SpeedForm action={updateSpeedSessionWithStateAction} label="Session changes">
+                      <input type="hidden" name="sessionId" value={data.session.id} />
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label="Date">
+                          <Input
+                            name="sessionDate"
+                            type="date"
+                            defaultValue={dateInputValue(data.session.sessionDateIso)}
+                          />
+                        </Field>
+                        <Field label="Title">
+                          <Input name="title" defaultValue={data.session.title ?? ""} />
+                        </Field>
+                        <Field label="Implement">
+                          <NativeSelect
+                            name="implementKind"
+                            defaultValue={data.session.implementKind}
+                          >
+                            <option value="club">Golf club</option>
+                            <option value="speed_stick">Speed stick</option>
+                            <option value="weighted_club">Weighted club</option>
+                            <option value="other">Other</option>
+                          </NativeSelect>
+                        </Field>
+                        <Field label="Side">
+                          <NativeSelect name="handedness" defaultValue={data.session.handedness}>
+                            <option value="dominant">Dominant side</option>
+                            <option value="non_dominant">Non-dominant side</option>
+                            <option value="both">Both sides</option>
+                          </NativeSelect>
+                        </Field>
+                        <Field label="Speed system">
+                          <NativeSelect
+                            name="speedSystem"
+                            defaultValue={data.session.speedSystem ?? ""}
+                          >
+                            <option value="">Standard club speed</option>
+                            <option value="R-Speed">R-Speed</option>
+                            <option value="Light speed stick">Light speed stick</option>
+                            <option value="Medium speed stick">Medium speed stick</option>
+                            <option value="Heavy speed stick">Heavy speed stick</option>
+                            <option value="Stack">Stack</option>
+                            <option value="Other">Other</option>
+                          </NativeSelect>
+                        </Field>
+                        <Field label="Target">
+                          <Input
+                            name="targetSpeedMph"
+                            inputMode="decimal"
+                            defaultValue={numberInputValue(data.session.targetSpeedMph)}
+                          />
+                        </Field>
+                      </div>
+
+                      <Field label="Club used">
+                        <NativeSelect name="clubId" defaultValue={data.session.clubId ?? ""}>
+                          <option value="">Not in bag / speed stick</option>
+                          {data.clubOptions.map((club) => (
+                            <option key={club.id} value={club.id}>
+                              {club.label}
+                            </option>
+                          ))}
+                        </NativeSelect>
+                      </Field>
+
+                      <Field label="Implement label">
+                        <Input name="implementLabel" defaultValue={data.session.implementLabel} />
+                      </Field>
+
+                      <Field label="Warm-up swings">
+                        <Textarea
+                          name="warmupReadings"
+                          rows={4}
+                          inputMode="decimal"
+                          defaultValue={data.swings
+                            .filter((swing) => swing.phase === "warm_up")
+                            .map((swing) => swing.clubSpeedMph)
+                            .join("\n")}
+                        />
+                      </Field>
+
+                      <Field label="Maximum-speed swings">
+                        <Textarea
+                          name="speedReadings"
+                          rows={8}
+                          inputMode="decimal"
+                          defaultValue={data.swings
+                            .filter((swing) => swing.phase === null || swing.phase === "max_speed")
+                            .map((swing) => swing.clubSpeedMph)
+                            .join("\n")}
+                        />
+                      </Field>
+
+                      <div className="grid gap-3 sm:grid-cols-4">
+                        <Field label="Min">
+                          <Input
+                            name="minSpeedMph"
+                            inputMode="decimal"
+                            defaultValue={numberInputValue(data.session.minSpeedMph)}
+                          />
+                        </Field>
+                        <Field label="Average">
+                          <Input
+                            name="avgSpeedMph"
+                            inputMode="decimal"
+                            defaultValue={numberInputValue(data.session.avgSpeedMph)}
+                          />
+                        </Field>
+                        <Field label="Max">
+                          <Input
+                            name="maxSpeedMph"
+                            inputMode="decimal"
+                            defaultValue={numberInputValue(data.session.maxSpeedMph)}
+                          />
+                        </Field>
+                        <Field label="Count">
+                          <Input
+                            name="swingCount"
+                            inputMode="numeric"
+                            defaultValue={String(data.session.swingCount)}
+                          />
+                        </Field>
+                      </div>
+
+                      <Field label="Notes">
+                        <Input name="notes" defaultValue={data.session.notes ?? ""} />
+                      </Field>
+                    </SpeedForm>
+                  </DataPanel>
+
+                  <DataPanel>
+                    <SectionHeader
+                      title="Delete session"
+                      description="Remove this session and all swing readings."
+                      action={<Trash2 className="size-4 text-destructive" aria-hidden="true" />}
                     />
-                  </Field>
-                </div>
-
-                <Field label="Club used">
-                  <NativeSelect name="clubId" defaultValue={data.session.clubId ?? ""}>
-                    <option value="">Not in bag / speed stick</option>
-                    {data.clubOptions.map((club) => (
-                      <option key={club.id} value={club.id}>
-                        {club.label}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                </Field>
-
-                <Field label="Implement label">
-                  <Input name="implementLabel" defaultValue={data.session.implementLabel} />
-                </Field>
-
-                <Field label="Warm-up swings">
-                  <Textarea
-                    name="warmupReadings"
-                    rows={4}
-                    defaultValue={data.swings
-                      .filter((swing) => swing.phase === "warm_up")
-                      .map((swing) => swing.clubSpeedMph)
-                      .join("\n")}
-                  />
-                </Field>
-
-                <Field label="Maximum-speed swings">
-                  <Textarea
-                    name="speedReadings"
-                    rows={8}
-                    defaultValue={data.swings
-                      .filter((swing) => swing.phase === null || swing.phase === "max_speed")
-                      .map((swing) => swing.clubSpeedMph)
-                      .join("\n")}
-                  />
-                </Field>
-
-                <div className="grid gap-3 sm:grid-cols-4">
-                  <Field label="Min">
-                    <Input
-                      name="minSpeedMph"
-                      inputMode="decimal"
-                      defaultValue={numberInputValue(data.session.minSpeedMph)}
-                    />
-                  </Field>
-                  <Field label="Average">
-                    <Input
-                      name="avgSpeedMph"
-                      inputMode="decimal"
-                      defaultValue={numberInputValue(data.session.avgSpeedMph)}
-                    />
-                  </Field>
-                  <Field label="Max">
-                    <Input
-                      name="maxSpeedMph"
-                      inputMode="decimal"
-                      defaultValue={numberInputValue(data.session.maxSpeedMph)}
-                    />
-                  </Field>
-                  <Field label="Count">
-                    <Input
-                      name="swingCount"
-                      inputMode="numeric"
-                      defaultValue={String(data.session.swingCount)}
-                    />
-                  </Field>
-                </div>
-
-                <Field label="Notes">
-                  <Input name="notes" defaultValue={data.session.notes ?? ""} />
-                </Field>
-
-                <Button type="submit" className="w-full sm:w-fit">
-                  <Save aria-hidden="true" />
-                  Save changes
-                </Button>
-              </form>
-            </DataPanel>
-
-            <DataPanel>
-              <SectionHeader
-                title="Delete session"
-                description="Remove this session and all swing readings."
-                action={<Trash2 className="size-4 text-destructive" aria-hidden="true" />}
-              />
-              <form action={deleteSpeedSessionAction} className="p-4">
-                <input type="hidden" name="sessionId" value={data.session.id} />
-                <ConfirmSubmitButton
-                  confirmMessage={`Delete speed session ${data.session.title ?? data.session.implementLabel}? This removes the session and all swing readings.`}
-                  variant="destructive"
-                >
-                  <Trash2 aria-hidden="true" />
-                  Delete session
-                </ConfirmSubmitButton>
-              </form>
-            </DataPanel>
-          </div>
-        </div>
+                    <div className="p-4">
+                      <DeleteSpeedSession
+                        id={data.session.id}
+                        title={data.session.title ?? data.session.implementLabel}
+                      />
+                    </div>
+                  </DataPanel>
+                </>
+              ),
+            },
+          ]}
+        />
       </DesktopWorkbenchLayout>
     </PageShell>
   );
@@ -500,84 +514,12 @@ function SpeedTransferTestPanel({ data }: { data: SpeedSessionDetailPageData }) 
           </div>
         )}
 
-        {candidates.length > 0 ? (
-          <div className="grid gap-2">
-            <p className="text-sm font-medium text-foreground">
-              Choose the exact five normal Driver shots
-            </p>
-            {candidates.map((candidate, candidateIndex) => {
-              const currentLinkedIds =
-                linkedSessionId === candidate.sessionId
-                  ? new Set(data.transferTest?.metadata.shotIds ?? [])
-                  : null;
-
-              return (
-                <details
-                  key={candidate.sessionId}
-                  open={candidate.sessionId === linkedSessionId || candidateIndex === 0}
-                  className="rounded-lg border border-border/70 bg-card"
-                >
-                  <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-semibold text-foreground">
-                    {formatDate(candidate.sessionDateIso)} · {candidate.label} ·{" "}
-                    {candidate.eligibleShotCount} eligible
-                  </summary>
-                  <form
-                    action={saveSpeedTransferTestAction}
-                    className="grid gap-3 border-t border-border/70 p-3"
-                  >
-                    <input type="hidden" name="speedSessionId" value={data.session.id} />
-                    <input type="hidden" name="shotSessionId" value={candidate.sessionId} />
-                    <div className="grid gap-1.5">
-                      {candidate.shots.map((shot, index) => (
-                        <label
-                          key={shot.id}
-                          className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/30 px-2.5 py-2 text-sm"
-                        >
-                          <span className="flex min-w-0 items-center gap-2">
-                            <input
-                              type="checkbox"
-                              name="shotId"
-                              value={shot.id}
-                              defaultChecked={
-                                currentLinkedIds?.has(shot.id) ??
-                                (candidateIndex === 0 && index < 5)
-                              }
-                              className="size-4 rounded border-border accent-primary"
-                            />
-                            <span className="truncate font-medium text-foreground">
-                              Shot {shot.shotNumber ?? index + 1}
-                            </span>
-                          </span>
-                          <span className="text-right tabular-nums text-muted-foreground">
-                            {formatSpeed(shot.clubSpeedMph)} · {formatSideCarry(shot.sideCarryYd)}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                    <Button type="submit" variant="outline" className="w-full sm:w-fit">
-                      <Link2 aria-hidden="true" />
-                      Link selected five
-                    </Button>
-                  </form>
-                </details>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            No nearby Driver session has five eligible shots yet.
-          </p>
-        )}
-
-        {linkedSessionId ? (
-          <form action={saveSpeedTransferTestAction}>
-            <input type="hidden" name="speedSessionId" value={data.session.id} />
-            <input type="hidden" name="shotSessionId" value="" />
-            <Button type="submit" variant="ghost" className="w-full sm:w-fit">
-              Remove transfer link
-            </Button>
-          </form>
-        ) : null}
+        <MobileSpeedTransfer
+          sessionId={data.session.id}
+          candidates={candidates}
+          linkedSessionId={linkedSessionId}
+          linkedShotIds={data.transferTest?.metadata.shotIds ?? []}
+        />
       </div>
     </DataPanel>
   );
@@ -593,92 +535,124 @@ function SwingLogWorkbench({ data }: { data: SpeedSessionDetailPageData }) {
       className="grid gap-3"
       data-workbench-scope="speed-session-swings"
     >
-      <DesktopTableWorkbenchControls
-        viewKey={`speed-session-swings-${data.session.id}`}
-        scope="speed-session-swings"
-        currentViewLabel={`${data.session.implementLabel} swing log`}
-        resultLabel={`${data.swings.length} swings`}
-        columns={speedSwingColumns}
-        suggestedViews={speedSwingSuggestedViews}
-        exportTableId="speed-session-swings"
-        exportFileName={`forekinghell-speed-session-${data.session.id}-swings.csv`}
+      <LabEvidenceList
+        title="Swing readings"
+        rows={data.swings.map((swing, index) => ({
+          id: swing.id,
+          title: `Swing ${swing.swingNumber}`,
+          summary: `${formatSpeed(swing.clubSpeedMph)} · ${swing.phase ? speedTrainingPhaseLabel(swing.phase) : "Phase not recorded"}`,
+          fields: [
+            { label: "Speed", value: formatSpeed(swing.clubSpeedMph) },
+            { label: "Source", value: data.session.source },
+            { label: "Side", value: formatSwingSide(swing.swingSide) },
+            {
+              label: "Phase",
+              value: swing.phase ? speedTrainingPhaseLabel(swing.phase) : "Not recorded",
+            },
+            { label: "Vs average", value: formatDelta(swing.clubSpeedMph, averageSwing) },
+            { label: "Vs peak", value: formatDelta(swing.clubSpeedMph, bestSwing) },
+            {
+              label: "Rolling three",
+              value: formatSpeed(
+                rollingAverage(
+                  data.swings.slice(Math.max(0, index - 2), index + 1).map((r) => r.clubSpeedMph),
+                ),
+              ),
+            },
+            {
+              label: "Signal",
+              value: speedSwingSignal(swing.clubSpeedMph, bestSwing, averageSwing),
+            },
+          ],
+        }))}
       />
+      <details>
+        <summary className="min-h-11 cursor-pointer py-3">Full reading table and export</summary>
+        <DesktopTableWorkbenchControls
+          viewKey={`speed-session-swings-${data.session.id}`}
+          scope="speed-session-swings"
+          currentViewLabel={`${data.session.implementLabel} swing log`}
+          resultLabel={`${data.swings.length} swings`}
+          columns={speedSwingColumns}
+          suggestedViews={speedSwingSuggestedViews}
+          exportTableId="speed-session-swings"
+          exportFileName={`forekinghell-speed-session-${data.session.id}-swings.csv`}
+        />
 
-      <DataTableFrame mainTable mainTableLabel="Speed session swing log table" stickyFirstColumn>
-        <Table
-          data-workbench-export-table="speed-session-swings"
-          aria-describedby="speed-session-swing-log-summary"
-        >
-          <TableCaption id="speed-session-swing-log-summary" className="sr-only">
-            Speed session swing log table showing swing number, club speed, deltas from average and
-            best, rolling three-swing speed, side, phase and performance signal.
-          </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
-            <TableRow>
-              <TableHead
-                data-column="swing"
-                className="sticky left-0 z-20 min-w-24 bg-card shadow-[1px_0_0_hsl(var(--border))]"
-              >
-                Swing
-              </TableHead>
-              <TableHead data-column="speed" className="text-right">
-                Speed
-              </TableHead>
-              <TableHead data-column="vs-average" className="text-right">
-                Vs average
-              </TableHead>
-              <TableHead data-column="vs-best" className="text-right">
-                Vs best
-              </TableHead>
-              <TableHead data-column="rolling-three" className="text-right">
-                Rolling 3
-              </TableHead>
-              <TableHead data-column="side">Side</TableHead>
-              <TableHead data-column="phase">Phase</TableHead>
-              <TableHead data-column="signal">Signal</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.swings.map((swing, index) => {
-              const rollingThree = rollingAverage(
-                data.swings
-                  .slice(Math.max(0, index - 2), index + 1)
-                  .map((reading) => reading.clubSpeedMph),
-              );
-              const phase = swing.phase
-                ? speedTrainingPhaseLabel(swing.phase)
-                : speedSwingPhase(index, data.swings.length, swing.clubSpeedMph, bestSwing);
-              const signal = speedSwingSignal(swing.clubSpeedMph, bestSwing, averageSwing);
+        <DataTableFrame mainTable mainTableLabel="Speed session swing log table" stickyFirstColumn>
+          <Table
+            data-workbench-export-table="speed-session-swings"
+            aria-describedby="speed-session-swing-log-summary"
+          >
+            <TableCaption id="speed-session-swing-log-summary" className="sr-only">
+              Speed session swing log table showing swing number, club speed, deltas from average
+              and best, rolling three-swing speed, side, phase and performance signal.
+            </TableCaption>
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
+              <TableRow>
+                <TableHead
+                  data-column="swing"
+                  className="sticky left-0 z-20 min-w-24 bg-card shadow-[1px_0_0_hsl(var(--border))]"
+                >
+                  Swing
+                </TableHead>
+                <TableHead data-column="speed" className="text-right">
+                  Speed
+                </TableHead>
+                <TableHead data-column="vs-average" className="text-right">
+                  Vs average
+                </TableHead>
+                <TableHead data-column="vs-best" className="text-right">
+                  Vs best
+                </TableHead>
+                <TableHead data-column="rolling-three" className="text-right">
+                  Rolling 3
+                </TableHead>
+                <TableHead data-column="side">Side</TableHead>
+                <TableHead data-column="phase">Phase</TableHead>
+                <TableHead data-column="signal">Signal</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.swings.map((swing, index) => {
+                const rollingThree = rollingAverage(
+                  data.swings
+                    .slice(Math.max(0, index - 2), index + 1)
+                    .map((reading) => reading.clubSpeedMph),
+                );
+                const phase = swing.phase ? speedTrainingPhaseLabel(swing.phase) : "Not recorded";
+                const signal = speedSwingSignal(swing.clubSpeedMph, bestSwing, averageSwing);
 
-              return (
-                <TableRow key={swing.id} tabIndex={0} className="focus-aaa outline-none">
-                  <TableCell
-                    data-column="swing"
-                    className="sticky left-0 z-10 min-w-24 bg-card font-semibold shadow-[1px_0_0_hsl(var(--border))]"
-                  >
-                    #{swing.swingNumber}
-                  </TableCell>
-                  <TableCell data-column="speed" className="text-right font-semibold">
-                    {formatSpeedCompact(swing.clubSpeedMph)}
-                  </TableCell>
-                  <TableCell data-column="vs-average" className="text-right">
-                    {formatDelta(swing.clubSpeedMph, averageSwing)}
-                  </TableCell>
-                  <TableCell data-column="vs-best" className="text-right">
-                    {formatDelta(swing.clubSpeedMph, bestSwing)}
-                  </TableCell>
-                  <TableCell data-column="rolling-three" className="text-right">
-                    {formatSpeedCompact(rollingThree)}
-                  </TableCell>
-                  <TableCell data-column="side">{formatSwingSide(swing.swingSide)}</TableCell>
-                  <TableCell data-column="phase">{phase}</TableCell>
-                  <TableCell data-column="signal">{signal}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </DataTableFrame>
+                return (
+                  <TableRow key={swing.id} tabIndex={0} className="focus-aaa outline-none">
+                    <TableCell
+                      data-column="swing"
+                      className="sticky left-0 z-10 min-w-24 bg-card font-semibold shadow-[1px_0_0_hsl(var(--border))]"
+                    >
+                      #{swing.swingNumber}
+                    </TableCell>
+                    <TableCell data-column="speed" className="text-right font-semibold">
+                      {formatSpeedCompact(swing.clubSpeedMph)}
+                    </TableCell>
+                    <TableCell data-column="vs-average" className="text-right">
+                      {formatDelta(swing.clubSpeedMph, averageSwing)}
+                    </TableCell>
+                    <TableCell data-column="vs-best" className="text-right">
+                      {formatDelta(swing.clubSpeedMph, bestSwing)}
+                    </TableCell>
+                    <TableCell data-column="rolling-three" className="text-right">
+                      {formatSpeedCompact(rollingThree)}
+                    </TableCell>
+                    <TableCell data-column="side">{formatSwingSide(swing.swingSide)}</TableCell>
+                    <TableCell data-column="phase">{phase}</TableCell>
+                    <TableCell data-column="signal">{signal}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </DataTableFrame>
+      </details>
     </section>
   );
 }
@@ -726,46 +700,15 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function NativeSelect({
-  className,
-  children,
-  name,
-  defaultValue,
-  disabled,
-  required,
-  id,
-  "aria-label": ariaLabel,
-}: ComponentProps<"select">) {
-  const options = Children.toArray(children).filter(
-    (child): child is ReactElement<ComponentProps<"option">> =>
-      isValidElement<ComponentProps<"option">>(child) && child.type === "option",
-  );
-  const initialValue =
-    typeof defaultValue === "string" || typeof defaultValue === "number"
-      ? String(defaultValue)
-      : "";
-
+function NativeSelect({ className, ...props }: ComponentProps<"select">) {
   return (
-    <Select
-      name={name}
-      defaultValue={initialValue || "__none__"}
-      disabled={disabled}
-      required={required}
-    >
-      <SelectTrigger id={id} aria-label={ariaLabel} className={cn("h-8 w-full", className)}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option, index) => {
-          const value = String(option.props.value ?? "") || "__none__";
-          return (
-            <SelectItem key={`${value}:${index}`} value={value} disabled={option.props.disabled}>
-              {option.props.children}
-            </SelectItem>
-          );
-        })}
-      </SelectContent>
-    </Select>
+    <select
+      {...props}
+      className={cn(
+        "min-h-11 w-full min-w-0 rounded-lg border bg-background px-3 text-base",
+        className,
+      )}
+    />
   );
 }
 
@@ -862,27 +805,6 @@ function formatSwingSide(value: string | null) {
     .filter(Boolean)
     .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
     .join(" ");
-}
-
-function speedSwingPhase(
-  index: number,
-  swingCount: number,
-  speed: number,
-  bestSpeed: number | null,
-) {
-  if (bestSpeed !== null && speed === bestSpeed) {
-    return "Peak";
-  }
-
-  if (index < 5) {
-    return "Warm-up";
-  }
-
-  if (index >= Math.max(0, swingCount - 5)) {
-    return "Finish";
-  }
-
-  return "Build";
 }
 
 function speedSwingSignal(speed: number, bestSpeed: number | null, averageSpeed: number | null) {

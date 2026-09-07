@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 import { cookies } from "next/headers";
+import { getOptionalCurrentUserId, requireCurrentUserId } from "@/lib/current-user";
 
 const COOKIE_NAME = "fkh_rapsodo_token";
 const TOKEN_TTL_SECONDS = 60 * 60 * 12;
@@ -9,6 +10,7 @@ const IV_BYTES = 12;
 let ephemeralSecret: Buffer | null = null;
 
 export type StoredRapsodoToken = {
+  ownerUserId: string;
   token: string;
   profile: Record<string, unknown> | null;
   createdAt: number;
@@ -16,6 +18,8 @@ export type StoredRapsodoToken = {
 };
 
 export async function getStoredRapsodoToken() {
+  const ownerUserId = await getOptionalCurrentUserId();
+  if (!ownerUserId) return null;
   const value = (await cookies()).get(COOKIE_NAME)?.value;
 
   if (!value) {
@@ -25,7 +29,7 @@ export async function getStoredRapsodoToken() {
   try {
     const payload = decryptTokenPayload(value);
 
-    if (payload.expiresAt <= Date.now()) {
+    if (payload.ownerUserId !== ownerUserId || payload.expiresAt <= Date.now()) {
       return null;
     }
 
@@ -39,9 +43,11 @@ export async function setStoredRapsodoToken(
   token: string,
   profile: Record<string, unknown> | null,
 ) {
+  const ownerUserId = await requireCurrentUserId();
   const now = Date.now();
   const expiresAt = now + TOKEN_TTL_SECONDS * 1000;
   const encrypted = encryptTokenPayload({
+    ownerUserId,
     token,
     profile,
     createdAt: now,

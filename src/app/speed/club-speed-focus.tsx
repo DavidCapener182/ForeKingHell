@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Gauge, Target, TrendingUp } from "lucide-react";
 
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { ComparisonSearchSheet } from "@/app/analyse/compare/comparison-search-sheet";
 import { calculateSpeedIndex, formatSpeed, formatSpeedCompact } from "@/lib/speed-training";
 import type { ClubSpeedRow, FutureBagProjectionRow, SpeedGoal } from "@/lib/speed-training-data";
 import { cn } from "@/lib/utils";
@@ -59,34 +59,21 @@ export function ClubSpeedFocus({
 
   return (
     <div className="grid gap-4 p-4">
-      <div className="overflow-x-auto pb-1">
-        <ToggleGroup
-          type="single"
-          value={clubRowKey(selectedRow)}
-          onValueChange={(value) => {
-            const nextRow = rows.find((row) => clubRowKey(row) === value);
-
-            if (nextRow) {
-              replaceSelectedClub(router, nextRow.clubId);
-            }
-          }}
-          variant="outline"
-          spacing={2}
-          aria-label="Speed club focus"
-          className="min-w-max"
-        >
-          {rows.map((row) => (
-            <ToggleGroupItem
-              key={clubRowKey(row)}
-              value={clubRowKey(row)}
-              aria-label={`Focus ${shortClubLabel(row)} speed evidence`}
-              className="h-8 max-w-[180px] justify-start overflow-hidden px-2.5 text-xs"
-            >
-              <span className="truncate">{shortClubLabel(row)}</span>
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </div>
+      <ComparisonSearchSheet
+        label="Speed club focus"
+        entity="club"
+        description="Select a club to update its targets, projections and source evidence."
+        value={clubRowKey(selectedRow)}
+        options={rows.map((row) => ({
+          value: clubRowKey(row),
+          label: shortClubLabel(row),
+          description: `${row.trainingSessionCount} no-ball sessions · ${row.shotSampleSize} with-ball samples`,
+        }))}
+        onValueChange={(value) => {
+          const row = rows.find((item) => clubRowKey(item) === value);
+          if (row) replaceSelectedClub(router, row.clubId);
+        }}
+      />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_330px]">
         <div className="grid gap-4">
@@ -95,7 +82,7 @@ export function ClubSpeedFocus({
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Selected club
               </p>
-              <h2 className="mt-1 truncate text-xl font-semibold tracking-normal text-foreground">
+              <h2 className="mt-1 break-words text-xl font-semibold tracking-normal text-foreground">
                 {selectedRow.clubLabel}
               </h2>
             </div>
