@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-**492 desktop / 492 mobile entries have UI implemented with partial verification; 0 fully accepted.** All 98 route UI batches and shared UI pass are addressed. Current: integration defects and acceptance verification. This is not overall completion. Tournament aliases still fail the development runtime page-error assertion.
+**492 desktop / 492 mobile entries have UI implemented with partial verification; 0 fully accepted.** All 98 route UI batches and shared UI pass are addressed. Current: integration defects and acceptance verification. This is not overall completion. Tournament alias suite previously failed with intermittent development timing errors; instrumented P98 rerun passed, so the cause remains unresolved.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **release the three coordinated backend fixes; investigate redirect timing errors and complete acceptance checks**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **integrated unit/route-metadata reconciliation and remaining acceptance checks**. Three backend defects and direction-attention UI are now fixed and committed. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -534,3 +534,9 @@ Analysis workspace now fetches getDirectionAttention with its existing data, sho
 P98 instrumented rerun passed3.3m all12contexts; earlier Performance.measure failure was not reproduced, so still intermittent/unresolved. Root should not suppress errors or repeat unchanged reruns. Current unit snapshot: 2479pass/288failed/146pending (112failedfiles); other agent is reconciling obsolete source assertions and test harnesses while retaining functional checks.
 
 Current: integrated test-failure reconciliation (other agent) and remaining acceptance gaps. Direction helper/UI integration is now reviewed and verified within the scope above; no full acceptance claimed. Maintain current branch, tracker and pending dirty redesign changes.
+
+### G14 zoom regression resolved
+
+Expanded browser acceptance caught actual internal clipping of achievement header, footer and tier at360 CSSzoom2 despite page-level overflow passing. Wrapped header icon/dismiss/name, footer text and tier group; added descendant clipping assertion. shared-acceptance-final.log PASS6.6s all6sizes,13s focused notification retention,2axe scans0violations and darkCSSzoom2 at1440/360. Final360zoom screenshot inspected. Nativezoom/AT still outstanding. Scoped lint clean before final class-only tier adjustment.
+
+Current ownership: other agent owns app-route-capabilities.ts metadata reconciliation + tests, preserving exact direct-route exceptions and unknown-nested handoffs; root owns UI/acceptance/tracker. Continue integrated failure queue. No active root browser or production build.

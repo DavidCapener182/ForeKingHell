@@ -177,11 +177,11 @@ function AchievementToastCard({
         open && "is-open",
       )}
     >
-      <div className="flex items-start gap-3 border-b border-border px-4 py-3">
+      <div className="flex flex-wrap items-start gap-3 border-b border-border px-4 py-3">
         <div className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-primary/10 text-primary">
           <Award className="size-5" />
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="order-last min-w-0 basis-full break-words">
           <p className="text-sm font-semibold">
             {toast.totalCount === 1
               ? "Achievement unlocked"
@@ -195,7 +195,7 @@ function AchievementToastCard({
           type="button"
           variant="ghost"
           size="icon"
-          className="size-11 shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="ml-auto size-11 shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground"
           onClick={beginDismiss}
           aria-label="Dismiss achievement notification"
         >
@@ -210,8 +210,8 @@ function AchievementToastCard({
             className="block rounded-[8px] border border-border bg-muted/40 px-3 py-2 transition-colors hover:bg-muted"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="break-words text-sm font-medium">{notification.name}</p>
-              <div className="flex shrink-0 items-center gap-2">
+              <p className="min-w-0 max-w-full break-words text-sm font-medium">{notification.name}</p>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Badge className={cn("border capitalize", tierToastStyles[notification.tier])}>
                   {notification.tier}
                 </Badge>
@@ -235,10 +235,10 @@ function AchievementToastCard({
           asChild
           variant="outline"
           size="sm"
-          className="w-full border-border bg-muted/40 text-foreground hover:bg-muted hover:text-foreground"
+          className="h-auto min-h-11 w-full flex-wrap whitespace-normal break-words border-border bg-muted/40 text-foreground hover:bg-muted hover:text-foreground"
         >
           <Link href="/achievements">
-            View achievements
+            <span className="min-w-0 break-words">View achievements</span>
             <ExternalLink className="size-3.5" />
           </Link>
         </Button>

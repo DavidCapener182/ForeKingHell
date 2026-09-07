@@ -1,3 +1,4 @@
+import { injectAxe } from "./helpers";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { build } from "esbuild";
@@ -9,6 +10,7 @@ test("shared breadcrumbs, sync recovery and achievement notices remain usable", 
 }, info) => {
   test.skip(info.project.name !== "chromium");
   test.setTimeout(180000);
+  await page.clock.install();
   const bundle = await build({
     entryPoints: ["tests/fixtures/ui-upgrade/final-shared.tsx"],
     bundle: true,
@@ -26,11 +28,14 @@ test("shared breadcrumbs, sync recovery and achievement notices remain usable", 
   await page.route("https://shared.fixture/**", (route) =>
     route.fulfill({
       contentType: "text/html",
-      body: '<!doctype html><html lang="en" data-theme="clubhouse"><head><title>Shared fixture</title></head><body><div id="root"></div></body></html>',
+      body: '<!doctype html><html lang="en" data-theme="clubhouse" style="--font-ui-source:Arial;--font-body:Arial"><head><title>Shared fixture</title></head><body><div id="root"></div></body></html>',
     }),
   );
   const errors: string[] = [];
-  page.on("pageerror", (error) => { errors.push(error.message); console.log(error.stack); });
+  page.on("pageerror", (error) => {
+    errors.push(error.message);
+    console.log(error.stack);
+  });
   for (const [width, height] of [
     [1440, 900],
     [1280, 800],
@@ -62,6 +67,10 @@ test("shared breadcrumbs, sync recovery and achievement notices remain usable", 
     await expect(
       page.getByRole("button", { name: "Dismiss achievement notification" }),
     ).toHaveCount(1);
+    const dismiss = page.getByRole("button", { name: "Dismiss achievement notification" });
+    await dismiss.focus();
+    await page.clock.runFor(13000);
+    await expect(dismiss).toBeVisible();
     await expect(page.getByText("A complete description", { exact: false })).toBeVisible();
     await page.getByRole("button", { name: "Recover storage" }).click();
     await expect(page.getByText("Saved actions need attention")).toBeVisible();
@@ -75,6 +84,50 @@ test("shared breadcrumbs, sync recovery and achievement notices remain usable", 
       fullPage: true,
       animations: "disabled",
     });
+    if (width === 1440 || width === 360) {
+      await injectAxe(page);
+      const violations = await page.evaluate(async () => {
+        const axe = (
+          window as unknown as {
+            axe: {
+              run: (context: string) => Promise<{
+                violations: Array<{ id: string; nodes: Array<{ target: string[] }> }>;
+              }>;
+            };
+          }
+        ).axe;
+        return (await axe.run("main")).violations.map(({ id, nodes }) => ({
+          id,
+          targets: nodes.map((node) => node.target),
+        }));
+      });
+      expect(violations).toEqual([]);
+      await page.evaluate(() => {
+        document.documentElement.dataset.theme = "dark";
+        document.documentElement.style.zoom = "2";
+      });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      const clipped = await page
+        .locator("[data-achievement-toast-viewport] *")
+        .evaluateAll((elements) =>
+          elements
+            .filter(
+              (element) => element.clientWidth > 0 && element.scrollWidth > element.clientWidth + 1,
+            )
+            .map((element) => ({ tag: element.tagName, text: element.textContent?.slice(0, 80) })),
+        );
+      expect(clipped).toEqual([]);
+      await page.screenshot({
+        path: info.outputPath(`shared-dark-css-zoom-${width}.png`),
+        fullPage: true,
+        animations: "disabled",
+      });
+      await page.evaluate(() => {
+        document.documentElement.style.zoom = "1";
+      });
+    }
     await page.getByRole("button", { name: "Switch account" }).click();
     await expect(page.getByText("Saved actions need attention")).toHaveCount(0);
     await page.getByRole("button", { name: "Dismiss achievement notification" }).click();
