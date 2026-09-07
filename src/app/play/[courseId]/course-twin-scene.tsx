@@ -1,4 +1,5 @@
 "use client";
+import { CourseTwinViewOptions } from "./course-twin-view-options";
 import { formatClubType } from "@/lib/club-format";
 
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -2433,7 +2434,10 @@ export function CourseTwinScene({
       >
         {(() => {
           const controls = (
-            <aside data-course-twin-hud className="w-full text-white">
+            <aside
+              data-course-twin-hud
+              className="w-full text-white [&_button]:min-h-11 [&_button]:min-w-11"
+            >
               <div
                 data-course-twin-primary-controls
                 aria-label="Course Twin settings"
@@ -2449,10 +2453,12 @@ export function CourseTwinScene({
                     <X className="size-4" />
                   </button>
                   <Badge className="border border-emerald-300/30 bg-emerald-300/10 text-emerald-100 hover:bg-emerald-300/10">
-                    Grade {manifest.quality.grade} · {manifest.terrain.resolutionM?.toFixed(1)} m
-                    terrain
+                    Grade {manifest.quality.grade} ·{" "}
+                    {manifest.terrain.resolutionM == null
+                      ? "Terrain resolution not recorded"
+                      : `${manifest.terrain.resolutionM.toFixed(1)} m terrain`}
                   </Badge>
-                  <h1 className="pt-2 text-2xl font-semibold tracking-tight xl:text-lg">
+                  <h1 className="break-words pt-2 text-2xl font-semibold tracking-tight xl:text-lg">
                     {manifest.course.name}
                   </h1>
                   <p className="text-sm leading-6 text-emerald-100/70 xl:text-xs xl:leading-4">
@@ -2612,28 +2618,19 @@ export function CourseTwinScene({
                     </ModeButton>
                   </div>
                 ) : (
-                  <div className="mt-2 grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
-                    <ModeButton
-                      active={cameraView === "golfer"}
-                      onClick={() => {
-                        setCameraView("golfer");
-                        setCameraCommand(null);
-                      }}
-                    >
-                      {mode === "replay" || mode === "play" || mode === "live"
-                        ? "Shot view"
-                        : "Golfer view"}
-                    </ModeButton>
-                    <ModeButton
-                      active={cameraView === "aerial"}
-                      onClick={() => {
-                        setCameraView("aerial");
-                        setCameraCommand(null);
-                      }}
-                    >
-                      Aerial view
-                    </ModeButton>
-                  </div>
+                  <CourseTwinViewOptions
+                    key={`${selectedHole.holeNumber}:${cameraView}`}
+                    holes={manifest.holes}
+                    selectedHole={selectedHole.holeNumber}
+                    camera={cameraView}
+                    locked={roundLocksHole}
+                    onApply={(hole, camera) => {
+                      if (!roundLocksHole && hole !== selectedHole.holeNumber) selectHole(hole);
+                      setCameraView(camera);
+                      setCameraCommand(null);
+                    }}
+                    onResetCamera={() => issueCameraCommand("reset")}
+                  />
                 )}
 
                 {mode === "explore" ? (
@@ -3206,10 +3203,10 @@ export function CourseTwinScene({
             <Drawer open={Boolean(hudPanel)} onOpenChange={(open) => !open && closeHudPanel()}>
               <DrawerContent
                 data-mobile-preserve-dark
-                className="max-h-[86dvh] overflow-y-auto border-white/12 bg-[#07150e] text-white"
+                className="max-h-[86dvh] overflow-y-auto border-white/12 bg-[#07150e] pb-[calc(1rem+env(safe-area-inset-bottom))] text-white"
                 style={{ colorScheme: "dark" }}
               >
-                <DrawerHeader className="sr-only">
+                <DrawerHeader className="text-left">
                   <DrawerTitle>{panelTitle}</DrawerTitle>
                   <DrawerDescription>{panelDescription}</DrawerDescription>
                 </DrawerHeader>
@@ -3225,7 +3222,7 @@ export function CourseTwinScene({
                 className="w-[390px] overflow-y-auto border-white/12 bg-[#07150e] p-0 text-white sm:max-w-[390px]"
                 style={{ colorScheme: "dark" }}
               >
-                <SheetHeader className="sr-only">
+                <SheetHeader className="p-4 text-left">
                   <SheetTitle>{panelTitle}</SheetTitle>
                   <SheetDescription>{panelDescription}</SheetDescription>
                 </SheetHeader>

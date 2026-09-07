@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-259 desktop / 259 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P54 Immersive Course Twin**. 294 of492 UI implemented with partial verification; zero fully accepted. Continue UI work, retaining all recorded acceptance gaps.
+259 desktop / 259 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P55 Course record boards**. 298 of492 UI implemented with partial verification; zero fully accepted. Continue UI work and preserve the separate verification gaps.
 
 # UI upgrade progress
 
@@ -300,3 +300,6 @@ P52-C01/C02 UI implemented partial,289total. Complete shared catalogue replaces 
 
 
 P53-C01–C05 UI implemented partial,294total. Requested-surface rendering (no duplicate hidden page), staged search/tee setup retaining failure drafts, real preview disclosure instead of generic pre-round art, mobile full planning facts and selected-tee mapping readiness. Active round remains sole start/resume priority. play-browser-label.log PASS37.9s both surfaces x6sizes; first run had unstable search accessible name including result count, explicit aria-label fixed. Screenshot390 inspected; shared fixed-bar overlap still visible. Types/lint pass before final label change. Positive trusted-bag transition and preview/twin tee semantics/error/AT remain open. P52 commit7e0f72ef. Next P54 prompts /tmp/fkh-p54-prompts.txt: finish reading untruncatedC03, inspect runtime/scene/mobile controls and improve fallback selected-hole and communications draft/errors without touching renderer math. Other thread owns legacy Play select cookie cleanup/tests; no browser active.
+
+
+P54-C01–C04 UI implemented partial,298total. Existing3D math/renderer retained. Desktopfallback selected-hole/search/evidence, stagedViewOptions, visible drawer headings/touch targets, chat failed-draft retention/duplicate-send/reconnect/voice failures. twin-runtime-browser-wrapped.log PASS4.4s all12fixtureviews;15regressionsPASS95ms. Browser3D intentionally stubbed; actual3D/save/voice/positive-replay/sheetfocus acceptance open. Screenshot390 revealed long-name truncation and draft contrast, fixed and fullrerun/retaineddraftcapture inspected. Runtime fallback page overflow made scrollable. P53commitc1b06cf5. Next P55 full prompts /tmp/fkh-p55-prompts.txt read, source inspected. Backend agent reviewing course-records.ts hub liveAttemptCount wrongly counts boards and arbitrary/unverified leader; do not edit that file. Await canonical champion category/period/proof shape while implementing full mobile board and loaded80course scope. No browser freeze active. Same upgrade branch/no merge/deploy.

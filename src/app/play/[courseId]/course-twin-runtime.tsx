@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Component, useState, useSyncExternalStore, type ReactNode } from "react";
 
 import type { CourseTwinManifest, CourseTwinReplayDocument } from "@/lib/course-twin-contract";
@@ -21,7 +22,7 @@ const CourseTwinScene = dynamic(
     ssr: false,
     loading: () => (
       <div className="grid min-h-[560px] place-items-center bg-[#07150e] text-sm text-emerald-100">
-        Preparing the Course Twin renderer…
+        <p role="status">Preparing the Course Twin renderer…</p>
       </div>
     ),
   },
@@ -78,6 +79,8 @@ export function CourseTwinRuntime({
     return (
       <CourseTwinLowPowerFallback
         manifest={manifest}
+        replay={replay}
+        initialHoleNumber={initialHoleNumber}
         rendererUnavailable={webGlAvailable === false}
         onEnable3d={
           webGlAvailable === false
@@ -105,6 +108,9 @@ export function CourseTwinRuntime({
         ) : (
           <CourseTwinLowPowerFallback
             manifest={manifest}
+            replay={replay}
+            initialHoleNumber={initialHoleNumber}
+            rendererUnavailable
             onEnable3d={() => window.location.reload()}
           />
         )
@@ -177,13 +183,32 @@ function readServerRenderQuality(): CourseTwinRenderQuality {
 
 function CourseTwinLowPowerFallback({
   manifest,
+  replay,
+  initialHoleNumber,
   onEnable3d,
   rendererUnavailable = false,
 }: {
   manifest: CourseTwinManifest;
+  replay: CourseTwinReplayDocument | null;
+  initialHoleNumber?: number;
   onEnable3d?: () => void;
   rendererUnavailable?: boolean;
 }) {
+  const query = useSearchParams();
+  const requestedHole = Number(query.get("hole") ?? initialHoleNumber);
+  const selectedHole =
+    manifest.holes.find((hole) => hole.holeNumber === requestedHole) ?? manifest.holes[0];
+  const [search, setSearch] = useState("");
+  const visibleHoles = manifest.holes.filter((hole) =>
+    `${hole.holeNumber} ${hole.par} ${hole.yards}`.includes(search.trim()),
+  );
+  const selectedShots =
+    replay?.shots.filter((shot) => shot.holeNumber === selectedHole?.holeNumber) ?? [];
+  const strategyQuery = new URLSearchParams({
+    courseId: manifest.course.id,
+    ...(selectedHole ? { hole: String(selectedHole.holeNumber) } : {}),
+    ...(query.get("teeSetId") ? { teeSetId: query.get("teeSetId")! } : {}),
+  });
   const bounds = manifest.terrain.heightmap?.localBounds ?? manifest.bounds;
   const width = Math.max(1, bounds.maxX - bounds.minX);
   const height = Math.max(1, bounds.maxZ - bounds.minZ);
@@ -221,7 +246,7 @@ function CourseTwinLowPowerFallback({
               <polyline
                 points={hole.centerline.map(project).join(" ")}
                 fill="none"
-                stroke="#b9e59f"
+                stroke={hole.holeNumber === selectedHole?.holeNumber ? "#e7ff6a" : "#b9e59f"}
                 strokeWidth="7"
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -244,24 +269,98 @@ function CourseTwinLowPowerFallback({
             Hole, par and measured distance remain readable in this mode.
           </p>
         </div>
+        <label className="grid gap-2 text-sm">
+          Find hole, par or yardage
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="min-h-11 rounded-lg border border-white/20 bg-black/20 px-3"
+          />
+        </label>
+        <p role="status" className="text-sm">
+          {visibleHoles.length} of {manifest.holes.length} holes · selected hole{" "}
+          {selectedHole?.holeNumber ?? "unavailable"}
+        </p>
+        {!visibleHoles.length ? (
+          <Button variant="outline" className="min-h-11" onClick={() => setSearch("")}>
+            Clear hole search
+          </Button>
+        ) : null}
         <ol className="grid max-h-[48dvh] gap-2 overflow-y-auto" aria-label="Course holes">
-          {manifest.holes.map((hole) => (
+          {visibleHoles.map((hole) => (
             <li
               key={hole.holeNumber}
               className="flex min-h-11 items-center justify-between rounded-xl border border-white/10 px-3 py-2"
             >
-              <span className="font-semibold">Hole {hole.holeNumber}</span>
+              <button
+                type="button"
+                className="min-h-11 text-left font-semibold"
+                aria-pressed={hole.holeNumber === selectedHole?.holeNumber}
+                onClick={() => {
+                  const url = new URL(window.location.href);
+                  url.searchParams.set("hole", String(hole.holeNumber));
+                  url.searchParams.delete("shot");
+                  window.history.replaceState(window.history.state, "", url);
+                }}
+              >
+                Hole {hole.holeNumber}
+              </button>
               <span className="text-sm text-emerald-50/70">
                 Par {hole.par} · {hole.yards} yd
               </span>
             </li>
           ))}
         </ol>
+        <details className="text-sm">
+          <summary className="min-h-11 cursor-pointer content-center font-semibold">
+            Selected-hole replay and mapping evidence
+          </summary>
+          <p>
+            {replay?.disclosure ??
+              "No measured replay session selected. This is a mapped hole plan, not a saved virtual round."}
+          </p>
+          {selectedShots.length ? (
+            selectedShots.map((shot) => (
+              <div key={shot.id} className="border-t border-white/15 py-3">
+                <p>
+                  {shot.clubType} · shot {shot.holeShotNumber ?? "unrecorded"}
+                </p>
+                <p>
+                  Carry: {shot.metrics.carryYd.value ?? "unavailable"} yd ·{" "}
+                  {shot.metrics.carryYd.provenance}
+                </p>
+                <p>
+                  Total: {shot.metrics.totalYd.value ?? "unavailable"} yd ·{" "}
+                  {shot.metrics.totalYd.provenance}
+                </p>
+                <p>
+                  Placement {shot.placementProvenance}; trajectory {shot.trajectoryProvenance}.
+                </p>
+              </div>
+            ))
+          ) : (
+            <p>No measured shots on the selected hole.</p>
+          )}
+          {manifest.quality.warnings.map((warning) => (
+            <p key={warning}>{warning}</p>
+          ))}
+          <p>
+            Geometry uses the package reference tee; a selected scoring tee does not change this
+            reconstruction.
+          </p>
+          {manifest.attribution.map((source) => (
+            <p key={source.url}>
+              <a className="underline" href={source.url} target="_blank" rel="noreferrer">
+                {source.label}
+              </a>{" "}
+              · {source.licence}
+            </p>
+          ))}
+        </details>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
           <Button asChild className="min-h-11">
-            <Link href={`/courses/strategy?courseId=${encodeURIComponent(manifest.course.id)}`}>
-              Open Strategy map
-            </Link>
+            <Link href={`/courses/strategy?${strategyQuery}`}>Open Strategy map</Link>
           </Button>
           {onEnable3d ? (
             <Button type="button" variant="outline" className="min-h-11" onClick={onEnable3d}>
