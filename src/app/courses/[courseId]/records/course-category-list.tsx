@@ -1,6 +1,9 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { DesktopWorkbenchControls } from "@/components/app/desktop-workbench-controls";
+import { updateRecordViewQuery } from "@/app/course-records/record-view-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useClientReady } from "@/hooks/use-client-ready";
@@ -20,10 +23,22 @@ export type CourseCategoryRow = {
   personal: string;
   friend: string;
 };
+const categoryColumns = [
+  { id: "category", label: "Category", locked: true },
+  { id: "scope", label: "Scope and period", locked: true },
+  { id: "leader", label: "Verified leader" },
+  { id: "result", label: "Result and proof", locked: true },
+  { id: "personal", label: "Your verified best" },
+  { id: "friend", label: "Friend to beat" },
+  { id: "action", label: "Action", locked: true },
+];
 export function CourseCategoryList({ records }: { records: CourseCategoryRow[] }) {
   const ready = useClientReady();
-  const [query, setQuery] = useState("");
-  const [descending, setDescending] = useState(false);
+  const params = useSearchParams();
+  const pathname = usePathname();
+  const query = params.get("categoryQuery") ?? "";
+  const descending = params.get("categorySort") === "descending";
+  const setQuery = (value: string) => updateRecordViewQuery({ categoryQuery: value });
   const visible = useMemo(
     () =>
       records
@@ -34,7 +49,19 @@ export function CourseCategoryList({ records }: { records: CourseCategoryRow[] }
     [records, query, descending],
   );
   return (
-    <section className="grid gap-3" aria-label="Course categories">
+    <section
+      className="grid gap-3"
+      aria-label="Course categories"
+      data-workbench-scope="course-categories"
+    >
+      <DesktopWorkbenchControls
+        viewKey={`course-categories:${pathname}`}
+        scope="course-categories"
+        currentViewLabel="Course categories"
+        resultLabel={`${visible.length} filtered categories`}
+        columns={categoryColumns}
+        exportFileName="course-categories-filtered.csv"
+      />
       <fieldset disabled={!ready} className="flex flex-wrap items-end gap-3">
         <legend className="sr-only">Filter record categories</legend>
         <label className="grid min-w-0 flex-1 gap-1 text-sm font-medium">
@@ -50,7 +77,7 @@ export function CourseCategoryList({ records }: { records: CourseCategoryRow[] }
         <Button
           className="min-h-11"
           variant="outline"
-          onClick={() => setDescending((value) => !value)}
+          onClick={() => updateRecordViewQuery({ categorySort: descending ? "" : "descending" })}
         >
           Category {descending ? "Z–A" : "A–Z"}
         </Button>
@@ -79,7 +106,10 @@ export function CourseCategoryList({ records }: { records: CourseCategoryRow[] }
             aria-label="Course category table"
             tabIndex={0}
           >
-            <table className="w-full text-left text-sm">
+            <table
+              data-workbench-export-table="course-categories"
+              className="w-full text-left text-sm"
+            >
               <caption className="sr-only">
                 Records restricted to the selected course. Each category preserves its own units,
                 scope, period and proof requirements.
@@ -90,10 +120,16 @@ export function CourseCategoryList({ records }: { records: CourseCategoryRow[] }
                     Category
                   </th>
                   <th scope="col">Scope and period</th>
-                  <th scope="col">Verified leader</th>
+                  <th data-column="leader" scope="col">
+                    Verified leader
+                  </th>
                   <th scope="col">Result and proof</th>
-                  <th scope="col">Your verified best</th>
-                  <th scope="col">Friend to beat</th>
+                  <th data-column="personal" scope="col">
+                    Your verified best
+                  </th>
+                  <th data-column="friend" scope="col">
+                    Friend to beat
+                  </th>
                   <th scope="col">Action</th>
                 </tr>
               </thead>
@@ -113,13 +149,13 @@ export function CourseCategoryList({ records }: { records: CourseCategoryRow[] }
                       </p>
                       <p>Required: {row.proofRequired}</p>
                     </td>
-                    <td>{row.leader}</td>
+                    <td data-column="leader">{row.leader}</td>
                     <td>
                       <p className="font-semibold">{row.result}</p>
                       <p>{row.proof}</p>
                     </td>
-                    <td>{row.personal}</td>
-                    <td>{row.friend}</td>
+                    <td data-column="personal">{row.personal}</td>
+                    <td data-column="friend">{row.friend}</td>
                     <td>
                       <RecordAction id={row.id} />
                     </td>
@@ -134,7 +170,9 @@ export function CourseCategoryList({ records }: { records: CourseCategoryRow[] }
                 <h2 className="break-words text-lg font-semibold">{row.name}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{row.description}</p>
                 <p className="mt-3 font-medium">{row.result}</p>
-                <p className="text-sm">{row.leader}</p>
+                <p data-column="leader" className="text-sm">
+                  {row.leader}
+                </p>
                 <details className="my-2">
                   <summary className="min-h-11 cursor-pointer content-center font-semibold">
                     Scope, proof and personal results
@@ -150,7 +188,16 @@ export function CourseCategoryList({ records }: { records: CourseCategoryRow[] }
                       ["Your verified best", row.personal],
                       ["Friend to beat", row.friend],
                     ].map(([label, value]) => (
-                      <div key={label}>
+                      <div
+                        key={label}
+                        data-column={
+                          label === "Your verified best"
+                            ? "personal"
+                            : label === "Friend to beat"
+                              ? "friend"
+                              : undefined
+                        }
+                      >
                         <dt className="text-muted-foreground">{label}</dt>
                         <dd className="break-words font-medium">{value}</dd>
                       </div>

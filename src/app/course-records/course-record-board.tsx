@@ -1,6 +1,9 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { DesktopWorkbenchControls } from "@/components/app/desktop-workbench-controls";
+import { updateRecordViewQuery } from "./record-view-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AppEmptyState } from "@/components/app/app-empty-state";
@@ -27,12 +30,26 @@ export type CourseRecordBoardRow = {
     categoryName?: string;
   };
 };
+const boardColumns = [
+  { id: "course", label: "Course", locked: true },
+  { id: "leader", label: "Verified leader" },
+  { id: "category", label: "Category and period", locked: true },
+  { id: "result", label: "Result and proof", locked: true },
+  { id: "boards", label: "Boards" },
+  { id: "tees", label: "Tees" },
+  { id: "submissions", label: "Submissions" },
+  { id: "actions", label: "Actions", locked: true },
+];
 const human = (value: string) => value.replaceAll("_", " ");
 export function CourseRecordBoard({ courses }: { courses: CourseRecordBoardRow[] }) {
   const ready = useClientReady();
-  const [query, setQuery] = useState("");
-  const [proof, setProof] = useState("all");
-  const [sort, setSort] = useState("course");
+  const params = useSearchParams();
+  const query = params.get("recordQuery") ?? "";
+  const proof = params.get("recordLeader") ?? "all";
+  const sort = params.get("recordSort") ?? "course";
+  const setQuery = (value: string) => updateRecordViewQuery({ recordQuery: value });
+  const setProof = (value: string) => updateRecordViewQuery({ recordLeader: value });
+  const setSort = (value: string) => updateRecordViewQuery({ recordSort: value });
   const visible = useMemo(
     () =>
       courses
@@ -54,9 +71,7 @@ export function CourseRecordBoard({ courses }: { courses: CourseRecordBoardRow[]
     [courses, proof, query, sort],
   );
   const reset = () => {
-    setQuery("");
-    setProof("all");
-    setSort("course");
+    updateRecordViewQuery({ recordQuery: "", recordLeader: "", recordSort: "" });
   };
   if (!courses.length)
     return (
@@ -71,7 +86,19 @@ export function CourseRecordBoard({ courses }: { courses: CourseRecordBoardRow[]
       />
     );
   return (
-    <section className="grid gap-4" aria-label="Course record browser">
+    <section
+      className="grid gap-4"
+      aria-label="Course record browser"
+      data-workbench-scope="course-records"
+    >
+      <DesktopWorkbenchControls
+        viewKey="course-records"
+        scope="course-records"
+        currentViewLabel="Course record boards"
+        resultLabel={`${visible.length} filtered courses`}
+        columns={boardColumns}
+        exportFileName="course-records-filtered.csv"
+      />
       <fieldset
         disabled={!ready}
         className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3"
@@ -135,33 +162,58 @@ export function CourseRecordBoard({ courses }: { courses: CourseRecordBoardRow[]
             aria-label="Course records table"
             tabIndex={0}
           >
-            <table className="w-full text-left text-sm">
+            <table
+              data-workbench-export-table="course-records"
+              className="w-full text-left text-sm"
+            >
               <caption className="sr-only">
                 Courses, selected verified board leader, exact score and proof, board and tee
                 counts, submissions. Different categories are not ranked together.
               </caption>
               <thead>
                 <tr>
-                  <th scope="col" aria-sort={sort === "course" ? "ascending" : "none"}>
+                  <th
+                    data-column="course"
+                    scope="col"
+                    aria-sort={sort === "course" ? "ascending" : "none"}
+                  >
                     Course
                   </th>
-                  <th scope="col">Verified board leader</th>
-                  <th scope="col">Category and period</th>
-                  <th scope="col">Result and proof</th>
-                  <th scope="col" aria-sort={sort === "boards" ? "descending" : "none"}>
+                  <th data-column="leader" scope="col">
+                    Verified board leader
+                  </th>
+                  <th data-column="category" scope="col">
+                    Category and period
+                  </th>
+                  <th data-column="result" scope="col">
+                    Result and proof
+                  </th>
+                  <th
+                    data-column="boards"
+                    scope="col"
+                    aria-sort={sort === "boards" ? "descending" : "none"}
+                  >
                     Boards
                   </th>
-                  <th scope="col">Tees</th>
-                  <th scope="col" aria-sort={sort === "submissions" ? "descending" : "none"}>
+                  <th data-column="tees" scope="col">
+                    Tees
+                  </th>
+                  <th
+                    data-column="submissions"
+                    scope="col"
+                    aria-sort={sort === "submissions" ? "descending" : "none"}
+                  >
                     Submissions
                   </th>
-                  <th scope="col">Actions</th>
+                  <th data-column="actions" scope="col">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((course) => (
                   <tr key={course.id}>
-                    <th scope="row">
+                    <th data-column="course" scope="row">
                       <Link
                         href={`/courses/${course.id}/records`}
                         className="font-semibold text-primary"
@@ -172,7 +224,9 @@ export function CourseRecordBoard({ courses }: { courses: CourseRecordBoardRow[]
                         {course.country ?? "Country not recorded"}
                       </p>
                     </th>
-                    <td>{course.champion?.displayName ?? "No verified leader"}</td>
+                    <td data-column="leader">
+                      {course.champion?.displayName ?? "No verified leader"}
+                    </td>
                     <td>
                       {course.champion ? (
                         <>
@@ -199,9 +253,15 @@ export function CourseRecordBoard({ courses }: { courses: CourseRecordBoardRow[]
                         "No verified result"
                       )}
                     </td>
-                    <td className="tabular-nums">{course.recordCount}</td>
-                    <td className="tabular-nums">{course.teeSetCount}</td>
-                    <td className="tabular-nums">{course.attemptCount}</td>
+                    <td data-column="boards" className="tabular-nums">
+                      {course.recordCount}
+                    </td>
+                    <td data-column="tees" className="tabular-nums">
+                      {course.teeSetCount}
+                    </td>
+                    <td data-column="submissions" className="tabular-nums">
+                      {course.attemptCount}
+                    </td>
                     <td>
                       <BoardActions course={course} />
                     </td>
@@ -215,12 +275,18 @@ export function CourseRecordBoard({ courses }: { courses: CourseRecordBoardRow[]
               <article key={course.id} className="rounded-xl border bg-card p-4">
                 <h2 className="break-words text-lg font-semibold">{course.name}</h2>
                 <p className="text-sm text-muted-foreground">
-                  {course.country ?? "Country not recorded"} · {course.recordCount} boards
+                  {course.country ?? "Country not recorded"}{" "}
+                  <span data-column="boards">· {course.recordCount} boards</span>
                 </p>
                 <p className="mt-3 text-sm">
-                  {course.champion
-                    ? `${course.champion.displayName} · ${course.champion.scoreLabel}`
-                    : "No verified board leader yet"}
+                  {course.champion ? (
+                    <>
+                      <span data-column="leader">{course.champion.displayName} · </span>
+                      {course.champion.scoreLabel}
+                    </>
+                  ) : (
+                    "No verified board leader yet"
+                  )}
                 </p>
                 <details className="mt-2">
                   <summary className="min-h-11 cursor-pointer content-center font-semibold">
@@ -258,9 +324,9 @@ export function CourseRecordBoard({ courses }: { courses: CourseRecordBoardRow[]
                           : "No verified proof"
                       }
                     />
-                    <Fact label="Boards" value={course.recordCount} />
-                    <Fact label="Tee sets" value={course.teeSetCount} />
-                    <Fact label="Submissions" value={course.attemptCount} />
+                    <Fact column="boards" label="Boards" value={course.recordCount} />
+                    <Fact column="tees" label="Tee sets" value={course.teeSetCount} />
+                    <Fact column="submissions" label="Submissions" value={course.attemptCount} />
                   </dl>
                   <BoardActions course={course} />
                 </details>
@@ -275,9 +341,17 @@ export function CourseRecordBoard({ courses }: { courses: CourseRecordBoardRow[]
     </section>
   );
 }
-function Fact({ label, value }: { label: string; value: string | number }) {
+function Fact({
+  label,
+  value,
+  column,
+}: {
+  label: string;
+  value: string | number;
+  column?: string;
+}) {
   return (
-    <div>
+    <div data-column={column}>
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="break-words font-medium">{value}</dd>
     </div>
