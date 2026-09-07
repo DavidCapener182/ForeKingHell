@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-458 desktop / 458 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P86 Data notice**, next P87 Offline saved golf. 34 UI entries remain. Continue the UI pass with acceptance gaps retained.
+461 desktop / 461 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P87 Offline saved golf**, next P88 Shared round. 31 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P86 Data notice**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P87 Offline saved golf**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -464,3 +464,7 @@ Resume P85 all3promptsread. Shared WelcomeJourney/WelcomeSkip applied, companion
 ## P85 First-run onboarding UI pass, 7 September
 
 P85-C01–C03 UI implemented on both surfaces. Shared complete six-step evidence checklist, saved current task/resume, unavailable-data recovery and stateful skip feedback. Continue retains real task URLs; review-ready is not described as a completed review. Existing eligibility calculation preserved; measured-evidence defect deferred explicitly. Changed welcome journey/skip, both wrappers and state action; tests/fixtures added. welcome-browser-ready.log terminal PASS13.6s all12 surface/viewport combinations after required synthetic profile fields corrected. Initial three fixture setup failures occurred before navigation. Isolated controls pass all6 including failure and unknown state. welcome-types-fix.log clean; lint passed. Dismissal backend3 unit/1 DB tests pass, no unrelated account changes.390 companion screenshot inspected. No full acceptance claimed. Resume P86 privacy page then P87; preserve all concurrent dirty work.
+
+## P86 Data notice UI pass, 7 September
+
+P86-C01–C03 UI implemented on both viewports. One semantic title/right action, full factual sections and exact data/sharing/privacy/danger settings links with practical scope descriptions. Removed ordinary developer environment setup and public-launch checklist; did not invent retention or legal promises. src/app/privacy/page.tsx and ui-upgrade-privacy.spec.ts changed. privacy-browser-final.log PASS2.1s all6 required sizes, full essential sections, keyboard focus,44px links, anchors/no overflow/page errors. Initial test expected legacy brand, corrected to actual LM World Tour. Types/lint clean;390 full-page capture inspected. Policy approval/signed-in browser/native accessibility and actual destructive outcomes remain outstanding. Other agent export-pagination-db.log1PASS confirms5000+1 owned rows with continuation; no whole-export transaction promise. Resume P87, coordinate offline files and preserve renderers/local conflict process.

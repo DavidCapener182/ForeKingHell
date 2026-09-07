@@ -155,3 +155,6 @@ Checked official headers/sections, inputs/select/textarea/buttons and alerts/not
 
 ## P85 Onboarding
 Previously checked official headers, progress indicators, section headers and buttons. Paid advanced examples unavailable. Accessible local alternative: native progress with saved evidence count, semantic ordered checklist, actual current task links and native stateful skip form with inline recovery. Local exports typechecked; no paid installation claimed.
+
+## P86 Data notice
+Previously checked official page/section headers, content dividers, badges and buttons. Paid advanced examples unavailable. Accessible alternative: single semantic header, native anchor navigation and full text sections with labelled practical-control articles. Existing local exports pass TypeScript; no paid source installed.

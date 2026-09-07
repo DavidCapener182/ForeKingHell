@@ -1,113 +1,135 @@
 import Link from "next/link";
-import { ArrowLeft, Database, LockKeyhole, MessageCircle, Share2, ShieldCheck } from "lucide-react";
-
-import {
-  MobileAccordionSection,
-  PageHeader,
-  PageShell,
-  SectionHeader,
-  StatusPill,
-} from "@/components/premium";
+import { PageHeader, PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { BRAND_NAME } from "@/lib/brand";
-
-const privacySections = [
+const sections = [
   {
+    id: "stored-data",
     title: "Data stored",
-    icon: Database,
-    body: `${BRAND_NAME} stores your profile, preferences, imported CSV files, raw CSV rows, normalized shots, sessions, rounds, courses you create, equipment history, achievements, and coaching outputs in the configured Supabase Postgres database.`,
+    body: `${BRAND_NAME} stores your profile and preferences, imported CSV files and original rows, processed shots, sessions, rounds, courses you create, equipment history, achievements and coaching outputs. These records support your golf history and the app’s analysis.`,
   },
   {
-    title: "Account scope",
-    icon: LockKeyhole,
-    body: "Runtime reads and writes are scoped to your Supabase Auth user. Collaboration links create role-based memberships, and private share links expose only the resource named in the link.",
+    id: "account-scope",
+    title: "Account scope and sharing",
+    body: "Account access is tied to your sign-in identity. Collaboration invitations create memberships with assigned roles. Private share links provide access to the resource named in the link. Review visibility and sharing settings before publishing a profile or sharing a link.",
   },
   {
-    title: "AI coaching",
-    icon: MessageCircle,
-    body: "OpenAI-backed coach and Data Chat responses use question-relevant, SQL-retrieved golf evidence from your account. Prompts may include measured shot, round, bag, speed, practice or record summaries when that subject is requested. Free-text notes, challenge descriptions and challenge rules are omitted from Data Chat prompts; AI responses cannot edit your data. When you choose scorecard extraction, the image is magic-byte validated, limited to 5 MB and 40 million pixels, then decoded and re-encoded to strip EXIF, XMP and IPTC metadata before the normalized image is sent to the configured external model. The original raw image is not persisted; the app stores the derived scorecard data and its signed proof hash.",
+    id: "ai-context",
+    title: "AI coaching and Data Chat",
+    body: "AI coaching and Data Chat use golf evidence relevant to your question, such as shot, round, bag, speed, practice or record summaries. Data Chat leaves out free-text notes, challenge descriptions and challenge rules. Its responses explain records and cannot edit your data.",
   },
   {
-    title: "Analytics",
-    icon: ShieldCheck,
-    body: "If NEXT_PUBLIC_PLAUSIBLE_DOMAIN is configured, Plausible records product events such as imports, round creation, AI coach generation, PWA install, and invite acceptance. The app does not send raw shot rows as analytics event properties.",
+    id: "scorecard-images",
+    title: "Scorecard images",
+    body: "When you choose scorecard extraction, the app checks the image format and size, then re-encodes the image to remove embedded metadata before sending it to the external AI service. The original raw image is not persisted; derived scorecard data and its signed proof hash are stored.",
   },
   {
-    title: "Export and deletion",
-    icon: Share2,
-    body: `The settings page separates Golf data reset from permanent account deletion. Golf data reset removes ${BRAND_NAME} golf records while keeping the sign-in identity. Permanent account deletion requires a recent reauthentication, removes the account data, and deletes the linked Supabase Auth identity. Export remains available before either action.`,
+    id: "analytics",
+    title: "Product analytics",
+    body: "Where enabled, Plausible records product events such as imports, round creation, AI coach generation, app installation and invitation acceptance. The app does not send raw shot rows as analytics event properties.",
+  },
+  {
+    id: "data-controls",
+    title: "Export, reset and account deletion",
+    body: `You can export account data before deciding whether to reset or delete it. Golf data reset removes ${BRAND_NAME} golf records while keeping the sign-in identity. Permanent account deletion is a separate operation requiring recent sign-in and explicit confirmation. Follow its result and recovery instructions to confirm completion; opening a settings link does not delete anything.`,
   },
 ];
-
 export default function PrivacyPage() {
   return (
     <PageShell>
-      <Button asChild variant="ghost" className="w-fit px-0">
-        <Link href="/login" prefetch={false}>
-          <ArrowLeft className="size-4" />
-          Sign in
-        </Link>
-      </Button>
-
-      <PageHeader
-        eyebrow={<StatusPill tone="green">Privacy</StatusPill>}
-        title={`${BRAND_NAME} data notice`}
-        description="How the app stores golf data, uses AI context, records analytics events, and lets you export or delete account data."
-      />
-
-      <Card className="premium-card sm:hidden">
-        <CardContent className="space-y-3 p-4">
-          <SectionHeader
-            title="Privacy summary"
-            description="Your golf records are scoped to your account, sharing is role-based, and export/delete controls live in settings."
-          />
-          <Button asChild className="w-full rounded-xl bg-[#111827] text-white">
-            <Link href="/settings" prefetch={false}>
-              Data controls
-            </Link>
+      <div className="grid min-w-0 gap-5 pb-12">
+        <nav aria-label="Data notice navigation" className="flex flex-wrap gap-3">
+          <Button asChild variant="outline">
+            <Link href="/">Product home</Link>
           </Button>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-3 sm:hidden">
-        {privacySections.map((section) => (
-          <MobileAccordionSection key={section.title} title={section.title}>
-            <p className="text-sm leading-6 text-muted-foreground">{section.body}</p>
-          </MobileAccordionSection>
-        ))}
-      </div>
-
-      <div className="hidden gap-4 sm:grid md:grid-cols-2">
-        {privacySections.map((section) => {
-          const Icon = section.icon;
-
-          return (
-            <Card key={section.title} className="premium-card">
-              <CardContent className="space-y-3 p-5">
-                <div className="grid size-10 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
-                  <Icon className="size-5" />
-                </div>
-                <SectionHeader title={section.title} description={section.body} />
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      <Card className="premium-card">
-        <CardContent className="space-y-3 p-5">
-          <SectionHeader
-            title="Public launch gate"
-            description="Before broad public deployment, verify Supabase Auth providers, RLS policies, role-scoped access, export/delete flows, rate limits, and production analytics configuration in the target Supabase project."
-          />
-          <Button asChild className="w-fit rounded-xl bg-[#111827] text-white">
+          <Button asChild variant="ghost">
             <Link href="/login" prefetch={false}>
-              Continue to sign in
+              Sign in
             </Link>
           </Button>
-        </CardContent>
-      </Card>
+        </nav>
+        <PageHeader
+          title={`${BRAND_NAME} data notice`}
+          description="The golf data the app uses, what is shared with AI and analytics, and the controls available to you."
+          actions={
+            <Button asChild>
+              <Link href="/settings?section=privacy" prefetch={false}>
+                Privacy settings
+              </Link>
+            </Button>
+          }
+        />
+        <nav aria-label="On this page" className="flex flex-wrap gap-2 rounded-xl border p-4">
+          {sections.map((s) => (
+            <a
+              key={s.id}
+              href={`#${s.id}`}
+              className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm underline underline-offset-4"
+            >
+              {s.title}
+            </a>
+          ))}
+        </nav>
+        <div className="grid gap-4 md:grid-cols-2">
+          {sections.map((s) => (
+            <section
+              key={s.id}
+              id={s.id}
+              className="scroll-mt-24 rounded-xl border p-5"
+              aria-labelledby={`${s.id}-title`}
+            >
+              <h2 id={`${s.id}-title`} className="text-lg font-semibold">
+                {s.title}
+              </h2>
+              <p className="mt-3 text-base leading-7 text-muted-foreground">{s.body}</p>
+            </section>
+          ))}
+        </div>
+        <section className="grid gap-3 rounded-xl border p-5" aria-labelledby="controls-title">
+          <h2 id="controls-title" className="text-lg font-semibold">
+            Your practical controls
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            These links open the appropriate settings. Sign in when asked; export, reset and
+            deletion each have their own action and result.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <article className="grid content-start gap-3">
+              <h3 className="font-semibold">Export account data</h3>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Choose the data you need and follow any continuation links for larger exports.
+              </p>
+              <Button asChild variant="outline" className="h-auto min-h-11 whitespace-normal">
+                <Link href="/settings?section=data" prefetch={false}>
+                  Review export options
+                </Link>
+              </Button>
+            </article>
+            <article className="grid content-start gap-3">
+              <h3 className="font-semibold">Review shared access</h3>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Inspect memberships and the people with access to shared account data.
+              </p>
+              <Button asChild variant="outline" className="h-auto min-h-11 whitespace-normal">
+                <Link href="/settings?section=sharing" prefetch={false}>
+                  Review shared access
+                </Link>
+              </Button>
+            </article>
+            <article className="grid content-start gap-3">
+              <h3 className="font-semibold">Reset or delete</h3>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Read the scope and confirmation requirements before choosing either action.
+              </p>
+              <Button asChild variant="outline" className="h-auto min-h-11 whitespace-normal">
+                <Link href="/settings?section=danger" prefetch={false}>
+                  Review reset and deletion
+                </Link>
+              </Button>
+            </article>
+          </div>
+        </section>
+      </div>
     </PageShell>
   );
 }
