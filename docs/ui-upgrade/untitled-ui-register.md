@@ -182,3 +182,6 @@ Official Underline tabs reference applies at the existing P57 destination; serve
 
 ## P94 Course tournament alias
 Official Underline tabs reference remains at canonical P60 tournament index. Query/filter preserved with real selected course; no duplicate page or paid source installed.
+
+## P95–P98 tournament aliases
+Reuse the P61 accessible canonical tab composition and official Untitled UI tabs reference already registered there. Redirect routes introduce no separate paid component or duplicate page. Paid entitlement remains unavailable; existing local accessible composition is the recorded alternative.

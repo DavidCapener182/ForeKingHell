@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-481 desktop / 481 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P95 Tournament standings alias**, next P96 Tournament rounds alias. 11 UI entries remain (4 route entries and7 shared rows). Continue the UI pass with acceptance gaps retained.
+485 desktop / 485 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P95–P98 combined browser verification; then shared UI gaps**. 7 UI entries remain. Tournament alias functional assertions passed, but all four tests fail on development Performance.measure negative timestamps; acceptance remains outstanding.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P95 Tournament standings alias**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **G04/G08/G09/G11/G12/G13/G14 final shared UI reconciliation and controls**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -502,3 +502,15 @@ P93-C01 implementedpartial. EncodedrecordId andsharedqueryhelper retain repeated
 ## P94 Course tournament alias UI contract, 7 September
 
 P94-C01 implementedpartial. Sharedqueryhelper preservesfilters, pathcourseId overridesconflictingquery. Browserall12surface/viewports exactcanonicalURL/activepanel/visiblecoursefilter/matchingeventonly/nooverflow passed, overallcourse-tournament-alias-browser-final.logFAILsolely NextPerformance.measure CourseTournamentsPage negative timestamp. SameframeworktimingfamilyasP91; unsuppressed andqueued. EarlierfirsthiddenDesktop-copyassertion corrected tovisiblemobilepresentation. Queryhelper3unitPASS/typesclean. NextP95–P98 retainnamedtabs/query; then7sharedUIrows.
+
+P95-C01 UI alias applied: required tab=board, exact encoded ID/query preserved. Unit checks pass; combined browser evidence pending. Next: P96 Tournament rounds alias.
+
+P96-C01 UI alias applied: required tab=submit, exact encoded ID/query preserved. Unit checks pass; combined browser evidence pending. Next: P97 Tournament rules alias.
+
+P97-C01 UI alias applied: required tab=rules, exact encoded ID/query preserved. Unit checks pass; combined browser evidence pending. Next: P98 Tournament submit alias.
+
+P98-C01 UI alias applied: required tab=submit, exact encoded ID/query preserved. Unit checks pass; combined browser evidence pending. Next: P95–P98 combined browser verification; then shared UI gaps.
+
+### P95–P98 canonical tournament aliases
+
+All four preserve event identity and repeated source query while forcing their documented tab. Combined browser exercises both surfaces at all six sizes; exact destination, selected tab, query, 390 reload/Back, no overflow and no entry mutation assertions pass. Final page-error assertions fail with Next development Performance.measure negative timestamps. No browser pass claimed. Seven canonical query unit tests pass. Continue shared UI controls, then investigate the timing error in an isolated production runtime.
