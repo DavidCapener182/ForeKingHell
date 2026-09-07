@@ -32,5 +32,5 @@ export default async function QuickRangePage({
 
   const { QuickRangeWorkbenchSession } =
     await import("@/app/practice/quick-range/quick-range-workbench-session");
-  return <QuickRangeWorkbenchSession focus={focus} />;
+  return <QuickRangeWorkbenchSession focus={focus} accountId={userId} initialClubType={params?.club} />;
 }

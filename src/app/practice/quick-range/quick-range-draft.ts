@@ -29,6 +29,8 @@ export type QuickRangeRecord = {
 };
 export type QuickRangeDraft = Omit<QuickRangeRecord, "id" | "finishedAt"> & {
   state: "ready" | "active" | "paused" | "finished";
+  blockIndex?: number;
+  completedBlocks?: number[];
   activityId?: string;
   finishedAt?: string | null;
   history?: QuickRangeRecord[];
@@ -97,6 +99,20 @@ export function parseQuickRangeDraft(value: unknown): QuickRangeDraft | null {
     ...parsed,
     state: item.state,
     history,
+    ...(Number.isInteger(item.blockIndex) && item.blockIndex! >= 0 && item.blockIndex! <= 2
+      ? { blockIndex: item.blockIndex }
+      : {}),
+    ...(Array.isArray(item.completedBlocks)
+      ? {
+          completedBlocks: [
+            ...new Set(
+              item.completedBlocks.filter(
+                (index) => Number.isInteger(index) && index >= 0 && index <= 2,
+              ),
+            ),
+          ],
+        }
+      : {}),
     activityId: typeof item.activityId === "string" ? item.activityId.slice(0, 100) : undefined,
     finishedAt: date(item.finishedAt),
     runningSince: item.state === "active" ? (date(item.runningSince) ?? undefined) : undefined,

@@ -4,10 +4,10 @@ import Link from "next/link";
 import { formatCompanionClubType } from "@/lib/club-format";
 import { useEffect, useState } from "react";
 import { Check, ChevronDown, ChevronLeft, Minus, Plus, Play, Upload } from "lucide-react";
-import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
+import { MobileSection } from "@/components/app/mobile-screen";
 import { MobileSegmentedControl } from "@/components/app/mobile-controls";
 import { useMobileActivity, activityHaptic } from "@/components/app/use-mobile-activity";
-import { MobileAppShell } from "@/components/mobile-sports";
+import { PageHeader } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,6 +57,18 @@ export function QuickRangeCompanionSession({
   const [review, setReview] = useState<QuickRangeRecord | null>(null);
   const [ready, setReady] = useState(false);
   const [stored, setStored] = useState(true);
+  const [outdoor, setOutdoor] = useState(false);
+  const [keepAwake, setKeepAwake] = useState(true);
+  useEffect(() => {
+    if (!outdoor) return;
+    const root = document.documentElement;
+    const previous = root.dataset.theme;
+    root.dataset.theme = "outdoor";
+    return () => {
+      if (previous) root.dataset.theme = previous;
+      else delete root.dataset.theme;
+    };
+  }, [outdoor]);
   const [clockNow, setClockNow] = useState<number | null>(null);
   const key = `fkh:quick-range:${accountId}`;
   const patch = (value: Partial<Draft>) => {
@@ -68,17 +80,8 @@ export function QuickRangeCompanionSession({
       try {
         const value = parseQuickRangeDraft(JSON.parse(localStorage.getItem(key) ?? "null"));
         if (value) {
-          if (!initialClubType || ["active", "paused"].includes(value.state)) {
-            // Legacy drafts have no clock anchor; keep their known duration and start tracking now.
-            setDraft(updateQuickRangeDraft(value, {}, new Date().toISOString()));
-          } else {
-            const preserved = updateQuickRangeDraft(
-              value,
-              { state: "ready" },
-              new Date().toISOString(),
-            );
-            setDraft((current) => ({ ...current, history: preserved.history }));
-          }
+          // An existing account draft wins; starting another activity is explicit.
+          setDraft(updateQuickRangeDraft(value, {}, new Date().toISOString()));
         }
       } catch {
         /* A missing or old draft starts with the supplied focus. */
@@ -112,7 +115,7 @@ export function QuickRangeCompanionSession({
       window.removeEventListener("pageshow", tick);
     };
   }, [draft.state]);
-  useMobileActivity(draft.state === "active");
+  useMobileActivity(draft.state === "active" && keepAwake);
   const active = draft.state === "active";
   const finished = draft.state === "finished";
   const elapsed = quickRangeElapsed(draft, clockNow ?? Date.parse(draft.runningSince ?? ""));
@@ -124,14 +127,27 @@ export function QuickRangeCompanionSession({
       labels: [...current.labels, label],
     }));
   }
-  const block =
+  const inferredBlock =
     draft.count < Math.round(draft.balls / 4)
-      ? "Calibrate"
+      ? 0
       : draft.count < Math.round((draft.balls * 3) / 4)
-        ? "Build the pattern"
-        : "Pressure set";
+        ? 1
+        : 2;
+  const blockIndex = draft.blockIndex ?? inferredBlock;
+  const blockNames = ["Calibrate", "Build the pattern", "Pressure set"];
+  const block = blockNames[blockIndex];
+  const completed = draft.completedBlocks ?? [];
+  function nextBlock() {
+    patch({
+      completedBlocks: [...new Set([...completed, blockIndex])],
+      ...(blockIndex < 2 ? { blockIndex: blockIndex + 1 } : { state: "finished" }),
+    });
+  }
   return (
-    <MobileAppShell className="gap-6" data-quick-range-mobile>
+    <section
+      className="grid min-w-0 gap-4 pb-[max(1rem,env(safe-area-inset-bottom))] [&>*]:min-w-0"
+      data-quick-range-mobile
+    >
       {active ? (
         <div className="flex items-center justify-between">
           <Button variant="ghost" onClick={() => patch({ state: "paused" })} className="min-h-11">
@@ -146,17 +162,44 @@ export function QuickRangeCompanionSession({
           </span>
         </div>
       ) : (
-        <MobileLargeTitle
-          title={finished ? "Practice complete" : "Quick Range"}
-          detail={
+        <PageHeader
+          title={finished ? "Guidance complete" : "Quick Range"}
+          description={
             finished
               ? stored
-                ? "Your activity is saved on this iPhone."
+                ? "Your activity is saved on this device."
                 : "Keep this page open to retain your activity."
               : "One club. One focus."
           }
         />
       )}
+      <details className="rounded-lg border px-3">
+        <summary className="flex min-h-11 cursor-pointer items-center">
+          Session options and draft status
+        </summary>
+        <div className="flex flex-wrap gap-2 pb-3">
+          <Button asChild variant="outline">
+            <Link href="/practice">Back to Practice</Link>
+          </Button>
+          <Button variant="outline" aria-pressed={outdoor} onClick={() => setOutdoor(!outdoor)}>
+            Outdoor mode
+          </Button>
+          <Button
+            variant="outline"
+            aria-pressed={keepAwake}
+            onClick={() => setKeepAwake(!keepAwake)}
+          >
+            Request screen awake
+          </Button>
+        </div>
+        <p className="pb-3 text-sm text-muted-foreground" role="status">
+          {!ready
+            ? "Loading saved activity…"
+            : stored
+              ? "Draft saved on this device. Manual activity is not measured performance."
+              : "Storage unavailable. Keep this page open."}
+        </p>
+      </details>
       {!active && !finished ? (
         <>
           <div className={styles.setup}>
@@ -224,6 +267,31 @@ export function QuickRangeCompanionSession({
               {draft.target ? ` · ${draft.target}` : ""}
             </span>
           </div>
+          <details className="rounded-lg border px-3">
+            <summary className="flex min-h-11 cursor-pointer items-center">
+              Block {blockIndex + 1} of 3 · {block} · View all steps
+            </summary>
+            <ol aria-label="Guided blocks" className="grid gap-2 sm:grid-cols-3">
+              {blockNames.map((name, index) => (
+                <li
+                  key={name}
+                  aria-current={index === blockIndex ? "step" : undefined}
+                  className="rounded-lg border p-3"
+                >
+                  <span className="font-semibold">
+                    {index + 1}. {name}
+                  </span>
+                  <p className="text-sm">
+                    {index === blockIndex
+                      ? "Current block"
+                      : completed.includes(index)
+                        ? "Guidance completed"
+                        : "Pending"}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          </details>
           <p className="text-lg leading-relaxed">
             {block === "Calibrate"
               ? "Start at playing speed. Find your usual strike and carry window."
@@ -282,6 +350,21 @@ export function QuickRangeCompanionSession({
               maxLength={500}
             />
           </details>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              disabled={blockIndex === 0}
+              onClick={() => patch({ blockIndex: blockIndex - 1 })}
+            >
+              Previous block
+            </Button>
+            <Button variant="outline" onClick={() => patch({ state: "paused" })}>
+              Pause session
+            </Button>
+            <Button onClick={nextBlock}>
+              {blockIndex === 2 ? "Complete final block" : "Complete block and next"}
+            </Button>
+          </div>
           <Button
             onClick={() => patch({ state: "finished" })}
             className="min-h-14 rounded-2xl text-base"
@@ -321,7 +404,7 @@ export function QuickRangeCompanionSession({
               placeholder="What worked? What will you repeat?"
             />
             <p className="text-xs text-muted-foreground" role="status">
-              {stored ? "Saved on this iPhone" : "Storage unavailable. Keep this page open."}
+              {stored ? "Saved on this device" : "Storage unavailable. Keep this page open."}
             </p>
           </MobileSection>
           <Button asChild variant="outline" className="min-h-12">
@@ -329,7 +412,17 @@ export function QuickRangeCompanionSession({
           </Button>
           <Button
             variant="ghost"
-            onClick={() => patch({ state: "ready", count: 0, labels: [], elapsed: 0, notes: "" })}
+            onClick={() =>
+              patch({
+                state: "ready",
+                count: 0,
+                labels: [],
+                elapsed: 0,
+                notes: "",
+                blockIndex: 0,
+                completedBlocks: [],
+              })
+            }
           >
             New Quick Range
           </Button>
@@ -358,7 +451,7 @@ export function QuickRangeCompanionSession({
             </Button>
           ) : null}
           <p className="mobile-type-footnote text-muted-foreground">
-            Up to 50 activities saved on this iPhone.
+            Up to 50 activities saved on this device.
           </p>
         </MobileSection>
       ) : null}
@@ -375,7 +468,7 @@ export function QuickRangeCompanionSession({
                 <div className="grid gap-1">
                   <DrawerTitle>{review.focus}</DrawerTitle>
                   <DrawerDescription>
-                    {review.club} · {stored ? "Saved on this iPhone" : "Not saved"}
+                    {review.club} · {stored ? "Saved on this device" : "Not saved"}
                   </DrawerDescription>
                 </div>
                 <DrawerClose asChild>
@@ -413,6 +506,6 @@ export function QuickRangeCompanionSession({
           Storage unavailable. Keep this page open to retain your session.
         </p>
       ) : null}
-    </MobileAppShell>
+    </section>
   );
 }

@@ -19,14 +19,22 @@ import {
 
 export async function generatePracticePlanAction(options: GeneratePracticePlanOptions) {
   const userId = await requireCurrentUserId();
-  const context = await getPracticePlannerContext(userId);
+  const context = await getPracticePlannerContext(userId, {
+    sourceSessionId: options.sourceSessionId,
+  });
 
   return generatePracticePlan(context, options);
 }
 
-export async function savePracticePlanAction(plan: PracticePlan) {
+export async function savePracticePlanAction(
+  plan: PracticePlan,
+  context: { goalId?: string; creationId?: string } = {},
+) {
   const userId = await requireCurrentUserId();
-  const planId = await savePracticePlanForUser(userId, plan);
+  const planId = await savePracticePlanForUser(userId, plan, {
+    goalId: context.goalId,
+    creationId: context.creationId,
+  });
 
   revalidatePracticePlannerSurfaces();
   recordProductWorkflowEvent("practice_plan_saved", {
@@ -37,11 +45,17 @@ export async function savePracticePlanAction(plan: PracticePlan) {
   return { planId, latestSessionReview: null };
 }
 
-export async function saveAndStartPracticePlanAction(plan: PracticePlan) {
+export async function saveAndStartPracticePlanAction(
+  plan: PracticePlan,
+  context: { goalId?: string; creationId?: string } = {},
+) {
   const userId = await requireCurrentUserId();
-  const planId = await savePracticePlanForUser(userId, plan);
+  const planId = await savePracticePlanForUser(userId, plan, {
+    start: true,
+    goalId: context.goalId,
+    creationId: context.creationId,
+  });
 
-  await updatePracticePlanStatusForUser(userId, planId, "awaiting_import");
   revalidatePracticePlannerSurfaces({ includePractice: false });
   recordProductWorkflowEvent("practice_plan_started", {
     durationMinutes: plan.estimatedTimeMinutes,
@@ -126,6 +140,7 @@ function revalidatePracticePlannerSurfaces({ includePractice = true } = {}) {
   revalidatePath("/dashboard");
   revalidatePath("/today");
   revalidatePath("/progress");
+  revalidatePath("/goals");
   revalidatePath("/stats/training-over-time");
   revalidatePath("/coach");
   revalidatePath("/achievements");

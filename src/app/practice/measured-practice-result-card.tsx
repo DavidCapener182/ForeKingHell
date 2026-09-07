@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import type { PracticePlan, SavedPracticePlan } from "@/lib/practice-planner";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardAction } from "@/components/ui/card";
@@ -72,7 +73,7 @@ export function MeasuredPracticeResultCard({
           />
           {sessionCount > 0 ? (
             <IOSListRow
-              label="Today's uploads"
+              label="Practice-day uploads"
               value={sessionCount}
               detail={`${rawShotCount} raw shots${
                 excludedShotCount > 0 ? ` · ${excludedShotCount} excluded` : ""
@@ -97,6 +98,24 @@ export function MeasuredPracticeResultCard({
             ))}
           <IOSListRow label="Next action" detail={result.nextAction} />
         </IOSGroupedList>
+        {comparison ? (
+          <nav aria-label="Measured practice sources" className="flex flex-wrap gap-3">
+            {[
+              ...new Set(
+                importedSession?.sourceSessionIds ??
+                  (comparison.sourceSessionId ? [comparison.sourceSessionId] : []),
+              ),
+            ].map((id, index) => (
+              <Link
+                key={id}
+                href={`/sessions/${id}`}
+                className="inline-flex min-h-11 items-center underline"
+              >
+                View source session {index + 1}
+              </Link>
+            ))}
+          </nav>
+        ) : null}
       </CardContent>
     </Card>
   );

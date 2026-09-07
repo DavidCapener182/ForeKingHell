@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/premium";
+import { MeasuredPracticeResultCard } from "./measured-practice-result-card";
 import { MobilePracticeImportReview } from "./mobile-practice-import-review";
 import type { PracticeImportOption, SavedPracticePlan } from "@/lib/practice-planner";
 import { formatClubType } from "@/lib/club-format";
-import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
+import { MobileSection } from "@/components/app/mobile-screen";
 import { MobileGroupedList, MobileListRow } from "@/components/app/mobile-primitives";
 import { Button } from "@/components/ui/button";
 
@@ -16,10 +18,9 @@ export function MobileSavedPracticeReview({
 }) {
   return (
     <div className="grid gap-6" data-saved-practice-review>
-      <MobileLargeTitle
+      <PageHeader
         title={plan.title}
-        eyebrow="Practice review"
-        detail={`${plan.timeMinutes} min${plan.totalBalls ? ` · ${plan.totalBalls} planned balls` : ""}`}
+        description={`${plan.timeMinutes} min${plan.totalBalls ? ` · ${plan.totalBalls} planned balls` : ""}`}
       />
       <MobileSection
         title={
@@ -48,14 +49,33 @@ export function MobileSavedPracticeReview({
           </Button>
         ) : null}
       </MobileSection>
+      {plan.result ? (
+        <MeasuredPracticeResultCard result={plan.result} blocks={plan.blocks} />
+      ) : null}
       <MobileSection title="Planned blocks">
         <MobileGroupedList>
           {plan.blocks.map((block) => (
-            <MobileListRow
-              key={block.dbId}
-              label={block.title}
-              detail={`${block.clubs.map(formatClubType).join(", ")}${block.ballCount ? ` · ${block.ballCount} balls` : ""}`}
-            />
+            <div key={block.dbId}>
+              <MobileListRow
+                label={block.title}
+                detail={`${block.clubs.map(formatClubType).join(", ")}${block.ballCount ? ` · ${block.ballCount} balls` : ""}`}
+              />
+              <details className="px-4 pb-4">
+                <summary className="flex min-h-11 cursor-pointer items-center">
+                  Drill, target and record
+                </summary>
+                <dl className="grid gap-2 break-words text-sm">
+                  <dt className="font-semibold">Purpose</dt>
+                  <dd>{block.purpose}</dd>
+                  <dt className="font-semibold">Drill</dt>
+                  <dd>{block.drill}</dd>
+                  <dt className="font-semibold">Success target</dt>
+                  <dd>{block.successTarget}</dd>
+                  <dt className="font-semibold">Record</dt>
+                  <dd>{block.recordPrompt}</dd>
+                </dl>
+              </details>
+            </div>
           ))}
         </MobileGroupedList>
       </MobileSection>
