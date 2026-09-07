@@ -35,6 +35,10 @@ test("System checks preserve unknown health and dated recorded failures across b
     const historic = (
       await db`insert into fkh_admin_audit_log(actor_user_id,action,target_type,target_id,created_at,metadata_json) values(${users[0]},'system_snapshot_checked','system_snapshot','stored-operational-records','2026-01-01',${db.json({ scope: "stored operational records", operations: { billingFailures: 7 }, liveProvidersChecked: false })}) returning id`
     )[0].id;
+    await db`insert into fkh_admin_audit_log(actor_user_id,action,target_type,target_id,created_at,metadata_json)
+      select ${users[0]}, 'system_snapshot_checked', 'system_snapshot', 'stored-operational-records',
+      '2090-01-01'::timestamptz, '{"scope":"stored operational records","operations":{"billingFailures":0},"liveProvidersChecked":false}'::jsonb
+      from generate_series(1,82)`;
     const enc = (v: unknown) => Buffer.from(JSON.stringify(v)).toString("base64url");
     await context.clearCookies();
     await context.addCookies([
@@ -127,7 +131,7 @@ test("System checks preserve unknown health and dated recorded failures across b
         if (surface === "workbench" && width === 1440) {
           expect(
             await db`select id from fkh_admin_audit_log where actor_user_id=${users[0]}`,
-          ).toHaveLength(1);
+          ).toHaveLength(83);
           await page.getByRole("button", { name: "Refresh recorded checks", exact: true }).click();
           await refresh
             .getByRole("button", { name: "Confirm recorded-check refresh", exact: true })
@@ -138,14 +142,29 @@ test("System checks preserve unknown health and dated recorded failures across b
           ).toBeVisible();
           expect(
             await db`select id from fkh_admin_audit_log where actor_user_id=${users[0]}`,
-          ).toHaveLength(2);
+          ).toHaveLength(84);
         }
+        await search.fill("Billing");
+        await expect(page).toHaveURL(/healthQuery=Billing/);
         const history = page.getByRole("region", { name: "Recorded check history", exact: true });
+        await expect(history).toContainText("Page 1 of 5");
+        for (let number = 2; number <= 5; number++) {
+          await history.getByRole("link", { name: "Older checks", exact: true }).click();
+          await expect(history).toContainText(`Page ${number} of 5`);
+          await expect(page).toHaveURL(new RegExp(`checkPage=${number}`));
+          await expect(search).toHaveValue("Billing");
+        }
+        await page.reload();
+        await expect(history).toContainText("Page 5 of 5");
+        await expect(search).toHaveValue("Billing");
         const old = history.locator("details").filter({ hasText: historic });
         await old.locator("summary").click();
         await expect(old).toContainText('"billingFailures": 7');
         await expect(old).toContainText('"liveProvidersChecked": false');
         await old.locator("summary").click();
+        await history.getByRole("link", { name: "Newer checks", exact: true }).click();
+        await expect(history).toContainText("Page 4 of 5");
+        await expect(search).toHaveValue("Billing");
         await expect(
           page.locator(
             '[data-slot="drawer-content"], [data-slot="sheet-content"], [data-slot="drawer-overlay"], [data-slot="sheet-overlay"]',
@@ -159,7 +178,7 @@ test("System checks preserve unknown health and dated recorded failures across b
       }
     expect(
       await db`select id from fkh_admin_audit_log where actor_user_id=${users[0]}`,
-    ).toHaveLength(2);
+    ).toHaveLength(84);
     expect(errors).toEqual([]);
   } finally {
     if (users.length) {

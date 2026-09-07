@@ -1,3 +1,4 @@
+import { AdminCheckHistoryPages } from "@/app/admin/admin-check-history-pages";
 import { AdminNav, formatDateTime } from "@/app/admin/admin-components";
 import { AdminRetryButton } from "@/app/admin/admin-retry-button";
 import { AdminSystemRegister } from "@/app/admin/admin-system-register";
@@ -6,10 +7,16 @@ import { PageHeader, PageShell } from "@/components/premium";
 import { getAdminOperationsSnapshot } from "@/lib/admin";
 import { getAdminSystemCheckHistory } from "@/lib/admin-system-checks";
 export const dynamic = "force-dynamic";
-export default async function AdminSystemChecksPage() {
+export default async function AdminSystemChecksPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const query = await searchParams;
+  const requestedPage = Array.isArray(query.checkPage) ? query.checkPage[0] : query.checkPage;
   const [operations, history] = await Promise.all([
     getAdminOperationsSnapshot(),
-    getAdminSystemCheckHistory(),
+    getAdminSystemCheckHistory(requestedPage),
   ]);
   const rows = buildSystemCheckRows(operations);
   const health = buildHealthRows(operations);
@@ -65,17 +72,18 @@ export default async function AdminSystemChecksPage() {
         >
           <h2 className="text-xl font-semibold">Recorded check history</h2>
           <p className="text-sm">
-            Latest 80 recorded-check snapshots, newest first. Each entry preserves its own counts; a
-            later refresh does not erase an earlier failure. Live provider checks are not performed.
+            {history.total.toLocaleString("en-GB")} recorded-check snapshots, newest first. Each
+            entry preserves its own counts; a later refresh does not erase an earlier failure. Live
+            provider checks are not performed.
           </p>
-          {!history.length ? (
+          {!history.records.length ? (
             <p>
               No recorded-check snapshots yet. Refresh recorded checks to save the first dated
               result.
             </p>
           ) : (
             <ol className="grid gap-3">
-              {history.map((record) => (
+              {history.records.map((record) => (
                 <li key={record.id}>
                   <details className="rounded-lg border p-4">
                     <summary className="min-h-11 cursor-pointer break-words font-medium">
@@ -109,6 +117,7 @@ export default async function AdminSystemChecksPage() {
               ))}
             </ol>
           )}
+          <AdminCheckHistoryPages page={history.page} pages={history.pages} />
         </section>
       </div>
     </PageShell>
