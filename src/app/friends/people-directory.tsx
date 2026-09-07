@@ -1,4 +1,5 @@
 import Link from "next/link";
+import boardStyles from "@/app/course-records/course-record-board.module.css";
 import { Search, Users } from "lucide-react";
 
 import { PeopleActionMenu, type PeopleDirectoryStatus } from "@/app/friends/friend-action-menu";
@@ -71,28 +72,33 @@ export function PeopleDirectory({
 
   return (
     <section className="grid gap-4" aria-labelledby="people-directory-heading">
-      {activeTab === "discover" ? (
+      <>
         <form
           id="find-friends"
           className="grid gap-2 rounded-xl border bg-card p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
           action="/friends"
         >
-          <input type="hidden" name="tab" value="discover" />
+          <input type="hidden" name="tab" value={activeTab} />
           <Input
             name="q"
             aria-label="Search golfers by username or name"
             defaultValue={query}
             placeholder="Search by username or name"
-            className="h-10 bg-background"
+            className="min-h-11 bg-background"
           />
           <Button type="submit">
             <Search className="size-4" />
             Search
           </Button>
         </form>
-      ) : null}
+      </>
 
-      <div className="flex items-end justify-between gap-3">
+      {query ? (
+        <Button asChild variant="outline" className="justify-self-start">
+          <Link href={`/friends?tab=${activeTab}`}>Clear search: {query}</Link>
+        </Button>
+      ) : null}
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="people-directory-heading" className="text-lg font-semibold">
             {directoryTitle(activeTab, query)}
@@ -104,7 +110,7 @@ export function PeopleDirectory({
         </span>
       </div>
 
-      <div className="hidden min-[1024px]:block">
+      <div className={boardStyles.desktop}>
         <DataTableFrame
           mainTable
           mainTableId="people-directory"
@@ -160,7 +166,7 @@ export function PeopleDirectory({
           </Table>
         </DataTableFrame>
       </div>
-      <div className="min-w-0 min-[1024px]:hidden">{mobile}</div>
+      <div className={boardStyles.mobile}>{mobile}</div>
     </section>
   );
 }

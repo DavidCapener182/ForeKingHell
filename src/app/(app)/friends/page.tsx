@@ -1,12 +1,9 @@
 import Link from "next/link";
-import { Check } from "lucide-react";
 
 import { FriendInviteDialog } from "@/app/friends/friend-invite-dialog";
 import { FriendsTabs, type FriendsTab } from "@/app/friends/friends-tabs";
 import { PeopleDirectory, type PeopleDirectoryRow } from "@/app/friends/people-directory";
-import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import { PageShell } from "@/components/premium";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { getFriendsPageData, type SocialProfileSummary } from "@/lib/social";
 import { getSiteOrigin } from "@/lib/site-origin";
@@ -43,8 +40,8 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
 
   return (
     <PageShell>
-      <DesktopWorkbenchLayout scope="friends">
-        <div className="hidden items-center justify-end gap-3 sm:flex">
+      <div className="grid min-w-0 gap-4" data-friends-workspace>
+        <div className="flex flex-wrap items-center justify-end gap-3">
           <Button asChild variant="outline">
             <Link href="/profile" prefetch={false}>
               @{data.profile.username}
@@ -65,17 +62,33 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
           <FriendInviteDialog username={data.profile.username} profileUrl={profileUrl} />
         </header>
 
-        {params?.request || params?.friend || params?.user ? (
-          <Alert>
-            <Check className="size-4" />
-            <AlertTitle>Directory updated</AlertTitle>
-            <AlertDescription>Your people and connection states are up to date.</AlertDescription>
-          </Alert>
-        ) : null}
-
-        <FriendsTabs activeTab={activeTab} />
-        <PeopleDirectory rows={rows} query={query} activeTab={activeTab} />
-      </DesktopWorkbenchLayout>
+        <FriendsTabs
+          activeTab={activeTab}
+          counts={{
+            friends: data.friends.length,
+            incoming: data.incomingRequests.length,
+            sent: data.outgoingRequests.length,
+            discover: new Set(
+              [...data.suggestedProfiles, ...data.searchResults].map((profile) => profile.userId),
+            ).size,
+            blocked: data.blockedUsers.length,
+          }}
+        >
+          <PeopleDirectory
+            rows={
+              activeTab === "discover"
+                ? rows
+                : rows.filter((row) =>
+                    `${row.profile.displayName} ${row.profile.username}`
+                      .toLowerCase()
+                      .includes(query.toLowerCase()),
+                  )
+            }
+            query={query}
+            activeTab={activeTab}
+          />
+        </FriendsTabs>
+      </div>
     </PageShell>
   );
 }
@@ -138,7 +151,7 @@ function directoryRow(
 }
 
 function parseFriendsTab(value: string | undefined, query: string): FriendsTab {
-  if (query) return "discover";
+  if (!value && query) return "discover";
   return value === "incoming" || value === "sent" || value === "discover" || value === "blocked"
     ? value
     : "friends";

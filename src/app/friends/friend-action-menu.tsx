@@ -1,27 +1,10 @@
 "use client";
-
-import { useRef, useState } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, MoreHorizontal, UserMinus, UserPlus, UserRound, UsersRound, X } from "lucide-react";
-
-import {
-  acceptFriendRequestAction,
-  cancelFriendRequestAction,
-  declineFriendRequestAction,
-  removeFriendAction,
-  sendFriendRequestAction,
-  unblockUserAction,
-} from "@/app/friends/actions";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { useRouter } from "next/navigation";
+import { MoreHorizontal } from "lucide-react";
+import { relationshipFormAction } from "@/app/friends/actions";
+import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
+import { useClientReady } from "@/hooks/use-client-ready";
 export type PeopleDirectoryStatus =
   | "friend"
   | "incoming"
@@ -39,9 +22,27 @@ export type PeopleDirectoryStatus =
   | "suggested"
   | "search"
   | "blocked";
-
-type Confirmation = "decline" | "cancel" | "remove" | null;
-
+type Operation = "request" | "accept" | "decline" | "cancel" | "remove" | "block" | "unblock";
+const labels: Record<Operation, string> = {
+  request: "Send friend request",
+  accept: "Accept request",
+  decline: "Decline request",
+  cancel: "Cancel request",
+  remove: "Remove friend",
+  block: "Block golfer",
+  unblock: "Unblock golfer",
+};
+const consequences: Record<Operation, string> = {
+  request: "This sends a friend request. You become friends only when it is accepted.",
+  accept:
+    "Accepting adds this golfer to your friends. Friend-scoped visibility follows your existing privacy settings.",
+  decline: "This declines the incoming request without blocking the golfer.",
+  cancel: "This cancels your pending request. It does not block the golfer.",
+  remove: "This removes your friendship and access granted only through that friendship.",
+  block:
+    "This blocks the golfer and removes the connection and pending requests under your existing privacy rules.",
+  unblock: "This removes the block. It does not automatically restore your friendship.",
+};
 export function PeopleActionMenu({
   userId,
   username,
@@ -49,7 +50,6 @@ export function PeopleActionMenu({
   status,
   relationship,
   requestId,
-  returnHref,
 }: {
   userId: string;
   username: string;
@@ -59,174 +59,141 @@ export function PeopleActionMenu({
   requestId?: string;
   returnHref: string;
 }) {
-  const directActionRef = useRef<HTMLFormElement>(null);
-  const [confirmation, setConfirmation] = useState<Confirmation>(null);
-  const effectiveStatus = status === "search" ? relationship : status;
-  const directAction = getDirectAction(effectiveStatus, requestId);
-  const confirmationCopy = getConfirmationCopy(confirmation, displayName);
-
+  const ready = useClientReady();
+  const router = useRouter();
+  const [operation, setOperation] = useState<Operation | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const busy = useRef(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const effective = status === "search" || status === "suggested" ? relationship : status;
+  const operations: Operation[] =
+    effective === "friend"
+      ? ["remove", "block"]
+      : effective === "incoming"
+        ? requestId
+          ? ["accept", "decline", "block"]
+          : ["block"]
+        : effective === "outgoing"
+          ? requestId
+            ? ["cancel", "block"]
+            : ["block"]
+          : effective === "blocked"
+            ? ["unblock"]
+            : effective === "self"
+              ? []
+              : ["request", "block"];
+  function close() {
+    if (pending) return;
+    setOperation(null);
+    setTimeout(() => trigger.current?.focus(), 0);
+  }
   return (
     <>
-      {directAction ? (
-        <form ref={directActionRef} action={directAction.action} className="hidden">
-          <input type="hidden" name={directAction.field} value={directAction.value} />
-          <input type="hidden" name="next" value={returnHref} />
-        </form>
-      ) : null}
-
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${displayName}`}>
+          <Button
+            ref={trigger}
+            disabled={!ready || pending}
+            variant="ghost"
+            size="icon"
+            className="size-11"
+            aria-label={`Actions for ${displayName}`}
+          >
             <MoreHorizontal className="size-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuLabel>{menuLabel(effectiveStatus)}</DropdownMenuLabel>
+        <DropdownMenuContent align="end" className="max-w-[calc(100vw-2rem)]">
+          <DropdownMenuLabel className="max-w-64 whitespace-normal break-words">
+            {displayName}
+          </DropdownMenuLabel>
           <DropdownMenuSeparator />
-
-          {effectiveStatus !== "blocked" ? (
+          {effective !== "blocked" ? (
             <DropdownMenuItem asChild>
-              <Link href={`/profile/${username}`} prefetch={false}>
-                <UserRound className="size-4" /> Profile
+              <Link href={`/profile/${username}`}>Open profile</Link>
+            </DropdownMenuItem>
+          ) : null}
+          {effective === "friend" ? (
+            <DropdownMenuItem asChild>
+              <Link href="/groups?tab=mine">Invite to group</Link>
+            </DropdownMenuItem>
+          ) : null}
+          {(effective === "incoming" || effective === "outgoing") && !requestId ? (
+            <DropdownMenuItem asChild>
+              <Link href={`/friends?tab=${effective === "incoming" ? "incoming" : "sent"}`}>
+                Review pending request
               </Link>
             </DropdownMenuItem>
           ) : null}
-
-          {effectiveStatus === "friend" ? (
-            <>
-              <DropdownMenuItem asChild>
-                <Link href="/groups?tab=mine" prefetch={false}>
-                  <UsersRound className="size-4" /> Invite to group
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onSelect={() => setConfirmation("remove")}>
-                <UserMinus className="size-4" /> Remove
-              </DropdownMenuItem>
-            </>
-          ) : null}
-
-          {effectiveStatus === "incoming" && requestId ? (
-            <>
-              <DropdownMenuItem onSelect={() => directActionRef.current?.requestSubmit()}>
-                <Check className="size-4" /> Accept
-              </DropdownMenuItem>
-              <DropdownMenuItem variant="destructive" onSelect={() => setConfirmation("decline")}>
-                <X className="size-4" /> Decline
-              </DropdownMenuItem>
-            </>
-          ) : null}
-
-          {effectiveStatus === "incoming" && !requestId ? (
-            <DropdownMenuItem asChild>
-              <Link href="/friends?tab=incoming" prefetch={false}>
-                <Check className="size-4" /> Review request
-              </Link>
+          {operations.map((value) => (
+            <DropdownMenuItem
+              key={value}
+              onSelect={() => {
+                setError(null);
+                setOperation(value);
+              }}
+            >
+              {labels[value]}
             </DropdownMenuItem>
-          ) : null}
-
-          {effectiveStatus === "outgoing" && requestId ? (
-            <DropdownMenuItem variant="destructive" onSelect={() => setConfirmation("cancel")}>
-              <X className="size-4" /> Cancel request
-            </DropdownMenuItem>
-          ) : null}
-
-          {effectiveStatus === "outgoing" && !requestId ? (
-            <DropdownMenuItem asChild>
-              <Link href="/friends?tab=sent" prefetch={false}>
-                <UserRound className="size-4" /> View sent request
-              </Link>
-            </DropdownMenuItem>
-          ) : null}
-
-          {(effectiveStatus === "suggested" || effectiveStatus === "none") && directAction ? (
-            <DropdownMenuItem onSelect={() => directActionRef.current?.requestSubmit()}>
-              <UserPlus className="size-4" /> Add friend
-            </DropdownMenuItem>
-          ) : null}
-
-          {effectiveStatus === "blocked" && directAction ? (
-            <DropdownMenuItem onSelect={() => directActionRef.current?.requestSubmit()}>
-              <Check className="size-4" /> Unblock
-            </DropdownMenuItem>
-          ) : null}
+          ))}
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {confirmationCopy ? (
-        <AlertDialog open onOpenChange={(open) => !open && setConfirmation(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{confirmationCopy.title}</AlertDialogTitle>
-              <AlertDialogDescription>{confirmationCopy.description}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <form action={confirmationCopy.action}>
-                <input type="hidden" name={confirmationCopy.field} value={confirmationCopy.value} />
-                <input type="hidden" name="next" value={returnHref} />
-                <AlertDialogAction type="submit" variant="destructive">
-                  {confirmationCopy.actionLabel}
-                </AlertDialogAction>
-              </form>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      ) : null}
+      <ResponsiveDetailPanel
+        open={!!operation}
+        onOpenChange={(value) => {
+          if (!value) close();
+        }}
+        title={operation ? `${labels[operation]}: ${displayName}` : "Relationship action"}
+        description={operation ? consequences[operation] : ""}
+      >
+        <div className="grid gap-3 pb-4">
+          <p className="break-words text-sm">@{username}</p>
+          {error ? (
+            <p role="alert" className="text-destructive">
+              {error}
+            </p>
+          ) : null}
+          <Button variant="outline" disabled={pending} onClick={close}>
+            Keep current state
+          </Button>
+          <Button
+            disabled={pending}
+            onClick={() => {
+              if (!operation || busy.current) return;
+              busy.current = true;
+              setError(null);
+              const form = new FormData();
+              form.set("operation", operation);
+              form.set("recipientUserId", userId);
+              form.set("friendUserId", userId);
+              form.set("blockedUserId", userId);
+              if (requestId) form.set("requestId", requestId);
+              start(async () => {
+                try {
+                  const result = await relationshipFormAction({ ok: false }, form);
+                  if (!result.ok) {
+                    setError(
+                      result.error ??
+                        "The action could not be confirmed. Your current state is retained.",
+                    );
+                    return;
+                  }
+                  setOperation(null);
+                  router.refresh();
+                } catch {
+                  setError(
+                    "The action could not be confirmed. Check the current relationship before retrying.",
+                  );
+                } finally {
+                  busy.current = false;
+                }
+              });
+            }}
+          >
+            {pending ? "Saving…" : operation ? `Confirm: ${labels[operation]}` : "Confirm"}
+          </Button>
+        </div>
+      </ResponsiveDetailPanel>
     </>
   );
-
-  function getDirectAction(currentStatus: string, currentRequestId: string | undefined) {
-    if (currentStatus === "incoming" && currentRequestId) {
-      return { action: acceptFriendRequestAction, field: "requestId", value: currentRequestId };
-    }
-    if (currentStatus === "blocked") {
-      return { action: unblockUserAction, field: "blockedUserId", value: userId };
-    }
-    if (currentStatus === "suggested" || currentStatus === "none") {
-      return { action: sendFriendRequestAction, field: "recipientUserId", value: userId };
-    }
-    return null;
-  }
-
-  function getConfirmationCopy(current: Confirmation, name: string) {
-    if (current === "decline" && requestId) {
-      return {
-        title: `Decline ${name}'s request?`,
-        description: "This removes the incoming request without blocking the golfer.",
-        actionLabel: "Decline",
-        action: declineFriendRequestAction,
-        field: "requestId",
-        value: requestId,
-      };
-    }
-    if (current === "cancel" && requestId) {
-      return {
-        title: `Cancel request to ${name}?`,
-        description: "You can send another friend request later.",
-        actionLabel: "Cancel request",
-        action: cancelFriendRequestAction,
-        field: "requestId",
-        value: requestId,
-      };
-    }
-    if (current === "remove") {
-      return {
-        title: `Remove ${name}?`,
-        description: "They will no longer appear in friend-scoped feeds, records, or leaderboards.",
-        actionLabel: "Remove friend",
-        action: removeFriendAction,
-        field: "friendUserId",
-        value: userId,
-      };
-    }
-    return null;
-  }
-}
-
-function menuLabel(status: string) {
-  if (status === "incoming") return "Incoming request";
-  if (status === "outgoing") return "Sent request";
-  if (status === "blocked") return "Blocked golfer";
-  if (status === "friend") return "Friend actions";
-  return "Golfer actions";
 }

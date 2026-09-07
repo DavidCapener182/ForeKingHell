@@ -92,3 +92,6 @@ Reuses checked official Filter bars, Drawers, Date pickers, Tables and Paginatio
 
 ## P63 Achievements
 Official Calendars https://www.untitledui.com/react/components/calendars and Activity feeds https://www.untitledui.com/react/components/activity-feeds checked7September2026. Calendar month/week/day and activity-feed examples use Get the code; no advanced entitlement or local vendor Calendar/ActivityFeed export established. Explicit accessible alternatives: existing date buttons + real unlock event list, native phone date picker, local semantic evidence ledger, and focus-managed detail/share panels. Metrics, section headers, badges, filters and modals reuse previously checked references. Existing artwork and achievement calculations retained; no paid vendor installation claimed.
+
+## P64 Friends
+Specified official Tabs, Tables, Avatars, Dropdowns and Modals references use current installed React Aria tab adapter, semantic desktop list/full mobile rows, existing Avatar and focus-managed ResponsiveDetailPanel. Paid advanced examples remain unavailable; named local confirmation panels, native labelled invitation link and existing QR route are the explicit accessible alternatives. Types confirm current exports; no paid source copied.

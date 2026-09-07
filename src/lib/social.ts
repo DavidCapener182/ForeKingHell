@@ -548,6 +548,22 @@ export async function acceptFriendRequest(requestId: string) {
   const [userAId, userBId] = sortedUserPair(request.requesterUserId, request.recipientUserId);
 
   await db.transaction(async (tx) => {
+    const [claimed] = await tx
+      .update(friendRequests)
+      .set({
+        status: "accepted",
+        respondedAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(friendRequests.id, request.id),
+          eq(friendRequests.recipientUserId, userId),
+          eq(friendRequests.status, "pending"),
+        ),
+      )
+      .returning({ id: friendRequests.id });
+    if (!claimed) throw new Error("Friend request not found.");
     await tx
       .insert(friendships)
       .values({
@@ -558,15 +574,6 @@ export async function acceptFriendRequest(requestId: string) {
       .onConflictDoNothing({
         target: [friendships.userAId, friendships.userBId],
       });
-
-    await tx
-      .update(friendRequests)
-      .set({
-        status: "accepted",
-        respondedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(friendRequests.id, request.id));
   });
 
   revalidateSocialPaths();
@@ -581,7 +588,13 @@ export async function declineFriendRequest(requestId: string) {
       respondedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(and(eq(friendRequests.id, requestId), eq(friendRequests.recipientUserId, userId)));
+    .where(
+      and(
+        eq(friendRequests.id, requestId),
+        eq(friendRequests.recipientUserId, userId),
+        eq(friendRequests.status, "pending"),
+      ),
+    );
   revalidateSocialPaths();
 }
 
@@ -594,7 +607,13 @@ export async function cancelFriendRequest(requestId: string) {
       respondedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(and(eq(friendRequests.id, requestId), eq(friendRequests.requesterUserId, userId)));
+    .where(
+      and(
+        eq(friendRequests.id, requestId),
+        eq(friendRequests.requesterUserId, userId),
+        eq(friendRequests.status, "pending"),
+      ),
+    );
   revalidateSocialPaths();
 }
 
@@ -624,9 +643,8 @@ export async function blockUser(blockedUserId: string) {
       .onConflictDoNothing({
         target: [userBlocks.blockerUserId, userBlocks.blockedUserId],
       });
-    await tx
-      .delete(friendships)
-      .where(and(eq(friendships.userAId, userAId), eq(friendships.userBId, userBId)));
+    // Resolve pending acceptance before deleting its possible friendship. Acceptance
+    // locks this same request row before inserting the relationship.
     await tx
       .delete(friendRequests)
       .where(
@@ -641,6 +659,9 @@ export async function blockUser(blockedUserId: string) {
           ),
         ),
       );
+    await tx
+      .delete(friendships)
+      .where(and(eq(friendships.userAId, userAId), eq(friendships.userBId, userBId)));
     await tx
       .delete(userFollows)
       .where(

@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-344 desktop / 344 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P64 Friends**, next P65 Groups. 148 UI entries remain. Continue the UI pass with acceptance gaps retained.
+348 desktop / 348 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P65 Groups**, next P66 Group clubhouse. 144 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P64 Friends**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P65 Groups**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -352,3 +352,7 @@ P62-C01–C05 implemented;338partial/0full. SharedfiveboardUI and full mobile de
 
 ## P63 UI checkpoint
 P63-C01–C06 implemented;344partial/0full. Full sharedpage removes mobile ledger/share/catalogue restriction. Adaptive exact metrics fixed observed1024clipping; full mobile evidencecards, native buttonbadge modal withdate/source, stagedfilterdrawer, mobile datepicker+actualeventlist; owner-only exactfield sharepreview with cancelinert/failure/retry and no posting. Isolated1200unlocks/1201badges/60000XP all12 PASS52.9s; actualpage1440/390bothsurfaces PASS45.7s. Types/lintpass after finalclearfilters/copy refinements and synthetictrigger enum fix. Sourcefallback8tests+shareendpoint3testsPASS, service eligibility/maths unchanged. P62commit730baa6d. CurrentP64Friends all4prompts read; rootowns page/tabs/directory/actionmenu/invitelink. Otheragent adding confirmedrelationshipFormAction plus safeNext guards/tests, preserving existingexports. No browser freeze currently. NextP65Groups.
+
+
+## P64 UI checkpoint
+P64-C01–C04 implemented;348partial/0full. Full Friends task bothsurfaces: counted URL tabs/search preserved, full relationship rows, named review with inert Cancel and confirmed pending/errors, invitation link/QR preview and actual clipboard feedback. friends-browser.log PASS4.6m all12: accept/remove/request/cancel/block/unblock exact synthetic rows; Cancel leaves request/friendship unchanged; invitationcopy exactreadback; zero pageerrors. Types/lintpass,390screenshot inspected. Files friends/page,tabs,directory,actionmenu,invitedialog,actionstate wrapper/tests, scopedcapability, browserfixture. Full acceptance gaps perCSV. Runtime freeze explicitly released. Next P65 four prompts read; rootowns groups page/directorytabs/create-sheet/decisionUI; otheragent owns index state wrappers+tests. Preserve all other dirty files. After P65 check, updateeachrow/Excel/commitupgradebranch thenP66. No merge/deploy.
