@@ -1,5 +1,8 @@
 "use client";
 
+import { WorkbenchBreadcrumbs } from "./workbench-breadcrumbs";
+import { buildWorkbenchBreadcrumbItems } from "@/lib/workbench-breadcrumbs";
+
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
@@ -132,10 +135,7 @@ type AssistantContext = {
   }>;
 };
 
-type BreadcrumbItem = {
-  label: string;
-  href?: string;
-};
+
 
 const recentStorageKey = "fkh:desktop-recent-items";
 const pinnedStorageKey = "fkh:desktop-pinned-items";
@@ -328,7 +328,7 @@ export function DesktopWorkbenchChrome({
 
   const activeItem = useMemo(() => findActiveItem(navGroups, pathname), [navGroups, pathname]);
   const breadcrumbItems = useMemo(
-    () => buildBreadcrumbItems(activeItem, pathname),
+    () => buildWorkbenchBreadcrumbItems(activeItem ? {label: activeItem.item.label, href: activeItem.item.href} : undefined, pathname),
     [activeItem, pathname],
   );
   const assistantContext = useMemo(() => getAssistantContext(pathname), [pathname]);
@@ -751,43 +751,7 @@ export function DesktopWorkbenchChrome({
         aria-busy={hydrated ? undefined : true}
       >
         <div className={cn("flex min-w-0 items-center gap-2 2xl:gap-3", chromeStyles.chrome)}>
-          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">
-            <Link
-              href="/dashboard"
-              className="focus-aaa rounded-md px-2 py-1 font-semibold text-foreground outline-none hover:bg-muted/55"
-            >
-              Home
-            </Link>
-            {breadcrumbItems.map((item, index) => {
-              const isLast = index === breadcrumbItems.length - 1;
-
-              return (
-                <span
-                  key={`${item.label}-${item.href ?? index}`}
-                  className="flex min-w-0 items-center gap-2"
-                >
-                  <span className="text-muted-foreground" aria-hidden>
-                    /
-                  </span>
-                  {item.href && !isLast ? (
-                    <Link
-                      href={item.href}
-                      className="focus-aaa min-w-0 rounded-md px-2 py-1 font-medium text-muted-foreground outline-none hover:bg-muted/55 hover:text-foreground"
-                    >
-                      <span className="truncate">{item.label}</span>
-                    </Link>
-                  ) : (
-                    <span
-                      className="min-w-0 truncate rounded-md px-2 py-1 font-medium text-muted-foreground"
-                      aria-current={isLast ? "page" : undefined}
-                    >
-                      {item.label}
-                    </span>
-                  )}
-                </span>
-              );
-            })}
-          </nav>
+          <WorkbenchBreadcrumbs items={breadcrumbItems} />
 
           <button
             type="button"
@@ -1362,57 +1326,6 @@ function findActiveItem(navGroups: AppNavGroup[], pathname: string) {
   }
 
   return matches.sort((left, right) => right.item.href.length - left.item.href.length)[0] ?? null;
-}
-
-function buildBreadcrumbItems(
-  activeItem: ReturnType<typeof findActiveItem>,
-  pathname: string,
-): BreadcrumbItem[] {
-  const items: BreadcrumbItem[] = activeItem
-    ? [{ label: activeItem.item.label, href: activeItem.item.href }]
-    : [];
-  const detailLabel = deepRouteLabel(pathname);
-
-  if (!detailLabel) {
-    return items;
-  }
-
-  const lastItem = items[items.length - 1];
-
-  if (lastItem?.label === detailLabel) {
-    return items;
-  }
-
-  return [...items, { label: detailLabel }];
-}
-
-function deepRouteLabel(pathname: string) {
-  if (pathname === "/bag/longest") return "Longest shots";
-  if (/^\/bag\/[^/]+\/analytics$/.test(pathname)) return "Club analytics";
-  if (/^\/bag\/[^/]+$/.test(pathname)) return "Club profile";
-  if (pathname === "/rounds/new") return "New round";
-  if (/^\/rounds\/[^/]+$/.test(pathname)) return "Round review";
-  if (pathname === "/courses/new") return "New course";
-  if (pathname === "/courses/strategy") return "Course Strategy";
-  if (/^\/courses\/[^/]+\/holes$/.test(pathname)) return "Hole management";
-  if (/^\/courses\/[^/]+\/records\/[^/]+$/.test(pathname)) return "Record detail";
-  if (/^\/courses\/[^/]+\/records$/.test(pathname)) return "Course records";
-  if (/^\/courses\/[^/]+\/shot-pattern$/.test(pathname)) return "Shot pattern";
-  if (/^\/courses\/[^/]+\/tournaments$/.test(pathname)) return "Course tournaments";
-  if (/^\/courses\/[^/]+$/.test(pathname)) return "Course detail";
-  if (/^\/course-records\/[^/]+$/.test(pathname)) return "Record detail";
-  if (/^\/tournaments\/[^/]+\/leaderboard$/.test(pathname)) return "Event leaderboard";
-  if (/^\/tournaments\/[^/]+\/rounds$/.test(pathname)) return "Event rounds";
-  if (/^\/tournaments\/[^/]+\/rules$/.test(pathname)) return "Event rules";
-  if (/^\/tournaments\/[^/]+\/submit$/.test(pathname)) return "Submit round";
-  if (/^\/tournaments\/[^/]+$/.test(pathname)) return "Event detail";
-  if (/^\/speed\/sessions\/[^/]+$/.test(pathname)) return "Speed session";
-  if (/^\/groups\/[^/]+$/.test(pathname)) return "Group detail";
-  if (/^\/profile\/[^/]+$/.test(pathname)) return "Public profile";
-  if (/^\/friends\/qr\/[^/]+$/.test(pathname)) return "Friend invite";
-  if (/^\/settings\/invitations\/[^/]+$/.test(pathname)) return "Invitation";
-
-  return null;
 }
 
 function getPrimaryAction(pathname: string): { label: string; href: string; icon: LucideIcon } {
