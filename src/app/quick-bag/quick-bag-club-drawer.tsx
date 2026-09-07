@@ -1,13 +1,16 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { yardsToDisplay, distanceUnitLabel, type DistanceUnitPreference } from "@/lib/units";
 import type { QuickBagClub } from "@/app/quick-bag/quick-bag-client";
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+  Sheet as Drawer,
+  SheetContent as DrawerContent,
+  SheetDescription as DrawerDescription,
+  SheetHeader as DrawerHeader,
+  SheetTitle as DrawerTitle,
+} from "@/components/ui/sheet";
 
 const evidenceDateFormatter = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
@@ -19,14 +22,16 @@ export function QuickBagClubDrawer({
   club,
   open,
   onOpenChange,
+  preferredUnits = "yards",
 }: {
+  preferredUnits?: DistanceUnitPreference;
   club: QuickBagClub | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
-      <DrawerContent className="pb-[calc(1rem+env(safe-area-inset-bottom))]">
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="w-full sm:max-w-lg" showCloseButton={false}>
         <DrawerHeader className="text-left">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
             Club evidence
@@ -39,16 +44,22 @@ export function QuickBagClubDrawer({
           </DrawerDescription>
         </DrawerHeader>
         {club ? (
-          <div className="grid gap-4 overflow-y-auto px-4 pb-4">
+          <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-4 pb-4">
             <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-border ring-1 ring-border">
-              <PrimaryMetric label="Trusted carry" value={yardValue(club.trustedCarryYd)} />
-              <PrimaryMetric label="Play number" value={yardValue(club.playNumberYd)} />
+              <PrimaryMetric
+                label="Trusted carry"
+                value={yardValue(club.trustedCarryYd, preferredUnits)}
+              />
+              <PrimaryMetric
+                label="Play number"
+                value={yardValue(club.playNumberYd, preferredUnits)}
+              />
             </div>
 
             <LateralDispersionGraphic club={club} />
 
             <dl className="grid gap-0 overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
-              <EvidenceRow label="Measured range" value={rangeLabel(club)} />
+              <EvidenceRow label="Measured range" value={rangeLabel(club, preferredUnits)} />
               <EvidenceRow label="Common miss" value={missLabel(club)} divided />
               <EvidenceRow
                 label="Sample"
@@ -70,6 +81,16 @@ export function QuickBagClubDrawer({
             </dl>
           </div>
         ) : null}
+        <div className="grid gap-2 border-t px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          {club ? (
+            <Button asChild variant="outline">
+              <Link href={`/bag/${club.id}`}>Full club profile</Link>
+            </Button>
+          ) : null}
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close club evidence
+          </Button>
+        </div>
       </DrawerContent>
     </Drawer>
   );
@@ -153,14 +174,16 @@ function LateralDispersionGraphic({ club }: { club: QuickBagClub }) {
   );
 }
 
-function yardValue(value: number | null) {
-  return value === null ? "—" : `${Math.round(value)} yd`;
+function yardValue(value: number | null, units: DistanceUnitPreference) {
+  return value === null
+    ? "—"
+    : `${Math.round(yardsToDisplay(value, units))} ${distanceUnitLabel(units)}`;
 }
 
-function rangeLabel(club: QuickBagClub) {
+function rangeLabel(club: QuickBagClub, units: DistanceUnitPreference) {
   return club.lowYd === null || club.highYd === null
     ? "Not measured"
-    : `${Math.round(Math.min(club.lowYd, club.highYd))}–${Math.round(Math.max(club.lowYd, club.highYd))} yd`;
+    : `${Math.round(yardsToDisplay(Math.min(club.lowYd, club.highYd), units))}–${Math.round(yardsToDisplay(Math.max(club.lowYd, club.highYd), units))} ${distanceUnitLabel(units)}`;
 }
 
 function missLabel(club: QuickBagClub) {
