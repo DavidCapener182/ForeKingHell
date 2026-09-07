@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { CircleCheck, Info, Save, Trash2, TriangleAlert } from "lucide-react";
 
+import { ComparisonSearchSheet } from "@/app/analyse/compare/comparison-search-sheet";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { DataToolbar } from "@/components/app/data-toolbar";
 import {
@@ -10,7 +11,7 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import { EntityCombobox, type EntityComboboxOption } from "@/components/app/entity-combobox";
+import { type EntityComboboxOption } from "@/components/app/entity-combobox";
 import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { StatusTimeline } from "@/components/app/status-timeline";
 import { DataTableFrame, StatusPill, type Tone } from "@/components/premium";
@@ -50,8 +51,8 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  deleteWorkspaceComparisonAction,
-  saveWorkspaceComparisonAction,
+  deleteWorkspaceComparisonWithStateAction,
+  saveWorkspaceComparisonWithStateAction,
 } from "@/app/compare/actions";
 
 export type ComparisonTableRow = {
@@ -68,6 +69,7 @@ export type ComparisonTableRow = {
 
 export type SavedWorkspaceComparison = {
   id: string;
+  href: string;
   view: "progress" | "clubs" | "players";
   name: string;
   capturedAt: string;
@@ -91,6 +93,12 @@ const comparisonSuggestedViews: DesktopSavedViewSuggestion[] = [
     detail: "Export the currently applied comparison rows for a coach or progress report.",
   },
 ];
+
+export function updateComparisonScope(values: Record<string, string>) {
+  const url = new URL(window.location.href);
+  for (const [key, value] of Object.entries(values)) url.searchParams.set(key, value);
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
 
 export function ComparisonWorkspace({
   view,
@@ -142,6 +150,7 @@ export function ComparisonWorkspace({
   empty?: React.ReactNode;
 }) {
   const [detailOpen, setDetailOpen] = useState(false);
+  const [savedQuery, setSavedQuery] = useState("");
   const exportTableId = `comparison-${view}`;
 
   return (
@@ -155,22 +164,26 @@ export function ComparisonWorkspace({
         <DataToolbar
           resultLabel={`${rows.length} comparable metrics`}
           filters={
-            <div className="grid min-w-0 flex-1 gap-3 lg:grid-cols-2 xl:min-w-[42rem]">
-              <EntityCombobox
+            <div className="grid w-full min-w-0 flex-none gap-3 lg:flex-1 lg:grid-cols-2 lg:min-w-96">
+              <ComparisonSearchSheet
                 label="Focus"
                 value={focusValue}
                 onValueChange={onFocusValueChange}
                 options={focusOptions}
-                placeholder="Choose focus"
-                searchPlaceholder="Search focus options…"
+                entity="comparison option"
+                description={
+                  view === "players"
+                    ? "Search profiles you are permitted to compare."
+                    : "Search the available periods or clubs in your data."
+                }
               />
-              <EntityCombobox
+              <ComparisonSearchSheet
                 label="Baseline"
                 value={baselineValue}
                 onValueChange={onBaselineValueChange}
                 options={baselineOptions}
-                placeholder="Choose baseline"
-                searchPlaceholder="Search baseline options…"
+                entity="comparison option"
+                description="Choose the baseline for this comparison."
               />
             </div>
           }
@@ -187,7 +200,11 @@ export function ComparisonWorkspace({
 
       {rows.length ? (
         <>
-          <div data-workbench-scope={exportTableId} data-comparison-table>
+          <div
+            className="hidden lg:block"
+            data-workbench-scope={exportTableId}
+            data-comparison-table
+          >
             <DesktopTableWorkbenchControls
               viewKey={exportTableId}
               scope={exportTableId}
@@ -257,6 +274,36 @@ export function ComparisonWorkspace({
             </DataTableFrame>
           </div>
 
+          <div className="grid gap-3 lg:hidden" aria-label="Comparison metrics">
+            {rows.map((row) => (
+              <article key={row.id} className="min-w-0 rounded-xl border bg-card p-4">
+                <h2 className="font-semibold">{row.metric}</h2>
+                <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div className="min-w-0">
+                    <dt className="break-words text-muted-foreground">{focusLabel}</dt>
+                    <dd className="mt-1 font-semibold tabular-nums">{row.focus}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="break-words text-muted-foreground">{baselineLabel}</dt>
+                    <dd className="mt-1 font-semibold tabular-nums">{row.baseline}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Delta</dt>
+                    <dd className="font-semibold tabular-nums">{row.delta}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Direction</dt>
+                    <dd>{row.direction}</dd>
+                  </div>
+                  <div className="col-span-2">
+                    <dt className="text-muted-foreground">Confidence</dt>
+                    <dd>{row.confidence}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+          </div>
+
           <Alert
             className={
               sampleReady
@@ -288,6 +335,9 @@ export function ComparisonWorkspace({
               contentClassName="grid gap-4"
             >
               {evidence}
+              <Button variant="outline" onClick={() => setDetailOpen(false)}>
+                Close evidence
+              </Button>
             </ResponsiveDetailPanel>
             <SaveWorkspaceComparisonDialog
               view={view}
@@ -313,28 +363,50 @@ export function ComparisonWorkspace({
             Saved comparisons
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Revisit frozen filters, evidence and interpretation notes.
+            Showing the latest 36 saved comparisons across all modes. Reopen restores the saved
+            selection and recalculates current data; it does not replay a frozen chart.
           </p>
         </div>
+        <Input
+          aria-label="Search saved comparisons"
+          placeholder="Search saved comparisons…"
+          value={savedQuery}
+          onChange={(event) => setSavedQuery(event.target.value)}
+        />
         <StatusTimeline
           label={`Saved ${view} comparisons`}
           className="rounded-xl border bg-card p-4"
-          items={savedComparisons.map((comparison) => ({
-            id: comparison.id,
-            dateGroup: new Intl.DateTimeFormat("en-GB", {
-              month: "long",
-              year: "numeric",
-            }).format(new Date(comparison.capturedAt)),
-            timestamp: new Intl.DateTimeFormat("en-GB", {
-              dateStyle: "medium",
-              timeStyle: "short",
-            }).format(new Date(comparison.capturedAt)),
-            title: comparison.name,
-            description: comparison.description,
-            meta: comparison.notes || "No interpretation note added.",
-            kind: "reviewed" as const,
-            action: <DeleteWorkspaceComparisonButton id={comparison.id} name={comparison.name} />,
-          }))}
+          items={savedComparisons
+            .filter((item) =>
+              `${item.name} ${item.description} ${item.notes ?? ""}`
+                .toLowerCase()
+                .includes(savedQuery.toLowerCase()),
+            )
+            .map((comparison) => ({
+              id: comparison.id,
+              dateGroup: new Intl.DateTimeFormat("en-GB", {
+                month: "long",
+                year: "numeric",
+              }).format(new Date(comparison.capturedAt)),
+              timestamp: new Intl.DateTimeFormat("en-GB", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              }).format(new Date(comparison.capturedAt)),
+              title: comparison.name,
+              description: comparison.description,
+              meta: comparison.notes || "No interpretation note added.",
+              kind: "reviewed" as const,
+              action: (
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={comparison.href}>
+                      Reopen<span className="sr-only"> {comparison.name}</span>
+                    </a>
+                  </Button>
+                  <DeleteWorkspaceComparisonButton id={comparison.id} name={comparison.name} />
+                </div>
+              ),
+            }))}
           empty={
             <AppEmptyState
               title="No saved comparison yet"
@@ -360,43 +432,88 @@ function SaveWorkspaceComparisonDialog({
   baselineId: string;
   defaultName: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+  const saving = useRef(false);
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!saving.current) setOpen(next);
+      }}
+    >
       <DialogTrigger asChild>
         <Button type="button">
           <Save className="size-4" aria-hidden />
           Save comparison
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Save this comparison</DialogTitle>
           <DialogDescription>
             Keep the selected focus, baseline and interpretation for a later review.
           </DialogDescription>
         </DialogHeader>
-        <form action={saveWorkspaceComparisonAction} className="space-y-4">
-          <input type="hidden" name="view" value={view} />
-          <input type="hidden" name="focusId" value={focusId} />
-          <input type="hidden" name="baselineId" value={baselineId} />
-          <div className="space-y-2">
-            <Label htmlFor={`${view}-comparison-name`}>Name</Label>
-            <Input id={`${view}-comparison-name`} name="name" defaultValue={defaultName} required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${view}-comparison-notes`}>Interpretation notes</Label>
-            <Textarea
-              id={`${view}-comparison-notes`}
-              name="notes"
-              rows={4}
-              maxLength={4000}
-              className="min-h-28"
-              placeholder="What changed, how confident is it, and what decision will it inform?"
-            />
-          </div>
-          <DialogFooter>
-            <Button type="submit">Save comparison</Button>
-          </DialogFooter>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (saving.current) return;
+            const formData = new FormData(event.currentTarget);
+            saving.current = true;
+            setError("");
+            startTransition(async () => {
+              try {
+                const result = await saveWorkspaceComparisonWithStateAction(formData);
+                if (result.ok) setOpen(false);
+                else setError(result.error);
+              } catch {
+                setError("Comparison could not be saved. Your entries are retained; try again.");
+              } finally {
+                saving.current = false;
+              }
+            });
+          }}
+          className="space-y-4"
+        >
+          <fieldset disabled={pending} className="space-y-4">
+            <input type="hidden" name="view" value={view} />
+            <input type="hidden" name="focusId" value={focusId} />
+            <input type="hidden" name="baselineId" value={baselineId} />
+            <div className="space-y-2">
+              <Label htmlFor={`${view}-comparison-name`}>Name</Label>
+              <Input
+                id={`${view}-comparison-name`}
+                name="name"
+                defaultValue={defaultName}
+                maxLength={180}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${view}-comparison-notes`}>Interpretation notes</Label>
+              <Textarea
+                id={`${view}-comparison-notes`}
+                name="notes"
+                rows={4}
+                maxLength={4000}
+                className="min-h-28"
+                placeholder="What changed, how confident is it, and what decision will it inform?"
+              />
+            </div>
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">{pending ? "Saving…" : "Save comparison"}</Button>
+            </DialogFooter>
+          </fieldset>
         </form>
       </DialogContent>
     </Dialog>
@@ -405,9 +522,16 @@ function SaveWorkspaceComparisonDialog({
 
 function DeleteWorkspaceComparisonButton({ id, name }: { id: string; name: string }) {
   const [pending, startTransition] = useTransition();
-
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState("");
+  const deleting = useRef(false);
   return (
-    <AlertDialog>
+    <AlertDialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!deleting.current) setOpen(next);
+      }}
+    >
       <AlertDialogTrigger asChild>
         <Button type="button" variant="ghost" size="sm" disabled={pending}>
           <Trash2 className="size-4" aria-hidden />
@@ -422,13 +546,31 @@ function DeleteWorkspaceComparisonButton({ id, name }: { id: string; name: strin
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Keep comparison</AlertDialogCancel>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          <AlertDialogCancel disabled={pending}>Keep comparison</AlertDialogCancel>
           <AlertDialogAction
-            onClick={() => {
+            disabled={pending}
+            onClick={(event) => {
+              event.preventDefault();
+              if (deleting.current) return;
+              deleting.current = true;
+              setError("");
               startTransition(async () => {
                 const formData = new FormData();
                 formData.set("snapshotId", id);
-                await deleteWorkspaceComparisonAction(formData);
+                try {
+                  const result = await deleteWorkspaceComparisonWithStateAction(formData);
+                  if (result.ok) setOpen(false);
+                  else setError(result.error);
+                } catch {
+                  setError("Comparison could not be deleted. Try again.");
+                } finally {
+                  deleting.current = false;
+                }
               });
             }}
           >

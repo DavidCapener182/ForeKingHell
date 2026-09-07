@@ -1,3 +1,7 @@
+import {
+  saveWorkspaceComparisonWithStateAction,
+  deleteWorkspaceComparisonWithStateAction,
+} from "@/app/compare/actions";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { revalidatePath } from "next/cache";
@@ -97,4 +101,73 @@ describe.skipIf(!enabled)("saved comparison state", () => {
       });
     },
   );
+  it("saves exact owned club selections and rejects fallback substitution or foreign deletion", async () => {
+    users = (
+      await sql`insert into fkh_users(name) values('Synthetic workspace owner'),('Synthetic other owner') returning id`
+    ).map((row) => row.id);
+    actor.id = users[0];
+    const owned =
+      await sql`insert into fkh_clubs(user_id,type,normalized_club_key) values(${actor.id},'7i','seven'),(${actor.id},'8i','eight') returning id`;
+    const [foreign] =
+      await sql`insert into fkh_clubs(user_id,type,normalized_club_key) values(${users[1]},'9i','nine') returning id`;
+    const data = new FormData();
+    data.set("view", "clubs");
+    data.set("focusId", owned[0].id);
+    data.set("baselineId", foreign.id);
+    expect(await saveWorkspaceComparisonWithStateAction(data)).toMatchObject({ ok: false });
+    expect(await sql`select id from fkh_analysis_snapshots where user_id=${actor.id}`).toHaveLength(
+      0,
+    );
+    data.set("baselineId", owned[1].id);
+    vi.mocked(revalidatePath).mockImplementation(() => {
+      throw new Error("Synthetic workspace refresh");
+    });
+    expect(await saveWorkspaceComparisonWithStateAction(data)).toEqual({ ok: true });
+    const [saved] =
+      await sql`select id,filters_json,chart_state_json from fkh_analysis_snapshots where user_id=${actor.id}`;
+    expect(saved.filters_json).toMatchObject({ clubAId: owned[0].id, clubBId: owned[1].id });
+    expect(saved.chart_state_json).toMatchObject({ compareView: "clubs" });
+    const deletion = new FormData();
+    deletion.set("snapshotId", saved.id);
+    actor.id = users[1];
+    expect(await deleteWorkspaceComparisonWithStateAction(deletion)).toMatchObject({ ok: false });
+    actor.id = users[0];
+    expect(await deleteWorkspaceComparisonWithStateAction(deletion)).toEqual({ ok: true });
+    expect(await deleteWorkspaceComparisonWithStateAction(deletion)).toMatchObject({ ok: false });
+  });
+  it("preserves progress periods and only saves explicitly visible player pairs", async () => {
+    users = (
+      await sql`insert into fkh_users(name) values('Synthetic player A'),('Synthetic player B') returning id`
+    ).map((row) => row.id);
+    actor.id = users[0];
+    for (const id of users)
+      await sql`insert into fkh_user_profiles(user_id,username,display_name) values(${id},${id},'Synthetic player')`;
+    const data = new FormData();
+    data.set("view", "players");
+    data.set("focusId", users[0]);
+    data.set("baselineId", users[1]);
+    expect(await saveWorkspaceComparisonWithStateAction(data)).toMatchObject({ ok: false });
+    await sql`update fkh_user_profiles set public_profile=true,visibility_settings_json=${sql.json({ allowCompare: true, exactShots: "public", rounds: "public", bag: "public", handicap: "public" })} where user_id=${users[1]}`;
+    expect(await saveWorkspaceComparisonWithStateAction(data)).toEqual({ ok: true });
+    const [pair] =
+      await sql`select filters_json,chart_state_json from fkh_analysis_snapshots where user_id=${actor.id}`;
+    expect(pair.filters_json).toMatchObject({ playerAId: users[0], playerBId: users[1] });
+    expect(pair.chart_state_json).toMatchObject({ compareView: "players" });
+    for (const [focus, baseline] of [
+      ["last-7", "previous-7"],
+      ["last-30", "previous-30"],
+    ]) {
+      data.set("view", "progress");
+      data.set("focusId", focus);
+      data.set("baselineId", baseline);
+      expect(await saveWorkspaceComparisonWithStateAction(data)).toEqual({ ok: true });
+      const rows =
+        await sql`select filters_json from fkh_analysis_snapshots where user_id=${actor.id} and chart_state_json->>'compareView'='progress'`;
+      expect(
+        rows.some(
+          (row) => row.filters_json.focusId === focus && row.filters_json.baselineId === baseline,
+        ),
+      ).toBe(true);
+    }
+  });
 });

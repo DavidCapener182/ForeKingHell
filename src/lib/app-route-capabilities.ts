@@ -26,11 +26,7 @@ export const mobileCapabilities = {
   ),
   shots: companionMore(),
   bag: companionPrimary(),
-  compare: desktopOnly(
-    "Review sessions",
-    "/sessions",
-    "Multi-session comparison is available in the full workbench.",
-  ),
+  compare: companionMore(),
   progress: companionMore(),
   "strokes-gained": desktopOnly(
     "Review latest round",
@@ -150,7 +146,7 @@ const desktopOnlyPrefixes = [
   "/coach/workspace",
 ] as const;
 
-const companionExactRoutes = ["/analyse", "/analyse/workspace", "/analyse/session-impact", "/analyse/conditions", "/analyse/compare", "/data-chat", "/coach/workspace", "/coach/reports", "/coach/diagnosis", "/coach", "/courses", "/equipment", "/equipment/experiments"] as const;
+const companionExactRoutes = ["/compare", "/analyse", "/analyse/workspace", "/analyse/session-impact", "/analyse/conditions", "/analyse/compare", "/data-chat", "/coach/workspace", "/coach/reports", "/coach/diagnosis", "/coach", "/courses", "/equipment", "/equipment/experiments"] as const;
 const companionExceptions = ["/courses/strategy"] as const;
 const summaryOnlyPrefixes = [
   "/coach",

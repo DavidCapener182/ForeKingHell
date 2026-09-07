@@ -16,7 +16,11 @@ export function ComparisonSearchSheet({
   value,
   options,
   onValueChange,
+  description = "Search available owned session records.",
+  entity = "session",
 }: {
+  description?: string;
+  entity?: string;
   label: string;
   value: string;
   options: Array<{ value: string; label: string; description?: string; disabled?: boolean }>;
@@ -38,14 +42,14 @@ export function ComparisonSearchSheet({
           <span className="text-xs text-muted-foreground">{label}</span>
           <span>
             {options.find((option) => option.value === value)?.label ??
-              "Selected session unavailable"}
+              `Selected ${entity} unavailable`}
           </span>
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>{label}</SheetTitle>
-          <SheetDescription>Search available owned session records.</SheetDescription>
+          <SheetDescription>{description}</SheetDescription>
         </SheetHeader>
         <div className="px-4">
           <Input
@@ -75,11 +79,11 @@ export function ComparisonSearchSheet({
               <span className="text-xs text-muted-foreground">{option.description}</span>
             </Button>
           ))}
-          {!visible.length && <p>No matching session. Try another name or date.</p>}
+          {!visible.length && <p>No matching {entity}. Try another search.</p>}
         </div>
         <SheetClose asChild>
           <Button variant="outline" className="m-4 min-h-11">
-            Close session search
+            Close {entity} search
           </Button>
         </SheetClose>
       </SheetContent>
