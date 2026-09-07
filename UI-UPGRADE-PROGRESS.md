@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-393 desktop / 393 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P72 Notification preferences**, next P73 Accept account invitation. 99 UI entries remain. Continue the UI pass with acceptance gaps retained.
+398 desktop / 398 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P74 Shared account overview**, next P75 Plan and billing. 94 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P72 Notification preferences**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P74 Shared account overview**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -388,3 +388,7 @@ Runtime freeze explicitly released. NextP71 Settings14components; all detailed p
 P71-C01–C14 UI implemented partial;393/492 UI,0 fully accepted. Full retained9section workspace and phone index/back; exact scoped state saves, errors/reset, draft preservation; invitation role/recipient review and named access controls with server-confirmed result; full mobile access details; current billing entitlement; accurate legacy-default versus actual-access copy; offline loading/error distinction, payload size/freshness, retry/removal feedback; typed reset/delete and final confirmations preserved, export access beside danger forms.
 First actual settings-browser.log failed Save changes missing after early SSR typing; fixed SettingsDirtyForm to disable fields until ready. General Reset now leaves another Appearance preview intact. Final settings-browser-ready.log2PASS2.1m: isolated6size form/error/retry/exactinvite/no-callCancel/theme-preview protection; actual12surface-size combinations all9sections, retained draft/saved names, invitationCancel noinsert, ResetCancel seeded golf session remains,0pageerrors/overflow. Companion390 screenshot inspected. Types settings-types-ready.log clean; settings-lint-complete.log final scoped lint clean. Backend5settings/sharing+2notificationtests pass. Full acceptance limitations in CSV; no actual reset/delete.
 Changed settings page/workspace module/draft/access/offline UI, theme-select44px, Settings+notification state actions and tests. Root owns UI. Freeze explicitly released; wait until P71 action staging done then otheragent proceedsP73 acceptance state API. Prepared /tmp/fkh-notification-preferences-page.tsx and /tmp/fkh-invitation-{page,accept}.tsx; P72/P73 detailed prompts read. ContinueP72 thenP73; no main/deploy.
+
+## P72/P73 UI checkpoint
+P72-C01–C03 and P73-C01–C02 UI implemented partial;398/492 UI,0 fully accepted. Notification full9categories/5toggles, stateful save/reset/errors and persisted labels. Invitation exact recipient/role/expiry review, Cancel, confirmed pending/error/success and unavailable states. Backend invitation-state-final.log5PASS. Types preferences-invitation-types-final.log and scoped lint clean. Actual notification-preferences-browser-final.log2PASS2.4m, both routes12surface/size combinations each; notification DB roundtrip + Settings parity, invitation Cancel/no membership and exact role acceptance. Invalid states390 checked. First notification test failed ambiguous Back link selector; corrected exact notification-section href. P73 companion390 inspected: neutral top capture/focus-header clearance outstanding. Broader acceptance remains CSV blockers.
+Changed notification and invitation pages, invitation-accept.tsx, settings acceptance state API, scoped tests, settings capability summary→companion. Freeze explicitly released for P74 loader and root UI. Next resumeP74 shared page/ledger/not-found applied; otheragent writing shared-account-data.ts plus scoped tests. Read allP74 prompts. Run types/lint/browser once agent stable, then continueP75. Keep existing bestshots/goals capability diffs unstaged. No main/deploy.

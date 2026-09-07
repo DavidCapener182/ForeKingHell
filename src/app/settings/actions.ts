@@ -143,15 +143,40 @@ export async function createInvitationAction(formData: FormData) {
 }
 
 export async function acceptInvitationAction(formData: FormData) {
+  const result = await acceptInvitationResult(formData);
+  if (result === "signed-out") {
+    const token = nullableString(formData, "token") ?? "";
+    redirect(`/login?next=/settings/invitations/${encodeURIComponent(token)}`);
+  }
+  if (result === "accepted") redirect("/settings?section=sharing&inviteAccepted=1");
+  redirect(`/settings?section=sharing&inviteError=${result}`);
+}
+
+export async function acceptInvitationFormAction(
+  _previous: { ok: boolean; error?: string }, formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const result = await acceptInvitationResult(formData);
+    if (result === "accepted") return { ok: true };
+    return { ok: false, error: result === "signed-out"
+      ? "Sign in with the invited email address to accept."
+      : result === "email" ? "This invitation is for a different email address."
+      : "This invitation is invalid, expired or no longer available." };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not accept invitation. Try again." };
+  }
+}
+
+async function acceptInvitationResult(formData: FormData) {
   const currentUser = await getCurrentUser();
   const token = nullableString(formData, "token");
 
   if (!token) {
-    redirect("/settings?section=sharing&inviteError=invalid");
+    return "invalid" as const;
   }
 
   if (!currentUser) {
-    redirect(`/login?next=/settings/invitations/${encodeURIComponent(token)}`);
+    return "signed-out" as const;
   }
 
   const db = getDb();
@@ -170,11 +195,11 @@ export async function acceptInvitationAction(formData: FormData) {
     .limit(1);
 
   if (!invitation) {
-    redirect("/settings?section=sharing&inviteError=invalid");
+    return "invalid" as const;
   }
 
   if (currentUser.email?.toLowerCase() !== invitation.invitedEmail.toLowerCase()) {
-    redirect("/settings?section=sharing&inviteError=email");
+    return "email" as const;
   }
 
   const invitationAccepted = await db.transaction(async (tx) => {
@@ -221,12 +246,13 @@ export async function acceptInvitationAction(formData: FormData) {
   });
 
   if (!invitationAccepted) {
-    redirect("/settings?section=sharing&inviteError=invalid");
+    return "invalid" as const;
   }
 
   revalidatePath("/settings");
-  redirect("/settings?section=sharing&inviteAccepted=1");
+  return "accepted" as const;
 }
+
 
 export async function cancelInvitationAction(formData: FormData) {
   const userId = await requireCurrentUserId();

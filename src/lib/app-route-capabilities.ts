@@ -77,7 +77,7 @@ export const mobileCapabilities = {
     "/settings",
     "Billing operations are available in the full workbench.",
   ),
-  settings: summaryMore(),
+  settings: companionMore(),
   notifications: summaryMore(),
   admin: desktopOnly("Go to Today", "/today", "Administration is available in the full workbench."),
   partners: desktopOnly(
