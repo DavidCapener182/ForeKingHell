@@ -1,4 +1,5 @@
 import Link from "next/link";
+import styles from "@/app/strokes-gained/strokes-gained.module.css";
 import Image from "next/image";
 import {
   and,
@@ -44,18 +45,15 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
-import { PageArtwork } from "@/components/visuals/page-artwork";
+import {
+  StrokesGainedFilters,
+  StrokesGainedMobileEvents,
+} from "@/app/strokes-gained/strokes-gained-controls";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import {
   Table,
   TableBody,
@@ -333,20 +331,36 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
           title={activeCategory ? `${activeCategory.label} strokes gained` : "Strokes gained"}
           description={heroDescription(analysis, activeCategory)}
           metrics={heroMetrics(analysis, data.events.length, activeCategory)}
-          visual={
-            <PageArtwork
-              variant="strokesGained"
-              alt=""
-              className="h-full min-h-44 w-full aspect-auto"
-              imageClassName="scale-[1.05] object-[52%_62%] opacity-90 saturate-[1.04]"
-              priority
-            />
-          }
         />
 
         <CalculationCoverageStrip analysis={analysis} totalEvents={data.events.length} />
 
-        <CategoryNavTabs categories={analysis.categories} activeCategory={activeCategory} />
+        <div className="flex flex-wrap items-center gap-3">
+          <StrokesGainedFilters count={activeFilterChips.length}>
+            <StrokesGainedFilterForm filters={filters} options={filterOptions} />
+          </StrokesGainedFilters>
+          <p className="text-sm text-muted-foreground">
+            {data.events.length} loaded events · maximum {ANALYSIS_LIMIT}; summaries cover this
+            loaded scope
+          </p>
+          <Button variant="ghost" asChild>
+            <Link href="/strokes-gained">Clear all</Link>
+          </Button>
+        </div>
+        {activeFilterChips.length > 0 && <ActiveFilterChips items={activeFilterChips} />}
+        <CategoryNavTabs
+          categories={analysis.categories}
+          activeCategory={activeCategory}
+          filters={filters}
+        />
+
+        <PracticeThisFirstCard summary={activeCategory ?? analysis.weakestCategory} />
+
+        <MainScoringLeak
+          summary={activeCategory ?? analysis.weakestCategory}
+          events={data.events}
+          focusCategory={activeCategory}
+        />
 
         <CategoryCards
           categories={analysis.categories}
@@ -363,14 +377,6 @@ export default async function StrokesGainedPage({ searchParams }: { searchParams
         />
 
         <GainLossWaterfall categories={analysis.categories} />
-
-        <PracticeThisFirstCard summary={activeCategory ?? analysis.weakestCategory} />
-
-        <MainScoringLeak
-          summary={activeCategory ?? analysis.weakestCategory}
-          events={data.events}
-          focusCategory={activeCategory}
-        />
 
         <ShotHighlights
           gains={activeCategory ? scopedGains : analysis.biggestGains}
@@ -743,6 +749,19 @@ function CalculationCoverageStrip({
           </StatusPill>
         </div>
       </div>
+      <details className="mt-3 border-t pt-3 text-sm">
+        <summary className="cursor-pointer py-2 font-semibold">
+          Baseline and calculation coverage
+        </summary>
+        <p className="mt-2 text-muted-foreground">
+          Strokes gained uses expected strokes before minus one shot, penalties and expected strokes
+          after. Positive values are gains; negative values are losses. Coverage counts only loaded
+          mapped events, not every shot in a complete round. Missing or unmapped shots cannot
+          establish a complete round total. Event contributions are recorded values; the
+          expected-strokes lookup displayed here uses the current built-in baseline, with no
+          historical baseline version recorded.
+        </p>
+      </details>
     </section>
   );
 }
@@ -750,15 +769,21 @@ function CalculationCoverageStrip({
 function CategoryNavTabs({
   categories,
   activeCategory,
+  filters,
 }: {
+  filters: StrokesGainedFilters;
   categories: CategorySummary[];
   activeCategory: CategorySummary | null;
 }) {
   const items = [
-    { label: "Overall", href: "/strokes-gained", active: activeCategory === null },
+    {
+      label: "Overall",
+      href: shortcutHref({ ...filters, category: "" }),
+      active: activeCategory === null,
+    },
     ...categories.map((category) => ({
       label: category.label,
-      href: `/strokes-gained?category=${category.category}`,
+      href: shortcutHref({ ...filters, category: category.category }),
       active: activeCategory?.category === category.category,
     })),
   ];
@@ -863,8 +888,7 @@ function CategoryBarRow({
   maxAbsTotal: number;
 }) {
   const total = category.total;
-  const width =
-    total === null ? 0 : Math.max(4, Math.min(100, (Math.abs(total) / maxAbsTotal) * 100));
+  const width = total === null ? 0 : Math.min(100, (Math.abs(total) / maxAbsTotal) * 100);
   const visual = categoryVisual(category.category);
 
   return (
@@ -979,7 +1003,13 @@ function categoryVisual(category: string) {
 function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
   const calculated = categories.filter((category) => typeof category.total === "number");
   const values = calculated.map((category) => category.total ?? 0);
-  const maxAbs = Math.max(1, ...values.map((value) => Math.abs(value)));
+  const cumulative = values.reduce<number[]>(
+    (steps, value) => [...steps, (steps.at(-1) ?? 0) + value],
+    [],
+  );
+  const lower = Math.min(0, ...cumulative);
+  const upper = Math.max(0, ...cumulative);
+  const scaleY = (value: number) => 110 - ((value - lower) / Math.max(1, upper - lower)) * 80;
   const barWidth = calculated.length > 0 ? 680 / calculated.length : 680;
   const bestCategory = [...calculated].sort(
     (left, right) => (right.total ?? 0) - (left.total ?? 0),
@@ -1001,6 +1031,10 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
         }`.trim()
       : "No calculated strokes-gained categories are available yet.";
   const waterfallRows = categories.map((category) => ({
+    cumulative:
+      category.total === null
+        ? "Not calculated"
+        : formatSg(cumulative[calculated.findIndex((item) => item.category === category.category)]),
     _key: category.category,
     category: category.label,
     total: formatSg(category.total),
@@ -1013,7 +1047,7 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
     <DataPanel>
       <SectionHeader
         title="Gain/loss waterfall"
-        description="How each category moves the round total before the table evidence."
+        description="Category contributions accumulate from zero. The final value equals the calculated total for the loaded scope, not necessarily a complete round."
         action={<Sigma className="size-5 text-[var(--status-success-foreground)]" />}
       />
       <CardContent>
@@ -1025,16 +1059,28 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
               aria-label="Strokes gained waterfall"
               className="h-32 w-full max-w-full self-center text-foreground"
             >
-              <line x1="40" x2="720" y1="68" y2="68" className="stroke-border" strokeWidth="2" />
+              <line
+                x1="40"
+                x2="720"
+                y1={scaleY(0)}
+                y2={scaleY(0)}
+                className="stroke-border"
+                strokeWidth="2"
+              />
               {calculated.map((category, index) => {
                 const value = category.total ?? 0;
-                const height = Math.max(8, (Math.abs(value) / maxAbs) * 38);
+                const before = cumulative[index - 1] ?? 0;
+                const after = cumulative[index];
+                const height = Math.abs(scaleY(after) - scaleY(before));
                 const x = 48 + index * barWidth;
-                const y = value >= 0 ? 68 - height : 68;
+                const y = Math.min(scaleY(before), scaleY(after));
                 const fill = value >= 0 ? "#087A3D" : "#DC2626";
 
                 return (
                   <g key={category.category}>
+                    <title>
+                      {category.label}: {formatSg(value)} strokes; cumulative {formatSg(after)}
+                    </title>
                     <rect
                       x={x}
                       y={y}
@@ -1068,12 +1114,26 @@ function GainLossWaterfall({ categories }: { categories: CategorySummary[] }) {
                 );
               })}
             </svg>
+            <dl className="grid gap-2 lg:hidden" aria-label="Cumulative strokes gained values">
+              {waterfallRows.map((row) => (
+                <div
+                  key={row._key}
+                  className="flex flex-wrap justify-between gap-2 border-b py-2 text-sm"
+                >
+                  <dt>{row.category}</dt>
+                  <dd>
+                    {row.total} strokes · cumulative {row.cumulative}
+                  </dd>
+                </div>
+              ))}
+            </dl>
             <ChartAccessibleFallback
               title="Strokes gained waterfall"
               summary={waterfallSummary}
               columns={[
                 { key: "category", label: "Category" },
-                { key: "total", label: "Total SG" },
+                { key: "total", label: "Category SG" },
+                { key: "cumulative", label: "Cumulative SG" },
                 { key: "average", label: "Average SG" },
                 { key: "calculatedEvents", label: "Calculated events" },
                 { key: "pendingEvents", label: "Pending events" },
@@ -1506,7 +1566,8 @@ function RoundTrendPanel({
                 <SgValue value={round.total} className="shrink-0 text-lg" />
               </div>
               <p className="text-xs leading-5 text-muted-foreground">
-                {roundCategoryLine(round, focusCategory)}
+                {roundCategoryLine(round, focusCategory)} · {round.sampleSize}/{round.eventCount}{" "}
+                mapped events calculated
               </p>
               <SgHorizontalBar value={round.total} maxAbs={maxAbsTotal} />
             </Link>
@@ -1546,6 +1607,50 @@ function HoleImpactPanel({
         action={<Target className="size-5 text-[var(--status-success-foreground)]" />}
       />
       <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <details className="rounded-lg border p-4 md:col-span-2 xl:col-span-4">
+          <summary className="cursor-pointer py-2 font-semibold">
+            All {holes.length} hole summaries
+          </summary>
+          <p className="my-2 text-sm text-muted-foreground">
+            Same-numbered holes are combined across the selected rounds. Use the round filter to
+            inspect a single course.
+          </p>
+          <div className="divide-y">
+            {holes.map((hole) => (
+              <details key={hole.holeNumber} className="py-2">
+                <summary className="cursor-pointer py-2">
+                  Hole {hole.holeNumber} · {formatSg(hole.total)} strokes
+                </summary>
+                <dl className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <dt>Calculated / mapped</dt>
+                    <dd>
+                      {hole.sampleSize} / {hole.eventCount}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Pending</dt>
+                    <dd>{hole.pendingCount}</dd>
+                  </div>
+                  <div>
+                    <dt>Average SG</dt>
+                    <dd>{formatSg(hole.average)}</dd>
+                  </div>
+                  <div>
+                    <dt>Gains / losses</dt>
+                    <dd>
+                      {hole.gainCount} / {hole.lossCount}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Largest contribution range</dt>
+                    <dd>{hole.swing} strokes</dd>
+                  </div>
+                </dl>
+              </details>
+            ))}
+          </div>
+        </details>
         <HoleImpactList title="Best holes" holes={bestHoles} />
         <HoleImpactList title="Costliest holes" holes={costliestHoles} />
         <HoleImpactSingle
@@ -1648,7 +1753,6 @@ function RecentShotEventsPanel({
   events,
   totalEvents,
   filters,
-  filterOptions,
   activeFilterChips,
 }: {
   events: StrokesGainedEvent[];
@@ -1659,7 +1763,7 @@ function RecentShotEventsPanel({
 }) {
   return (
     <DataPanel id="events">
-      <Collapsible defaultOpen={activeFilterChips.length > 0} className="group">
+      <Collapsible defaultOpen className="group">
         <CollapsibleTrigger className="flex min-h-16 w-full cursor-pointer items-center justify-between gap-4 px-4 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <span className="min-w-0">
             <span className="block text-lg font-semibold leading-5 text-foreground">
@@ -1682,19 +1786,52 @@ function RecentShotEventsPanel({
         <CollapsibleContent>
           <CardContent className="grid min-w-0 gap-4 border-t border-border p-6">
             <QuickFilters filters={filters} />
-            <StrokesGainedFilterForm filters={filters} options={filterOptions} />
+
             {activeFilterChips.length > 0 ? <ActiveFilterChips items={activeFilterChips} /> : null}
-            <DesktopTableWorkbenchControls
-              viewKey="strokes-gained-events"
-              scope="strokes-gained"
-              currentViewLabel={strokesGainedCurrentViewLabel(filters, activeFilterChips)}
-              resultLabel={`${integerFormatter.format(events.length)} rows`}
-              columns={strokesGainedEventColumns}
-              suggestedViews={strokesGainedSuggestedViews}
-              exportTableId="strokes-gained-events"
-              exportFileName="forekinghell-strokes-gained-events.csv"
+            <div className={styles.desktop}>
+              <DesktopTableWorkbenchControls
+                viewKey="strokes-gained-events"
+                scope="strokes-gained"
+                currentViewLabel={strokesGainedCurrentViewLabel(filters, activeFilterChips)}
+                resultLabel={`${integerFormatter.format(events.length)} rows`}
+                columns={strokesGainedEventColumns}
+                suggestedViews={strokesGainedSuggestedViews}
+                exportTableId="strokes-gained-events"
+                exportFileName="forekinghell-strokes-gained-events.csv"
+              />
+              <StrokesGainedEventTable events={events} />
+            </div>
+            <StrokesGainedMobileEvents
+              rows={events.map((event) => ({
+                id: event.id,
+                title: `${event.courseName ?? "Round"} · ${holeShotLabel(event)}`,
+                summary: `${titleCase(event.category)} · ${formatSg(event.strokesGained)} strokes · ${formatDate(event.sessionDate)}`,
+                href: `/rounds/${event.sessionId}`,
+                fields: [
+                  { label: "Event ID", value: event.id },
+                  { label: "Date", value: formatDate(event.sessionDate) },
+                  { label: "Category", value: titleCase(event.category) },
+                  { label: "Hole / stroke", value: holeShotLabel(event) },
+                  { label: "From", value: formatPosition(event.startDistanceYd, event.startLie) },
+                  { label: "To", value: formatPosition(event.endDistanceYd, event.endLie) },
+                  { label: "Distance change", value: formatDistanceChange(event) },
+                  { label: "Penalty strokes", value: String(event.penaltyStrokes) },
+                  {
+                    label: "Expected before (current baseline)",
+                    value: formatExpectedStrokes(expectedStrokesForEvent(event, "start")),
+                  },
+                  {
+                    label: "Expected after (current baseline)",
+                    value: formatExpectedStrokes(expectedStrokesForEvent(event, "end")),
+                  },
+                  { label: "Recorded strokes gained", value: formatSg(event.strokesGained) },
+                  {
+                    label: "Status",
+                    value: event.strokesGained === null ? "Pending" : "Calculated",
+                  },
+                ],
+              }))}
             />
-            <StrokesGainedEventTable events={events} />
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
@@ -1732,17 +1869,23 @@ function strokesGainedCurrentViewLabel(
 function QuickFilters({ filters }: { filters: StrokesGainedFilters }) {
   const scopedCategory = filters.category || undefined;
   const shortcuts = [
-    { label: "All", href: "/strokes-gained#events" },
-    { label: "Gains", href: shortcutHref({ category: scopedCategory, sg: "gain", sort: "gains" }) },
+    { label: "All", href: shortcutHref({ ...filters, sg: "" }) },
+    {
+      label: "Gains",
+      href: shortcutHref({ ...filters, category: scopedCategory, sg: "gain", sort: "gains" }),
+    },
     {
       label: "Losses",
-      href: shortcutHref({ category: scopedCategory, sg: "loss", sort: "losses" }),
+      href: shortcutHref({ ...filters, category: scopedCategory, sg: "loss", sort: "losses" }),
     },
-    { label: "Pending", href: shortcutHref({ category: scopedCategory, sg: "pending" }) },
-    { label: "Tee", href: shortcutHref({ category: "tee" }) },
-    { label: "Approach", href: shortcutHref({ category: "approach" }) },
-    { label: "Short game", href: shortcutHref({ category: "short_game" }) },
-    { label: "Putting", href: shortcutHref({ category: "putting" }) },
+    {
+      label: "Pending",
+      href: shortcutHref({ ...filters, category: scopedCategory, sg: "pending" }),
+    },
+    { label: "Tee", href: shortcutHref({ ...filters, category: "tee" }) },
+    { label: "Approach", href: shortcutHref({ ...filters, category: "approach" }) },
+    { label: "Short game", href: shortcutHref({ ...filters, category: "short_game" }) },
+    { label: "Putting", href: shortcutHref({ ...filters, category: "putting" }) },
   ];
 
   return (
@@ -1784,101 +1927,95 @@ function StrokesGainedFilterForm({
   return (
     <form
       method="get"
-      className="apple-panel grid min-w-0 grid-cols-2 gap-3 overflow-hidden p-3 md:grid-cols-3 xl:grid-cols-6"
+      className="apple-panel grid min-w-0 grid-cols-2 gap-3 overflow-hidden p-3 sm:grid-cols-2"
     >
       <label className="col-span-2 grid min-w-0 gap-1 text-sm font-medium md:col-span-1">
         Round
-        <Select name="sessionId" defaultValue={filters.sessionId || "__all__"}>
-          <SelectTrigger className={controlClassName}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All rounds</SelectItem>
-            {options.sessions.map((session) => (
-              <SelectItem key={session.id} value={session.id}>
-                {session.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <select
+          name="sessionId"
+          defaultValue={filters.sessionId || ""}
+          className={`${controlClassName} rounded-md border bg-background px-3`}
+        >
+          <option value="">All rounds</option>
+          {options.sessions.map((session) => (
+            <option key={session.id} value={session.id}>
+              {session.label}
+            </option>
+          ))}
+        </select>
       </label>
       <label className="col-span-2 grid min-w-0 gap-1 text-sm font-medium md:col-span-1">
         Category
-        <Select name="category" defaultValue={filters.category || "__all__"}>
-          <SelectTrigger className={controlClassName}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All categories</SelectItem>
-            {options.categories.map((category) => (
-              <SelectItem key={category.value} value={category.value}>
-                {category.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <select
+          name="category"
+          defaultValue={filters.category || ""}
+          className={`${controlClassName} rounded-md border bg-background px-3`}
+        >
+          <option value="">All categories</option>
+          {options.categories.map((category) => (
+            <option key={category.value} value={category.value}>
+              {category.label}
+            </option>
+          ))}
+        </select>
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         Hole
-        <Select name="hole" defaultValue={filters.hole || "__all__"}>
-          <SelectTrigger className={controlClassName}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All holes</SelectItem>
-            {options.holes.map((hole) => (
-              <SelectItem key={hole} value={hole.toString()}>
-                Hole {hole}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <select
+          name="hole"
+          defaultValue={filters.hole || ""}
+          className={`${controlClassName} rounded-md border bg-background px-3`}
+        >
+          <option value="">All holes</option>
+          {options.holes.map((hole) => (
+            <option key={hole} value={hole.toString()}>
+              Hole {hole}
+            </option>
+          ))}
+        </select>
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         Start lie
-        <Select name="startLie" defaultValue={filters.startLie || "__all__"}>
-          <SelectTrigger className={controlClassName}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Any start lie</SelectItem>
-            {options.startLies.map((lie) => (
-              <SelectItem key={lie} value={lie}>
-                {titleCase(lie)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <select
+          name="startLie"
+          defaultValue={filters.startLie || ""}
+          className={`${controlClassName} rounded-md border bg-background px-3`}
+        >
+          <option value="">Any start lie</option>
+          {options.startLies.map((lie) => (
+            <option key={lie} value={lie}>
+              {titleCase(lie)}
+            </option>
+          ))}
+        </select>
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         End lie
-        <Select name="endLie" defaultValue={filters.endLie || "__all__"}>
-          <SelectTrigger className={controlClassName}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Any end lie</SelectItem>
-            {options.endLies.map((lie) => (
-              <SelectItem key={lie} value={lie}>
-                {titleCase(lie)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <select
+          name="endLie"
+          defaultValue={filters.endLie || ""}
+          className={`${controlClassName} rounded-md border bg-background px-3`}
+        >
+          <option value="">Any end lie</option>
+          {options.endLies.map((lie) => (
+            <option key={lie} value={lie}>
+              {titleCase(lie)}
+            </option>
+          ))}
+        </select>
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         SG result
-        <Select name="sg" defaultValue={filters.sg || "__all__"}>
-          <SelectTrigger className={controlClassName}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All SG results</SelectItem>
-            <SelectItem value="gain">Gains only</SelectItem>
-            <SelectItem value="loss">Losses only</SelectItem>
-            <SelectItem value="pending">Not calculated</SelectItem>
-          </SelectContent>
-        </Select>
+        <select
+          name="sg"
+          defaultValue={filters.sg || ""}
+          className={`${controlClassName} rounded-md border bg-background px-3`}
+        >
+          <option value="">All SG results</option>
+          <option value="gain">Gains only</option>
+          <option value="loss">Losses only</option>
+          <option value="pending">Not calculated</option>
+        </select>
       </label>
       <label className="grid min-w-0 gap-1 text-sm font-medium">
         From
@@ -1890,20 +2027,19 @@ function StrokesGainedFilterForm({
       </label>
       <label className="col-span-2 grid min-w-0 gap-1 text-sm font-medium md:col-span-1">
         Sort
-        <Select name="sort" defaultValue={filters.sort}>
-          <SelectTrigger className={controlClassName}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="recent">Most recent</SelectItem>
-            <SelectItem value="gains">Biggest gains</SelectItem>
-            <SelectItem value="losses">Biggest losses</SelectItem>
-            <SelectItem value="hole">By hole</SelectItem>
-            <SelectItem value="category">By category</SelectItem>
-          </SelectContent>
-        </Select>
+        <select
+          name="sort"
+          defaultValue={filters.sort}
+          className={`${controlClassName} rounded-md border bg-background px-3`}
+        >
+          <option value="recent">Most recent</option>
+          <option value="gains">Biggest gains</option>
+          <option value="losses">Biggest losses</option>
+          <option value="hole">By hole</option>
+          <option value="category">By category</option>
+        </select>
       </label>
-      <div className="col-span-2 grid grid-cols-2 items-end gap-2 md:col-span-3 md:flex xl:col-span-6">
+      <div className="col-span-2 grid grid-cols-2 items-end gap-2 sm:flex">
         <Button type="submit" className="min-h-11">
           Apply filters
         </Button>
@@ -2277,7 +2413,7 @@ function roundCategoryLine(round: RoundSummary, focusCategory: CategorySummary |
 }
 
 function SgHorizontalBar({ value, maxAbs }: { value: number | null; maxAbs: number }) {
-  const width = value === null ? 0 : Math.max(6, Math.min(100, (Math.abs(value) / maxAbs) * 100));
+  const width = value === null ? 0 : Math.min(100, (Math.abs(value) / maxAbs) * 100);
 
   return (
     <div className="grid h-3 grid-cols-2 overflow-hidden rounded-full border border-border bg-secondary">
@@ -2296,7 +2432,7 @@ function SgHorizontalBar({ value, maxAbs }: { value: number | null; maxAbs: numb
 }
 
 function SgMiniBar({ value, maxAbs }: { value: number | null; maxAbs: number }) {
-  const width = value === null ? 0 : Math.max(6, Math.min(100, (Math.abs(value) / maxAbs) * 100));
+  const width = value === null ? 0 : Math.min(100, (Math.abs(value) / maxAbs) * 100);
 
   return (
     <div className="grid h-2 grid-cols-2 overflow-hidden rounded-full bg-slate-100">
