@@ -36,26 +36,36 @@ describe("challenge detail desktop route", () => {
     );
   });
 
-  it("renders the server-authored rules trigger directly across the RSC boundary", () => {
-    expect(source).toContain('import { Button, buttonVariants } from "@/components/ui/button"');
-    expect(source).toMatch(/<SheetTrigger\s+type="button"[\s\S]*?buttonVariants\(\{/);
-    expect(source).not.toMatch(/<SheetTrigger\s+asChild>[\s\S]*?<Button/);
+  it("renders server-authored rules in the persistent detail sections", () => {
+    expect(source).toContain("<ChallengeDetailSections");
+    expect(source).toContain('id: "rules"');
+    expect(source).toContain("{c.rulesSummary}");
+    expect(source).toContain("c.rulesBullets.map");
+    expect(source).toContain('c.scoringDirection === "asc" ? "Lower" : "Higher"');
+    const sections = readFileSync(
+      join(process.cwd(), "src/app/challenges/challenge-detail-sections.tsx"),
+      "utf8",
+    );
+    expect(sections).toContain("keepMounted");
+    expect(sections).toContain("items={items}");
   });
 
   it("keeps the leaderboard exportable and presents attempts as a timeline", () => {
     expect(source).toContain("<PageShell>");
     expect(source).not.toContain('<PageShell size="7xl"');
-    expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="challenge-detail"');
-    expect(source).toContain('id="challenge-command"');
+    expect(source).toContain("<ChallengeDetailSections");
     expect(source).toContain('data-workbench-scope="challenge-leaderboard"');
     expect(source).toContain('data-workbench-export-table="challenge-leaderboard"');
     expect(source).toContain('mainTableLabel="Challenge leaderboard table"');
     expect(source).toContain('mainTableLabel="Challenge leaderboard table" stickyFirstColumn');
-    expect(source).toContain('id="challenge-attempts"');
-    expect(source).toContain("data-challenge-attempt-timeline");
-    expect(source).toContain('label="Challenge attempt history"');
-    expect(source).toContain("challengeAttemptTimelineItem(row)");
+    expect(source).toContain('id: "attempts"');
+    expect(source).toContain("Qualifying attempt ledger");
+    expect(source).toContain(
+      ".sort((a, b) => a.attempt.attemptedAt.getTime() - b.attempt.attemptedAt.getTime())",
+    );
+    expect(source).toContain("attemptMetadataLabel(attempt.metadataJson)");
+    expect(source).toContain("attempt.userId === data.viewerUserId && attempt.sourceId");
+    expect(source).toContain("href={`/sessions/${attempt.sourceId}`}");
     expect(source).not.toContain('data-workbench-scope="challenge-attempts"');
     expect(source).not.toContain('data-workbench-export-table="challenge-attempts"');
     expect(source).toContain("tabIndex={0}");

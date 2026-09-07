@@ -3,10 +3,25 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/bag/longest/page.tsx"), "utf8");
+const dataSource = readFileSync(join(process.cwd(), "src/lib/longest-shot-data.ts"), "utf8");
 
 describe("longest shot desktop PB board", () => {
-  it("ships only the desktop PB board for this desktop-only route", () => {
-    expect(source).toContain('className="grid gap-3"');
+  it("is directly discoverable from Bag before its analytical tabs", () => {
+    const bag = readFileSync(join(process.cwd(), "src/app/(app)/bag/page.tsx"), "utf8");
+    const entry = readFileSync(
+      join(process.cwd(), "src/components/app/best-shots-entry.tsx"),
+      "utf8",
+    );
+    expect(bag.indexOf("<BestShotsEntry")).toBeGreaterThan(-1);
+    expect(bag.indexOf("<BestShotsEntry")).toBeLessThan(bag.indexOf("<UrlTabs"));
+    expect(entry).toContain('href="/bag/longest"');
+    expect(entry).toContain("Best shots by club");
+    expect(entry).toContain("Your longest carry. Your longest total.");
+  });
+  it("leads with the responsive record board and keeps replay optional", () => {
+    expect(source).toContain("<BestShotsBoard");
+    expect(source.indexOf("<BestShotsBoard")).toBeLessThan(source.indexOf("<LongestShotsSection"));
+    expect(source).toContain("Explore the illustrative shot replay");
 
     for (const obsoleteSurface of [
       "MobileLongestShotEvidence",
@@ -51,7 +66,7 @@ describe("longest shot desktop PB board", () => {
 
   it("keeps the raw maximum separate while lifecycle-gating trusted PB evidence", () => {
     const loader =
-      source.match(/async function getLongestShots[\s\S]*?type LongestShotRow/)?.[0] ?? "";
+      dataSource.match(/async function getLongestShots[\s\S]*?type LongestShotRow/)?.[0] ?? "";
 
     expect(loader).toContain("rawRecordRows");
     expect(loader).toContain("trustedRecordRows");

@@ -20,7 +20,7 @@ describe("composable analysis design primitives", () => {
     expect(impact).toContain("@/components/app/segmented-control");
     expect(map).toContain("@/components/app/segmented-control");
     expect(impact).not.toContain("function SegmentedControl(");
-    expect(impact).toContain('<ToggleGroup\n              type="single"');
+    expect(impact).toMatch(/<ToggleGroup\s+type="single"/);
     expect(impact).not.toContain("<button");
     expect(map).not.toContain("function SegmentedControl(");
   });

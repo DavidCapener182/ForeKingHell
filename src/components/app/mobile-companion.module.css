@@ -168,6 +168,26 @@
   max-width: 65%;
   font-size: 1rem;
 }
+.roundSetup {
+  min-width: 0;
+}
+.roundSetup label {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr);
+}
+.roundSetup select,
+.roundSetup input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  text-overflow: ellipsis;
+}
+.roundSetup :is(select, input):focus-visible {
+  outline: 2px solid var(--ios-tint);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
 .clubPicker {
   position: relative;
   max-width: 65%;

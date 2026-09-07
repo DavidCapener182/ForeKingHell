@@ -19,7 +19,10 @@ test("Handicap keeps unofficial source estimates and full round calculations on 
   page.setDefaultNavigationTimeout(60000);
   page.setDefaultTimeout(15000);
   const pageErrors: string[] = [];
-  page.on("pageerror", (error) => { pageErrors.push(error.message); console.log("PAGE ERROR", error.stack); });
+  page.on("pageerror", (error) => {
+    pageErrors.push(error.message);
+    console.log("PAGE ERROR", error.stack);
+  });
   const db = postgres(value!, { max: 1 });
   let owner: string | undefined;
   try {
@@ -73,8 +76,11 @@ test("Handicap keeps unofficial source estimates and full round calculations on 
       ]) {
         await page.setViewportSize({ width, height });
         await page.getByRole("tab", { name: "Round calculations", exact: true }).click();
-        const tableDisclosure = page.locator("details").filter({ has: page.locator("summary", { hasText: "Full differential table and export" }) });
-        if ((await tableDisclosure.getAttribute("open")) === null) await tableDisclosure.locator("summary").click();
+        const tableDisclosure = page.locator("details").filter({
+          has: page.locator("summary", { hasText: "Full differential table and export" }),
+        });
+        if ((await tableDisclosure.getAttribute("open")) === null)
+          await tableDisclosure.locator("summary").click();
         await page.getByRole("button", { name: "Saved views", exact: true }).click();
         const suggested = page.getByRole("menuitem", { name: /Score differentials/ });
         await expect(suggested).toHaveAttribute("href", "/handicap?filter=retained&tab=rounds");

@@ -103,20 +103,29 @@ test("P01 controls: measured zero, explicit scope, drawer and table on six viewp
       true,
     );
     await page.screenshot({ path: info.outputPath(`P01-controls-${viewport.width}.png`) });
-    await page.getByRole("tab",{name:"Timeline",exact:true}).click();
-    const timeline=page.locator("[data-progress-timeline-story]");
+    await page.getByRole("tab", { name: "Timeline", exact: true }).click();
+    const timeline = page.locator("[data-progress-timeline-story]");
     await expect(timeline.getByRole("listitem")).toHaveCount(12);
-    await timeline.getByRole("button",{name:"Load more events (3 remaining)"}).click();
+    await timeline.getByRole("button", { name: "Load more events (3 remaining)" }).click();
     await expect(timeline.getByRole("listitem")).toHaveCount(15);
-    await timeline.getByRole("button",{name:/Event type/}).click();
-    await page.getByRole("option",{name:"Practice",exact:true}).click();
+    await timeline.getByRole("button", { name: /Event type/ }).click();
+    await page.getByRole("option", { name: "Practice", exact: true }).click();
     await expect(timeline.getByRole("listitem")).toHaveCount(8);
     await timeline.scrollIntoViewIfNeeded();
-    await page.screenshot({path:info.outputPath(`P01-timeline-${viewport.width}.png`)});
-    if(viewport.width===1440 || viewport.width===360) {
-      await page.evaluate(() => {document.documentElement.dataset.theme="dark";document.documentElement.style.zoom="2";});
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth+1)).toBe(true);
-      await page.screenshot({path:info.outputPath(`P01-timeline-css-zoom-dark-${viewport.width}.png`)});
+    await page.screenshot({ path: info.outputPath(`P01-timeline-${viewport.width}.png`) });
+    if (viewport.width === 1440 || viewport.width === 360) {
+      await page.evaluate(() => {
+        document.documentElement.dataset.theme = "dark";
+        document.documentElement.style.zoom = "2";
+      });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+        ),
+      ).toBe(true);
+      await page.screenshot({
+        path: info.outputPath(`P01-timeline-css-zoom-dark-${viewport.width}.png`),
+      });
     }
   }
   expect(errors).toEqual([]);

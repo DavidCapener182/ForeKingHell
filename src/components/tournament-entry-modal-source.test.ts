@@ -9,7 +9,9 @@ const source = readFileSync(
 
 describe("TournamentEntryModal mobile sheet", () => {
   it("uses the accessible drawer lifecycle instead of a hand-rolled fixed dialog", () => {
-    expect(source).toContain("<Drawer open={open} onOpenChange={setOpen}>");
+    expect(source).toContain("<Drawer");
+    expect(source).toContain("open={open}");
+    expect(source).toContain("if (!pending) setOpen(value)");
     expect(source).toContain("<DrawerTrigger asChild>");
     expect(source).toContain("<DrawerContent");
     expect(source).toContain("<DrawerTitle");
@@ -21,7 +23,8 @@ describe("TournamentEntryModal mobile sheet", () => {
 
   it("keeps actions reachable above the installed-app safe area", () => {
     expect(source).toContain("env(safe-area-inset-bottom)");
-    expect(source).toContain("sticky bottom-0");
+    expect(source).toContain("min-h-0 overflow-y-auto overscroll-contain");
+    expect(source).toContain("<DrawerFooter");
     expect(source).toContain("min-h-11");
   });
 });

@@ -13,7 +13,7 @@ createRoot(document.getElementById("root")!).render(
         description: "Identity and units",
         content: (
           <SettingsDirtyForm action={updateUserSettingsFormAction}>
-              <input type="hidden" name="settingsSection" value="general" />
+            <input type="hidden" name="settingsSection" value="general" />
             <label>
               Display name
               <input name="name" defaultValue="Saved name" />

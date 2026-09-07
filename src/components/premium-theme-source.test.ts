@@ -10,10 +10,15 @@ function componentSource(start: string, end: string) {
 
 describe("premium shared theme surfaces", () => {
   it("keeps page-header media rings semantic across desktop and mobile companions", () => {
-    const pageHeader = componentSource(
-      "export function PageHeader",
-      "export function MobileCompactPageHeader",
+    const pageHeader = readFileSync(
+      join(process.cwd(), "src/components/untitled-ui/headers.tsx"),
+      "utf8",
     );
+    const headerStyles = readFileSync(
+      join(process.cwd(), "src/components/untitled-ui/headers.module.css"),
+      "utf8",
+    );
+    expect(source).toContain("export { UntitledPageHeader as PageHeader }");
     const mobileHeader = componentSource(
       "export function MobileCompactPageHeader",
       "export function MobileSectionChips",
@@ -23,7 +28,8 @@ describe("premium shared theme surfaces", () => {
       "export function MobileQuickDecisionCard",
     );
 
-    expect(pageHeader).toContain("ring-border/80");
+    expect(headerStyles).toContain("border: 1px solid var(--border)");
+    expect(headerStyles).not.toMatch(/#[0-9a-f]{3,8}\b/i);
     expect(mobileHeader).toContain("ring-border/80");
     expect(`${pageHeader}${mobileHeader}${companionHero}`).not.toMatch(
       /(?:ring|border|bg|text)-(?:white|slate|emerald)-/,

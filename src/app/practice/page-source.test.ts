@@ -29,7 +29,7 @@ describe("practice planner desktop workflow", () => {
     expect(routeSource).toContain('surface === "companion"');
     expect(routeSource).toContain('await import("./practice-companion-page")');
     expect(routeSource).toContain('await import("./practice-workbench-page")');
-    expect(companionSource).toContain("Start practice");
+    expect(companionSource).toContain("practiceActivityPresentation");
     expect(companionSource).toContain("data-active-range-mode");
     expect(companionSource).toContain("MobileLargeTitle");
     expect(companionSource).toContain("<Progress");
@@ -142,7 +142,10 @@ describe("practice planner desktop workflow", () => {
     expect(source).toContain(
       'const explicitSpeedRequest = params?.intent === "speed" && params?.session === "speed"',
     );
-    expect(source).toContain("const initialSavedPlan = explicitSpeedRequest");
+    expect(source).toContain("requestedPlan ??");
+    expect(source).toContain(
+      "explicitSpeedRequest || requestedOptions.focusClub || requestedOptions.sourceSessionId",
+    );
     expect(companionPageSource).toContain(
       'const explicitSpeedRequest = params?.intent === "speed" && params?.session === "speed"',
     );

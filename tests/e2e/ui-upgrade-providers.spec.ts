@@ -97,7 +97,7 @@ test("Providers retain full connection diagnostics on both surfaces", async ({
         await page.getByRole("button", { name: "Close details", exact: true }).click();
         await page.getByRole("tab", { name: "Diagnostics", exact: true }).click();
         await expect(page).toHaveURL(/tab=diagnostics/);
-        await expect(page.getByText("Needs review", {exact:true})).toBeVisible();
+        await expect(page.getByText("Needs review", { exact: true })).toBeVisible();
         await expect(page.getByText(/failed ·/).first()).toBeVisible();
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),

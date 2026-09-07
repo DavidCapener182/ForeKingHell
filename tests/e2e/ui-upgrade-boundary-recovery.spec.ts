@@ -39,8 +39,17 @@ test("shared error retry exposes a visible busy boundary and recovery", async ({
   ]) {
     await page.setViewportSize({ width, height });
     await page.goto("https://shared.fixture");
-    await page.addStyleTag({ content: css.css + bundle.outputFiles.filter(f=>f.path.endsWith(".css")).map(f=>f.text).join("\n") });
-    await page.addScriptTag({ content: bundle.outputFiles.find(f=>f.path.endsWith(".js"))!.text });
+    await page.addStyleTag({
+      content:
+        css.css +
+        bundle.outputFiles
+          .filter((f) => f.path.endsWith(".css"))
+          .map((f) => f.text)
+          .join("\n"),
+    });
+    await page.addScriptTag({
+      content: bundle.outputFiles.find((f) => f.path.endsWith(".js"))!.text,
+    });
     await expect(page.getByRole("main")).toHaveCount(1);
     await expect(
       page.getByRole("heading", { name: "This view could not be loaded" }),

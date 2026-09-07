@@ -43,8 +43,8 @@ describe("rapsodo desktop provider console", () => {
     expect(companionPreview).toContain("practicePlanId");
     expect(companionPreview).toContain("companionRapsodoResultHref");
     expect(companion).toContain("<ScrollArea");
-    expect(companion).toContain(
-      "<Button\n                key={`${session.providerKind}-${session.providerSessionId}`}",
+    expect(companion).toMatch(
+      /<Button\s+key=\{`\$\{session.providerKind\}-\$\{session.providerSessionId\}`\}/,
     );
     expect(companion).toContain("<Item");
     expect(companion).toContain("onClick={() => openPreview(session)}");
@@ -138,7 +138,11 @@ describe("rapsodo desktop provider console", () => {
     expect(source).toContain("AlertDialog");
     expect(source).toContain("disconnectConfirmationOpen");
     expect(source).toContain("<Select");
-    expect(source).not.toContain("<select");
+    expect(source).toContain("Review club for shot");
+    expect(source).toContain('value={selectedClubByRow[shot.rowNumber] ?? ""}');
+    expect(source).toContain("[shot.rowNumber]: event.target.value");
+    expect(source).toContain('[shot.rowNumber]: "user"');
+    expect(source).toContain("disabled={isPending}");
   });
 
   it("flattens disconnected benefit tiles into Items instead of nested Cards", () => {

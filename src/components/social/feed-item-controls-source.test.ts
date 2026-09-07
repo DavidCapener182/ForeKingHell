@@ -8,26 +8,25 @@ const source = readFileSync(
 );
 
 describe("feed item control composition", () => {
-  it("uses shared Buttons for every visible form control", () => {
-    const controls =
-      source.match(/export function FeedItemControls[\s\S]*?function titleCase/)?.[0] ?? "";
+  it("uses shared controls and confirms the selected operation before submitting", () => {
+    const controls = source;
 
     expect(controls).toContain("<DropdownMenuTrigger asChild>");
-    expect(controls).toContain("<DropdownMenuItem key={option} asChild>");
+    expect(controls).toContain("<DropdownMenuItem");
     expect(controls).toContain("<Button");
-    expect(controls).toContain('type="submit"');
-    expect(controls).toContain("<ConfirmSubmitButton");
+    expect(controls).toContain("<ResponsiveDetailPanel");
+    expect(controls).toContain("description={choice?.consequence}");
+    expect(controls).toContain('"Confirm action"');
+    expect(controls).toContain("if (!choice || lock.current) return;");
+    expect(controls).toContain('data.set("feedItemId", feedItemId)');
+    expect(controls).toContain('data.set("operation", choice.operation)');
+    expect(controls).toContain("await feedInteractionFormAction");
+    expect(controls).toContain('role="alert"');
+    expect(controls).toContain("if (!open && !pending) setChoice(null)");
     expect(controls).not.toContain("<button");
 
-    for (const action of [
-      "updateFeedItemVisibilityAction",
-      "hideFeedItemAction",
-      "hideFeedItemTypeAction",
-      "muteFeedItemUserAction",
-      "reportFeedItemAction",
-      "deleteFeedItemAction",
-    ]) {
-      expect(controls).toContain(action);
+    for (const operation of ["visibility", "hide", "hide-type", "mute", "report", "delete"]) {
+      expect(controls).toContain(`operation: "${operation}"`);
     }
   });
 });

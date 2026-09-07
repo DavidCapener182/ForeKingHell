@@ -58,13 +58,11 @@ test("Profile save failure retains draft and invalid photo preserves existing me
     await dialog
       .getByRole("textbox", { name: "Display name", exact: true })
       .fill("Retained profile draft");
-    await dialog
-      .getByLabel("Choose avatar image file", { exact: true })
-      .setInputFiles({
-        name: "broken.png",
-        mimeType: "image/png",
-        buffer: Buffer.from("invalid image bytes"),
-      });
+    await dialog.getByLabel("Choose avatar image file", { exact: true }).setInputFiles({
+      name: "broken.png",
+      mimeType: "image/png",
+      buffer: Buffer.from("invalid image bytes"),
+    });
     await expect(
       dialog
         .getByText(

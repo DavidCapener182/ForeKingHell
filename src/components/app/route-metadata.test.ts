@@ -1,4 +1,7 @@
-import { isDesktopOnlyCompanionPath, isSummaryOnlyCompanionPath } from "@/lib/app-route-capabilities";
+import {
+  isDesktopOnlyCompanionPath,
+  isSummaryOnlyCompanionPath,
+} from "@/lib/app-route-capabilities";
 import { describe, expect, it } from "vitest";
 
 import {

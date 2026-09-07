@@ -95,7 +95,19 @@
   border-radius: 0;
 }
 
-.compact .answer, .compact .evidence { padding: 1rem; }
-.compact .title { font-size: 1.5rem; line-height: 1.25; margin-top: .5rem; }
-.compact .description { font-size: .875rem; margin-top: .5rem; }
-.compact .actions { margin-top: .75rem; }
+.compact .answer,
+.compact .evidence {
+  padding: 1rem;
+}
+.compact .title {
+  font-size: 1.5rem;
+  line-height: 1.25;
+  margin-top: 0.5rem;
+}
+.compact .description {
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+.compact .actions {
+  margin-top: 0.75rem;
+}

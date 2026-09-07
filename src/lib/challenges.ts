@@ -328,13 +328,24 @@ export async function createChallenge(input: {
   const now = new Date();
   const startsAt = input.startsAt ?? now;
   const endsAt = input.endsAt ?? defaultChallengeEnd(now);
-  if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt) {
+  if (
+    !Number.isFinite(startsAt.getTime()) ||
+    !Number.isFinite(endsAt.getTime()) ||
+    endsAt <= startsAt
+  ) {
     throw new Error("Challenge dates must be valid, with the end after the start.");
   }
   const [challenge] = await getDb().transaction(async (tx) => {
-    const [currentTemplate] = await tx.select().from(challengeTemplates)
-      .where(eq(challengeTemplates.id, template.id)).limit(1).for("share");
-    if (!currentTemplate?.active || currentTemplate.updatedAt.getTime() !== template.updatedAt.getTime()) {
+    const [currentTemplate] = await tx
+      .select()
+      .from(challengeTemplates)
+      .where(eq(challengeTemplates.id, template.id))
+      .limit(1)
+      .for("share");
+    if (
+      !currentTemplate?.active ||
+      currentTemplate.updatedAt.getTime() !== template.updatedAt.getTime()
+    ) {
       throw new Error("The challenge template changed or is unavailable. Review it and try again.");
     }
     const [created] = await tx

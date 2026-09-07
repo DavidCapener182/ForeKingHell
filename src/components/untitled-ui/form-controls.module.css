@@ -1,19 +1,101 @@
-.field { display: grid; min-width: 0; gap: 0.375rem; align-content: start; }
-.label { font-size: 0.875rem; font-weight: 600; color: var(--foreground); }
-.input { min-width: 0; width: 100%; min-height: 2.75rem; padding: 0.625rem 0.75rem; border: 1px solid var(--input); border-radius: 0.5rem; background: var(--card); color: var(--foreground); font-size: 1rem; }
-.input:focus-visible, .input[data-focus-visible] { outline: 2px solid var(--ring); outline-offset: 2px; }
-.field[data-invalid] .input { border-color: var(--destructive); }
-.field[data-disabled] { opacity: 0.6; }
-.description, .error { font-size: 0.875rem; line-height: 1.5; overflow-wrap: anywhere; }
-.description { color: var(--muted-foreground); }
-.error { color: var(--destructive); }
-.button { height: auto; min-height: 2.75rem; white-space: normal; }
-.button[data-pending], .button[data-disabled] { opacity: 0.6; }
-.selectTrigger { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; text-align: left; white-space: normal; }
-.selectTrigger svg { flex-shrink: 0; }
-.popover { width: var(--trigger-width); max-width: calc(100vw - 2rem); max-height: var(--available-height); overflow: auto; border: 1px solid var(--border); border-radius: 0.5rem; background: var(--popover); color: var(--popover-foreground); z-index: 100; box-shadow: 0 4px 12px #0002; }
-.list { padding: 0.25rem; outline: none; }
-.option { min-height: 2.75rem; padding: 0.625rem 0.75rem; border-radius: 0.375rem; font-size: 0.9375rem; overflow-wrap: anywhere; cursor: pointer; outline: none; }
-.option[data-focused] { background: var(--accent); color: var(--accent-foreground); }
-.option[data-selected] { font-weight: 600; }
-.option[data-disabled] { opacity: 0.5; cursor: default; }
+.field {
+  display: grid;
+  min-width: 0;
+  gap: 0.375rem;
+  align-content: start;
+}
+.label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.input {
+  min-width: 0;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--input);
+  border-radius: 0.5rem;
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 1rem;
+}
+.input:focus-visible,
+.input[data-focus-visible] {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.field[data-invalid] .input {
+  border-color: var(--destructive);
+}
+.field[data-disabled] {
+  opacity: 0.6;
+}
+.description,
+.error {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.description {
+  color: var(--muted-foreground);
+}
+.error {
+  color: var(--destructive);
+}
+.button {
+  height: auto;
+  min-height: 2.75rem;
+  white-space: normal;
+}
+.button[data-pending],
+.button[data-disabled] {
+  opacity: 0.6;
+}
+.selectTrigger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: left;
+  white-space: normal;
+}
+.selectTrigger svg {
+  flex-shrink: 0;
+}
+.popover {
+  width: var(--trigger-width);
+  max-width: calc(100vw - 2rem);
+  max-height: var(--available-height);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  z-index: 100;
+  box-shadow: 0 4px 12px #0002;
+}
+.list {
+  padding: 0.25rem;
+  outline: none;
+}
+.option {
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.9375rem;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  outline: none;
+}
+.option[data-focused] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.option[data-selected] {
+  font-weight: 600;
+}
+.option[data-disabled] {
+  opacity: 0.5;
+  cursor: default;
+}

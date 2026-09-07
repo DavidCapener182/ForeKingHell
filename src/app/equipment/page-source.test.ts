@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/equipment/page.tsx"), "utf8");
-const confirmSource = readFileSync(
-  join(process.cwd(), "src/components/app/confirm-submit-button.tsx"),
+const retirePanelSource = readFileSync(
+  join(process.cwd(), "src/app/equipment/equipment-form-panels.tsx"),
   "utf8",
 );
 
@@ -57,7 +57,8 @@ describe("equipment desktop tables", () => {
 
   it("uses theme-aware ordinary controls and table surfaces", () => {
     expect(source).toContain('className="min-h-11 rounded-xl bg-card"');
-    expect(source).toContain('className="min-h-11 w-full bg-card"');
+    expect(source).toContain("<UntitledSelect");
+    expect(source).toContain("required={!optionalLabel}");
     expect(source).toContain("[&_th]:bg-card");
     expect(source).not.toMatch(/\b(?:bg-white|bg-slate-\d+|text-slate-\d+|border-slate-\d+)\b/);
     expect(source).not.toMatch(
@@ -66,9 +67,9 @@ describe("equipment desktop tables", () => {
   });
 
   it("preserves all equipment mutations after removing the obsolete companion tree", () => {
-    expect(source).toContain("captureEquipmentSnapshotAction");
-    expect(source).toContain("createBallModelAction");
-    expect(source).toContain("saveEquipmentHistoryAction");
+    expect(source).toContain("captureEquipmentSnapshotWithStateAction");
+    expect(source).toContain("createBallModelWithStateAction");
+    expect(source).toContain("saveEquipmentHistoryWithStateAction");
     expect(source).toContain("<RetireClubForm");
   });
 
@@ -78,13 +79,15 @@ describe("equipment desktop tables", () => {
       source.indexOf("async function getEquipmentData"),
     );
 
-    expect(retireSource).toContain("<form action={retireClubAction}>");
-    expect(retireSource).toContain("<ConfirmSubmitButton");
-    expect(retireSource).toContain('confirmTitle="Retire club"');
-    expect(retireSource).toContain('confirmActionLabel="Retire club"');
-    expect(retireSource).toContain("shot and equipment history remain available");
-    expect(retireSource).not.toContain("<Button");
-    expect(confirmSource).toContain("<AlertDialog open={open}");
-    expect(confirmSource).toContain("requestSubmit(buttonRef.current)");
+    expect(retireSource).toContain("<EquipmentRetire");
+    expect(retireSource).toContain("id={club.id}");
+    expect(retirePanelSource).toContain("<AlertDialog");
+    expect(retirePanelSource).toContain("<AlertDialogTitle>Retire {label}?");
+    expect(retirePanelSource).toContain("Its shots and dated setup history stay");
+    expect(retirePanelSource).toContain("action={retireClubWithStateAction}");
+    expect(retirePanelSource).toContain('submitLabel="Retire club"');
+    expect(retirePanelSource).toContain('name="clubId" value={id}');
+    expect(retirePanelSource).toContain("if (!pending) setOpen(value)");
+    expect(retirePanelSource).toContain("onCancel={() => setOpen(false)}");
   });
 });

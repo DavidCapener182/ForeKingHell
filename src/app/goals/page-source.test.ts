@@ -7,11 +7,9 @@ const forms = readFileSync(join(process.cwd(), "src/app/goals/goal-form-panels.t
 const actions = readFileSync(join(process.cwd(), "src/app/goals/actions.ts"), "utf8");
 
 describe("goals shadcn workbench", () => {
-  it("renders one request-surface goal tree instead of CSS-hidden siblings", () => {
-    expect(page).toContain("getRequestAppSurface()");
-    expect(page).toContain('surface === "companion"');
-    expect(page).toContain("data-goals-companion");
-    expect(page).toContain("data-goals-workbench");
+  it("renders one responsive goal tree instead of CSS-hidden siblings", () => {
+    expect(page).toContain("data-goals-ui");
+    expect(page).toContain("<PageShell>");
     expect(page).not.toMatch(/(?:^|\s)(?:lg:hidden|hidden lg:)/);
   });
 
@@ -21,8 +19,8 @@ describe("goals shadcn workbench", () => {
     expect(page).toContain("<ConnectedMetricBar");
     expect(page).toContain("<Progress");
     expect(page).toContain("<AppEmptyState");
-    expect(page).toContain("var(--status-success-foreground)");
-    expect(page).toContain("var(--status-warning-foreground)");
+    expect(page).toContain("Saved values and verified evidence remain distinct");
+    expect(page).toContain("goalProgress(goal)");
     expect(page).not.toContain("text-emerald-");
     expect(page).not.toContain("text-amber-");
   });
@@ -33,15 +31,19 @@ describe("goals shadcn workbench", () => {
     expect(forms).toContain("<AlertDialog");
   });
 
-  it("renders action redirect failures as a semantic shadcn alert", () => {
+  it("keeps failed saves in the draft and announces actionable errors", () => {
     expect(actions).toContain('failGoal("goal_type")');
     expect(actions).toContain('failGoal("goal_not_found")');
-    expect(page).toContain("goalErrorMessage(params?.error)");
-    expect(page).toContain('error === "goal_type"');
-    expect(page).toContain('error === "goal_not_found"');
-    expect(page).toContain('<Alert variant="destructive">');
-    expect(page).toContain("<AlertTitle>Goal not saved</AlertTitle>");
-    expect(page).toContain("<AlertDescription>{goalError}</AlertDescription>");
-    expect(page).not.toContain('role="alert"');
+    expect(actions).toContain("return { ok: false, code: error.code, error: error.message }");
+    expect(forms).toContain("action={addGoalWithStateAction}");
+    expect(forms).toContain("action={updateGoalWithStateAction}");
+    expect(forms).toContain("<DraftForm");
+    const draft = readFileSync(
+      join(process.cwd(), "src/components/untitled-ui/draft-form.tsx"),
+      "utf8",
+    );
+    expect(draft).toContain("if (result.ok)");
+    expect(draft).toContain("else setError(result.error)");
+    expect(draft).toContain('role="alert"');
   });
 });

@@ -45,7 +45,8 @@ function CommandDialog({
     <Dialog {...props}>
       <DialogContent
         onOpenAutoFocus={() => {
-          returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          returnFocus.current =
+            document.activeElement instanceof HTMLElement ? document.activeElement : null;
         }}
         onCloseAutoFocus={(event) => {
           event.preventDefault();

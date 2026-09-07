@@ -1,22 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { PageHeader } from "@/components/premium";
+import { UntitledSelect } from "@/components/untitled-ui/form-controls";
 import {
   mobileClubEvidence,
   mobileClubNeighbours,
   type ClubNeighbour,
 } from "@/lib/mobile-club-evidence";
-import { MobileLargeTitle, MobileMetric, MobileSection } from "@/components/app/mobile-screen";
+import { MobileMetric, MobileSection } from "@/components/app/mobile-screen";
 import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useMemo } from "react";
 import {
-  ArrowRight,
   BarChart3,
-  Brain,
   CheckCircle2,
   Database,
   Gauge,
-  ShieldCheck,
   Target,
   TrendingUp,
   type LucideIcon,
@@ -26,8 +26,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ClubArtwork } from "@/components/visuals/club-artwork";
 import {
   clubAccent,
   formatClubModelName,
@@ -103,6 +101,7 @@ type ClubEvolutionPoint = {
   label: string;
   value: number | null;
   shotCount: number;
+  sourceSessionIds: string[];
 };
 type MonthChange = {
   currentLabel: string | null;
@@ -118,23 +117,35 @@ export function ClubDetailClient({
   children,
   companion = false,
   neighbours = [],
+  correctionClubs = [],
 }: {
   club: {
     id: string;
     type: string;
     brand: string | null;
     model: string | null;
+    active?: boolean;
     shots: AnalysisShot[];
   };
   children?: ReactNode;
   companion?: boolean;
   neighbours?: ClubNeighbour[];
+  correctionClubs?: Array<{ value: string; label: string }>;
 }) {
   const accent = clubAccent(club.type);
   const clubModelName = formatClubModelName(club);
   const clubTypeLabel = formatClubType(club.type);
   const clubIdentityName = formatClubIdentityName(club.type);
-  const [shotRange, setShotRange] = useState<ShotRange>(companion ? "all" : "thisMonth");
+  const query = useSearchParams();
+  const requestedRange = query.get("range");
+  const shotRange: ShotRange = RANGE_OPTIONS.some((option) => option.value === requestedRange)
+    ? (requestedRange as ShotRange)
+    : "all";
+  const setShotRange = (value: ShotRange) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("range", value);
+    window.history.pushState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  };
   const selectedRange =
     RANGE_OPTIONS.find((option) => option.value === shotRange) ?? RANGE_OPTIONS[0];
   const orderedShots = useMemo(
@@ -202,10 +213,16 @@ export function ClubDetailClient({
     const value = (number: number | null) => (number == null ? "—" : String(Math.round(number)));
     return (
       <div className="grid gap-6" data-mobile-club-detail>
-        <MobileLargeTitle
+        <PageHeader
           title={clubIdentityName}
-          detail={clubModelName === clubTypeLabel ? undefined : clubModelName}
+          description={`${clubModelName}${club.active === false ? " · Retired club" : ""}`}
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/bag">Back to bag</Link>
+            </Button>
+          }
         />
+        <RangeToggle value={shotRange} onChange={setShotRange} />
         <MobileMetric
           value={value(carry)}
           unit="yd"
@@ -365,17 +382,35 @@ export function ClubDetailClient({
             )}
           </MobileGroupedList>
         </MobileSection>
-        <details>
+        <details open>
           <summary className="flex min-h-12 items-center text-primary font-semibold">
             View analytics
           </summary>
           <div className="grid gap-4 pt-3">
-            <RangeToggle value={shotRange} onChange={setShotRange} />
             <ClubAnalysisTabs
               clubType={club.type}
               clubModelName={clubModelName}
               clubTypeLabel={clubTypeLabel}
               shots={selectedShots}
+              correctionClubs={correctionClubs}
+              afterDispersion={
+                <>
+                  <ClubIntelligence
+                    clubType={club.type}
+                    isShortGameTouch={isShortGameTouch}
+                    isSandWedge={isSandWedge}
+                    selectedRange={selectedRange.description}
+                    stock={stock}
+                    touch={touch}
+                    latestShotDate={latestShotDate}
+                    health={health}
+                  />
+                  <ClubDevelopmentPanel evolution={evolution} monthChange={monthChange} />
+                  {hasWedgeRoles ? (
+                    <WedgeRoleSummaryGrid summaries={stock.shotRoleSummaries} />
+                  ) : null}
+                </>
+              }
             />
           </div>
         </details>
@@ -385,124 +420,59 @@ export function ClubDetailClient({
 
   return (
     <>
-      <header className="premium-hero p-6 lg:p-8" data-desktop-club-profile>
-        <div className="space-y-7">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            <Badge
-              className="w-fit text-primary-foreground hover:opacity-90"
-              style={{ background: accent }}
+      <PageHeader
+        title={clubIdentityName}
+        description={
+          <>
+            {clubModelName} · {clubRole}
+            {club.active === false ? " · Retired club, historical evidence retained" : ""}
+          </>
+        }
+        actions={
+          <Button asChild>
+            <Link
+              href={`/practice/quick-range?club=${club.type}&focus=${encodeURIComponent(`${clubIdentityName} control`)}`}
             >
-              Club analysis
-            </Badge>
-            <div className="w-full max-w-3xl lg:flex-1">
-              <RangeToggle value={shotRange} onChange={setShotRange} />
-            </div>
-            <Button asChild variant="outline" size="sm" className="w-fit rounded-xl bg-card/70">
-              <Link href={`/bag/${club.id}/analytics`} prefetch={false}>
-                <Brain className="size-4" />
-                Advanced analytics
-              </Link>
-            </Button>
-          </div>
-
-          <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_260px] xl:items-start">
-            <div className="space-y-7">
-              <div className="space-y-3">
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {clubModelName === clubTypeLabel ? "Unspecified model" : clubModelName}
-                </p>
-                <div className="flex flex-wrap items-end gap-3">
-                  <h1 className="text-5xl font-semibold tracking-normal text-balance lg:text-6xl">
-                    {clubIdentityName}
-                  </h1>
-                  <Badge
-                    className={cn("mb-1 w-fit border px-3 py-1 text-sm", health.badgeClassName)}
-                  >
-                    {health.label}
-                  </Badge>
-                </div>
-                <p className="max-w-2xl text-xl font-medium leading-8 text-foreground/80">
-                  {clubRole}
-                </p>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-3">
-                <HeroYardage
-                  label={isShortGameTouch ? "Touch median" : "Recommended"}
-                  value={formatWholeYards(
-                    isShortGameTouch ? touch.carryMedianYd : recommendedCarry,
-                  )}
-                  detail={isShortGameTouch ? "Short-game control" : recommendedDetail}
-                  featured
-                />
-                <HeroYardage
-                  label={isShortGameTouch ? "Full stock" : "Best stock"}
-                  value={formatWholeYards(
-                    isShortGameTouch
-                      ? isSandWedge
-                        ? stock.bestStockCarryYd
-                        : null
-                      : stock.bestStockCarryYd,
-                  )}
-                  detail={isShortGameTouch ? "Full swing" : "Clean-sample median"}
-                />
-                <HeroYardage
-                  label="Personal best"
-                  value={formatWholeYards(stock.personalBestCarryYd)}
-                  detail="Longest clean carry"
-                />
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-3">
-                <HeroTrait
-                  icon={ShieldCheck}
-                  label={isShortGameTouch ? "Touch count" : "Confidence"}
-                  value={isShortGameTouch ? confidenceValue.toString() : `${confidenceValue}%`}
-                  detail={health.confidenceDetail}
-                  tone={health.tone}
-                />
-                <HeroTrait
-                  icon={Target}
-                  label="Typical miss"
-                  value={typicalMiss.label}
-                  detail={typicalMiss.detail}
-                  tone={typicalMiss.tone}
-                />
-                <HeroTrait
-                  icon={CheckCircle2}
-                  label="Current status"
-                  value={health.label}
-                  detail={health.statusDetail}
-                  tone={health.tone}
-                />
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Button asChild size="lg" className="rounded-lg px-5 shadow-sm">
-                  <a href="#club-shot-history">
-                    Review {selectedShots.length} shot{selectedShots.length === 1 ? "" : "s"}
-                    <ArrowRight className="size-4" />
-                  </a>
-                </Button>
-                <Button asChild variant="outline" size="lg" className="rounded-lg bg-card/70">
-                  <a href="#club-dispersion">Open dispersion</a>
-                </Button>
-              </div>
-            </div>
-            <ClubArtwork
-              clubType={club.type}
-              brand={club.brand}
-              model={club.model}
-              alt=""
-              className="hidden h-44 w-full max-w-60 justify-self-end xl:block"
-              imageClassName="px-6 py-6"
-              showGroundLine={false}
-              priority
-              sizes="240px"
-            />
-          </div>
-        </div>
-      </header>
+              Practise this club
+            </Link>
+          </Button>
+        }
+        metrics={[
+          {
+            label: isShortGameTouch ? "Touch median" : "Recommended carry",
+            value: formatWholeYards(isShortGameTouch ? touch.carryMedianYd : recommendedCarry),
+            detail: isShortGameTouch ? "Short-game control" : recommendedDetail,
+          },
+          {
+            label: "Best stock carry",
+            value: formatWholeYards(stock.bestStockCarryYd),
+            detail: "Clean-sample median",
+          },
+          {
+            label: "Personal best carry",
+            value: formatWholeYards(stock.personalBestCarryYd),
+            detail: "Longest clean carry",
+          },
+          {
+            label: isShortGameTouch ? "Touch count" : "Confidence",
+            value: isShortGameTouch ? confidenceValue.toString() : `${confidenceValue}%`,
+            detail: health.confidenceDetail,
+          },
+        ]}
+      />
+      <div className="grid gap-3 rounded-xl border bg-card p-3">
+        <RangeToggle value={shotRange} onChange={setShotRange} />
+        <p className="text-sm">
+          {selectedShots.length} saved shots in this range · {typicalMiss.label} ·{" "}
+          {typicalMiss.detail}
+        </p>
+        <Link
+          className="flex min-h-11 items-center text-sm text-primary underline"
+          href={`/bag/${club.id}/analytics`}
+        >
+          Advanced analytics
+        </Link>
+      </div>
 
       {selectedShots.length > 0 ? (
         <ClubAnalysisTabs
@@ -510,6 +480,7 @@ export function ClubDetailClient({
           clubModelName={clubModelName}
           clubTypeLabel={clubTypeLabel}
           shots={selectedShots}
+          correctionClubs={correctionClubs}
           afterDispersion={
             <>
               {children}
@@ -557,94 +528,13 @@ function RangeToggle({
   onChange: (value: ShotRange) => void;
 }) {
   return (
-    <div aria-label="Shot date range" className="apple-panel w-full max-w-full p-1">
-      <ToggleGroup
-        type="single"
-        value={value}
-        onValueChange={(nextValue) => nextValue && onChange(nextValue as ShotRange)}
-        variant="outline"
-        spacing={1}
-        className="grid w-full min-w-0 grid-cols-7"
-      >
-        {RANGE_OPTIONS.map((option) => (
-          <ToggleGroupItem
-            key={option.value}
-            value={option.value}
-            className="h-8 min-w-0 rounded-lg px-1 text-xs sm:px-1.5 lg:px-2"
-            title={option.label}
-          >
-            <span className="truncate sm:hidden">{option.compactLabel}</span>
-            <span className="hidden truncate sm:inline">{option.label}</span>
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-    </div>
-  );
-}
-
-function HeroYardage({
-  label,
-  value,
-  detail,
-  featured = false,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  featured?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-lg border p-4 shadow-sm",
-        featured
-          ? "border-primary/25 bg-primary text-primary-foreground shadow-primary/10"
-          : "border-border bg-card/75 text-card-foreground",
-      )}
-    >
-      <p
-        className={cn(
-          "text-sm font-semibold",
-          featured ? "text-primary-foreground/80" : "text-muted-foreground",
-        )}
-      >
-        {label}
-      </p>
-      <p className="mt-2 text-4xl font-semibold tracking-normal">{value}</p>
-      <p
-        className={cn(
-          "mt-2 text-sm",
-          featured ? "text-primary-foreground/80" : "text-muted-foreground",
-        )}
-      >
-        {detail}
-      </p>
-    </div>
-  );
-}
-
-function HeroTrait({
-  icon: Icon,
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: string;
-  detail: string;
-  tone: MetricTone;
-}) {
-  return (
-    <div className={cn("rounded-lg border p-4 shadow-sm", tonePanelClass(tone))}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-muted-foreground">{label}</p>
-        <Icon className={cn("size-4", toneTextClass(tone))} />
-      </div>
-      <p className="mt-2 text-2xl font-semibold tracking-normal">{value}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{detail}</p>
-    </div>
+    <UntitledSelect
+      label="Shot date range"
+      name="clubRange"
+      value={value}
+      onValueChange={(next) => onChange(next as ShotRange)}
+      options={RANGE_OPTIONS.map((option) => ({ value: option.value, label: option.label }))}
+    />
   );
 }
 
@@ -912,16 +802,37 @@ function ClubDevelopmentPanel({
                     variant="secondary"
                     className="h-auto bg-[var(--status-success-surface)] px-2 py-1 text-xs text-[var(--status-success-foreground)]"
                   >
-                    {point.shotCount}
+                    {point.shotCount} stock shots
                   </Badge>
                 </div>
                 <p className="mt-3 text-3xl font-semibold tracking-normal">
                   {formatWholeYards(point.value)}
                 </p>
                 <Progress
-                  value={Math.max(8, ((point.value ?? 0) / maxEvolution) * 100)}
+                  value={Math.max(0, ((point.value ?? 0) / maxEvolution) * 100)}
                   className="mt-4 h-2"
                 />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {point.shotCount < 5
+                    ? "Small sample; build comparable evidence"
+                    : "Measured stock sample"}
+                </p>
+                <details>
+                  <summary className="flex min-h-11 items-center text-sm text-primary">
+                    Source sessions
+                  </summary>
+                  <div className="grid gap-2">
+                    {point.sourceSessionIds.map((id, index) => (
+                      <Link
+                        key={id}
+                        className="flex min-h-11 items-center text-sm underline"
+                        href={`/sessions/${id}`}
+                      >
+                        Source session {index + 1}
+                      </Link>
+                    ))}
+                  </div>
+                </details>
               </div>
             ))
           ) : (
@@ -1178,10 +1089,11 @@ function buildClubEvolution(shots: AnalysisShot[], clubType: string): ClubEvolut
       return {
         key,
         label: monthLabel(key),
-        value:
-          stock.bestStockCarryYd ??
-          medianNumber(numericValues(monthShots.map((shot) => shot.carryYd))),
-        shotCount: monthShots.length,
+        value: stock.bestStockCarryYd,
+        shotCount: stock.sampleSize,
+        sourceSessionIds: [
+          ...new Set(monthShots.filter((shot) => shot.sessionId).map((shot) => shot.sessionId!)),
+        ],
       };
     });
 }

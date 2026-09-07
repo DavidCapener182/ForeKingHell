@@ -87,7 +87,7 @@ test("Rapsodo provider UI uses retained drafts and exact preview ID", async ({ p
       await page
         .getByRole("button", { name: "Resume review: Synthetic cloud course", exact: true })
         .click();
-      await dialog.locator("summary").filter({hasText:"Shot 1"}).click();
+      await dialog.locator("summary").filter({ hasText: "Shot 1" }).click();
       await expect(
         dialog.getByRole("combobox", { name: "Review club for shot 1", exact: true }),
       ).toHaveValue("fixture-7i");
@@ -96,13 +96,16 @@ test("Rapsodo provider UI uses retained drafts and exact preview ID", async ({ p
         path: info.outputPath(`P37-${surface}-${width}.png`),
         animations: "disabled",
       });
-      await dialog.getByRole("button",{name:"Save selected shots",exact:true}).last().click();
-      await expect(page.getByText(/Saved receipt retained after metadata failure/).first()).toBeVisible();
-      expect(await page.evaluate(()=>document.documentElement.dataset.importCalls)).toBe("1");
-      const imported=await page.evaluate(()=>JSON.parse(document.documentElement.dataset.importInput!));
+      await dialog.getByRole("button", { name: "Save selected shots", exact: true }).last().click();
+      await expect(
+        page.getByText(/Saved receipt retained after metadata failure/).first(),
+      ).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.dataset.importCalls)).toBe("1");
+      const imported = await page.evaluate(() =>
+        JSON.parse(document.documentElement.dataset.importInput!),
+      );
       expect(imported.session.providerSessionId).toBe("fixture-remote-1");
       expect(imported.importInput.shotOverrides).toHaveLength(1);
-
     }
   expect(errors).toEqual([]);
 });

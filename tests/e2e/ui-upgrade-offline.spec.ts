@@ -42,7 +42,7 @@ test("Offline resources show only owned copies and preserve local round context"
   );
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.addInitScript(() => Object.defineProperty(navigator, "onLine", {get: () => false}));
+  await page.addInitScript(() => Object.defineProperty(navigator, "onLine", { get: () => false }));
   await page.goto("/offline", { waitUntil: "domcontentloaded", timeout: 90000 });
   await page.evaluate(
     ({ account, round, bag }) => {
@@ -65,7 +65,7 @@ test("Offline resources show only owned copies and preserve local round context"
     timeout: 60000,
   });
   await page.route("**/api/offline/**", (route) => route.abort());
-  await page.route("**/assets/connection.txt?*", route => route.abort());
+  await page.route("**/assets/connection.txt?*", (route) => route.abort());
   for (const [width, height] of [
     [1440, 900],
     [1280, 800],

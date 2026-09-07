@@ -96,7 +96,10 @@ describe("analysis workspace source contract", () => {
         .every((input) => input.includes('type="hidden"')),
     ).toBe(true);
     expect(page).toContain("var(--status-warning-foreground)");
-    expect(page).toContain("var(--status-information-foreground)");
+    expect(page).toContain("<QualityIssues issues={issues}");
+    expect(source("src/app/analyse/workspace/workspace-controls.tsx")).toContain(
+      "{issue.severity} priority",
+    );
     expect(page).not.toContain('severity === "high" ? "bg-red-500"');
   });
 
@@ -109,9 +112,11 @@ describe("analysis workspace source contract", () => {
       'import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"',
     );
     expect(migrationWarning).toContain(
-      "<AlertTitle>Analysis storage migration pending</AlertTitle>",
+      "<AlertTitle>Saving is temporarily unavailable</AlertTitle>",
     );
     expect(migrationWarning).toContain("<AlertDescription>");
+    expect(migrationWarning).toContain("Data-quality and equipment analysis remain available");
+    expect(migrationWarning).toContain("Please retry later to save notes");
     expect(migrationWarning).toContain("var(--status-warning-surface)");
     expect(migrationWarning).not.toContain("border-amber-300");
     expect(migrationWarning).not.toContain("bg-amber-50");

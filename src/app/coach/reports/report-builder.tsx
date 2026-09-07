@@ -92,7 +92,8 @@ export function ReportBuilder({
       className="grid gap-4"
       onSubmit={(event) => {
         event.preventDefault();
-        if (step === 0) setStep(1); else reviewDraft();
+        if (step === 0) setStep(1);
+        else reviewDraft();
       }}
     >
       <ol className="flex flex-wrap gap-3 text-sm" aria-label="Report builder steps">
@@ -245,7 +246,9 @@ export function ReportBuilder({
             Continue to privacy
           </Button>
         ) : (
-          <Button type="button" onClick={reviewDraft}>Review report</Button>
+          <Button type="button" onClick={reviewDraft}>
+            Review report
+          </Button>
         )}
         <Button
           type="button"

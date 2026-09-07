@@ -57,7 +57,7 @@ test("Tournament detail supports entry review retained submission and withdrawal
         [1023, 800],
         [1024, 800],
       ]) {
-        if (process.env.P61_MULTIROUND === "1" && ![1440,390].includes(width)) continue;
+        if (process.env.P61_MULTIROUND === "1" && ![1440, 390].includes(width)) continue;
         const rounds = process.env.P61_MULTIROUND === "1" ? 2 : 1;
         const event = (
           await db`insert into fkh_tournaments(title,description,course_id,created_by_user_id,visibility,status,starts_at,ends_at,round_count,screenshot_required,direct_rapsodo_required) values('Synthetic tournament detail','Full event description remains readable.',${course},${creator},'public','open',${new Date(Date.now() - 86400000)},${new Date(Date.now() + 86400000)},${rounds},false,false) returning id`
@@ -123,9 +123,15 @@ test("Tournament detail supports entry review retained submission and withdrawal
           page.getByRole("progressbar", { name: "Submitted tournament rounds" }),
         ).toHaveAttribute("value", "1");
         if (rounds === 2) {
-          await expect(form.getByRole("spinbutton",{name:"Round",exact:true})).toHaveValue("2");
-          await expect(form.getByRole("spinbutton",{name:"Gross",exact:true})).toHaveValue("");
-          await expect(form.getByRole("button",{name:"Review round 2",exact:true})).toBeEnabled();
+          await expect(form.getByRole("spinbutton", { name: "Round", exact: true })).toHaveValue(
+            "2",
+          );
+          await expect(form.getByRole("spinbutton", { name: "Gross", exact: true })).toHaveValue(
+            "",
+          );
+          await expect(
+            form.getByRole("button", { name: "Review round 2", exact: true }),
+          ).toBeEnabled();
         }
         const saved =
           await db`select id,gross_score,verification_status from fkh_tournament_submissions where tournament_id=${event} and user_id=${owner}`;

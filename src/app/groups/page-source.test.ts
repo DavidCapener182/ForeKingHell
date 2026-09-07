@@ -14,9 +14,9 @@ const createSheetSource = readFileSync(
 
 describe("groups membership directory", () => {
   it("uses one membership-led directory with the required tabs", () => {
-    expect(tabsSource).toContain('label: "My Groups"');
-    expect(tabsSource).toContain('label: "Discover"');
-    expect(tabsSource).toContain('label: "Invites"');
+    expect(tabsSource).toContain('["mine", "My groups"]');
+    expect(tabsSource).toContain('["discover", "Discover"]');
+    expect(tabsSource).toContain('["invites", "Invitations"]');
     expect(source).toContain("<GroupClubList");
     expect(source).toContain("<GroupClubRow");
     expect(source).not.toContain("GroupBoardTable");
@@ -40,15 +40,15 @@ describe("groups membership directory", () => {
 
   it("keeps creation in a sheet and invitations actionable", () => {
     expect(source).toContain("<GroupCreateSheet");
-    expect(createSheetSource).toContain("<Sheet>");
-    expect(createSheetSource).toContain("<SheetContent");
-    expect(source).toContain("acceptGroupInviteAction");
-    expect(source).toContain("declineGroupInviteAction");
-    expect(source).toContain("joinGroupByInviteCodeAction");
+    expect(createSheetSource).toContain("<ResponsiveDetailPanel");
+    expect(createSheetSource).toContain("No members are invited automatically");
+    expect(source).toContain('operation="accept"');
+    expect(source).toContain('operation="decline"');
+    expect(source).toContain('operation="code"');
   });
 
-  it("keeps the clubhouse artwork without capping the app layout", () => {
-    expect(source).toContain('variant="groups"');
+  it("keeps a clear page header without capping the app layout", () => {
+    expect(source).toContain("<PageHeader");
     expect(source).toContain("<PageShell>");
     expect(source).not.toMatch(/max-w-6xl|max-w-7xl|max-w-\[1500px\]/);
   });

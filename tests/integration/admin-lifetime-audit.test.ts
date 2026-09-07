@@ -53,32 +53,59 @@ describe.skipIf(!enabled)("admin lifetime grant audit", () => {
     await sql.end();
   });
   it("rolls back a failed grant audit and exposes only recorded lifetime grants", async () => {
-    const targetEmail=`lifetime-${crypto.randomUUID()}@example.invalid`;
+    const targetEmail = `lifetime-${crypto.randomUUID()}@example.invalid`;
     await sql`update fkh_users set email=${targetEmail} where id=${operator}`;
-    await expect(grantLifetimeFullAccessByEmail(targetEmail,operator)).rejects.toThrow("Owner access");
+    await expect(grantLifetimeFullAccessByEmail(targetEmail, operator)).rejects.toThrow(
+      "Owner access",
+    );
     await expect(resolveAdminGrantTarget(targetEmail)).rejects.toThrow("Owner access");
-    actor.userId=owner;
+    actor.userId = owner;
     const resolved = await resolveAdminGrantTarget(`  ${targetEmail.toUpperCase()}  `);
-    expect(resolved).toEqual({id:operator,displayName:'Disposable operator',email:targetEmail});
+    expect(resolved).toEqual({
+      id: operator,
+      displayName: "Disposable operator",
+      email: targetEmail,
+    });
     expect(await sql`select id from fkh_entitlements where user_id=${operator}`).toHaveLength(0);
-    expect(await sql`select id from fkh_billing_customers where user_id=${operator}`).toHaveLength(0);
+    expect(await sql`select id from fkh_billing_customers where user_id=${operator}`).toHaveLength(
+      0,
+    );
 
-    await sql.unsafe(`create function ${trigger}() returns trigger language plpgsql as $$ begin if NEW.actor_user_id='${owner}'::uuid then raise exception 'synthetic audit failure'; end if; return NEW; end $$`);
-    await sql.unsafe(`create trigger ${trigger} before insert on fkh_admin_audit_log for each row execute function ${trigger}()`);
-    await expect(grantLifetimeFullAccessByEmail(targetEmail,operator)).rejects.toThrow();
+    await sql.unsafe(
+      `create function ${trigger}() returns trigger language plpgsql as $$ begin if NEW.actor_user_id='${owner}'::uuid then raise exception 'synthetic audit failure'; end if; return NEW; end $$`,
+    );
+    await sql.unsafe(
+      `create trigger ${trigger} before insert on fkh_admin_audit_log for each row execute function ${trigger}()`,
+    );
+    await expect(grantLifetimeFullAccessByEmail(targetEmail, operator)).rejects.toThrow();
     expect(await sql`select id from fkh_entitlements where user_id=${operator}`).toHaveLength(0);
     expect(await sql`select id from fkh_subscriptions where user_id=${operator}`).toHaveLength(0);
-    expect(await sql`select id from fkh_billing_customers where user_id=${operator}`).toHaveLength(0);
+    expect(await sql`select id from fkh_billing_customers where user_id=${operator}`).toHaveLength(
+      0,
+    );
     await sql.unsafe(`drop function ${trigger}() cascade`);
-    await grantLifetimeFullAccessByEmail(targetEmail,operator);
-    const [unrelated]=await sql`insert into fkh_admin_audit_log(actor_user_id,action,target_type,target_id) values(${owner},'moderation_event_resolved','moderation_event',${operator}) returning id`;
-    const data=await getAdminBillingData();
-    const own=data.auditRows.filter(row=>row.actorUserId===owner);
+    await grantLifetimeFullAccessByEmail(targetEmail, operator);
+    const [unrelated] =
+      await sql`insert into fkh_admin_audit_log(actor_user_id,action,target_type,target_id) values(${owner},'moderation_event_resolved','moderation_event',${operator}) returning id`;
+    const data = await getAdminBillingData();
+    const own = data.auditRows.filter((row) => row.actorUserId === owner);
     expect(own).toHaveLength(1);
-    expect(own[0]).toMatchObject({action:'lifetime_full_granted',targetUserId:operator,targetId:operator,actorEmail:email});
-    expect(data.auditRows.some(row=>row.id===unrelated.id)).toBe(false);
-    const entitlements=await sql`select id from fkh_entitlements where user_id=${operator}`;
+    expect(own[0]).toMatchObject({
+      action: "lifetime_full_granted",
+      targetUserId: operator,
+      targetId: operator,
+      actorEmail: email,
+    });
+    expect(data.auditRows.some((row) => row.id === unrelated.id)).toBe(false);
+    const entitlements = await sql`select id from fkh_entitlements where user_id=${operator}`;
     expect(own[0].metadataJson.entitlementCount).toBe(entitlements.length);
-    expect(data.entitlements.some(row=>row.userId===operator && row.entitlementKey==='lifetime_full' && row.valueJson.value===true)).toBe(true);
+    expect(
+      data.entitlements.some(
+        (row) =>
+          row.userId === operator &&
+          row.entitlementKey === "lifetime_full" &&
+          row.valueJson.value === true,
+      ),
+    ).toBe(true);
   });
 });

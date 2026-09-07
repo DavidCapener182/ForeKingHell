@@ -17,10 +17,7 @@ describe("profile golf identity contract", () => {
     expect(source).toContain("data-profile-identity-page");
     expect(source).toContain("<ProfileIdentityHero");
     expect(source).toContain('aria-label="Golf identity"');
-    expect(source).toContain("<MobileAppShell>{experience}</MobileAppShell>");
-    expect(source).toContain(
-      '<DesktopWorkbenchLayout scope="profile">{experience}</DesktopWorkbenchLayout>',
-    );
+    expect(source).toContain("<PageShell>{experience}</PageShell>");
     expect(source).toContain("profile.headerImageUrl");
     expect(source).toContain("profile.avatarUrl");
   });
@@ -32,11 +29,13 @@ describe("profile golf identity contract", () => {
       ["records", "Records"],
       ["sharing", "Sharing"],
     ]) {
-      expect(tabsSource).toContain(`{ value: "${value}", label: "${label}" }`);
-      expect(tabsSource).toContain(`<TabsContent value="${value}"`);
+      expect(tabsSource).toContain(`{ id: "${value}", label: "${label}", content: ${value} }`);
     }
 
     expect(tabsSource).not.toContain("workspaces");
+    expect(tabsSource).toContain("keepMounted");
+    expect(tabsSource).toContain('window.addEventListener("popstate", sync)');
+    expect(tabsSource).toContain("window.history.pushState(");
   });
 
   it("keeps overview concise and avoids embedded Bag, Progress, and Goals dashboards", () => {
@@ -70,7 +69,14 @@ describe("profile golf identity contract", () => {
     expect(source).toContain("Share link");
     expect(source).toContain("src={`/friends/qr/${profile.username}`}");
     expect(source).toContain("<ProfileEditSheet>");
-    expect(editSheetSource).toContain("<Sheet>");
+    expect(editSheetSource).toContain("<dialog");
+    expect(editSheetSource).toContain('aria-labelledby="profile-edit-title"');
+    expect(editSheetSource).toContain("dialog.current?.showModal()");
+    expect(editSheetSource).toContain("trigger.current?.focus()");
+    expect(editSheetSource).toContain("if (busy.current) return;");
+    expect(editSheetSource).toContain("Your edits are retained.");
+    expect(editSheetSource).toContain('role="alert"');
+    expect(source).toContain("unsaved choices do not change what visitors see");
     expect(editSheetSource).toContain("Edit profile");
   });
 });

@@ -83,7 +83,14 @@ export function ChartAccessibleFallback({
             <TableHeader className="text-[10px] uppercase tracking-[0.12em]">
               <TableRow>
                 {columns.map((column) => (
-                  <TableHead key={column.key} scope="col" className={column.numeric ? "text-right" : undefined}>{column.label}{column.unit ? ` (${column.unit})` : ""}</TableHead>
+                  <TableHead
+                    key={column.key}
+                    scope="col"
+                    className={column.numeric ? "text-right" : undefined}
+                  >
+                    {column.label}
+                    {column.unit ? ` (${column.unit})` : ""}
+                  </TableHead>
                 ))}
               </TableRow>
             </TableHeader>
@@ -92,7 +99,13 @@ export function ChartAccessibleFallback({
                 rows.map((row) => (
                   <TableRow key={row._key ?? columns.map((column) => row[column.key]).join("-")}>
                     {columns.map((column) => (
-                      <TableCell key={column.key} className={cn("tabular-nums text-foreground", column.numeric && "text-right")}>
+                      <TableCell
+                        key={column.key}
+                        className={cn(
+                          "tabular-nums text-foreground",
+                          column.numeric && "text-right",
+                        )}
+                      >
                         {row[column.key] ?? "-"}
                       </TableCell>
                     ))}
@@ -152,7 +165,9 @@ export function ChartAccessibleFallback({
 
 function buildCsvHref(columns: ChartFallbackColumn[], rows: ChartFallbackRow[]) {
   const csv = [
-    columns.map((column) => csvCell(column.unit ? `${column.label} (${column.unit})` : column.label)).join(","),
+    columns
+      .map((column) => csvCell(column.unit ? `${column.label} (${column.unit})` : column.label))
+      .join(","),
     ...rows.map((row) => columns.map((column) => csvCell(row[column.key] ?? "")).join(",")),
   ].join("\n");
   return `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;

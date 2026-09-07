@@ -76,7 +76,7 @@ describe("authenticated route and feedback motion", () => {
   });
 
   it("shakes only invalid bordered controls while keeping errors immediate", () => {
-    for (const formSource of [loginSource, playSelectionSource, sharedReportSource]) {
+    for (const formSource of [loginSource, playSelectionSource]) {
       expect(formSource).toContain("t-input");
       expect(formSource).toContain("is-error is-shaking");
       expect(formSource).toContain("aria-invalid");
@@ -84,8 +84,15 @@ describe("authenticated route and feedback motion", () => {
 
     expect(loginSource).toContain('role="alert"');
     expect(playSelectionSource).toContain('<Alert variant="destructive">');
-    expect(sharedReportSource).toContain('<Alert variant="destructive">');
-    expect(sharedReportSource).toContain("}, [invalid, invalidAttempt]);");
+    expect(sharedReportSource).toContain(
+      '<Alert variant="destructive" id="shared-report-password-error">',
+    );
+    expect(sharedReportSource).toContain("}, [error, invalidAttempt]);");
+    expect(sharedReportSource).toContain("aria-invalid={Boolean(error)}");
+    expect(sharedReportSource).toContain("className={`t-input");
+    expect(sharedReportSource).toContain('element.classList.add("is-shaking")');
+    expect(sharedReportSource).toContain("prefers-reduced-motion: reduce");
+    expect(sharedReportSource).toContain("unlockCoachReportStateAction.bind(null, token)");
     expect(sharedReportSource).not.toContain("onSubmit=");
     expect(sharedReportActionSource).toContain("attempt: randomUUID()");
     expect(sharedReportPageSource).toContain("query?.attempt ?? null");

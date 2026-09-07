@@ -8,7 +8,9 @@ import { queueOfflineAction } from "@/lib/offline-queue";
 import type { OfflineRoundEditKind } from "@/lib/offline-round-edit-payload";
 
 type OfflineRoundEditFormProps = {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (
+    formData: FormData,
+  ) => void | { warning?: string } | Promise<void | { warning?: string }>;
   editKind: OfflineRoundEditKind;
   recordVersion: string;
   children: ReactNode;
@@ -25,17 +27,22 @@ export function OfflineRoundEditForm({
   id,
 }: OfflineRoundEditFormProps) {
   const [queued, setQueued] = useState(false);
+  const [warning, setWarning] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   return (
     <form
       id={id}
+      onReset={(event) => event.preventDefault()}
+      aria-busy={saveStatus === "saving"}
       action={async (formData) => {
         setQueued(false);
+        setWarning("");
         setSaveStatus("saving");
 
         try {
-          await action(formData);
+          const result = await action(formData);
+          setWarning(result?.warning ?? "");
           setSaveStatus("saved");
         } catch {
           setSaveStatus("error");
@@ -58,18 +65,26 @@ export function OfflineRoundEditForm({
           .filter((entry): entry is [string, string] => typeof entry[1] === "string")
           .map(([key, value]) => [key, value] as [string, string]);
 
+        setSaveStatus("saving");
         void queueOfflineAction({
           id: `round-edit-${editKind}-${Date.now()}-${crypto.randomUUID()}`,
           kind: "round-edit",
           payload: { editKind, fields },
-        }).then(() => {
-          setSaveStatus("idle");
-          setQueued(true);
-        });
+        })
+          .then(() => {
+            setSaveStatus("idle");
+            setQueued(true);
+          })
+          .catch(() => {
+            setQueued(false);
+            setSaveStatus("error");
+          });
       }}
     >
       <input type="hidden" name="expectedUpdatedAt" value={recordVersion} />
-      {children}
+      <fieldset disabled={saveStatus === "saving"} className="contents">
+        {children}
+      </fieldset>
       {saveStatus === "saving" ? (
         <Alert
           className="mt-2 border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)]"
@@ -88,7 +103,7 @@ export function OfflineRoundEditForm({
         >
           <CheckCircle2 className="size-3.5" />
           <AlertDescription className="text-xs font-medium text-[var(--status-success-foreground)]">
-            Saved just now.
+            Saved just now.{warning ? ` ${warning}` : ""}
           </AlertDescription>
         </Alert>
       ) : null}
@@ -96,7 +111,7 @@ export function OfflineRoundEditForm({
         <Alert variant="destructive" className="mt-2" aria-live="polite">
           <AlertCircle className="size-3.5" />
           <AlertDescription className="text-xs font-medium text-destructive">
-            Save failed. Try again.
+            Save failed. Your entries are still here. Try again.
           </AlertDescription>
         </Alert>
       ) : null}

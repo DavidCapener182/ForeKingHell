@@ -34,16 +34,24 @@ async function persistNotificationPreferences(formData: FormData) {
 export async function saveNotificationPreferencesAction(formData: FormData) {
   await persistNotificationPreferences(formData);
   const returnToSettingsSection = formData.get("settingsReturnTo") === "section";
-  redirect(returnToSettingsSection ? "/settings?section=notifications&saved=1" : "/settings/notifications?saved=1");
+  redirect(
+    returnToSettingsSection
+      ? "/settings?section=notifications&saved=1"
+      : "/settings/notifications?saved=1",
+  );
 }
 
 export async function saveNotificationPreferencesFormAction(
-  _previous: { ok: boolean; error?: string }, formData: FormData,
+  _previous: { ok: boolean; error?: string },
+  formData: FormData,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     await persistNotificationPreferences(formData);
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Could not save notifications. Try again." };
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not save notifications. Try again.",
+    };
   }
 }

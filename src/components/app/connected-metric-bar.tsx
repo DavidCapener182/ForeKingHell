@@ -26,7 +26,7 @@ export function ConnectedMetricBar({
   const metricCells = visibleMetrics.map((metric, index) => (
     <div
       key={metric.label}
-      className={cn("relative grid min-w-0 content-start gap-1 px-4 py-4", metric.className)}
+      className={cn("relative grid min-w-0 content-start gap-1.5 px-5 py-5", metric.className)}
     >
       {index > 0 ? <Separator className="absolute inset-x-4 top-0 w-auto sm:hidden" /> : null}
       {index > 0 ? (
@@ -43,16 +43,16 @@ export function ConnectedMetricBar({
         <Separator className="absolute inset-x-4 top-0 hidden w-auto sm:block xl:hidden" />
       ) : null}
       <div className="flex items-start justify-between gap-2">
-        <p className="truncate text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-          {metric.label}
-        </p>
+        <p className="text-sm font-medium text-muted-foreground">{metric.label}</p>
         {metric.trend ? (
           <span className="shrink-0 text-xs font-semibold">{metric.trend}</span>
         ) : null}
       </div>
-      <p className="mt-1 truncate text-xl font-bold tracking-tight">{metric.value}</p>
+      <p className="mt-2 break-words text-3xl font-semibold tracking-tight [font-variant-numeric:tabular-nums]">
+        {metric.value}
+      </p>
       {metric.detail ? (
-        <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{metric.detail}</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{metric.detail}</p>
       ) : null}
     </div>
   ));

@@ -133,7 +133,7 @@ test("Public profile keeps scoped activity, complete bag facts and exact relatio
           ).length,
         ).toBe(0);
         await expect(dialog).toHaveCount(0);
-      await page.evaluate(() => window.scrollTo(0, 0));
+        await page.evaluate(() => window.scrollTo(0, 0));
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         ).toBe(true);

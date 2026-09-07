@@ -76,7 +76,9 @@ test("Billing keeps saved paid access and complete history visible on both surfa
         await expect(page.getByText("Foreign billing user", { exact: true })).toHaveCount(0);
         if (width < 768) {
           await page.getByText("Complete feature comparison", { exact: true }).click();
-          await expect(page.getByRole("term").filter({hasText:"Scorecard extracts"})).toBeVisible();
+          await expect(
+            page.getByRole("term").filter({ hasText: "Scorecard extracts" }),
+          ).toBeVisible();
           await page.getByRole("button", { name: /Full.*Details/ }).click();
           const panel = page.getByRole("dialog", { name: "Subscription details" });
           await expect(panel).toContainText("01 Jan 2026 – 01 Jan 2027");

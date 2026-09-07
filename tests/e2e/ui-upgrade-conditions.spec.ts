@@ -27,7 +27,7 @@ test("Conditions retain unknown groups and scoped source proof on both surfaces"
         .selectOption("temperature");
       await page.getByRole("button", { name: "Apply filters", exact: true }).click();
       await expect(page).toHaveURL(/dimension=temperature/);
-      await expect(page.locator('[data-conditions-ready="true"]')).toBeVisible({timeout:60000});
+      await expect(page.locator('[data-conditions-ready="true"]')).toBeVisible({ timeout: 60000 });
       await expect(page.getByRole("heading", { name: "Temperature", exact: true })).toBeVisible();
       await page.getByRole("link", { name: "Inspect unknown rows", exact: true }).click();
       await expect(page.getByRole("dialog")).toContainText("Unknown / unrecorded");

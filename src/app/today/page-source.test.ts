@@ -25,6 +25,10 @@ const primaryStateSource = readFileSync(
   "utf8",
 );
 
+const tabsSource = readFileSync(
+  join(process.cwd(), "src/app/today/today-workspace-tabs.tsx"),
+  "utf8",
+);
 describe("latest practice desktop dashboard", () => {
   it("branches before importing the focused companion or full workbench", () => {
     expect(routeSource).toContain('surface === "companion"');
@@ -116,18 +120,25 @@ describe("latest practice desktop dashboard", () => {
   });
 
   it("uses a shadcn tab workspace to separate the desktop review modes", () => {
-    expect(source).toContain("data-desktop-today-tabs");
+    expect(tabsSource).toContain("data-today-workspace-tabs");
     expect(source).toContain("data-today-decision-hero");
     expect(source).toContain("data-today-hero-score-stack");
-    expect(source).toContain("<Tabs");
-    expect(source).toContain("<TabsList");
-    expect(source).toContain('<TabsTrigger value="overview">Overview</TabsTrigger>');
-    expect(source).toContain('<TabsTrigger value="practice">Practice</TabsTrigger>');
-    expect(source).toContain('<TabsTrigger value="evidence">Evidence</TabsTrigger>');
-    expect(source).toContain('<TabsTrigger value="data-quality">Data quality</TabsTrigger>');
+    expect(source).toContain("<TodayWorkspaceTabs");
+    expect(tabsSource).toContain("<UntitledTabs");
+    for (const [id, label] of [
+      ["overview", "Overview"],
+      ["practice", "Practice"],
+      ["evidence", "Evidence"],
+      ["data-quality", "Data quality"],
+    ]) {
+      expect(tabsSource).toContain(`{ id: "${id}", label: "${label}" }`);
+    }
+    expect(tabsSource).toContain("keepMounted");
+    expect(tabsSource).toContain('next.searchParams.set("tab", key)');
+    expect(tabsSource).toContain("window.history.pushState");
     expect(source).toContain("<ConnectedMetricBar");
-    expect(source).toContain(
-      "todayHomeContextMetrics(plannerContext, recommendation, handicapValue)",
+    expect(source).toMatch(
+      /todayHomeContextMetrics\(\s*plannerContext,\s*recommendation,\s*handicapValue,\s*handicapSource,/,
     );
     expect(source).not.toContain("TodayBentoItem");
   });
@@ -147,31 +158,6 @@ describe("latest practice desktop dashboard", () => {
     expect(source).toContain('variant="editorial"');
     expect(source).toContain("<ButtonGroup");
     expect(source).toContain("<Progress");
-  });
-
-  it("keeps the Today decision hero inside a phone-width workbench", () => {
-    const hero = source.slice(
-      source.indexOf("function TodayDecisionHero"),
-      source.indexOf("function HeroEvidenceRow"),
-    );
-
-    expect(hero).toContain("grid w-full grid-cols-2");
-    expect(hero).toContain("col-span-2");
-    expect(hero).toContain("text-4xl");
-    expect(hero).not.toContain('ButtonGroup className="mt-7 w-fit"');
-    expect(source).toContain("grid w-dvw min-w-0 max-w-full grid-cols-[minmax(0,1fr)]");
-    expect(source).toContain("overflow-x-clip");
-  });
-
-  it("keeps the decision-status chip legible against the dark hero", () => {
-    const hero = source.slice(
-      source.indexOf("function TodayDecisionHero"),
-      source.indexOf("function HeroEvidenceRow"),
-    );
-
-    expect(hero).toMatch(/<Badge\s+variant="outline"/);
-    expect(hero).toContain("border-white/30 bg-black/30 text-white");
-    expect(hero).not.toContain("bg-white/12 text-white");
   });
 
   it("keeps the focused practice workflow available inside its desktop tab", () => {

@@ -73,7 +73,9 @@ test("Moderation resolves only reviewed report IDs and shows partial counts inde
         ).toBeVisible({ timeout: 60000 });
         await page.addStyleTag({ content: "nextjs-portal{pointer-events:none!important;}" });
         const queue = page.getByRole("region", { name: "User reports", exact: true });
-        await expect(queue.getByRole("button", {name:"Select visible open records",exact:true})).toBeEnabled({timeout:60000});
+        await expect(
+          queue.getByRole("button", { name: "Select visible open records", exact: true }),
+        ).toBeEnabled({ timeout: 60000 });
         await queue
           .getByRole("button", { name: "Select visible open records", exact: true })
           .click();

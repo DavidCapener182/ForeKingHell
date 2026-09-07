@@ -37,6 +37,19 @@ export async function getRecentSessionHistory(
   options: { includeShotPatterns?: boolean } = {},
 ): Promise<SessionTimelineItem[]> {
   const db = getDb();
+  // A session can support several plans. Pick its latest linked result before
+  // joining shots so the history limit counts sessions, not plan/session pairs.
+  const latestLinkedPlan = db
+    .selectDistinctOn([practicePlans.sourceSessionId], {
+      id: practicePlans.id,
+      sourceSessionId: practicePlans.sourceSessionId,
+      practiceScore: practicePlans.practiceScore,
+      matchConfidence: practicePlans.matchConfidence,
+    })
+    .from(practicePlans)
+    .where(eq(practicePlans.userId, userId))
+    .orderBy(practicePlans.sourceSessionId, desc(practicePlans.updatedAt), desc(practicePlans.id))
+    .as("latest_linked_plan");
   const rows = await db
     .select({
       id: sessions.id,
@@ -50,20 +63,22 @@ export async function getRecentSessionHistory(
       equipmentNotes: sessions.equipmentNotes,
       rawUploadId: sessions.rawUploadId,
       scorecardJson: sessions.scorecardJson,
-      practicePlanId: practicePlans.id,
-      practiceScore: practicePlans.practiceScore,
-      matchConfidence: practicePlans.matchConfidence,
+      practicePlanId: latestLinkedPlan.id,
+      practiceScore: latestLinkedPlan.practiceScore,
+      matchConfidence: latestLinkedPlan.matchConfidence,
       shotCount: sql<number>`count(${shots.id})::int`,
     })
     .from(sessions)
     .leftJoin(shots, and(eq(shots.sessionId, sessions.id), eq(shots.userId, userId)))
-    .leftJoin(
-      practicePlans,
-      and(eq(practicePlans.sourceSessionId, sessions.id), eq(practicePlans.userId, userId)),
-    )
+    .leftJoin(latestLinkedPlan, eq(latestLinkedPlan.sourceSessionId, sessions.id))
     .where(eq(sessions.userId, userId))
-    .groupBy(sessions.id, practicePlans.id)
-    .orderBy(desc(sessions.date))
+    .groupBy(
+      sessions.id,
+      latestLinkedPlan.id,
+      latestLinkedPlan.practiceScore,
+      latestLinkedPlan.matchConfidence,
+    )
+    .orderBy(desc(sessions.date), desc(sessions.id))
     .limit(limit);
 
   const sessionIds = rows.map((row) => row.id);

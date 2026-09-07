@@ -237,13 +237,25 @@ function GoalForm({
         required
       />
       <Field label="Goal title" htmlFor={id("title")}>
-        <Input className="min-h-11" id={id("title")} name="title" defaultValue={goal?.title} required />
+        <Input
+          className="min-h-11"
+          id={id("title")}
+          name="title"
+          defaultValue={goal?.title}
+          required
+        />
       </Field>
       <Field label="Club or context" htmlFor={id("club")}>
         <Input className="min-h-11" id={id("club")} name="club" defaultValue={goal?.club} />
       </Field>
       <Field label="Unit" htmlFor={id("unit")}>
-        <Input className="min-h-11" id={id("unit")} name="unit" defaultValue={goal?.unit ?? "yd"} required />
+        <Input
+          className="min-h-11"
+          id={id("unit")}
+          name="unit"
+          defaultValue={goal?.unit ?? "yd"}
+          required
+        />
       </Field>
       <Field label="Starting value" htmlFor={id("starting")}>
         <Input
@@ -281,7 +293,13 @@ function GoalForm({
         />
       </Field>
       <Field label="Target date" htmlFor={id("date")}>
-        <Input className="min-h-11" id={id("date")} name="goalTargetDate" type="date" defaultValue={goal?.targetDate} />
+        <Input
+          className="min-h-11"
+          id={id("date")}
+          name="goalTargetDate"
+          type="date"
+          defaultValue={goal?.targetDate}
+        />
       </Field>
       <Field label="Evidence source" htmlFor={id("evidence")} className="sm:col-span-2">
         <Input
@@ -293,7 +311,13 @@ function GoalForm({
         />
       </Field>
       <Field label="Recommended next action" htmlFor={id("action")} className="sm:col-span-2">
-        <Input className="min-h-11" id={id("action")} name="nextAction" defaultValue={goal?.nextAction} required />
+        <Input
+          className="min-h-11"
+          id={id("action")}
+          name="nextAction"
+          defaultValue={goal?.nextAction}
+          required
+        />
       </Field>
       <p className="text-sm leading-6 text-muted-foreground sm:col-span-2">
         {starting !== "" &&

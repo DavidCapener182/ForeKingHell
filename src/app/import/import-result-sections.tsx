@@ -33,9 +33,11 @@ export function ImportResultRecovery() {
 export function ImportPracticeReview({
   review,
   sessionId,
+  source = "import",
 }: {
   review: NonNullable<Awaited<ReturnType<typeof getPracticePlanReviewForSourceSession>>>;
   sessionId: string;
+  source?: "import" | "session";
 }) {
   const decisions = review.comparison?.decisions ?? [];
   return (
@@ -49,7 +51,7 @@ export function ImportPracticeReview({
         action={
           <Button asChild variant="outline" className="min-h-11">
             <Link
-              href={`/practice?planId=${encodeURIComponent(review.planId)}&sourceSessionId=${encodeURIComponent(sessionId)}&source=import`}
+              href={`/practice?planId=${encodeURIComponent(review.planId)}&sourceSessionId=${encodeURIComponent(sessionId)}&source=${source}`}
             >
               Open matched plan
             </Link>

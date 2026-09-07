@@ -75,15 +75,26 @@ export function ConfirmSubmitButton({
           event.preventDefault();
           event.stopPropagation();
           const form = buttonRef.current?.form;
-          if (type === "submit" && form && !props.formNoValidate && !form.noValidate && !form.reportValidity()) return;
+          if (
+            type === "submit" &&
+            form &&
+            !props.formNoValidate &&
+            !form.noValidate &&
+            !form.reportValidity()
+          )
+            return;
           setOpen(true);
         }}
-      >{pending ? pendingLabel : props.children}</Button>
+      >
+        {pending ? pendingLabel : props.children}
+      </Button>
       <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          buttonRef.current?.focus();
-        }}>
+        <AlertDialogContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            buttonRef.current?.focus();
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogMedia className="bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]">
               <AlertTriangle className="size-5" aria-hidden />

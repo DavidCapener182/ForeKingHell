@@ -29,12 +29,18 @@ describe("surface-specific import result", () => {
 
   it("leads with one review action and progressively discloses import evidence", () => {
     expect(companion).toContain("data-session-verdict");
-    expect(companion).toContain("<MobileLargeTitle");
+    expect(companion).toContain("<UntitledPageHeader");
     expect(companion).not.toContain("MobileTopBar");
     expect(companion).not.toContain("ResultHero");
     expect(companion).not.toContain("<Table");
     expect(companion).not.toContain("<Card");
-    expect(companion).toContain("data-plan-versus-actual");
+    expect(companion).toContain(
+      "<ImportPracticeReview review={result.practiceReview} sessionId={result.session.id}",
+    );
+    const review = readFileSync(join(root, "src/app/import/import-result-sections.tsx"), "utf8");
+    expect(review).toContain("encodeURIComponent(review.planId)");
+    expect(review).toContain("sourceSessionId=${encodeURIComponent(sessionId)}");
+    expect(review).toContain("decision.actual");
     expect(companion).toContain("result.reviewHref");
     expect(companion).toContain("result.suggestionReviewHref");
     expect(companion).toContain("Confirm flagged shots");
@@ -60,19 +66,19 @@ describe("surface-specific import result", () => {
   });
 
   it("preserves the deterministic desktop workflow receipt", () => {
-    expect(workbench).toContain("DesktopWorkflowLayout");
-    expect(workbench).toContain("importResultWorkflowSteps");
-    expect(workbench).toContain("importResultHelpItems");
-    expect(workbench).toContain("<ResultHero");
+    expect(workbench).toContain("<PageShell>");
+    expect(workbench).toContain("<ImportResultRecovery");
+    expect(workbench).toContain("Inspect saved and excluded rows");
+    expect(workbench).toContain("<UntitledPageHeader");
     expect(workbench).toContain("<ConnectedMetricBar");
     expect(workbench).toContain("data-import-trust-checks");
-    expect(workbench).toContain("data-import-practice-review");
+    expect(workbench).toContain("<ImportPracticeReview");
     expect(workbench).toContain("data-import-practice-prescription");
     expect(workbench).toContain("Confirm flagged shots");
     expect(workbench).toContain("result.suggestionReviewHref");
     expect(workbench).toContain("Stock-quality");
     expect(workbench).toContain("Likely mishits");
-    expect(workbench).toContain("Partial shots");
+    expect(workbench).toContain("result.triage.partialShotCount");
     expect(workbench).not.toContain("Questionable rows");
     expect(workbench).toContain("<Item");
     expect(workbench).not.toContain("MobileImportResult");

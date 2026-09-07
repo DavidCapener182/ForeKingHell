@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/strokes-gained/page.tsx"), "utf8");
 
 describe("strokes gained desktop workbench", () => {
-  it("keeps one desktop-only workbench while companion traffic redirects", () => {
+  it("keeps one workbench with readable narrow-screen evidence", () => {
     expect(source).toContain(
       'title={activeCategory ? `${activeCategory.label} strokes gained` : "Strokes gained"}',
     );
@@ -15,7 +15,10 @@ describe("strokes gained desktop workbench", () => {
     expect(source).not.toContain("MobileCategorySummary");
     expect(source).not.toContain("MobileStrokesGainedDisclosures");
     expect(source).not.toContain("@/components/app/ios-mobile");
-    expect(source).not.toContain("lg:hidden");
+    expect(source).toContain('aria-label="Cumulative strokes gained values"');
+    expect(source).toContain("<StrokesGainedEventTable events={events}");
+    expect(source).toContain("rows={events.map((event) => ({");
+    expect(source).toContain("href: `/rounds/${event.sessionId}`");
     expect(source).not.toContain("hidden lg:");
     expect(source).not.toContain("Tee is the main scoring leak");
   });

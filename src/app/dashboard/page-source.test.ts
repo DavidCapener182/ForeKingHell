@@ -17,6 +17,12 @@ const capabilitySource = readFileSync(
 );
 
 describe("dashboard desktop source", () => {
+  it("keeps aggregate practice context without assigning an unrelated latest session", () => {
+    expect(source).toContain('new URLSearchParams({ source: "dashboard", time: "15" })');
+    expect(source).toContain('if (clubType) practiceQuery.set("club", clubType)');
+    expect(source).toContain("`/practice?planId=${currentPlan.id}`");
+    expect(source).not.toContain('practiceQuery.set("sourceSessionId"');
+  });
   it("separates historical trust from the best course-scoring club", () => {
     expect(source).toContain('title="Most trusted historically"');
     expect(source).toContain('title="Best course scoring club"');
@@ -98,14 +104,14 @@ describe("dashboard desktop source", () => {
     expect(targetReadout).not.toMatch(/text-\[#[0-9a-f]{3,8}\]/i);
   });
 
-  it("uses a semantic shadcn club selector around the specialist delivery chart", () => {
+  it("uses a labelled shared club selector around the specialist delivery chart", () => {
     expect(source).toContain(
       'import { FacePathClubSelector } from "@/app/dashboard/face-path-club-selector"',
     );
     expect(source).toContain("<FacePathClubSelector");
-    expect(facePathSelectorSource).toContain("<ToggleGroup");
-    expect(facePathSelectorSource).toContain("<ToggleGroupItem");
-    expect(facePathSelectorSource).toContain('type="single"');
+    expect(facePathSelectorSource).toContain("<UntitledSelect");
+    expect(facePathSelectorSource).toContain('label="Selected club"');
+    expect(facePathSelectorSource).toContain("onValueChange={setSelectedClubId}");
     expect(facePathSelectorSource).toContain("value={selected.clubId}");
     expect(facePathSelectorSource).toContain("bg-card");
     expect(facePathSelectorSource).toContain("bg-muted");

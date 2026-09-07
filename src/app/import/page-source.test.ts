@@ -118,7 +118,7 @@ describe("surface-specific import centre", () => {
   });
 
   it("preserves the exportable configurable workbench library", () => {
-    expect(workbench).toContain("DesktopWorkflowLayout");
+    expect(workbench).toContain("<PageShell>");
     expect(workbench).toContain("DesktopTableWorkbenchControls");
     expect(workbench).toContain('viewKey="import-library"');
     expect(workbench).toContain('exportTableId="import-library"');
@@ -126,8 +126,9 @@ describe("surface-specific import centre", () => {
     expect(workbench).toContain('mainTableLabel="Import file library table"');
     expect(workbench).toContain("ConfirmSubmitButton");
     expect(workbench).toContain('confirmActionLabel="Archive file"');
-    expect(workbench).toContain("<DesktopWorkflowLayout");
-    expect(workbench).toContain("steps={importWorkflowSteps}");
+    expect(workbench).toContain("<ImportSourceChooser");
+    expect(workbench).toContain("Linked session evidence is retained.");
+    expect(workbench).toContain('name="importFileId" value={file.id}');
     expect(workbench).not.toContain("<OperationStepper");
     expect(workbench).toContain('id="csv-import"');
     expect(workbench).toContain('href: "/rapsodo"');
@@ -137,7 +138,7 @@ describe("surface-specific import centre", () => {
     expect(workbench).toContain("<ImportForm");
     expect(workbench).not.toContain('presentation="workbench"');
     expect(uploadDropzone).toContain("data-import-upload-table");
-    expect(uploadDropzone).toContain("<Table");
+    expect(uploadDropzone).toContain("{files.map((file) => (");
   });
 
   it("keeps ImportForm workbench-only after the companion runtime split", () => {

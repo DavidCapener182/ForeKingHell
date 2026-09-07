@@ -75,7 +75,7 @@ test("Account management retains exact reviewed identity and authoritative state
     await form.getByRole("button", { name: "Review apply admin role", exact: true }).click();
     await form.getByRole("button", { name: "Confirm apply admin role", exact: true }).click();
     await expect(form.getByRole("alert")).toContainText("Synthetic action unavailable");
-    await expect(panel.locator("dd").filter({hasText:/^None$/})).toBeVisible();
+    await expect(panel.locator("dd").filter({ hasText: /^None$/ })).toBeVisible();
     await form.getByRole("button", { name: "Confirm apply admin role", exact: true }).click();
     await expect(form.getByRole("status")).toContainText("Admin access granted.");
     expect(

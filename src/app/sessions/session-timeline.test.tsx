@@ -75,7 +75,7 @@ describe("SessionTimeline golf history", () => {
     expect(markup).toContain("Rounds");
     expect(markup).toContain("Source");
     expect(markup).toContain("Club");
-    expect(markup).toContain("Date");
+    expect(markup).toContain("Period");
     expect(markup).toContain("Open full review");
     expect(markup).toContain("Measured review ready");
     expect(markup).not.toContain('data-session-compare-tray="true"');
@@ -96,7 +96,7 @@ describe("SessionTimeline golf history", () => {
     expect(timelineSource).toContain("Main improvement");
     expect(timelineSource).toContain("Main issue");
     expect(timelineSource).toContain("Important metrics");
-    expect(timelineSource).toContain("<SessionHistoryFilterSheet");
+    expect(timelineSource).toContain("<HistoryToolbar");
     expect(timelineSource).toContain("<Item");
     expect(timelineSource).toContain("<Skeleton");
     expect(timelineSource.indexOf("data-session-master-detail")).toBeLessThan(
@@ -107,21 +107,26 @@ describe("SessionTimeline golf history", () => {
   });
 
   it("keeps URL-backed All, Practice and Rounds controls on both surfaces", () => {
-    expect(companionListSource).toContain('title="Sessions"');
-    expect(timelineSource).toContain("<Tabs");
-    expect(timelineSource).toContain("<TabsList");
-    expect(timelineSource).toContain('<TabsTrigger value="all">All</TabsTrigger>');
-    expect(timelineSource).toContain('<TabsTrigger value="practice">Practice</TabsTrigger>');
-    expect(timelineSource).toContain('<TabsTrigger value="round">Rounds</TabsTrigger>');
-    expect(companionListSource).toContain("MobileSegmentedControl");
-    expect(companionListSource).toContain('{ value: "all", label: "All" }');
-    expect(companionListSource).toContain('{ value: "practice", label: "Practice" }');
-    expect(companionListSource).toContain('{ value: "round", label: "Rounds" }');
+    const toolbar = readFileSync(
+      join(process.cwd(), "src/app/sessions/history-toolbar.tsx"),
+      "utf8",
+    );
+    expect(timelineSource).toContain("<HistoryToolbar");
+    expect(companionListSource).toContain("<HistoryToolbar");
+    for (const choice of [
+      '{ value: "all", label: "All types" }',
+      '{ value: "practice", label: "Practice & simulator" }',
+      '{ value: "round", label: "Rounds" }',
+    ]) {
+      expect(toolbar).toContain(choice);
+    }
+    expect(toolbar).toContain("onChange(draft)");
+    expect(toolbar).toContain("setDraft(filters)");
     expect(companionListSource).toContain('aria-label="Session history"');
     expect(timelineSource).toContain("useSessionHistoryUrlState");
     expect(companionListSource).toContain("useSessionHistoryUrlState");
     expect(companionListSource).toContain("filters.sessionId");
-    expect(companionListSource).toContain('label="Focus"');
+    expect(companionListSource).toContain("Focused · {session.shotCount} shots");
     expect(companionListSource).not.toContain("data-session-compare-tray");
   });
 
@@ -199,7 +204,7 @@ describe("SessionTimeline golf history", () => {
 
     for (const markup of [workbenchMarkup, companionMarkup]) {
       expect(markup).toContain("13 of 13");
-      expect(markup).toContain("Clear</button>");
+      expect(markup).toContain("Clear all</button>");
       expect(markup).toContain("A deliberately long session name 12");
     }
   });
@@ -208,11 +213,13 @@ describe("SessionTimeline golf history", () => {
     expect(historySource).toContain("formatRoundScore");
     expect(historySource).toContain("recordedScores.length");
     expect(historySource).toContain("importedEvidence");
-    expect(reviewSource).toContain("mobileSessionVerdict(comparisons)");
+    expect(reviewSource).toContain("mobileSessionVerdict(supportedComparisons)");
     expect(reviewSource).not.toContain("ResultHero");
     expect(reviewSource).toContain("ConnectedMetricBar");
     expect(reviewSource).toContain("data-plan-versus-actual");
-    expect(reviewSource).toContain("<Progress");
+    expect(reviewSource).toContain("<ImportPracticeReview");
+    expect(reviewSource).toContain("Recorded practice does not establish that a");
+    expect(reviewSource).toContain("measured target passed.");
     expect(reviewSource).toContain("<MobileGroupedList>");
     expect(reviewSource).toContain("MobileShotPatternCharts");
     expect(mobileChartSource).toContain("data-shot-detail-drawer");

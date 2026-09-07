@@ -102,7 +102,11 @@ async function CourseShotPatternContent({ courseId }: { courseId: string }) {
     : null;
 
   return (
-    <PageShell size="full" className="pt-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] lg:pt-6 lg:pb-[calc(8.75rem+env(safe-area-inset-bottom))]" contentClassName="gap-4 lg:gap-6">
+    <PageShell
+      size="full"
+      className="pt-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] lg:pt-6 lg:pb-[calc(8.75rem+env(safe-area-inset-bottom))]"
+      contentClassName="gap-4 lg:gap-6"
+    >
       <DesktopWorkbenchLayout scope="course-shot-pattern">
         <div className="flex items-center justify-between gap-4">
           <Button asChild variant="ghost" className="px-0">
@@ -496,7 +500,11 @@ function ShotPatternClubTable({
 
 function ShotPatternPageLoading() {
   return (
-    <PageShell size="full" className="pt-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] lg:pt-6 lg:pb-[calc(8.75rem+env(safe-area-inset-bottom))]" contentClassName="gap-4 lg:gap-6">
+    <PageShell
+      size="full"
+      className="pt-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] lg:pt-6 lg:pb-[calc(8.75rem+env(safe-area-inset-bottom))]"
+      contentClassName="gap-4 lg:gap-6"
+    >
       <div className="map-frame relative h-[100svh] min-h-[100svh] overflow-hidden bg-[#101827] lg:h-[72vh] lg:min-h-[620px]">
         <div className="absolute left-3 right-3 top-[calc(3.75rem+env(safe-area-inset-top))] z-20 h-14 animate-pulse rounded-lg bg-white/80 motion-reduce:animate-none lg:top-3" />
         <div className="absolute inset-x-6 top-1/3 h-48 animate-pulse rounded-lg border border-white/15 bg-white/10 motion-reduce:animate-none" />

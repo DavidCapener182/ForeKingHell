@@ -88,9 +88,7 @@ test("Assigned player workspace preserves scope through search, details and draf
       }
     }
     await page.goto("/coach/workspace?playerId=00000000-0000-0000-0000-000000000000");
-    await expect(
-      page.getByText("Requested player unavailable", { exact: true }),
-    ).toBeVisible();
+    await expect(page.getByText("Requested player unavailable", { exact: true })).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
     if (ids.length) await db`delete from fkh_users where id in ${db(ids)}`;

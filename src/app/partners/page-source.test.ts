@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/partners/page.tsx"), "utf8");
 
+const register = readFileSync(join(process.cwd(), "src/app/partners/partner-register.tsx"), "utf8");
+
 describe("partners desktop operations board", () => {
   it("ships only the workbench graph on this desktop-only route", () => {
     expect(source).toContain('<DesktopWorkbenchLayout scope="partners">');
@@ -35,20 +37,18 @@ describe("partners desktop operations board", () => {
     expect(source).toContain("Recent clicks");
   });
 
-  it("keeps the sponsor pipeline as an exportable desktop table", () => {
-    expect(source).toContain("DesktopTableWorkbenchControls");
-    expect(source).toContain('viewKey="partner-sponsors"');
-    expect(source).toContain('scope="partner-sponsors"');
-    expect(source).toContain('data-workbench-scope="partner-sponsors"');
-    expect(source).toContain('exportTableId="partner-sponsors"');
-    expect(source).toContain('data-workbench-export-table="partner-sponsors"');
-    expect(source).toContain('mainTableLabel="Sponsor pipeline table"');
-    expect(source).toContain('mainTableLabel="Sponsor pipeline table" stickyFirstColumn');
-    expect(source).toContain("<TableCaption");
-    expect(source).toContain("tabIndex={0}");
-
+  it("keeps the extracted sponsor pipeline exportable and configurable", () => {
+    expect(source).toContain("<PartnerRegister");
+    expect(source).toContain("rows={data.sponsors.map");
+    expect(register).toContain("<table");
+    expect(register).toContain("<caption");
+    expect(register).toContain('scope="col"');
+    expect(register).toContain('scope="row"');
+    expect(register).toContain("DesktopTableWorkbenchControls");
+    expect(register).toContain('viewKey="partner-sponsors"');
+    expect(register).toContain('exportTableId="partner-sponsors"');
     for (const column of ["sponsor", "status", "owner", "contact", "created", "updated"]) {
-      expect(source).toContain(`data-column="${column}"`);
+      expect(register).toContain(`data-column="${column}"`);
     }
   });
 

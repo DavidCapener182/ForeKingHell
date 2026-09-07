@@ -47,11 +47,11 @@ describe("handicap desktop score differential table", () => {
 
     expect(ordinarySource).toContain("var(--status-warning-surface)");
     expect(ordinarySource).toContain("var(--status-success-surface)");
-    expect(ordinarySource).toContain("color-mix(in_oklab,var(--border)");
+    expect(ordinarySource).toContain("bg-card/80");
     expect(ordinarySource).not.toMatch(
       /(?:bg|text|border)-(?:white|slate|emerald|green|amber|orange|red|rose|sky|blue|indigo|violet|purple)(?:-\d+|\/)|bg-\[#/,
     );
-    expect(chartSource).toContain('stroke="#22c55e"');
+    expect(chartSource).toContain('stroke="var(--primary)"');
   });
 });
 
@@ -72,17 +72,24 @@ describe("handicap mobile information architecture", () => {
     );
   });
 
-  it("progressively discloses calculation, trend, range and score history", () => {
-    const mobileBlock =
-      source.match(/function HandicapMobileOverview[\s\S]*?function rangeRealityMobileTone/)?.[0] ??
-      "";
-
-    expect(mobileBlock).toContain("<IOSDisclosureGroup");
-    for (const value of ["method", "trend", "range", "rounds", "quality"]) {
-      expect(mobileBlock).toContain(`value: "${value}"`);
+  it("keeps calculation, trend, range and score history in persistent evidence sections", () => {
+    expect(source).toContain("<UrlTabs");
+    expect(source).toContain('label="Handicap evidence sections"');
+    expect(source).toContain('defaultTabKey="estimates"');
+    for (const id of ["estimates", "trend", "quality", "rounds"]) {
+      expect(source).toContain(`id: "${id}"`);
     }
-    expect(mobileBlock).toContain("<HandicapTrendChart");
-    expect(mobileBlock).toContain('label="Score differential history"');
-    expect(source).toContain('<DesktopWorkbenchLayout scope="handicap">');
+    expect(source).toContain("<PlayingHandicapPanel summary={playingHandicap}");
+    expect(source).toContain("<RangeRealityDetailPanel reality={rangeReality}");
+    expect(source).toContain("<HandicapTrendChart");
+    expect(source).toContain('title="Round calculations"');
+    expect(source).toContain('label: "Reason / assumptions"');
+    expect(source).toContain("href: `/rounds/${round.id}`");
+    const tabs = readFileSync(
+      join(process.cwd(), "src/components/untitled-ui/url-tabs.tsx"),
+      "utf8",
+    );
+    expect(tabs).toContain("keepMounted");
+    expect(tabs).toContain("window.history.pushState");
   });
 });

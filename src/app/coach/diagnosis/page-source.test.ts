@@ -2,12 +2,14 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(join(process.cwd(), "src/app/(app)/coach/diagnosis/page.tsx"), "utf8");
+const page = readFileSync(join(process.cwd(), "src/app/(app)/coach/diagnosis/page.tsx"), "utf8");
+const source =
+  page + readFileSync(join(process.cwd(), "src/app/coach/diagnosis/diagnosis-client.tsx"), "utf8");
 
 describe("coach diagnosis desktop workbench", () => {
   it("turns the deep diagnosis page into an exportable evidence workbench", () => {
-    expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toMatch(/<DesktopWorkbenchLayout\s+scope="coach-diagnosis"/);
+    expect(page).toContain("<PageShell>");
+    expect(page).toContain("<DiagnosisClient cards={coach.clubCards}");
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).toContain('viewKey="coach-diagnosis-evidence"');
     expect(source).toContain('scope="coach-diagnosis-evidence"');
@@ -61,7 +63,7 @@ describe("coach diagnosis desktop workbench", () => {
     expect(source).not.toContain("@/components/app/ios-mobile");
     expect(source).not.toContain("@/components/mobile-sports");
     expect(source).not.toContain('className="hidden lg:grid"');
-    expect(source).toContain('<DesktopWorkbenchLayout scope="coach-diagnosis">');
+    expect(page).toContain("<PageShell>");
     expect(source).toContain("bg-card");
     expect(source).toContain("var(--status-success-surface)");
     expect(source).not.toMatch(/(?:bg|border|text)-(?:white|slate|emerald|amber|rose|sky)-/);

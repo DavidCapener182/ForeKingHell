@@ -46,7 +46,10 @@ const manifest: CourseTwinManifest = {
 };
 
 const replace = history.replaceState.bind(history);
-history.replaceState = (data, unused, url) => { replace(data, unused, url); window.dispatchEvent(new PopStateEvent("popstate")); };
+history.replaceState = (data, unused, url) => {
+  replace(data, unused, url);
+  window.dispatchEvent(new PopStateEvent("popstate"));
+};
 createRoot(document.getElementById("root")!).render(
   <SharedTwinView
     title="Synthetic shared replay with a long course name"

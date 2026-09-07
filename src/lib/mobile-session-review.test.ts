@@ -77,6 +77,13 @@ describe("mobile session review", () => {
     expect(mobileSessionMetrics([{ ...shot(NaN, 0), clubSpeedMph: Infinity }])).toEqual([]);
   });
   it("keeps the selected review focus in the next practice link", () => {
+    const sourced = new URL(
+      sessionPracticeHref("7i", "7 Iron", "control", "review-id"),
+      "https://example.test",
+    );
+    expect(sourced.pathname).toBe("/practice");
+    expect(sourced.searchParams.get("sourceSessionId")).toBe("review-id");
+    expect(sourced.searchParams.get("club")).toBe("7i");
     const url = new URL(sessionPracticeHref("7i", "7 Iron"), "https://example.test");
     expect(url.pathname).toBe("/practice/quick-range");
     expect(url.searchParams.get("club")).toBe("7i");

@@ -278,49 +278,53 @@ export function WorkbenchAppShell({
             </SidebarMenu>
             {desktopNavGroups.map((group) => (
               <SidebarGroup key={group.label} className={cn(isCompactSidebar && "p-1")}>
-                <NavigationSection label={group.label} iconMode={sidebarDensity === "icon"} activeLabel={group.items.find((item) => item.isActive(pathname))?.label}>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {group.items.map((item) => {
-                      const Icon = item.icon;
-                      const active = item.isActive(pathname);
+                <NavigationSection
+                  label={group.label}
+                  iconMode={sidebarDensity === "icon"}
+                  activeLabel={group.items.find((item) => item.isActive(pathname))?.label}
+                >
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {group.items.map((item) => {
+                        const Icon = item.icon;
+                        const active = item.isActive(pathname);
 
-                      return (
-                        <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton
-                            asChild
-                            isActive={active}
-                            tooltip={item.label}
-                            className={cn(
-                              isCompactSidebar && "h-7 gap-1.5 px-1.5 text-xs",
-                              active &&
-                                "bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary shadow-[inset_0_0_0_1px_rgba(7,95,54,0.08)]",
-                            )}
-                          >
-                            <Link
-                              href={item.href}
-                              prefetch={false}
-                              aria-current={active ? "page" : undefined}
+                        return (
+                          <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton
+                              asChild
+                              isActive={active}
+                              tooltip={item.label}
+                              className={cn(
+                                isCompactSidebar && "h-7 gap-1.5 px-1.5 text-xs",
+                                active &&
+                                  "bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary shadow-[inset_0_0_0_1px_rgba(7,95,54,0.08)]",
+                              )}
                             >
-                              <Icon className="size-4" aria-hidden />
-                              <span>{item.label}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                          {item.badge ? (
-                            <SidebarMenuBadge>
-                              <Badge
-                                variant={item.badge === "Admin" ? "default" : "secondary"}
-                                className="h-5 px-1.5 text-[10px]"
+                              <Link
+                                href={item.href}
+                                prefetch={false}
+                                aria-current={active ? "page" : undefined}
                               >
-                                {item.badge}
-                              </Badge>
-                            </SidebarMenuBadge>
-                          ) : null}
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
+                                <Icon className="size-4" aria-hidden />
+                                <span>{item.label}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                            {item.badge ? (
+                              <SidebarMenuBadge>
+                                <Badge
+                                  variant={item.badge === "Admin" ? "default" : "secondary"}
+                                  className="h-5 px-1.5 text-[10px]"
+                                >
+                                  {item.badge}
+                                </Badge>
+                              </SidebarMenuBadge>
+                            ) : null}
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
                 </NavigationSection>
               </SidebarGroup>
             ))}

@@ -63,7 +63,7 @@ const desktopAreaDefinitions = [
     label: "Strategy / Course Twin",
     ids: ["play-companion", "course-strategy", "course-twins", "courses"],
   },
-  { label: "Bag", ids: ["bag", "quick-bag", "equipment"] },
+  { label: "Bag", ids: ["bag", "best-shots", "quick-bag", "equipment"] },
   {
     label: "Insights",
     ids: ["analyse", "session-impact", "progress", "strokes-gained", "data-chat"],

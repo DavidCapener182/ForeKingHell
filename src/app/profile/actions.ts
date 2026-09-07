@@ -22,7 +22,10 @@ export async function updateSocialProfileFormAction(
     await updateCurrentSocialProfile(profileInput(formData));
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Could not save profile. Try again." };
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not save profile. Try again.",
+    };
   }
 }
 

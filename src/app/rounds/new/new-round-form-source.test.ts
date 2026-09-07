@@ -40,7 +40,7 @@ describe("new round scorecard entry grid", () => {
     expect(source).toContain("completeRoundNeedsScores");
     expect(source).toContain("id={reviewCompletenessId}");
     expect(source).toContain('role={completeRoundNeedsScores ? "alert" : "status"}');
-    expect(source).toContain("disabled={completeRoundNeedsScores}");
+    expect(source).toContain("disabled={completeRoundNeedsScores || pending}");
     expect(source).toContain('required={roundStatus === "complete"}');
     expect(source).toContain("change the round status to In progress");
     expect(source).toContain("h-11 rounded-xl");
@@ -75,7 +75,7 @@ describe("new round scorecard entry grid", () => {
   });
 
   it("preserves the server action payload and scorecard field names", () => {
-    expect(source).toContain("action={createRoundAction}");
+    expect(source).toContain("action={formAction}");
     expect(source).toContain('<input type="hidden" name="holeCount"');
 
     for (const hiddenField of ["holeNumber", "par", "yards", "strokeIndex"]) {

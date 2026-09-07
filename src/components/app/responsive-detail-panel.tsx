@@ -78,7 +78,14 @@ export function ResponsiveDetailPanel({
           data-responsive-detail-panel="drawer"
         >
           <DrawerHeader className="text-left">
-            <Button type="button" variant="outline" className="min-h-11 justify-self-end" onClick={() => onOpenChange(false)}>Close details</Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 justify-self-end"
+              onClick={() => onOpenChange(false)}
+            >
+              Close details
+            </Button>
             <DrawerTitle>{title}</DrawerTitle>
             {description ? <DrawerDescription>{description}</DrawerDescription> : null}
           </DrawerHeader>

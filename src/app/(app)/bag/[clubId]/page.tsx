@@ -11,7 +11,7 @@ import { BagFeaturePanel } from "@/components/features/feature-panels";
 import { PageShell } from "@/components/premium";
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
-import { isTrackedClubType } from "@/lib/club-format";
+import { isTrackedClubType, formatClubType } from "@/lib/club-format";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { getMobileClubNeighbours } from "@/lib/mobile-club-neighbours-data";
@@ -28,6 +28,7 @@ type PageProps = {
 
 export default async function ClubDetailPage({ params }: PageProps) {
   const { clubId } = await params;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clubId)) notFound();
   const surface = await getRequestAppSurface();
   const [club, featureData, neighbours] = await Promise.all([
     getClubDetail(clubId),
@@ -57,7 +58,12 @@ export default async function ClubDetailPage({ params }: PageProps) {
           </Button>
         </div>
 
-        <ClubDetailClient club={club} companion={surface === "companion"} neighbours={neighbours}>
+        <ClubDetailClient
+          correctionClubs={club.correctionClubs}
+          club={club}
+          companion={surface === "companion"}
+          neighbours={neighbours}
+        >
           {featureData ? <BagFeaturePanel data={featureData} /> : null}
         </ClubDetailClient>
       </DesktopWorkbenchLayout>
@@ -68,13 +74,14 @@ export default async function ClubDetailPage({ params }: PageProps) {
 async function getClubDetail(clubId: string) {
   const db = getDb();
   const userId = await requireCurrentUserId();
-  const [clubRows, shotRows] = await Promise.all([
+  const [clubRows, shotRows, correctionClubs] = await Promise.all([
     db
       .select({
         id: clubs.id,
         type: clubs.type,
         brand: clubs.brand,
         model: clubs.model,
+        active: clubs.active,
       })
       .from(clubs)
       .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)))
@@ -112,6 +119,10 @@ async function getClubDetail(clubId: string) {
       .innerJoin(sessions, eq(shots.sessionId, sessions.id))
       .where(and(eq(shots.clubId, clubId), eq(shots.userId, userId), eq(sessions.userId, userId)))
       .orderBy(desc(shots.shotAt), desc(shots.shotNumber)),
+    db
+      .select({ value: clubs.id, label: clubs.type })
+      .from(clubs)
+      .where(and(eq(clubs.userId, userId), eq(clubs.active, true))),
   ]);
 
   const club = clubRows[0];
@@ -153,5 +164,9 @@ async function getClubDetail(clubId: string) {
   return {
     ...club,
     shots: analysisShots,
+    correctionClubs: correctionClubs.map((club) => ({
+      ...club,
+      label: formatClubType(club.label),
+    })),
   };
 }

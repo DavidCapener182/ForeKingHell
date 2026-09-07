@@ -84,7 +84,7 @@ test("Operations console exposes full mobile queues and audit detail only to an 
           await page.keyboard.press("Escape");
           await expect(panel).toHaveCount(0);
         }
-        await page.locator("summary").filter({hasText:"Synthetic Ui Inspection"}).click();
+        await page.locator("summary").filter({ hasText: "Synthetic Ui Inspection" }).click();
         await expect(page.getByText("UI-ADMIN-TARGET", { exact: true })).toBeVisible();
         await expect(page.getByText("Outcome", { exact: true })).toBeVisible();
         expect(

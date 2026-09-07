@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ShotReviewButton } from "@/app/shots/shot-review-controls";
+import { ClubCorrection } from "@/app/shots/mobile-shot-explorer";
 import { csvCell } from "@/lib/csv";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,7 +64,15 @@ export function SessionShotPreviewSheet({
     </Sheet>
   );
 }
-export function SessionShotPreview({ sessionId }: { sessionId: string }) {
+export function SessionShotPreview({
+  sessionId,
+  editable = false,
+  correctionClubs = [],
+}: {
+  sessionId: string;
+  editable?: boolean;
+  correctionClubs?: Array<{ value: string; label: string }>;
+}) {
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState("shot");
   const [dir, setDir] = useState("asc");
@@ -72,8 +82,9 @@ export function SessionShotPreview({ sessionId }: { sessionId: string }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [tab, setTab] = useState<"overview" | "source" | "history">("overview");
-  const requestKey = `${sessionId}:${page}:${sort}:${dir}:${retry}`;
-  const data = loaded?.key === requestKey ? loaded.data : null;
+  const dataKey = `${sessionId}:${page}:${sort}:${dir}`;
+  const requestKey = `${dataKey}:${retry}`;
+  const data = loaded?.key === dataKey ? loaded.data : null;
   const error = failure?.key === requestKey ? failure.message : null;
   const selected = data?.shots.find((shot) => shot.id === selectedId) ?? null;
   useEffect(() => {
@@ -83,13 +94,14 @@ export function SessionShotPreview({ sessionId }: { sessionId: string }) {
       { signal: controller.signal, cache: "no-store" },
     )
       .then(async (response) => {
-        const body = await response.json();
-        if (!response.ok) throw new Error(body.error ?? "Could not load shot evidence.");
+        const body = await response.json().catch(() => null);
+        if (!response.ok || !body)
+          throw new Error(body?.error ?? "Could not load shot evidence. Try again shortly.");
         return body as Evidence;
       })
       .then((body) => {
         if (!controller.signal.aborted && body.sessionId === sessionId)
-          setLoaded({ key: requestKey, data: body });
+          setLoaded({ key: dataKey, data: body });
       })
       .catch((e) => {
         if (!controller.signal.aborted)
@@ -99,7 +111,7 @@ export function SessionShotPreview({ sessionId }: { sessionId: string }) {
           });
       });
     return () => controller.abort();
-  }, [sessionId, page, sort, dir, retry, requestKey]);
+  }, [sessionId, page, sort, dir, retry, requestKey, dataKey]);
   const inspect = (id: string) => {
     setSelectedId(id);
     setTab("overview");
@@ -332,6 +344,20 @@ export function SessionShotPreview({ sessionId }: { sessionId: string }) {
               {selected?.fileNameLabel ?? "Original source and review history"}
             </SheetDescription>
           </SheetHeader>
+          {editable && selected ? (
+            <div className="grid gap-3 px-4">
+              <ShotReviewButton
+                shotId={selected.id}
+                reviewStatus={selected.reviewStatus}
+                onComplete={() => setRetry((value) => value + 1)}
+              />
+              <ClubCorrection
+                shotId={selected.id}
+                clubs={correctionClubs}
+                onComplete={() => setRetry((value) => value + 1)}
+              />
+            </div>
+          ) : null}
           <SelectedShotDetail
             key={selected?.id}
             shot={selected}

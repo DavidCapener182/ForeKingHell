@@ -38,7 +38,7 @@ describe("TrainingLoadRangeView readiness experience", () => {
     expect(experience).toContain("<ReadinessRecommendation");
     expect(experience).toContain("Fitness &amp; freshness");
     expect(experience).toContain("Your golf readiness trend");
-    expect(experience).toContain("<ResponsiveDetailPanel");
+    expect(experience).toContain('<details className="rounded-xl border" id="log-training">');
     expect(experience).toContain("data-training-log-trigger");
     expect(experience).toContain("data-training-desktop-history");
     expect(experience.indexOf("<TrainingSummaryCards")).toBeLessThan(

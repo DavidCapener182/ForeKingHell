@@ -130,7 +130,10 @@ test("Data Chat supports retry, all citations and owner-scoped saved answers on 
           await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1),
         ).toBe(false);
         await page.evaluate(() => scrollTo(0, 0));
-        await page.screenshot({ animations: "disabled", path: info.outputPath(`P21-${surface}-${width}.png`) });
+        await page.screenshot({
+          animations: "disabled",
+          path: info.outputPath(`P21-${surface}-${width}.png`),
+        });
       }
     }
     await login(ids[1]);

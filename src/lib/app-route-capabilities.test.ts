@@ -17,10 +17,20 @@ describe("companion route capabilities", () => {
   });
 
   it("opens upgraded routes directly while retaining unsupported workbench handoffs", () => {
-    for (const path of ["/strokes-gained", "/compare", "/providers/jobs/1", "/admin/users", "/coach/reports"]) {
+    for (const path of [
+      "/strokes-gained",
+      "/compare",
+      "/providers/jobs/1",
+      "/admin/users",
+      "/coach/reports",
+    ]) {
       expect(isDesktopOnlyCompanionPath(path), path).toBe(false);
     }
-    for (const path of ["/admin/unsupported", "/compare/unsupported", "/coach/reports/unsupported"]) {
+    for (const path of [
+      "/admin/unsupported",
+      "/compare/unsupported",
+      "/coach/reports/unsupported",
+    ]) {
       expect(isDesktopOnlyCompanionPath(path), path).toBe(true);
     }
   });

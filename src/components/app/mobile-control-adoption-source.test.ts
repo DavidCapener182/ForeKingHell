@@ -10,10 +10,23 @@ describe("companion local-control adoption", () => {
       "src/components/app/mobile-shot-pattern-charts.tsx",
       "src/app/practice/practice-companion-client.tsx",
       "src/app/quick-bag/quick-bag-client.tsx",
-      "src/app/sessions/sessions-companion-list.tsx",
     ]) {
       const source = read(path);
       expect(source).toMatch(/MobileSegmentedControl|MobileFilterChipGroup/);
+      expect(source).not.toContain("router.push");
+      expect(source).not.toContain("router.replace");
+    }
+  });
+
+  it("keeps extracted History filters local while persisting their URL state", () => {
+    const history = read("src/app/sessions/sessions-companion-list.tsx");
+    const urlState = read("src/app/sessions/use-session-history-url-state.ts");
+    expect(history).toContain("<HistoryToolbar");
+    expect(history).toContain("onChange={onFiltersChange}");
+    expect(history).toContain("deriveSessionHistoryView(sessions, filters)");
+    expect(urlState).toContain("window.history.pushState");
+    expect(urlState).toContain("buildSessionHistoryQuery(currentQuery, patch, sessions)");
+    for (const source of [history, urlState]) {
       expect(source).not.toContain("router.push");
       expect(source).not.toContain("router.replace");
     }

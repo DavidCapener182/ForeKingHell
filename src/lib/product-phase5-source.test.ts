@@ -28,18 +28,20 @@ describe("Phase 5 product-page contract", () => {
     expect(today).toContain("Data cleaning impact");
   });
 
-  it("keeps the desktop-only Shot Explorer compact, URL-filtered and progressively disclosed", () => {
+  it("keeps Shot Explorer compact, URL-filtered and progressively disclosed", () => {
     const shots = source("src/app/(app)/shots/page.tsx");
     const filters = source("src/app/shots/shot-filter-toolbar.tsx");
 
     expect(shots).toContain("ShotFilterToolbar");
-    expect(filters).toContain("ClubCombobox");
+    expect(filters).toContain('select("club", "Club", clubs, "All clubs")');
     expect(filters).toContain("<Sheet");
     expect(shots).toContain("DesktopTableWorkbenchControls");
     expect(shots).toContain("ShotsMasterDetailTable");
-    expect(filters).toContain('<SelectItem value="club">Club</SelectItem>');
-    expect(filters).toContain('<SelectItem value="session">Session</SelectItem>');
-    expect(filters).toContain('params.set("trust", filters.trust)');
+    expect(filters).toContain('{ value: "club", label: "Club" }');
+    expect(filters).toContain('{ value: "session", label: "Session" }');
+    expect(shots).toContain('params.set("trust", filters.trust)');
+    expect(filters).toContain("Object.entries(next)");
+    expect(filters).toContain("new URLSearchParams(window.location.search)");
     expect(shots).not.toContain("MobileFilterSheet");
   });
 
@@ -64,7 +66,7 @@ describe("Phase 5 product-page contract", () => {
       expect(coach).toContain(`label="${label}"`);
     }
     expect(coach).toContain("Supporting evidence");
-    expect(coach).toContain('practiceHref("latest_weakness")');
+    expect(coach).toContain('practiceHref("latest_weakness", topClub)');
     expect(coach).toContain("topClub.drill");
     expect(coach).not.toContain('label="Expected gain"');
   });
@@ -72,16 +74,17 @@ describe("Phase 5 product-page contract", () => {
   it("separates progress dimensions and does not equate volume with improvement", () => {
     const progress = source("src/app/(app)/progress/page.tsx");
 
+    const navigation = source("src/app/progress/progress-navigation.ts");
+    const tabs = source("src/app/progress/progress-tabs.tsx");
+    expect(progress).toContain("<ProgressTabs");
+    expect(tabs).toContain("content:panels[tab.value]");
     for (const [value, label] of [
       ["performance", "Performance"],
       ["goals", "Goals"],
       ["load", "Load"],
       ["timeline", "Timeline"],
     ]) {
-      expect(progress).toContain(`<TabsTrigger value="${value}"`);
-      expect(progress).toMatch(
-        new RegExp(`<TabsTrigger value="${value}"[\\s\\S]*?>\\s*${label}\\s*</TabsTrigger>`),
-      );
+      expect(navigation).toContain(`{ value: "${value}", label: "${label}" }`);
     }
     expect(progress).not.toContain('label: "Training volume"');
   });

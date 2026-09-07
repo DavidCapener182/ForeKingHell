@@ -8,7 +8,7 @@ describe("Google course import ownership", () => {
     expect(source.match(/importTargetAccess\(userId\)/g)?.length).toBeGreaterThanOrEqual(5);
     expect(source).toContain("setWhere: importTargetAccess(userId)");
     expect(source).toContain(
-      "deleteUnreferencedGoogleDuplicateCourse(exactGoogleMatch.id, userId)",
+      "deleteUnreferencedGoogleDuplicateCourse(exactGoogleMatch.id, userId, db)",
     );
   });
 

@@ -93,7 +93,9 @@ test("Frozen shared report preserves password retry and all selected evidence", 
         );
         await page.getByLabel("Password", { exact: true }).fill("Wrong password 123");
         await page.getByRole("button", { name: "Open report", exact: true }).click();
-        await expect(page.locator("#shared-report-password-error")).toContainText("That password did not unlock this report");
+        await expect(page.locator("#shared-report-password-error")).toContainText(
+          "That password did not unlock this report",
+        );
         await expect(page.getByLabel("Password", { exact: true })).toHaveValue(
           "Wrong password 123",
         );

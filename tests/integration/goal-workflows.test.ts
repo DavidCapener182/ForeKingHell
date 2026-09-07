@@ -238,6 +238,16 @@ describe.skipIf(!enabled)("goal persistence with real actions and database", () 
     expect((await getGoalImprovementProjectData(owner)).projects[0].status).toBe(
       "awaiting_evidence",
     );
+    await sql`update fkh_shots set carry_yd=null,total_yd=null,ball_speed_mph=110 where session_id=${fixture.evidenceId}`;
+    project = (await getGoalImprovementProjectData(owner)).projects[0];
+    expect(project.status).toBe("review_ready");
+    expect(project.plans[0].evidence[0]).toMatchObject({
+      id: fixture.evidenceId,
+      eligibleMeasuredShots: 2,
+    });
+    expect((await getProductPreferences(owner)).goals[0].currentValue).toBe(
+      fixture.goal.currentValue,
+    );
   });
 
   it("rejects foreign project references and recovers from deleted records without exposing foreign child data", async () => {

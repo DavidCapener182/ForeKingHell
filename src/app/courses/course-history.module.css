@@ -1,6 +1,14 @@
-.table { overflow-x: auto; }
-.rows { display: none; }
+.table {
+  overflow-x: auto;
+}
+.rows {
+  display: none;
+}
 @media (max-width: 767px) {
-  .table { display: none; }
-  .rows { display: block; }
+  .table {
+    display: none;
+  }
+  .rows {
+    display: block;
+  }
 }

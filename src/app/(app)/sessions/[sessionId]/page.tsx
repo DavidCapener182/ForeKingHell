@@ -1,24 +1,23 @@
+import { and, eq } from "drizzle-orm";
+import { getDb } from "@/db/client";
+import { clubs as clubTable } from "@/db/schema";
+import { getTodayShotDetailRows } from "@/lib/today-shot-detail-data";
+import { formatClubType } from "@/lib/club-format";
+import { ImportPracticeReview } from "@/app/import/import-result-sections";
+import { SessionShotPreview } from "@/app/sessions/session-shot-preview";
+import { TodayDataQuality } from "@/app/today/today-data-quality";
 import { SessionAlignmentPanel } from "@/components/analysis/session-alignment-panel";
 import { mobileComparisonSummary } from "@/lib/mobile-review-copy";
-import { MobilePageTabs } from "@/components/app/mobile-controls";
+import { UrlTabs } from "@/components/untitled-ui/url-tabs";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSessionReviewMetadata } from "@/lib/session-review-metadata";
 import { companionReviewRoute } from "@/lib/session-review-route";
 import { MobileUnmeasuredSession } from "@/app/sessions/mobile-unmeasured-session";
-import {
-  ArrowRight,
-  CalendarDays,
-  Database,
-  Link2,
-  Target,
-  TrendingDown,
-  TrendingUp,
-  Trophy,
-} from "lucide-react";
+import { ArrowRight, Target, TrendingDown, TrendingUp, Trophy } from "lucide-react";
 
-import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
+import { MobileSection } from "@/components/app/mobile-screen";
 import { MobileSessionPattern, MobileSessionStory } from "@/app/sessions/mobile-session-story";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import { LazyMobileShotPatternCharts as MobileShotPatternCharts } from "@/components/app/lazy-mobile-shot-pattern-charts";
@@ -30,11 +29,10 @@ import {
   sessionPracticeHref,
 } from "@/lib/mobile-session-review";
 import { MobileAppShell } from "@/components/mobile-sports";
-import { PageShell } from "@/components/premium";
+import { PageShell, PageHeader } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
   Table,
@@ -45,7 +43,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { getPracticePlanForSourceSessions } from "@/lib/practice-planner";
+import {
+  getPracticePlanForSourceSessions,
+  getPracticePlanReviewForSourceSession,
+} from "@/lib/practice-planner";
 import {
   buildShotPatternPoints,
   shotPatternClubs,
@@ -65,9 +66,8 @@ export default async function PracticeSessionReviewPage({
   const { sessionId } = await params;
   const surface = await getRequestAppSurface();
   const userId = await requireCurrentUserId();
-  const metadata =
-    surface === "companion" ? await getSessionReviewMetadata(userId, sessionId) : null;
-  if (surface === "companion" && !metadata) notFound();
+  const metadata = await getSessionReviewMetadata(userId, sessionId);
+  if (!metadata) notFound();
   if (metadata && companionReviewRoute(metadata).startsWith("/rounds/")) {
     redirect(companionReviewRoute(metadata));
   }
@@ -83,16 +83,19 @@ export default async function PracticeSessionReviewPage({
   }
   if (!data.sessions.some((session) => session.id === sessionId)) notFound();
   const comparisons = [...data.clubComparisons].sort((left, right) => left.score - right.score);
-  const remaining = comparisons[0] ?? null;
-  const bestClub = comparisons.at(-1) ?? null;
+  const supportedComparisons = comparisons.filter(
+    (row) => row.today.shotCount >= 5 && row.previous.shotCount >= 5,
+  );
+  const remaining = supportedComparisons[0] ?? null;
+  const bestClub = supportedComparisons.at(-1) ?? null;
   const improved =
-    comparisons
+    supportedComparisons
       .filter((comparison) => comparison.verdict === "better")
       .sort((left, right) => right.score - left.score)[0] ?? null;
   const shots = data.shots.filter((shot) => shot.sessionId === sessionId);
   const rawShots = data.rawShots.filter((shot) => shot.sessionId === sessionId);
-  const patternPoints = buildShotPatternPoints(rawShots);
   const trustedShotIds = new Set(shots.map((shot) => shot.id));
+  const patternPoints = buildShotPatternPoints(rawShots, { trustedShotIds });
   const mobilePatternPoints = buildShotPatternPoints(rawShots, { trustedShotIds });
   const mobileConfidence = shotPatternConfidence(
     mobilePatternPoints.filter((point) => point.trusted),
@@ -110,11 +113,13 @@ export default async function PracticeSessionReviewPage({
   const sessionConfidence = shotPatternConfidence(patternPoints.filter((point) => point.trusted));
   const focusConfidence = shotPatternConfidence(trustedFocusPoints);
   const patternSummary = summarizeShotPattern(trustedFocusPoints);
-  const verdict = verdictPresentation(data.overall.verdict);
+  const verdict = verdictPresentation(supportedComparisons.length ? data.overall.verdict : "new");
+  const evidenceSummary = supportedComparisons.length
+    ? data.overall.summary
+    : `${shots.length} usable shots saved. More comparable evidence for the same club is needed before calling a performance change.`;
   const source = formatSource(rawShots[0]?.source ?? "session");
   const storyGroups = mobileSessionGroups(rawShots, shots);
   const clubList = compactClubList(clubs.map((club) => club.label));
-  const mobileClubList = compactClubList(storyGroups.map((club) => club.label));
   const linkedPlan = plan?.title ?? "No plan linked";
   const nextAction = remaining
     ? `Work on ${remaining.clubLabel}: ${sentenceCase(remaining.summary)}`
@@ -153,16 +158,48 @@ export default async function PracticeSessionReviewPage({
     remaining?.clubType ?? null,
     remaining?.clubLabel ?? null,
     remaining?.verdict === "new" ? "baseline" : "control",
+    sessionId,
   );
 
+  const [details, correctionClubRows, planReview] = await Promise.all([
+    getTodayShotDetailRows({ userId, shotIds: rawShots.map((shot) => shot.id) }),
+    getDb()
+      .select({
+        id: clubTable.id,
+        type: clubTable.type,
+        brand: clubTable.brand,
+        model: clubTable.model,
+      })
+      .from(clubTable)
+      .where(and(eq(clubTable.userId, userId), eq(clubTable.active, true))),
+    getPracticePlanReviewForSourceSession(userId, sessionId),
+  ]);
+  const correctionClubs = correctionClubRows.map((club) => ({
+    value: club.id,
+    label: [formatClubType(club.type), club.brand, club.model].filter(Boolean).join(" · "),
+  }));
   return (
     <PageShell>
+      <PageHeader
+        title={metadata.fileName ?? metadata.courseName ?? mobileSessionTitle}
+        description={`${data.dateLabel} · ${metadata.type} · ${source} · ${rawShots.length} imported shots`}
+        actions={
+          <Button asChild className="min-h-11">
+            <Link href={sessionPractice}>
+              Next practice
+              <ArrowRight className="size-4" aria-hidden />
+            </Link>
+          </Button>
+        }
+      />
+      <TodayDataQuality shots={rawShots} compact />
       {surface === "workbench" ? (
-        <div className="hidden min-w-0 gap-6 lg:grid" data-session-performance-report>
+        <div className="grid min-w-0 gap-5" data-session-performance-report>
           <DesktopVerdictHeader
+            practiceHref={sessionPractice}
             verdict={verdict}
-            title={data.overall.title}
-            summary={data.overall.summary}
+            title={supportedComparisons.length ? data.overall.title : "Build a comparable baseline"}
+            summary={evidenceSummary}
             confidence={`${sessionConfidence.label} sample coverage`}
             date={data.dateLabel}
             source={source}
@@ -175,24 +212,26 @@ export default async function PracticeSessionReviewPage({
             className="min-w-0 gap-0 overflow-hidden py-0 shadow-md"
             data-primary-dispersion-stage
           >
-            <CardHeader className="border-b bg-gradient-to-r from-slate-950 to-slate-800 px-6 py-5 text-white xl:px-8">
-              <div className="flex items-end justify-between gap-6">
+            <CardHeader className="border-b px-4 py-4">
+              <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
                     Main visual
                   </p>
-                  <CardTitle className="mt-1 text-2xl text-white">Dispersion report</CardTitle>
-                  <CardDescription className="mt-1 text-slate-300">
+                  <CardTitle className="mt-1 text-xl">Dispersion report</CardTitle>
+                  <CardDescription className="mt-1 text-muted-foreground">
                     Landing pattern, trusted spread and measured ball flight for each club.
                   </CardDescription>
                 </div>
-                <Badge className="border-white/15 bg-white/10 text-white hover:bg-white/10">
+                <Badge variant="secondary">
                   {focusConfidence.sampleSize} trusted landing points
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="px-5 py-5 xl:px-8 xl:py-7">
               <MobileShotPatternCharts
+                details={details}
+                correctionClubs={correctionClubs}
                 points={patternPoints}
                 preferredClub={preferredClub}
                 layout="desktop"
@@ -201,6 +240,7 @@ export default async function PracticeSessionReviewPage({
           </Card>
 
           <WhatHappened
+            sessionId={sessionId}
             improved={improved}
             remaining={remaining}
             bestClub={bestClub}
@@ -222,9 +262,10 @@ export default async function PracticeSessionReviewPage({
             <ConnectedMetricBar metrics={importantMetrics} label="Four important session numbers" />
           </section>
 
-          {plan ? <PlanVersusActual plan={plan} /> : null}
+          {plan ? <PlanVersusActual plan={plan} review={planReview} sessionId={sessionId} /> : null}
 
           <ClubSummary comparisons={comparisons} />
+          <BaselineSources data={data} />
 
           <EvidenceDisclosure
             source={source}
@@ -239,14 +280,9 @@ export default async function PracticeSessionReviewPage({
 
       {surface === "companion" ? (
         <MobileAppShell className="gap-6" data-practice-session-review>
-          <MobileLargeTitle
-            title={mobileSessionTitle}
-            eyebrow={data.dateLabel}
-            detail={`${rawShots.length} shots · ${mobileClubList} · ${source}`}
-          />
           <section className="mobile-section" aria-label="Session verdict">
             <p className="mobile-type-footnote text-muted-foreground">Session verdict</p>
-            <h2 className="mobile-type-title2">{mobileSessionVerdict(comparisons)}</h2>
+            <h2 className="mobile-type-title2">{mobileSessionVerdict(supportedComparisons)}</h2>
             <MobileStatus
               label={`${mobileConfidence.label} sample coverage · ${shots.length} included shots`}
               tone={mobileConfidence.label === "Low" ? "attention" : "neutral"}
@@ -255,21 +291,21 @@ export default async function PracticeSessionReviewPage({
               <summary className="mobile-type-callout flex min-h-11 items-center text-primary">
                 Comparison evidence
               </summary>
-              <p className="mobile-type-callout text-muted-foreground">{data.overall.summary}</p>
+              <p className="mobile-type-callout text-muted-foreground">{evidenceSummary}</p>
+              <BaselineSources data={data} />
               <p className="mobile-type-footnote mt-2 text-muted-foreground">
                 {shots.length} of {rawShots.length} imported shots used. Full-shot comparisons use
                 prior evidence for the same clubs.
               </p>
             </details>
           </section>
-          <MobilePageTabs
+          <UrlTabs
             className="companion-review-tabs"
-            initialValue="review"
-            mode="local"
-            ariaLabel="Session review sections"
+            defaultTabKey="review"
+            label="Session review sections"
             tabs={[
               {
-                value: "review",
+                id: "review",
                 label: "Review",
                 content: (
                   <div className="grid gap-5">
@@ -297,6 +333,8 @@ export default async function PracticeSessionReviewPage({
                     <MobileSection title="Shot pattern">
                       <div data-mobile-primary-chart>
                         <MobileSessionPattern
+                          details={details}
+                          correctionClubs={correctionClubs}
                           points={mobilePatternPoints}
                           initiallyOpen
                           preferredClub={preferredClub}
@@ -307,7 +345,7 @@ export default async function PracticeSessionReviewPage({
                 ),
               },
               {
-                value: "clubs",
+                id: "clubs",
                 label: "Clubs & shots",
                 content: (
                   <>
@@ -321,7 +359,7 @@ export default async function PracticeSessionReviewPage({
                 ),
               },
               {
-                value: "next",
+                id: "next",
                 label: "Next practice",
                 content: (
                   <>
@@ -345,6 +383,9 @@ export default async function PracticeSessionReviewPage({
                         </Link>
                       </Button>
                       {plan ? (
+                        <PlanVersusActual plan={plan} review={planReview} sessionId={sessionId} />
+                      ) : null}
+                      {plan ? (
                         <MobileGroupedList>
                           <MobileListRow
                             label="Linked practice"
@@ -361,12 +402,24 @@ export default async function PracticeSessionReviewPage({
           />
         </MobileAppShell>
       ) : null}
+      <section
+        className="grid min-w-0 gap-3 rounded-xl border bg-card p-4 sm:p-5"
+        aria-label="Complete shot evidence"
+      >
+        <h2 className="text-xl font-semibold">Shot evidence ledger</h2>
+        <p className="text-sm leading-6 text-muted-foreground">
+          Inspect every saved field, original source and review history. Keep, exclude or correct a
+          club without rewriting raw measurements.
+        </p>
+        <SessionShotPreview sessionId={sessionId} editable correctionClubs={correctionClubs} />
+      </section>
       <SessionAlignmentPanel sessionId={sessionId} />
     </PageShell>
   );
 }
 
 function DesktopVerdictHeader({
+  practiceHref,
   verdict,
   title,
   summary,
@@ -377,6 +430,7 @@ function DesktopVerdictHeader({
   linkedPlan,
   nextAction,
 }: {
+  practiceHref: string;
   verdict: ReturnType<typeof verdictPresentation>;
   title: string;
   summary: string;
@@ -387,95 +441,85 @@ function DesktopVerdictHeader({
   linkedPlan: string;
   nextAction: string;
 }) {
-  const metadata = [
-    { icon: CalendarDays, label: "Date", value: date },
-    { icon: Database, label: "Source", value: source },
-    { icon: Trophy, label: "Clubs", value: clubs },
-    { icon: Link2, label: "Linked plan", value: linkedPlan },
-  ];
-
   return (
-    <header
-      className={cn(
-        "relative min-w-0 overflow-hidden rounded-2xl border p-6 shadow-sm xl:p-8",
-        verdict.desktopClassName,
-      )}
+    <section
+      className="grid min-w-0 gap-3 rounded-xl border bg-card p-4 sm:p-5"
       data-session-verdict
     >
-      <div
-        className="absolute -right-16 -top-24 size-72 rounded-full bg-white/45 blur-3xl"
-        aria-hidden
-      />
-      <div className="relative grid min-w-0 gap-7 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.7fr)] xl:items-stretch">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-foreground/65">
-              Session verdict
-            </p>
-            <Badge variant="outline" className="border-current/20 bg-white/45 text-foreground">
-              {confidence}
-            </Badge>
-          </div>
-          <h1 className="mt-3 text-6xl font-black tracking-[-0.055em] text-foreground xl:text-7xl">
-            {verdict.label}
-          </h1>
-          <p className="mt-3 text-xl font-semibold tracking-tight text-foreground">{title}</p>
-          <p className="mt-2 max-w-4xl text-base leading-7 text-foreground/70">{summary}</p>
-
-          <div className="mt-6 grid overflow-hidden rounded-xl border border-foreground/10 bg-white/45 sm:grid-cols-2 xl:grid-cols-4">
-            {metadata.map(({ icon: Icon, label, value }, index) => (
-              <div key={label} className="relative min-w-0 px-4 py-3.5">
-                {index > 0 ? (
-                  <Separator
-                    orientation="vertical"
-                    className="absolute inset-y-3 -left-px hidden h-auto xl:block"
-                  />
-                ) : null}
-                {index > 1 ? (
-                  <Separator className="absolute inset-x-4 top-0 hidden w-auto sm:block xl:hidden" />
-                ) : null}
-                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground/55">
-                  <Icon className="size-3.5" aria-hidden />
-                  {label}
-                </p>
-                <p className="mt-1 truncate text-sm font-semibold text-foreground" title={value}>
-                  {value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <aside className="flex min-w-0 flex-col justify-between rounded-2xl bg-slate-950 p-5 text-white shadow-lg xl:p-6">
-          <div>
-            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300">
-              <Target className="size-4" aria-hidden />
-              Primary next action
-            </p>
-            <p className="mt-4 text-xl font-semibold leading-7">{nextAction}</p>
-          </div>
-          <Button
-            asChild
-            size="lg"
-            className="mt-6 w-full bg-white text-slate-950 hover:bg-slate-100"
-          >
-            <Link href="/practice?intent=latest_weakness">
-              Build next plan
-              <ArrowRight className="ml-2 size-4" aria-hidden />
-            </Link>
-          </Button>
-        </aside>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xl font-semibold">{title}</h2>
+        <Badge variant="secondary">
+          {verdict.label} · {confidence}
+        </Badge>
       </div>
-    </header>
+      <p className="text-sm leading-6 text-muted-foreground">{summary}</p>
+      <dl className="grid gap-3 border-y py-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          ["Date", date],
+          ["Source", source],
+          ["Clubs", clubs],
+          ["Linked plan", linkedPlan],
+        ].map(([label, value]) => (
+          <div key={label} className="min-w-0">
+            <dt className="text-xs text-muted-foreground">{label}</dt>
+            <dd className="mt-1 break-words font-medium">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="min-w-0 flex-1 basis-64 text-sm leading-6">{nextAction}</p>
+        <Button asChild className="min-h-11">
+          <Link href={practiceHref}>Build next plan</Link>
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+function BaselineSources({ data }: { data: Awaited<ReturnType<typeof getTodayPracticeData>> }) {
+  const rows = data.previousComparisonShots ?? [];
+  const sources = [...new Map(rows.map((shot) => [shot.sessionId, shot])).values()];
+  return (
+    <details className="rounded-lg border p-3">
+      <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">
+        Comparison baseline sources
+      </summary>
+      <p className="text-sm leading-6 text-muted-foreground">
+        Current period: {data.dateLabel}. Earlier clean full-shot samples are matched by club; a
+        small or missing baseline is not a performance diagnosis.
+      </p>
+      {sources.length ? (
+        <ul className="mt-2 divide-y">
+          {sources.map((shot) => (
+            <li key={shot.sessionId}>
+              <Link
+                href={`/sessions/${shot.sessionId}`}
+                className="flex min-h-11 flex-wrap items-center gap-2 py-2 text-sm text-primary underline"
+              >
+                {shot.fileName ?? "Earlier session"} ·{" "}
+                {new Date(shot.shotAt).toLocaleDateString("en-GB", { timeZone: "UTC" })} ·{" "}
+                {rows.filter((row) => row.sessionId === shot.sessionId).length} baseline shots
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-muted-foreground">
+          No earlier comparable source sessions available.
+        </p>
+      )}
+    </details>
   );
 }
 
 function WhatHappened({
+  sessionId,
   improved,
   remaining,
   bestClub,
   pattern,
 }: {
+  sessionId: string;
   improved: ClubDayComparison | null;
   remaining: ClubDayComparison | null;
   bestClub: ClubDayComparison | null;
@@ -492,7 +536,7 @@ function WhatHappened({
     },
     {
       icon: TrendingDown,
-      label: "Remaining weakness",
+      label: remaining?.verdict === "worse" ? "Remaining weakness" : "Next focus",
       title: remaining?.clubLabel ?? "Retest needed",
       detail: remaining?.summary ?? "Repeat the same measured block before changing focus.",
       iconClass: "bg-rose-100 text-rose-700",
@@ -543,6 +587,12 @@ function WhatHappened({
             </p>
             <p className="mt-1 text-lg font-semibold tracking-tight">{title}</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
+            <Link
+              href={`/shots?sessionId=${sessionId}`}
+              className="mt-2 inline-flex min-h-11 items-center text-sm text-primary underline"
+            >
+              Review supporting shots
+            </Link>
           </div>
         ))}
       </Card>
@@ -552,47 +602,47 @@ function WhatHappened({
 
 function PlanVersusActual({
   plan,
+  review,
+  sessionId,
 }: {
   plan: NonNullable<Awaited<ReturnType<typeof getPracticePlanForSourceSessions>>>;
+  review: Awaited<ReturnType<typeof getPracticePlanReviewForSourceSession>>;
+  sessionId: string;
 }) {
-  const metrics = [
-    { label: "Planned blocks", value: plan.totalBlocks },
-    { label: "Targets passed", value: plan.passedBlocks },
-    { label: "Mixed", value: plan.mixedBlocks },
-    { label: "Needs evidence", value: plan.incompleteBlocks },
-  ];
-
+  const measured = Boolean(review?.comparison?.decisions.length);
   return (
-    <section className="grid gap-3" aria-labelledby="plan-actual-title" data-plan-versus-actual>
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-            Linked practice
+    <section className="grid min-w-0 gap-3" aria-label="Plan versus actual" data-plan-versus-actual>
+      <h2 className="text-xl font-semibold">Plan vs actual</h2>
+      <p className="text-sm text-muted-foreground">
+        {plan.title} · {plan.blocks.length} prescribed blocks. Guided completion is separate from
+        imported target evidence.
+      </p>
+      <ol className="divide-y rounded-xl border bg-card">
+        {plan.blocks.map((block, index) => (
+          <li key={block.id} className="p-3">
+            <p className="font-medium">
+              {index + 1}. {block.title}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {block.ballCount ?? "Unspecified"} planned balls ·{" "}
+              {block.clubs.map(formatClubType).join(", ") || "No club prescribed"}
+            </p>
+          </li>
+        ))}
+      </ol>
+      {measured && review ? (
+        <ImportPracticeReview review={review} sessionId={sessionId} source="session" />
+      ) : (
+        <div className="rounded-lg border p-4">
+          <p className="text-sm leading-6">
+            No imported block result is available yet. Recorded practice does not establish that a
+            measured target passed.
           </p>
-          <h2 id="plan-actual-title" className="mt-1 text-2xl font-semibold tracking-tight">
-            Plan vs actual
-          </h2>
+          <Button asChild variant="outline" className="mt-3 min-h-11">
+            <Link href={`/import?practicePlanId=${plan.id}`}>Add measured evidence</Link>
+          </Button>
         </div>
-        <Badge variant="secondary">{plan.score === null ? "Measured" : `${plan.score}/100`}</Badge>
-      </div>
-      <Card className="gap-0 overflow-hidden py-0">
-        <div className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1fr)_minmax(440px,1.2fr)] xl:items-center xl:p-6">
-          <div>
-            <p className="text-lg font-semibold">{plan.title}</p>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">{plan.verdict}</p>
-            <Progress
-              value={plan.score ?? 0}
-              className="mt-4"
-              aria-label={
-                plan.score === null
-                  ? "Practice plan was measured without a numeric score"
-                  : `Practice plan score: ${plan.score} out of 100`
-              }
-            />
-          </div>
-          <ConnectedMetricBar metrics={metrics} embedded label="Practice plan result" />
-        </div>
-      </Card>
+      )}
     </section>
   );
 }
@@ -616,9 +666,11 @@ function ClubSummary({ comparisons }: { comparisons: ClubDayComparison[] }) {
                 <TableHead>Club</TableHead>
                 <TableHead>Verdict</TableHead>
                 <TableHead className="text-right">Shots</TableHead>
-                <TableHead className="text-right">Carry</TableHead>
-                <TableHead className="text-right">Offline</TableHead>
-                <TableHead className="text-right">Playable</TableHead>
+                <TableHead className="text-right">Carry (yd)</TableHead>
+                <TableHead className="text-right">Offline (yd)</TableHead>
+                <TableHead className="text-right">Playable (%)</TableHead>
+                <TableHead className="text-right">Ball speed (mph)</TableHead>
+                <TableHead className="text-right">Carry spread (yd)</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -626,7 +678,11 @@ function ClubSummary({ comparisons }: { comparisons: ClubDayComparison[] }) {
                 <TableRow key={comparison.clubType}>
                   <TableCell className="font-semibold">{comparison.clubLabel}</TableCell>
                   <TableCell>
-                    <VerdictBadge verdict={comparison.verdict} />
+                    {comparison.today.shotCount < 5 ? (
+                      <Badge variant="outline">Small sample</Badge>
+                    ) : (
+                      <VerdictBadge verdict={comparison.verdict} />
+                    )}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {comparison.today.shotCount}
@@ -639,6 +695,12 @@ function ClubSummary({ comparisons }: { comparisons: ClubDayComparison[] }) {
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
                     {formatPercent(comparison.today.playableRate)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {comparison.today.ballSpeedAverageMph?.toFixed(1) ?? "Unavailable"}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {comparison.today.carryRobustStdDevYd?.toFixed(1) ?? "Unavailable"}
                   </TableCell>
                 </TableRow>
               ))}

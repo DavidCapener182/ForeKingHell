@@ -18,14 +18,11 @@ const adminModerationSource = readFileSync(
   join(process.cwd(), "src/app/(admin)/admin/moderation/page.tsx"),
   "utf8",
 );
-const adminBulkActionSource = readFileSync(
-  join(process.cwd(), "src/app/admin/admin-bulk-action-submit.tsx"),
+const operationSource = readFileSync(
+  join(process.cwd(), "src/app/admin/admin-operation-form.tsx"),
   "utf8",
 );
-const moderationRowActionsSource = readFileSync(
-  join(process.cwd(), "src/app/admin/moderation-row-actions.tsx"),
-  "utf8",
-);
+const queueSource = readFileSync(join(process.cwd(), "src/app/admin/moderation-queue.tsx"), "utf8");
 
 describe("confirm submit button", () => {
   it("uses an accessible in-app confirmation dialog instead of a browser prompt", () => {
@@ -39,18 +36,24 @@ describe("confirm submit button", () => {
   });
 
   it("guards admin destructive actions with clear confirmation copy", () => {
-    expect(adminUsersSource).toContain("<AdminUserActions");
-    expect(adminUserActionsSource).toContain("AdminConfirmSubmitButton");
-    expect(adminUserActionsSource).toContain("<AlertDialog");
-    expect(adminUserActionsSource).toContain("Deactivate admin");
-    expect(adminUserActionsSource).toContain("writes an audit entry");
-
-    expect(adminModerationSource).toContain("AdminBulkActionSubmit");
-    expect(adminModerationSource).toContain("Resolve selected reports");
-    expect(adminModerationSource).toContain("writes an admin audit entry");
-    expect(adminBulkActionSource).toContain("<AdminConfirmSubmitButton");
-    expect(moderationRowActionsSource).toContain("<AlertDialog");
-    expect(moderationRowActionsSource).toContain("Resolve {record.label}?");
-    expect(moderationRowActionsSource).toContain("writes an admin audit entry");
+    expect(adminUsersSource).toContain("<AdminUserDirectory");
+    expect(adminUserActionsSource).toContain('operation="deactivate-admin"');
+    expect(adminUserActionsSource).toContain("The player account and golf data remain.");
+    expect(adminUserActionsSource).toContain("<AdminOperationForm");
+    expect(operationSource).toContain("setReview(data)");
+    expect(operationSource).toContain("Cancel review");
+    expect(operationSource).toContain("Confirm ${title.toLowerCase()}");
+    expect(operationSource).toContain("await adminFormAction({ ok: false }, review)");
+    expect(operationSource).toContain("if (busy.current) return");
+    expect(adminModerationSource).toContain("<ModerationQueue");
+    expect(queueSource).toContain("Only these reviewed records are submitted.");
+    expect(queueSource).toContain("Underlying user content is not deleted.");
+    expect(queueSource).toContain("Confirm selected resolution");
+    expect(queueSource).toContain("for (const row of review)");
+    expect(queueSource).toContain(
+      'data.append(kind === "report" ? "reportId" : "eventId", row.id)',
+    );
+    expect(queueSource).toContain("if (lock.current || !review) return");
+    expect(queueSource).toContain("typeof result.resolvedCount");
   });
 });

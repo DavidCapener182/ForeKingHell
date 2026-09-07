@@ -125,13 +125,11 @@ test("Record submission keeps derived score and proof drafts through failure", a
         form.getByRole("button", { name: "Submit reviewed attempt", exact: true }),
       ).toHaveCount(0);
       await expect(form.locator('input[name="scorecardProofToken"]')).toHaveValue("");
-      await form
-        .locator('input[type="file"]')
-        .setInputFiles({
-          name: "too-large.png",
-          mimeType: "image/png",
-          buffer: Buffer.alloc(5 * 1024 * 1024 + 1),
-        });
+      await form.locator('input[type="file"]').setInputFiles({
+        name: "too-large.png",
+        mimeType: "image/png",
+        buffer: Buffer.alloc(5 * 1024 * 1024 + 1),
+      });
       await expect(form.getByRole("alert")).toContainText("exceeds 5 MB");
       await form
         .locator('input[type="file"]')

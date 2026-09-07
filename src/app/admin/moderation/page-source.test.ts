@@ -6,10 +6,7 @@ const source = readFileSync(
   join(process.cwd(), "src/app/(admin)/admin/moderation/page.tsx"),
   "utf8",
 );
-const bulkSubmitSource = readFileSync(
-  join(process.cwd(), "src/app/admin/admin-bulk-action-submit.tsx"),
-  "utf8",
-);
+const queue = readFileSync(join(process.cwd(), "src/app/admin/moderation-queue.tsx"), "utf8");
 
 describe("admin moderation desktop console source", () => {
   it("uses a shared admin moderation workbench without adding a contextual AI rail", () => {
@@ -39,23 +36,26 @@ describe("admin moderation desktop console source", () => {
   });
 
   it("keeps moderation bulk and row actions confirmable", () => {
-    expect(source).toContain("bulkResolveSocialReportsAction");
-    expect(source).toContain("bulkResolveModerationEventsAction");
-    expect(source).toContain("AdminBulkActionSubmit");
-    expect(source).toContain("writes an admin audit entry");
+    expect(source).toContain("<ModerationQueue");
+    expect(queue).toContain('kind === "report" ? "bulk-resolve-reports" : "bulk-resolve-events"');
+    expect(queue).toContain("setReview(chosen)");
+    expect(queue).toContain("review?.map((row)");
+    expect(queue).toContain('data.append(kind === "report" ? "reportId" : "eventId", row.id)');
+    expect(queue).toContain("Confirm selected resolution");
+    expect(queue).toContain("if (lock.current || !review) return");
+    expect(queue).toContain("if (!pending && !open)");
+    expect(source).toContain("Moderation audit history");
   });
 
   it("announces selected bulk rows and blocks empty bulk submits", () => {
-    expect(source).toContain('formId="admin-report-bulk-form"');
-    expect(source).toContain('fieldName="reportId"');
-    expect(source).toContain('formId="admin-event-bulk-form"');
-    expect(source).toContain('fieldName="eventId"');
-
-    expect(bulkSubmitSource).toContain("document.querySelectorAll<HTMLInputElement>");
-    expect(bulkSubmitSource).toContain('data-admin-bulk-selected-count="true"');
-    expect(bulkSubmitSource).toContain('aria-live="polite"');
-    expect(bulkSubmitSource).toContain("disabled={selectedCount === 0}");
-    expect(bulkSubmitSource).toContain("Resolve ${selectedCount} selected");
+    expect(queue).toContain(
+      'shown.filter((row) => row.status === "open" && selected.includes(row.id))',
+    );
+    expect(queue).toContain('<p role="status"');
+    expect(queue).toContain("{chosen.length} selected");
+    expect(queue).toContain("disabled={!ready || !chosen.length}");
+    expect(queue).toContain("Select visible open records");
+    expect(queue).toContain("setSelected([])");
   });
 
   it("excludes companion moderation sheets from the desktop-only route", () => {

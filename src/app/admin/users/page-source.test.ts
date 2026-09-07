@@ -47,21 +47,28 @@ describe("admin users desktop console source", () => {
     expect(source).not.toContain('title="Add admin operator"');
   });
 
-  it("keeps account actions in Dialog and Sheet flows with destructive confirmation", () => {
-    expect(source).toContain("AdminUserActions");
+  it("keeps exact account changes behind a reviewed form snapshot", () => {
+    expect(source).toContain("AdminUserDirectory");
     expect(source).toContain("AdminAccessDialog");
-    expect(actionsSource).toContain("<DropdownMenu");
-    expect(actionsSource).toContain("<Dialog>");
-    expect(actionsSource).toContain("<Sheet");
-    expect(actionsSource).toContain("Identity");
-    expect(actionsSource).toContain("Recent activity");
-    expect(actionsSource).toContain("Account controls");
-    expect(actionsSource).toContain("Audit context");
-    expect(actionsSource).toContain("AdminConfirmSubmitButton");
-    expect(actionsSource).toContain('confirmTitle="Grant lifetime full access"');
-    expect(actionsSource).toContain('confirmTitle="Grant admin access"');
-    expect(actionsSource).toContain("<AlertDialog");
-    expect(actionsSource).toContain("Deactivate admin");
+    expect(actionsSource).toContain("<ResponsiveDetailPanel");
+    expect(actionsSource).toContain("Recent account audit");
+    for (const operation of ["grant-lifetime", "grant-admin", "deactivate-admin"]) {
+      expect(actionsSource).toContain(`operation="${operation}"`);
+    }
+    expect(actionsSource).toContain('name="userId" value={selected.id}');
+    expect(actionsSource).toContain("selected.id !== currentUserId");
+    expect(actionsSource).toContain("canManageOwners");
+    const form = readFileSync(
+      join(process.cwd(), "src/app/admin/admin-operation-form.tsx"),
+      "utf8",
+    );
+    expect(form).toContain("new FormData(e.currentTarget)");
+    expect(form).toContain('data.set("operation", operation)');
+    expect(form).toContain("setReview(data)");
+    expect(form).toContain("Array.from(review.entries())");
+    expect(form).toContain("adminFormAction({ ok: false }, review)");
+    expect(form).toContain("Cancel review");
+    expect(form).toContain("disabled={!ready || pending || review !== null}");
   });
 
   it("excludes companion search and grant sheets from the desktop-only route", () => {

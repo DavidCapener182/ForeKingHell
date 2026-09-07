@@ -7,6 +7,15 @@ const source = readFileSync(
   "utf8",
 );
 
+const form = readFileSync(
+  join(process.cwd(), "src/app/social-intelligence/social-task-form.tsx"),
+  "utf8",
+);
+const records = readFileSync(
+  join(process.cwd(), "src/app/social-intelligence/safety-records.tsx"),
+  "utf8",
+);
+
 describe("social intelligence desktop safety console", () => {
   it("ships only the safety workbench graph on this desktop-only route", () => {
     expect(source).toContain('<DesktopWorkbenchLayout scope="social-intelligence">');
@@ -30,12 +39,12 @@ describe("social intelligence desktop safety console", () => {
     expect(source).toContain('scope="social-safety"');
     expect(source).toContain('data-workbench-scope="social-safety"');
     expect(source).toContain('exportTableId="social-safety"');
-    expect(source).toContain('data-workbench-export-table="social-safety"');
-    expect(source).toContain('mainTableLabel="Social safety queue table"');
-    expect(source).toContain('mainTableLabel="Social safety queue table" stickyFirstColumn');
-    expect(source).toContain("<TableCaption");
-    expect(source).toContain("tabIndex={0}");
-
+    expect(source).toContain("<SafetyRecords");
+    expect(records).toContain('data-workbench-export-table="social-safety"');
+    expect(records).toContain("<caption");
+    expect(records).toContain("tabIndex={0}");
+    expect(records).toContain("visible.map((row)");
+    expect(records).toContain('data-column={id === "createdAt" ? "created" : id}');
     for (const column of [
       "source",
       "severity",
@@ -43,9 +52,9 @@ describe("social intelligence desktop safety console", () => {
       "reason",
       "target",
       "detail",
-      "created",
+      "createdAt",
     ]) {
-      expect(source).toContain(`data-column="${column}"`);
+      expect(records).toContain(`["${column}",`);
     }
   });
 
@@ -56,14 +65,19 @@ describe("social intelligence desktop safety console", () => {
   });
 
   it("preserves the workbench report and summary actions", () => {
-    expect(source).toContain("SocialReportForm");
-    expect(source).toContain("GenerateSummaryForm");
+    expect(source).toContain('task="generate"');
+    expect(source).toContain('task="report"');
+    expect(form).toContain('data.set("operation", task)');
+    expect(form).toContain("socialIntelligenceFormAction");
+    expect(form).toContain("Confirm report");
+    expect(form).toContain("Confirm generation");
+    expect(form).toContain("if (busy.current) return");
   });
 
   it("uses the shared shadcn textarea for report details", () => {
-    expect(source).toContain('import { Textarea } from "@/components/ui/textarea"');
-    expect(source).toContain("<Textarea");
-    expect(source).not.toMatch(/<textarea\b/);
+    expect(form).toContain('import { Textarea } from "@/components/ui/textarea"');
+    expect(form).toContain("<Textarea");
+    expect(form).not.toMatch(/<textarea\b/);
   });
 
   it("uses theme-aware ordinary safety surfaces", () => {

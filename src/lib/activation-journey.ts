@@ -116,8 +116,9 @@ export async function getActivationJourney(userId: string): Promise<ActivationJo
     },
     {
       id: "review",
-      title: "Review the latest session",
-      description: "Check the latest verdict before choosing what to practise next.",
+      title: "First session ready to review",
+      description:
+        "Your imported evidence is available. Open its review before choosing what to practise next.",
       href: "/today",
       complete: hasImport,
     },

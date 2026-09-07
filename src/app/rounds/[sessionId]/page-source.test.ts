@@ -33,11 +33,11 @@ describe("round review scoring and learning redesign", () => {
 
     expect(summary).toContain("Final score");
     expect(summary).toContain("<ScoringBreakdown");
-    expect(summary).toContain('label="Best part"');
-    expect(summary).toContain('label="Costliest part"');
-    expect(summary).toContain('label="Turning point"');
-    expect(summary).toContain('label="Strategy result"');
-    expect(summary).toContain('label="Next practice action"');
+    expect(summary).toContain('label="Best scoring"');
+    expect(summary).toContain('label="Largest score over par"');
+    expect(summary).toContain('label="Scoring pattern"');
+    expect(summary).toContain('label="Recorded stats"');
+    expect(summary).toContain('label="Next step"');
     expect(summary).not.toContain("OfflineRoundEditForm");
   });
 
@@ -81,9 +81,9 @@ describe("round review scoring and learning redesign", () => {
 
     expect(result).toContain("Final score");
     expect(result).toContain("text-[42px]");
-    expect(result).toContain('label="Best part"');
-    expect(result).toContain('label="Costliest part"');
-    expect(result).toContain('label="Next practice action"');
+    expect(result).toContain('label="Best scoring"');
+    expect(result).toContain('label="Largest score over par"');
+    expect(result).toContain('label="Next step"');
     expect(result).toContain("<ScoringBreakdown");
   });
 

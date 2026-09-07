@@ -77,11 +77,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
 
       {notice ? (
         <Alert variant={notice.error ? "destructive" : "default"}>
-          {notice.error ? (
-            <AlertTriangle className="size-4" />
-          ) : (
-            <Info className="size-4" />
-          )}
+          {notice.error ? <AlertTriangle className="size-4" /> : <Info className="size-4" />}
           <AlertTitle>{notice.title}</AlertTitle>
           <AlertDescription>{notice.message}</AlertDescription>
         </Alert>

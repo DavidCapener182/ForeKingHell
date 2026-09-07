@@ -34,11 +34,11 @@ test("P01: shared URL tabs and explicit unavailable comparison across surfaces",
       await expect(page.locator("[data-progress-comparison]").getByRole("alert")).toContainText(
         "unavailable to this account",
       );
-      await tabs.getByRole("tab", {name:"Performance",exact:true}).focus();
+      await tabs.getByRole("tab", { name: "Performance", exact: true }).focus();
       await page.keyboard.press("ArrowRight");
-      await expect(tabs.getByRole("tab", {name:"Goals",exact:true})).toBeFocused();
+      await expect(tabs.getByRole("tab", { name: "Goals", exact: true })).toBeFocused();
       await page.keyboard.press("Home");
-      await expect(tabs.getByRole("tab", {name:"Performance",exact:true})).toBeFocused();
+      await expect(tabs.getByRole("tab", { name: "Performance", exact: true })).toBeFocused();
       for (const label of ["Goals", "Load", "Timeline", "Performance"]) {
         await tabs.getByRole("tab", { name: label, exact: true }).click();
         await expect(page.getByRole("tabpanel", { name: label, exact: true })).toBeVisible();
@@ -48,12 +48,32 @@ test("P01: shared URL tabs and explicit unavailable comparison across surfaces",
         );
         expect(new URL(page.url()).searchParams.get("compareMeasure")).toBe("carry");
         await tabs.scrollIntoViewIfNeeded();
-        await page.screenshot({path:info.outputPath(`P01-${surface}-${viewport.width}-${label}.png`)});
+        await page.screenshot({
+          path: info.outputPath(`P01-${surface}-${viewport.width}-${label}.png`),
+        });
         if (viewport.width === 1440 || viewport.width === 360) {
           await injectAxe(page);
           const violations = await page.evaluate(async () => {
-            const axe = (window as unknown as {axe:{run:(context:string) => Promise<{violations:Array<{id:string;impact:string;nodes:Array<{target:string[]}>}>}>}}).axe;
-            return (await axe.run("[data-progress-tabs]")).violations.map(({id,impact,nodes}) => ({id,impact,targets:nodes.map(node => node.target)}));
+            const axe = (
+              window as unknown as {
+                axe: {
+                  run: (context: string) => Promise<{
+                    violations: Array<{
+                      id: string;
+                      impact: string;
+                      nodes: Array<{ target: string[] }>;
+                    }>;
+                  }>;
+                };
+              }
+            ).axe;
+            return (await axe.run("[data-progress-tabs]")).violations.map(
+              ({ id, impact, nodes }) => ({
+                id,
+                impact,
+                targets: nodes.map((node) => node.target),
+              }),
+            );
           });
           expect(violations).toEqual([]);
         }

@@ -216,25 +216,33 @@ export async function GET() {
       .slice(0, 8);
 
     const readIds = new Set(await readNotificationState(user.id));
-    return NextResponse.json({ items: items.map((item) => ({...item, unread: item.unread && !readIds.has(item.id)})) });
+    return NextResponse.json({
+      items: items.map((item) => ({ ...item, unread: item.unread && !readIds.has(item.id) })),
+    });
   } catch (error) {
     reportServerFailure("workbench_notifications_failed", error);
-    return NextResponse.json({ error: "Notifications unavailable" }, {status: 503});
+    return NextResponse.json({ error: "Notifications unavailable" }, { status: 503 });
   }
 }
 
 export async function POST(request: Request) {
-  if (request.headers.get("origin") !== new URL(request.url).origin) return NextResponse.json({error: "Invalid origin"}, {status: 403});
+  if (request.headers.get("origin") !== new URL(request.url).origin)
+    return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({error: "Sign in required"}, {status: 401});
+  if (!user) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   const body: unknown = await request.json().catch(() => null);
   const ids = body && typeof body === "object" && "ids" in body ? body.ids : null;
-  if (!Array.isArray(ids) || ids.length > 80 || !ids.every((id) => typeof id === "string" && id.length > 0 && id.length <= 120)) return NextResponse.json({error: "Invalid notification IDs"}, {status: 400});
+  if (
+    !Array.isArray(ids) ||
+    ids.length > 80 ||
+    !ids.every((id) => typeof id === "string" && id.length > 0 && id.length <= 120)
+  )
+    return NextResponse.json({ error: "Invalid notification IDs" }, { status: 400 });
   try {
-    return NextResponse.json({readIds: await markNotificationsRead(user.id, ids)});
+    return NextResponse.json({ readIds: await markNotificationsRead(user.id, ids) });
   } catch (error) {
     reportServerFailure("workbench_notification_read_failed", error);
-    return NextResponse.json({error: "Read state could not be saved"}, {status: 503});
+    return NextResponse.json({ error: "Read state could not be saved" }, { status: 503 });
   }
 }
 

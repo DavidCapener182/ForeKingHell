@@ -25,7 +25,7 @@ describe("course record detail desktop board", () => {
 
     expect(source).not.toContain("@/components/mobile-sports");
     expect(source).not.toContain('className="hidden lg:grid"');
-    expect(source).toContain('<DesktopWorkbenchLayout scope="course-record-detail">');
+    expect(source).toContain("<PageShell>");
     expect(source).not.toMatch(/(?:bg|border|text)-(?:white|slate|emerald|amber|rose|sky)-/);
     expect(source).not.toMatch(/#[0-9a-f]{6}/i);
   });
@@ -33,8 +33,6 @@ describe("course record detail desktop board", () => {
   it("keeps the verified leaderboard table exportable, captioned and keyboard-focusable", () => {
     expect(source).toContain("<PageShell>");
     expect(source).not.toContain('<PageShell size="6xl"');
-    expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="course-record-detail"');
     expect(source).toContain("CourseRecordLeaderboardTable");
     expect(source).toContain("DesktopTableWorkbenchControls");
     expect(source).not.toContain("DesktopInsightRail");

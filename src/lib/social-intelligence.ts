@@ -39,25 +39,35 @@ export async function getSocialIntelligencePageData() {
       .limit(12),
   ]);
 
-  const evidenceIds = [...new Set(summaries.flatMap((summary) => {
-    const ids = summary.evidenceJson?.feedItemIds;
-    return Array.isArray(ids) ? ids.filter((id): id is string =>
-      typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
-    ) : [];
-  }))];
-  const evidenceFeed = evidenceIds.length ? await getDb()
-    .select({
-      id: feedItems.id,
-      headline: feedItems.headline,
-      itemType: feedItems.itemType,
-      metricLabel: feedItems.metricLabel,
-      metricValue: feedItems.metricValue,
-      context: feedItems.context,
-      proofUrl: feedItems.proofUrl,
-      createdAt: feedItems.createdAt,
-    })
-    .from(feedItems)
-    .where(and(eq(feedItems.userId, userId), inArray(feedItems.id, evidenceIds))) : [];
+  const evidenceIds = [
+    ...new Set(
+      summaries.flatMap((summary) => {
+        const ids = summary.evidenceJson?.feedItemIds;
+        return Array.isArray(ids)
+          ? ids.filter(
+              (id): id is string =>
+                typeof id === "string" &&
+                /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
+            )
+          : [];
+      }),
+    ),
+  ];
+  const evidenceFeed = evidenceIds.length
+    ? await getDb()
+        .select({
+          id: feedItems.id,
+          headline: feedItems.headline,
+          itemType: feedItems.itemType,
+          metricLabel: feedItems.metricLabel,
+          metricValue: feedItems.metricValue,
+          context: feedItems.context,
+          proofUrl: feedItems.proofUrl,
+          createdAt: feedItems.createdAt,
+        })
+        .from(feedItems)
+        .where(and(eq(feedItems.userId, userId), inArray(feedItems.id, evidenceIds)))
+    : [];
   const evidenceFeedById = Object.fromEntries(evidenceFeed.map((item) => [item.id, item]));
 
   return {

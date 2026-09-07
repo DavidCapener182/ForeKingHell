@@ -1,9 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { closeDb } from "@/db/client";
-import {
-  getAdminOperationsSnapshot,
-} from "@/lib/admin";
+import { getAdminOperationsSnapshot } from "@/lib/admin";
 import { recordAdminSystemSnapshot, getAdminSystemCheckHistory } from "@/lib/admin-system-checks";
 const actor = vi.hoisted(() => ({ userId: "" }));
 vi.mock("@/lib/current-user", () => ({ requireCurrentUserId: async () => actor.userId }));
@@ -55,13 +53,28 @@ describe.skipIf(!enabled)("admin overview access and stored evidence", () => {
     const before = await getAdminOperationsSnapshot();
     const result = await recordAdminSystemSnapshot();
     expect(result.operations).toEqual(before);
-    const [unrelated] = await sql`insert into fkh_admin_audit_log(actor_user_id,action,target_type,target_id) values(${operator},'synthetic_other','user',${owner}) returning id`;
+    const [unrelated] =
+      await sql`insert into fkh_admin_audit_log(actor_user_id,action,target_type,target_id) values(${operator},'synthetic_other','user',${owner}) returning id`;
     const history = await getAdminSystemCheckHistory();
-    expect(history.some(row=>row.id===unrelated.id)).toBe(false);
-    expect(history.find(row=>row.id===result.id)).toMatchObject({actorUserId:operator,metadataJson:{scope:'stored operational records',checkedAt:result.checkedAt,operations:before,liveProvidersChecked:false}});
+    expect(history.some((row) => row.id === unrelated.id)).toBe(false);
+    expect(history.find((row) => row.id === result.id)).toMatchObject({
+      actorUserId: operator,
+      metadataJson: {
+        scope: "stored operational records",
+        checkedAt: result.checkedAt,
+        operations: before,
+        liveProvidersChecked: false,
+      },
+    });
     await sql`update fkh_admin_users set status='inactive' where user_id=${operator}`;
-    await expect(recordAdminSystemSnapshot()).rejects.toMatchObject({digest:expect.stringContaining('NEXT_REDIRECT')});
-    await expect(getAdminSystemCheckHistory()).rejects.toMatchObject({digest:expect.stringContaining('NEXT_REDIRECT')});
-    expect(await sql`select id from fkh_admin_audit_log where actor_user_id=${operator} and action='system_snapshot_checked'`).toHaveLength(1);
+    await expect(recordAdminSystemSnapshot()).rejects.toMatchObject({
+      digest: expect.stringContaining("NEXT_REDIRECT"),
+    });
+    await expect(getAdminSystemCheckHistory()).rejects.toMatchObject({
+      digest: expect.stringContaining("NEXT_REDIRECT"),
+    });
+    expect(
+      await sql`select id from fkh_admin_audit_log where actor_user_id=${operator} and action='system_snapshot_checked'`,
+    ).toHaveLength(1);
   });
 });

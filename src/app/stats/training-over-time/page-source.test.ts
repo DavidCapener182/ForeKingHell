@@ -13,7 +13,7 @@ describe("training load page source", () => {
     expect(source).toContain('scope="training-load"');
     expect(source).toContain("TrainingLoadRangeView");
     expect(source).toContain("SpeedReadinessPanel");
-    expect(source).toContain("A golf-specific view of fitness, freshness");
+    expect(source).toContain("Review logged golf workload and choose your next session.");
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("max-w-6xl");
     expect(source).not.toContain("max-w-7xl");
@@ -60,7 +60,8 @@ describe("training load page source", () => {
     expect(desktopRange).toContain("DesktopTableWorkbenchControls");
     expect(desktopRange).toContain("<TrainingStatusCard");
     expect(desktopRange).toContain("<EfficiencyCards");
-    expect(desktopRange).toContain("<ResponsiveDetailPanel");
+    expect(desktopRange).toContain('<details className="rounded-xl border" id="log-training">');
+    expect(desktopRange).toContain("Full training ledger and export");
     expect(desktopRange).toContain("<RecentTrainingSessions");
     expect(desktopRange).toContain("data-training-load-actions");
     expect(desktopRange).toContain("data-training-desktop-history");

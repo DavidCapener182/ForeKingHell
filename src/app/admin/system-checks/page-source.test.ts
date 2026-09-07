@@ -7,6 +7,11 @@ const source = readFileSync(
   "utf8",
 );
 
+const dataSource = readFileSync(join(process.cwd(), "src/app/admin/admin-system-data.ts"), "utf8");
+const retrySource = readFileSync(
+  join(process.cwd(), "src/app/admin/admin-retry-button.tsx"),
+  "utf8",
+);
 describe("admin system checks desktop console source", () => {
   it("adds a protected evidence-led system health console", () => {
     expect(source).toContain("getAdminOperationsSnapshot");
@@ -65,9 +70,11 @@ describe("admin system checks desktop console source", () => {
   });
 
   it("keeps admin recommendations tied to visible evidence", () => {
-    expect(source).toContain("what the platform actually checked");
-    expect(source).toContain("It does not run live service, CI");
-    expect(source).toContain("no inferred service state");
+    expect(source).toContain("Live health remains unverified");
+    expect(retrySource).toContain(
+      "This does not retry imports, charge payments or test live external services.",
+    );
+    expect(source).toContain("snapshot, not a live provider check.");
     expect(source).not.toContain("DesktopInsightRail");
   });
 
@@ -83,7 +90,7 @@ describe("admin system checks desktop console source", () => {
     ]) {
       expect(source).not.toContain(obsolete);
     }
-    expect(source).toContain("No live verification result");
+    expect(dataSource).toContain("No live verification result");
     expect(source).not.toContain('"Healthy"');
     expect(source).not.toContain("Runbook ready");
   });

@@ -28,7 +28,9 @@ export default async function ImportCompanionCsvPage({
     : null;
   const validPlan =
     practicePlan &&
-    ["planned", "active", "awaiting_import", "match_found", "completed"].includes(practicePlan.status) &&
+    ["planned", "active", "awaiting_import", "match_found", "completed"].includes(
+      practicePlan.status,
+    ) &&
     !practicePlan.sourceSessionId
       ? practicePlan
       : null;

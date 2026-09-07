@@ -83,7 +83,9 @@ describe.skipIf(!enabled)("direction attention", () => {
       });
       await db`update fkh_sessions set data_confidence_json=${db.json({ alignment: "aligned", directionReviews: { [shot.id]: { status: "questionable" } } })} where id=${sessionIds[0]}`;
       expect((await getDirectionAttention()).sessions[0]).toMatchObject({
-        id: sessionIds[0], alignmentNeedsReview: false, questionableShots: 1,
+        id: sessionIds[0],
+        alignmentNeedsReview: false,
+        questionableShots: 1,
       });
       await db`update fkh_sessions set data_confidence_json=${db.json({ alignment: "aligned", directionReviews: { [shot.id]: { status: "confirmed" } } })} where id=${sessionIds[0]}`;
       expect(await getDirectionAttention()).toEqual({ totalSessions: 0, sessions: [] });

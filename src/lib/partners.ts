@@ -25,7 +25,11 @@ export async function getPartnersPageData() {
       .where(eq(offerClicks.userId, userId))
       .orderBy(desc(offerClicks.createdAt))
       .limit(20),
-    getDb().select().from(sponsors).where(eq(sponsors.ownerUserId,userId)).orderBy(desc(sponsors.createdAt)),
+    getDb()
+      .select()
+      .from(sponsors)
+      .where(eq(sponsors.ownerUserId, userId))
+      .orderBy(desc(sponsors.createdAt)),
   ]);
 
   return {
@@ -104,20 +108,31 @@ export async function createPartnerOffer(input: {
 export async function recordOfferClick(offerId: string, source?: string | null) {
   const userId = await requireCurrentUserId();
   const destination = await getDb().transaction(async (tx) => {
-    const [offer] = await tx.select({ id: partnerOffers.id, active: partnerOffers.active, offerUrl: partnerOffers.offerUrl })
-      .from(partnerOffers).where(eq(partnerOffers.id, offerId)).limit(1).for("share");
+    const [offer] = await tx
+      .select({
+        id: partnerOffers.id,
+        active: partnerOffers.active,
+        offerUrl: partnerOffers.offerUrl,
+      })
+      .from(partnerOffers)
+      .where(eq(partnerOffers.id, offerId))
+      .limit(1)
+      .for("share");
     if (!offer?.active) throw new Error("This offer is no longer available.");
     let url: string | null = null;
     if (offer.offerUrl) {
       try {
         const parsed = new URL(offer.offerUrl);
-        if (parsed.protocol !== "https:" && parsed.protocol !== "http:") throw new Error("Invalid protocol");
+        if (parsed.protocol !== "https:" && parsed.protocol !== "http:")
+          throw new Error("Invalid protocol");
         url = parsed.toString();
       } catch {
         throw new Error("This offer does not have an available destination.");
       }
     }
-    await tx.insert(offerClicks).values({ offerId: offer.id, userId, source: nullableClean(source)?.slice(0, 80) ?? null });
+    await tx
+      .insert(offerClicks)
+      .values({ offerId: offer.id, userId, source: nullableClean(source)?.slice(0, 80) ?? null });
     return url;
   });
   revalidatePartners();

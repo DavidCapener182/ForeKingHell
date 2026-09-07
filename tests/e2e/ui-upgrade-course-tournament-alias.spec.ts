@@ -81,7 +81,9 @@ test("Course tournament alias applies exact selected venue filter", async ({
           "aria-selected",
           "true",
         );
-        await expect(page.getByText("Selected venue event", { exact: true }).filter({visible:true})).toBeVisible();
+        await expect(
+          page.getByText("Selected venue event", { exact: true }).filter({ visible: true }),
+        ).toBeVisible();
         await expect(page.getByText("Other venue event", { exact: true })).toHaveCount(0);
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),

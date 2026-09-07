@@ -1,18 +1,23 @@
 import "server-only";
-import {notFound} from "next/navigation";
-import {and,desc,eq,inArray} from "drizzle-orm";
-import {clubs,sessions,shots,users} from "@/db/schema";
-import {getDb} from "@/db/client";
-import {requireReadableAccountUserId} from "@/lib/account-access";
-import {isShotEvidenceEligible} from "@/lib/shot-review";
+import { notFound } from "next/navigation";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { clubs, sessions, shots, users } from "@/db/schema";
+import { getDb } from "@/db/client";
+import { requireReadableAccountUserId } from "@/lib/account-access";
+import { isShotEvidenceEligible } from "@/lib/shot-review";
 
 export async function getSharedAccountData(targetUserId: string) {
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUserId)) notFound();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetUserId))
+    notFound();
   const access = await requireReadableAccountUserId(targetUserId);
   const db = getDb();
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const [profileRows, sessionRows, shotRows, clubRows] = await Promise.all([
-    db.select({id:users.id,name:users.name,email:users.email}).from(users).where(eq(users.id, targetUserId)).limit(1),
+    db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(eq(users.id, targetUserId))
+      .limit(1),
     db
       .select()
       .from(sessions)
@@ -47,7 +52,13 @@ export async function getSharedAccountData(targetUserId: string) {
       .sort((a, b) => b.count - a.count)[0] ?? null;
   const longestDriveYd =
     eligibleShotRows
-      .filter((shot) => shot.clubType === "driver" && typeof shot.totalYd === "number" && Number.isFinite(shot.totalYd) && shot.totalYd > 0)
+      .filter(
+        (shot) =>
+          shot.clubType === "driver" &&
+          typeof shot.totalYd === "number" &&
+          Number.isFinite(shot.totalYd) &&
+          shot.totalYd > 0,
+      )
       .reduce<number | null>((best, shot) => Math.max(best ?? 0, shot.totalYd ?? 0), null) ?? null;
 
   return {
@@ -85,6 +96,10 @@ function countBy(values: string[]) {
 }
 
 function scorecardTotal(scorecard: NonNullable<(typeof sessions.$inferSelect)["scorecardJson"]>) {
-  if (!scorecard.length || scorecard.some((hole) => typeof hole.score !== "number" || !Number.isFinite(hole.score))) return null;
+  if (
+    !scorecard.length ||
+    scorecard.some((hole) => typeof hole.score !== "number" || !Number.isFinite(hole.score))
+  )
+    return null;
   return scorecard.reduce((total, hole) => total + (hole.score ?? 0), 0);
 }

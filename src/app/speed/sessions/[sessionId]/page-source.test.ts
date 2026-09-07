@@ -7,6 +7,11 @@ const source = readFileSync(
   "utf8",
 );
 
+const transfer = readFileSync(
+  join(process.cwd(), "src/app/speed/mobile-speed-transfer.tsx"),
+  "utf8",
+);
+
 describe("speed session desktop swing log", () => {
   it("uses the shared desktop workbench shell without adding a contextual rail", () => {
     expect(source).toContain("DesktopWorkbenchLayout");
@@ -61,12 +66,13 @@ describe("speed session desktop swing log", () => {
   });
 
   it("links an explicit five-shot Driver transfer test with a concrete 4-of-5 rule", () => {
-    expect(source).toContain("saveSpeedTransferTestAction");
+    expect(transfer).toContain("saveSpeedTransferTestWithStateAction");
     expect(source).toContain("at least 4 of 5 finish inside your personal corridor");
-    expect(source).toContain('name="shotId"');
-    expect(source).toContain("Choose the exact five normal Driver shots");
-    expect(source).toContain("Shot {shot.shotNumber ?? index + 1}");
-    expect(source).toContain("Link selected five");
+    expect(transfer).toContain('name="shotId"');
+    expect(transfer).toContain("disabled={selected.length !== 5}");
+    expect(transfer).toContain("then the exact five normal shots");
+    expect(transfer).toContain("Shot {shot.shotNumber ?? index + 1}");
+    expect(transfer).toContain("Link selected five");
     expect(source).toContain("speed_error?: string | string[]");
     expect(source).toContain('? "Failed"');
   });
@@ -100,10 +106,12 @@ describe("speed session desktop-only bundle", () => {
 });
 
 describe("speed session companion entry", () => {
-  it("selects a dedicated phone review while retaining the desktop editor", () => {
-    expect(source).toContain("getRequestAppSurface()");
-    expect(source).toContain("<SpeedSessionCompanion data={data} saved={saved} error={error}");
-    expect(source).toContain("action={updateSpeedSessionAction}");
-    expect(source).toContain("action={saveSpeedTransferTestAction}");
+  it("retains the session editor and exact transfer identity in the shared review", () => {
+    expect(source).toContain("<UrlTabs");
+    expect(source).toContain("<MobileSpeedTransfer");
+    expect(source).toContain("action={updateSpeedSessionWithStateAction}");
+    expect(transfer).toContain("action={saveSpeedTransferTestWithStateAction}");
+    expect(transfer).toContain('name="speedSessionId" value={sessionId}');
+    expect(transfer).toContain('name="shotSessionId" value={candidate.sessionId}');
   });
 });

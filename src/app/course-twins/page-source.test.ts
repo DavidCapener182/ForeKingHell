@@ -12,7 +12,7 @@ describe("Course Twin catalogue page", () => {
   it("gives generated courses a first-class golfer-facing destination", () => {
     expect(source).toContain("listAvailableCourseTwins(userId)");
     expect(source).toContain('title="Course Twin"');
-    expect(source).toContain("Aintree, Bootle and every checked package");
+    expect(source).toContain("Grade B uses real terrain with approximate putting contours.");
     expect(source).toContain("<CourseTwinCatalogue twins={twins} />");
     expect(catalogueSource).toContain("data-course-twin={twin.courseId}");
     expect(catalogueSource).toContain("href={`/play/${twin.courseId}`}");
@@ -23,25 +23,17 @@ describe("Course Twin catalogue page", () => {
     expect(catalogueSource).toContain("ToggleGroup");
   });
 
-  it("uses a scan-first native mobile catalogue with secondary package detail disclosed", () => {
-    const mobileSource = source.slice(
-      source.indexOf("data-course-twin-mobile-catalogue"),
-      source.indexOf("data-course-twin-desktop-catalogue"),
-    );
-
-    expect(mobileSource).toContain("<IOSGroupedList");
-    expect(mobileSource).toContain("<IOSListRow");
-    expect(mobileSource).toContain("ariaLabel={`Open ${twin.name} Course Twin`}");
-    expect(mobileSource).toContain("<IOSDisclosureGroup");
-    expect(mobileSource).toContain('title: "Terrain and accuracy"');
-    expect(mobileSource).toContain("{twin.warning}");
-    expect(mobileSource.match(/href=\{`\/play\/\$\{twin\.courseId\}`\}/g)).toHaveLength(1);
-    expect(source).toContain("getRequestAppSurface");
-    expect(source).toContain('surface === "companion"');
-    expect(source).toContain('surface === "workbench" ? await import');
-    expect(source).not.toContain(
-      'import { CourseTwinCatalogue } from "@/app/course-twins/course-twin-catalogue"',
-    );
+  it("shares a responsive catalogue with accuracy warnings and a disclosed 2D fallback", () => {
+    expect(catalogueSource).toContain("grid gap-3 md:grid-cols-2 xl:grid-cols-3");
+    expect(catalogueSource).toContain("{twin.warning}");
+    expect(catalogueSource).toContain("Course details and 2D fallback");
+    expect(catalogueSource).toContain("<details");
+    expect(catalogueSource).toContain("<summary");
+    expect(catalogueSource).toContain("href={`/courses/${twin.courseId}/holes`}");
+    expect(catalogueSource.match(/href=\{`\/play\/\$\{twin\.courseId\}`\}/g)).toHaveLength(1);
+    expect(catalogueSource).toContain("prefetch={false}");
+    expect(catalogueSource).not.toContain("@react-three");
+    expect(catalogueSource).not.toContain("<Canvas");
     expect(source).not.toContain('className="hidden lg:contents"');
   });
 });

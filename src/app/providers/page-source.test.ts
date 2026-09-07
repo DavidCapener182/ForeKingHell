@@ -62,11 +62,11 @@ describe("providers desktop workbench", () => {
   });
 
   it("shows provider health with operational adapter statuses", () => {
-    expect(source).toContain("Rapsodo is live");
-    expect(source).toContain("Square is beta");
-    expect(source).toContain("TrackMan is tracked as a research adapter");
+    expect(source).toContain("providerStatusLabel(provider.status)");
+    expect(source).toContain('provider.accountCount > 0 ? "Stored account" : "No stored account"');
+    expect(source).toContain("adapter availability does not mean an account");
     expect(source).toContain("Provider import health");
-    expect(source).toContain("Last sync");
+    expect(source).toContain("Last recorded activity");
     expect(source).toContain("Import failures");
     expect(source).toContain("live/current");
     expect(source).toContain("beta adapter");
@@ -76,15 +76,15 @@ describe("providers desktop workbench", () => {
   });
 
   it("uses integration cards, action menus, confirmation and isolated diagnostics tabs", () => {
-    expect(source).toContain("data-provider-workbench-tabs");
-    expect(source).toContain('<TabsTrigger value="connections">');
-    expect(source).toContain('<TabsTrigger value="diagnostics">');
+    expect(source).toContain('label="Provider workbench sections"');
+    expect(source).toContain('id: "connections"');
+    expect(source).toContain('id: "diagnostics"');
     expect(source).toContain("ProviderConnectionActions");
     expect(source).toContain("ConnectedMetricBar");
     expect(source).toContain("OperationStepper");
     expect(source).toContain("StatusTimeline");
     expect(source).toContain("AppEmptyState");
-    expect(source).toContain("defaultValue={activeTab}");
+    expect(source).toContain("defaultTabKey={activeTab}");
     expect(source).toContain('href: "/providers?tab=diagnostics#provider-jobs"');
   });
 

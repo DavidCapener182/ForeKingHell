@@ -370,7 +370,8 @@ export function ImportForm({
   const unresolvedClubs = parsedFiles.some((file) =>
     file.parsed.shots.some(
       (shot) =>
-        (shot.clubType === "unknown" || shot.clubType === "other" ||
+        (shot.clubType === "unknown" ||
+          shot.clubType === "other" ||
           shot.clubIdentityProvenance === "unknown" ||
           shot.clubIdentityProvenance === "inferred") &&
         !clubCorrections[file.id]?.[shot.rowNumber],

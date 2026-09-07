@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import {useClientReady} from "@/hooks/use-client-ready";
+import { useClientReady } from "@/hooks/use-client-ready";
 import { Button } from "@/components/ui/button";
 import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import styles from "@/app/course-records/course-record-board.module.css";
@@ -13,7 +13,7 @@ type Entry = {
   date: string;
 };
 export function BillingHistory({ rows }: { rows: Entry[] }) {
-  const ready=useClientReady();
+  const ready = useClientReady();
   const [selected, setSelected] = useState<Entry | null>(null);
   const [ascending, setAscending] = useState(false);
   const sorted = [...rows].sort((a, b) =>

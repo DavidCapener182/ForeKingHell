@@ -24,8 +24,7 @@ export async function sendMagicLinkAction(
   if (!isSupabaseAuthConfigured()) {
     return {
       status: "error",
-      message:
-        "Sign-in is temporarily unavailable. Try again later.",
+      message: "Sign-in is temporarily unavailable. Try again later.",
     };
   }
 
@@ -67,8 +66,7 @@ export async function signInWithPasswordAction(
   if (!isSupabaseAuthConfigured()) {
     return {
       status: "error",
-      message:
-        "Sign-in is temporarily unavailable. Try again later.",
+      message: "Sign-in is temporarily unavailable. Try again later.",
     };
   }
 

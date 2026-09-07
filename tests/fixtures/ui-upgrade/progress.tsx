@@ -45,7 +45,19 @@ createRoot(document.getElementById("root")!).render(
         ),
         goals: <p>Saved goal fixture</p>,
         load: <p>Measured training fixture</p>,
-        timeline: <TimelineStory items={Array.from({length:15},(_,index) => ({id:`event-${index}`,category:index%2 ? "Round" : "Practice",dateLabel:"6 Sept 2026",sortTime:1788696000000,title:"Repeated session title with distinct saved identity",detail:`Source event ${index+1}`,href:`/sessions/event-${index}`}))} />,
+        timeline: (
+          <TimelineStory
+            items={Array.from({ length: 15 }, (_, index) => ({
+              id: `event-${index}`,
+              category: index % 2 ? "Round" : "Practice",
+              dateLabel: "6 Sept 2026",
+              sortTime: 1788696000000,
+              title: "Repeated session title with distinct saved identity",
+              detail: `Source event ${index + 1}`,
+              href: `/sessions/event-${index}`,
+            }))}
+          />
+        ),
       }}
     />
   </main>,

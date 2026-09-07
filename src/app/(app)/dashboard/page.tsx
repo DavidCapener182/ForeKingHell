@@ -1,14 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { and, countDistinct, eq, or } from "drizzle-orm";
-import {
-  ArrowRight,
-  CalendarDays,
-  Crosshair,
-  Gauge,
-  Target,
-  Upload,
-} from "lucide-react";
+import { ArrowRight, CalendarDays, Crosshair, Gauge, Target, Upload } from "lucide-react";
 import { getDb } from "@/db/client";
 import { courses, holes, teeSets } from "@/db/schema";
 import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";

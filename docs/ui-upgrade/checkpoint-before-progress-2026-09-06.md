@@ -101,7 +101,6 @@ Checks so far: forms browser1passed11.2s (sixviewport matrix plus Aria form valu
 
 New baselines for conflict-free scoped staging: `/tmp/fkh-upgrade-forms-baseline`, `/tmp/fkh-upgrade-navigation-baseline`, `/tmp/fkh-upgrade-shared-baseline`. The other agent owns round forms/actions/corrections and all earlier redesign dirty hunks; preserve them. It has authorised all named shared files and notification API. No merge/push/deploy. Await round-correction terminal before new imported shared edits.
 
-
 ### Round owner evidence update — 6 September 2026
 
 P45-C02 and P45-C04 remain in progress. Owning agent reports final draft-retention browser pass, and local terminal log confirms1passed12.4s at `output/playwright/redesign/round-correction-browser-retained.log`. Companion390 unsaved corrections survive disclosure collapse and Summary/Back/Scorecard navigation; desktop1440 saves, concurrent different-hole changes and foreign-owner rejection were verified in disposable fixtures. Agent reports25unit tests/types/lint passed. Full viewport, offline reconnect, provenance and broader correction acceptance remain outstanding. `mobile-controls.tsx` additive keepMounted change was explicitly coordinated and belongs to the round agent. Excel review workbook refreshed from the CSV. Resume shared/Progress work from the active continuation above; preserve round changes and do not repeat the evidenced fixture mutations without a regression reason.

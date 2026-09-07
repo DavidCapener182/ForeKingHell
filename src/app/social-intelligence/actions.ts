@@ -50,7 +50,10 @@ export async function socialIntelligenceFormAction(
     }
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Could not save. Try again." };
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not save. Try again.",
+    };
   }
 }
 

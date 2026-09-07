@@ -49,7 +49,9 @@ export function DirtyFormBar({
     >
       <CardContent className="flex flex-wrap items-center gap-3 px-3 py-3 sm:px-4">
         <div className="min-w-0 flex-1">
-          <p role="status" className="text-sm font-semibold text-foreground">{saving ? "Saving your changes…" : "You have unsaved changes."}</p>
+          <p role="status" className="text-sm font-semibold text-foreground">
+            {saving ? "Saving your changes…" : "You have unsaved changes."}
+          </p>
           <p className="text-xs text-muted-foreground">Save or reset before leaving this page.</p>
         </div>
         <Separator orientation="vertical" className="hidden min-h-9 sm:block" />
@@ -59,7 +61,11 @@ export function DirtyFormBar({
               Reset
             </Button>
           ) : null}
-          <UntitledSubmitButton type={onSave ? "button" : "submit"} onPress={onSave} disabled={saving}>
+          <UntitledSubmitButton
+            type={onSave ? "button" : "submit"}
+            onPress={onSave}
+            disabled={saving}
+          >
             {saving ? "Saving…" : saveLabel}
           </UntitledSubmitButton>
         </ButtonGroup>

@@ -28,7 +28,8 @@ export type TimelineStoryItem = {
 export function TimelineStory({ items }: { items: TimelineStoryItem[] }) {
   const [visibleCount, setVisibleCount] = useState(12);
   const [category, setCategory] = useState("all");
-  const filteredItems = category === "all" ? items : items.filter((item) => item.category === category);
+  const filteredItems =
+    category === "all" ? items : items.filter((item) => item.category === category);
   const visibleItems = filteredItems.slice(0, visibleCount);
   return (
     <section
@@ -37,9 +38,28 @@ export function TimelineStory({ items }: { items: TimelineStoryItem[] }) {
       data-progress-timeline-story
     >
       <div className="grid gap-3 border-b border-border p-5">
-        <h2 id="progress-timeline-title" className="text-xl font-semibold">Evidence timeline</h2>
-        <p className="text-sm text-muted-foreground">Dated sessions, saved equipment and milestones. Undated saved goals remain labelled.</p>
-        <UntitledSelect label="Event type" name="eventType" value={category} options={[{value:"all",label:"All events"}, ...Array.from(new Set(items.map((item) => item.category))).map((value) => ({value,label:value}))]} onValueChange={(value) => {setCategory(value);setVisibleCount(12);}} />
+        <h2 id="progress-timeline-title" className="text-xl font-semibold">
+          Evidence timeline
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Dated sessions, saved equipment and milestones. Undated saved goals remain labelled.
+        </p>
+        <UntitledSelect
+          label="Event type"
+          name="eventType"
+          value={category}
+          options={[
+            { value: "all", label: "All events" },
+            ...Array.from(new Set(items.map((item) => item.category))).map((value) => ({
+              value,
+              label: value,
+            })),
+          ]}
+          onValueChange={(value) => {
+            setCategory(value);
+            setVisibleCount(12);
+          }}
+        />
       </div>
 
       <ol className="divide-y divide-border">
@@ -106,8 +126,8 @@ export function TimelineStory({ items }: { items: TimelineStoryItem[] }) {
         </div>
       ) : null}
       <p className="px-5 pb-5 text-sm text-muted-foreground" role="status">
-        {visibleItems.length} of {filteredItems.length} matching events. Training history covers the loaded
-        year; bag changes include the six most recent saved snapshots.
+        {visibleItems.length} of {filteredItems.length} matching events. Training history covers the
+        loaded year; bag changes include the six most recent saved snapshots.
       </p>
     </section>
   );

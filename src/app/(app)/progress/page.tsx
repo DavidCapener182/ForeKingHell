@@ -90,7 +90,6 @@ export default async function ProgressPage() {
       .where(eq(equipmentSnapshots.userId, userId))
       .orderBy(desc(equipmentSnapshots.capturedAt))
       .limit(6),
-
   ]);
   const summary = buildProgressSummary(data.clubs);
   const activeGoals = preferences.goals;

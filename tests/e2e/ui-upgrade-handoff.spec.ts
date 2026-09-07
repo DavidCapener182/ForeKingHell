@@ -83,7 +83,7 @@ test("Legacy handoff retains context and opens implemented companion routes", as
     );
     await expect(page).toHaveURL(
       /\/progress\?compareClub=7i&compareMeasure=carry&session=a&session=b#comparison$/,
-      {timeout:90000},
+      { timeout: 90000 },
     );
     await expect(
       page.getByRole("heading", { name: "Choose how to continue", exact: true }),

@@ -210,7 +210,9 @@ function AchievementToastCard({
             className="block rounded-[8px] border border-border bg-muted/40 px-3 py-2 transition-colors hover:bg-muted"
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="min-w-0 max-w-full break-words text-sm font-medium">{notification.name}</p>
+              <p className="min-w-0 max-w-full break-words text-sm font-medium">
+                {notification.name}
+              </p>
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Badge className={cn("border capitalize", tierToastStyles[notification.tier])}>
                   {notification.tier}

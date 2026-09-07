@@ -1,9 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { closeDb } from "@/db/client";
-import {
-  getAdminOverviewData,
-} from "@/lib/admin";
+import { getAdminOverviewData } from "@/lib/admin";
 const actor = vi.hoisted(() => ({ userId: "" }));
 vi.mock("@/lib/current-user", () => ({ requireCurrentUserId: async () => actor.userId }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -52,25 +50,37 @@ describe.skipIf(!enabled)("admin overview access and stored evidence", () => {
   });
   it("gates overview reads and preserves stored counts and audit evidence without writes", async () => {
     await sql`update fkh_admin_users set status='inactive' where user_id=${operator}`;
-    await expect(getAdminOverviewData()).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT") });
+    await expect(getAdminOverviewData()).rejects.toMatchObject({
+      digest: expect.stringContaining("NEXT_REDIRECT"),
+    });
     await sql`delete from fkh_admin_users where user_id=${operator}`;
-    await expect(getAdminOverviewData()).rejects.toMatchObject({ digest: expect.stringContaining("NEXT_REDIRECT") });
+    await expect(getAdminOverviewData()).rejects.toMatchObject({
+      digest: expect.stringContaining("NEXT_REDIRECT"),
+    });
     actor.userId = owner;
-    const [audit] = await sql`insert into fkh_admin_audit_log(actor_user_id,action,target_type,target_id) values(${owner},'synthetic_overview','user',${operator}) returning id`;
-    const totals = async () => (await sql`select
+    const [audit] =
+      await sql`insert into fkh_admin_audit_log(actor_user_id,action,target_type,target_id) values(${owner},'synthetic_overview','user',${operator}) returning id`;
+    const totals = async () =>
+      (
+        await sql`select
       (select count(*)::int from fkh_users) as users,
       (select count(*)::int from fkh_admin_audit_log) as audits,
       (select count(*)::int from fkh_moderation_events where status='open') as moderation,
       (select count(*)::int from fkh_import_jobs where status='failed') as imports,
-      (select count(*)::int from fkh_subscriptions where status in ('past_due','unpaid','incomplete_expired')) as billing`)[0];
+      (select count(*)::int from fkh_subscriptions where status in ('past_due','unpaid','incomplete_expired')) as billing`
+      )[0];
     const before = await totals();
     const result = await getAdminOverviewData();
     expect(result.data.metrics.users).toBe(before.users);
     expect(result.operations.openModerationEvents).toBe(before.moderation);
     expect(result.operations.providerImportFailures).toBe(before.imports);
     expect(result.operations.billingFailures).toBe(before.billing);
-    expect(result.data.recentAuditRows.find(row => row.id === audit.id)).toMatchObject({ action: 'synthetic_overview', targetType: 'user', targetId: operator, actorEmail: email });
+    expect(result.data.recentAuditRows.find((row) => row.id === audit.id)).toMatchObject({
+      action: "synthetic_overview",
+      targetType: "user",
+      targetId: operator,
+      actorEmail: email,
+    });
     expect(await totals()).toEqual(before);
   });
-
 });

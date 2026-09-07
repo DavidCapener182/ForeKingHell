@@ -24,9 +24,9 @@ describe("account plan page", () => {
   });
 
   it("keeps billing history compact and technical entitlements collapsed", () => {
-    expect(source).toContain("<BillingHistoryTable");
-    expect(source).toContain('<Accordion type="single" collapsible>');
-    expect(source).toContain('value="technical-details"');
+    expect(source).toContain("<BillingHistory");
+    expect(source).toContain("<details>");
+    expect(source).toContain("Your access and usage limits");
     expect(source).not.toContain("DesktopTableWorkbenchControls");
     expect(source).not.toContain("Plan limits ledger");
   });
@@ -37,16 +37,19 @@ describe("account plan page", () => {
     expect(source).toContain('<Alert variant="destructive">');
   });
 
-  it("routes cancellation and downgrade management through an AlertDialog", () => {
+  it("explains portal consequences and preserves recoverable portal opening", () => {
     const dialog = readFileSync(
       join(process.cwd(), "src/app/billing/billing-manage-dialog.tsx"),
       "utf8",
     );
 
     expect(source).not.toContain("<form action={openCustomerPortalAction}");
-    expect(dialog).toContain("<AlertDialog>");
-    expect(dialog).toContain("downgrade, or cancel at the end");
-    expect(dialog).toContain("No plan changes happen until you confirm them there");
+    expect(dialog).toContain("<ResponsiveDetailPanel");
+    expect(dialog).toContain("openCustomerPortalFormAction");
+    expect(dialog).toContain("if (busy.current) return");
+    expect(dialog).toContain('role="alert"');
+    expect(dialog).toContain("available plan changes and cancellation");
+    expect(dialog).toContain("No subscription change is made here");
   });
 
   it("does not present billing as a desktop workbench or admin console", () => {

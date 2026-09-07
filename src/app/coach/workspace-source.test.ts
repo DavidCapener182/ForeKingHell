@@ -61,10 +61,17 @@ describe("coach player workspace shadcn composition", () => {
   });
 
   it("preserves player selection, evidence references and every interaction action", () => {
-    expect(source).toContain("href={`/coach/workspace?playerId=${player.id}`}");
-    expect(source).toContain("createCoachInteractionAction");
-    expect(source).toContain("updateCoachInteractionStatusAction");
-    expect(source).toContain("completePlayerInteractionAction");
+    const controls = readFileSync(
+      join(process.cwd(), "src/app/coach/workspace/workspace-ui.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("<AssignedPlayerPicker");
+    expect(source).toContain("selectedId={data.selected.id}");
+    expect(controls).toContain("href={`/coach/workspace?playerId=${player.id}`}");
+    expect(controls).toContain('aria-current={player.id === selectedId ? "page" : undefined}');
+    expect(source).toContain("createCoachInteractionWithStateAction");
+    expect(source).toContain("updateCoachInteractionStatusWithStateAction");
+    expect(source).toContain("completePlayerInteractionWithStateAction");
 
     for (const field of [
       "playerUserId",
@@ -89,7 +96,7 @@ describe("coach player workspace shadcn composition", () => {
     expect(source).toContain("bg-card");
     expect(source).toContain("bg-border");
     expect(source).toContain("text-foreground");
-    expect(source).toContain("border-primary/40");
+    expect(source).toContain("selectedId={data.selected.id}");
     expect(source).not.toMatch(
       /\b(?:bg|border|text)-(?:white|slate|emerald|amber|rose|sky)-(?:\d{2,3})(?:\/\d+)?\b/,
     );

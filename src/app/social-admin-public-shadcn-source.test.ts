@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  isDesktopOnlyCompanionPath,
+  isSummaryOnlyCompanionPath,
+} from "@/lib/app-route-capabilities";
 
 function read(path: string) {
   return readFileSync(join(process.cwd(), path), "utf8");
@@ -23,13 +27,13 @@ function expectServerActionFormsToConfirm(source: string, actionName: string) {
   }
 }
 
-const summaryCapableRoutes = [
+const accountRoutes = [
   "src/app/(app)/profile/page.tsx",
   "src/app/(app)/profile/[username]/page.tsx",
   "src/app/(app)/settings/page.tsx",
 ] as const;
 
-const desktopOnlySocialRoutes = [
+const socialRoutes = [
   "src/app/(app)/feed/page.tsx",
   "src/app/(app)/friends/page.tsx",
   "src/app/(app)/groups/page.tsx",
@@ -54,60 +58,87 @@ describe("social, account, admin and public shadcn pass", () => {
     expect(config.rsc).toBe(true);
   });
 
-  it("keeps summary-capable account requests out of the desktop workbench module graph", () => {
-    for (const route of summaryCapableRoutes) {
+  it("keeps upgraded account pages on the shared full-width shell", () => {
+    for (const route of accountRoutes) {
       const source = read(route);
-
-      expect(source, route).toContain("getRequestAppSurface");
-      expect(source, route).toContain('surface === "companion"');
-      expect(source, route).toContain('await import("@/components/app/desktop-workbench")');
-      expect(source, route).not.toMatch(
-        /import\s*\{[\s\S]*?DesktopWorkbenchLayout[\s\S]*?\}\s*from\s*["']@\/components\/app\/desktop-workbench["']/,
-      );
-    }
-  });
-
-  it("keeps desktop-only social routes free of obsolete companion bundles", () => {
-    const capabilities = read("src/lib/app-route-capabilities.ts");
-
-    for (const capability of ["groups", "friends", "feed", "billing"]) {
-      expect(capabilities).toMatch(new RegExp(`${capability}: desktopOnly\\(`));
-    }
-
-    for (const route of desktopOnlySocialRoutes) {
-      const source = read(route);
-
       expect(source, route).toContain("PageShell");
-      expect(source, route).not.toContain("getRequestAppSurface");
-      expect(source, route).not.toContain('surface === "companion"');
-      expect(source, route).not.toMatch(
-        /MobileAppShell|MobileTopBar|MobileTabBar|MobileRouteHeader|IOSDisclosure|IOSGroupedList|BottomSheet/,
-      );
-      expect(source, route).not.toMatch(/from\s+["']@\/components\/app\/ios-mobile["']/);
+      expect(source, route).not.toContain("DesktopWorkbenchLayout");
     }
   });
 
-  it("uses the shadcn Table primitive for every listed admin register", () => {
-    for (const route of adminTableRoutes) {
-      const source = read(route);
-
-      expect(source, route).toContain('from "@/components/ui/table"');
-      expect(source, route).toContain("<Table");
-      expect(source, route).not.toMatch(/<(?:table|caption|thead|tbody|tr|th|td)\b/);
-      expect(source, route).toContain("<TableHeader");
-      expect(source, route).toContain("<TableBody");
+  it("opens known social routes directly without promoting unsupported nested workbenches", () => {
+    for (const path of [
+      "/feed",
+      "/friends",
+      "/groups",
+      "/groups/example",
+      "/billing",
+      "/profile",
+      "/profile/example",
+      "/settings",
+    ]) {
+      expect(isDesktopOnlyCompanionPath(path), path).toBe(false);
+      expect(isSummaryOnlyCompanionPath(path), path).toBe(false);
+    }
+    expect(isDesktopOnlyCompanionPath("/billing/unsupported")).toBe(true);
+    for (const route of socialRoutes) {
+      expect(read(route), route).toContain("PageShell");
     }
   });
 
-  it("opens admin user row detail in a Sheet and confirms access removal", () => {
+  it("keeps extracted admin registers on labelled semantic tables", () => {
+    const registers = [
+      ["src/app/(admin)/admin/page.tsx", "AdminAttention", "src/app/admin/admin-attention.tsx"],
+      [
+        "src/app/(admin)/admin/system-checks/page.tsx",
+        "AdminSystemRegister",
+        "src/app/admin/admin-system-register.tsx",
+      ],
+      [
+        "src/app/(admin)/admin/users/page.tsx",
+        "AdminUserDirectory",
+        "src/app/admin/admin-user-actions.tsx",
+      ],
+      [
+        "src/app/(admin)/admin/moderation/page.tsx",
+        "ModerationQueue",
+        "src/app/admin/moderation-queue.tsx",
+      ],
+      [
+        "src/app/(admin)/admin/challenges/page.tsx",
+        "AdminChallengeBoardRegister",
+        "src/app/admin/admin-challenge-board-register.tsx",
+      ],
+      [
+        "src/app/(admin)/admin/billing/page.tsx",
+        "AdminBillingLedger",
+        "src/app/admin/admin-billing-ledger.tsx",
+      ],
+    ];
+    for (const [route, component, path] of registers) {
+      expect(read(route), route).toContain(`<${component}`);
+      const source = read(path);
+      for (const semantic of ["<table", "<caption", "<thead", "<tbody", 'scope="col"']) {
+        expect(source, path).toContain(semantic);
+      }
+    }
+  });
+
+  it("opens admin account detail and requires a reviewed access-removal action", () => {
     const route = read("src/app/(admin)/admin/users/page.tsx");
     const actions = read("src/app/admin/admin-user-actions.tsx");
-
-    expect(route).toContain("<AdminUserActions");
-    expect(actions).toContain("<DropdownMenu");
-    expect(actions).toContain("<Sheet");
-    expect(actions).toContain("<AlertDialog");
-    expect(actions).toContain("deactivateAdminAccessAction");
+    const operation = read("src/app/admin/admin-operation-form.tsx");
+    expect(route).toContain("<AdminUserDirectory");
+    expect(actions).toContain("<ResponsiveDetailPanel");
+    expect(actions).toContain('operation="deactivate-admin"');
+    expect(actions).toContain(
+      "canManageOwners && selected.adminRole && selected.id !== currentUserId",
+    );
+    expect(operation).toContain("setReview(data)");
+    expect(operation).toContain("review !== null");
+    expect(operation).toContain("Cancel review");
+    expect(operation).toContain("adminFormAction({ ok: false }, review)");
+    expect(operation).toContain("if (busy.current) return;");
   });
 
   it("keeps converted surfaces on semantic theme tokens", () => {
@@ -156,7 +187,12 @@ describe("social, account, admin and public shadcn pass", () => {
       "src/components/marketing/sample-product-tour.tsx",
       "src/components/marketing/marketing-faq.tsx",
     ].map(read);
-    const source = convertedSources.join("\n");
+    // The QR image needs its explicit white quiet zone; ordinary app surfaces remain semantic.
+    const qr = read("src/app/profile/profile-share-dialog.tsx");
+    const qrSurface = '<div className="rounded-xl border bg-white p-4">';
+    expect(qr).toContain(qrSurface);
+    expect(qr).toContain("alt={`QR code linking to @${username}`}");
+    const source = convertedSources.join("\n").replace(qrSurface, "<div>");
 
     for (const hardCodedToken of [
       "bg-white",
@@ -222,15 +258,15 @@ describe("social, account, admin and public shadcn pass", () => {
     expect(feedCards).toContain("groupItemsByDay(items)");
     expect(feedCards).toContain("<FeedActivityRow key={item.id} item={item} />");
     expect(feedCards).not.toContain("<Item");
-    expect(feedComposer).toContain("<Sheet>");
+    expect(feedComposer).toContain("<ResponsiveDetailPanel");
     expect(feedComposer).toContain("<Card");
     expect(feedComposer).toContain("<Alert");
     expect(feedComposer).not.toContain("premium-card p-4");
-    expect(feedFilters).toContain("<Card");
-    expect(feedFilters).toContain("<ButtonGroup");
-    expect(feedFilters).toContain('aria-current={active ? "page" : undefined}');
+    expect(feedFilters).toContain('aria-label="Feed filters"');
+    expect(feedFilters).toContain('action="/feed"');
+    expect(feedFilters).toContain("value={draft.filter}");
     expect(feedFilters).not.toContain("<Tabs");
-    expect(feedFilters).toContain("<DropdownMenu");
+    expect(feedFilters).toContain("<ResponsiveDetailPanel");
     expect(friends).not.toContain('className="rounded-xl border bg-background p-3"');
   });
 
@@ -246,9 +282,9 @@ describe("social, account, admin and public shadcn pass", () => {
     expect(friends).not.toContain("RequestList");
     expect(friends).not.toContain("BlockedList");
 
-    expect(groups).toContain(
-      "<GroupDirectoryTabs activeTab={activeTab} inviteCount={data.invites.length} />",
-    );
+    expect(groups).toContain("<GroupDirectoryTabs");
+    expect(groups).toContain("activeTab={activeTab}");
+    expect(groups).toContain("invites: data.invites.length");
     expect(groups).not.toContain("GroupBoardFilterTabs");
     expect(groups).not.toContain("function GroupGrid");
     expect(groups).not.toContain("Discoverable leagues");
@@ -267,51 +303,67 @@ describe("social, account, admin and public shadcn pass", () => {
     expect(profile).not.toContain("Your golf workspaces");
   });
 
-  it("gates destructive social and account server actions with shadcn AlertDialogs", () => {
+  it("gates destructive social and account actions with explicit confirmation", () => {
     const friendMenu = read("src/app/friends/friend-action-menu.tsx");
     const feedCards = read("src/components/social/feed-card-list.tsx");
     const feedControls = read("src/components/social/feed-item-controls.tsx");
     const profile = read("src/app/(app)/profile/[username]/page.tsx");
     const settings = read("src/app/(app)/settings/page.tsx");
 
-    for (const actionName of [
-      "declineFriendRequestAction",
-      "cancelFriendRequestAction",
-      "removeFriendAction",
+    for (const operation of [
+      'decline: "Decline request"',
+      'cancel: "Cancel request"',
+      'remove: "Remove friend"',
+      'block: "Block golfer"',
     ]) {
-      expect(friendMenu).toContain(actionName);
+      expect(friendMenu).toContain(operation);
     }
-    expect(friendMenu).toContain("<AlertDialog");
-    expect(friendMenu).toContain("<AlertDialogAction");
-
-    expectServerActionFormsToConfirm(feedCards, "deleteFeedCommentAction");
-    expectServerActionFormsToConfirm(feedControls, "deleteFeedItemAction");
-    expectServerActionFormsToConfirm(profile, "blockUserAction");
+    expect(friendMenu).toContain("<ResponsiveDetailPanel");
+    expect(friendMenu).toContain("Confirm: ${labels[operation]}");
+    expect(friendMenu).toContain("if (!operation || busy.current) return;");
+    expect(feedCards).toMatch(
+      /<FeedActionForm operation="delete-comment">[\s\S]*?<ConfirmSubmitButton[\s\S]*?<\/FeedActionForm>/,
+    );
+    expect(feedControls).toContain('operation: "delete"');
+    expect(feedControls).toContain("<ResponsiveDetailPanel");
+    expect(feedControls).toContain("Confirm action");
+    expect(feedControls).toContain("if (!choice || lock.current) return;");
+    expect(profile).toContain("<PeopleActionMenu");
     expectServerActionFormsToConfirm(settings, "resetGolfDataAction");
     expectServerActionFormsToConfirm(settings, "deleteAccountDataAction");
 
-    for (const path of [
-      "src/app/friends/friend-action-menu.tsx",
-      "src/app/groups/group-danger-actions.tsx",
-      "src/app/settings/settings-access-actions.tsx",
-      "src/app/settings/offline-storage-panel.tsx",
-      "src/app/billing/billing-manage-dialog.tsx",
-    ]) {
-      expect(read(path), path).toContain("<AlertDialog");
-    }
+    const groupDanger = read("src/app/groups/group-danger-actions.tsx");
+    expect(groupDanger).toContain("<ResponsiveDetailPanel");
+    expect(groupDanger).toContain('"Delete permanently" : "Confirm leave"');
+    expect(groupDanger).toContain("if (!isOwner && !isMember) return null;");
+    const access = read("src/app/settings/settings-access-actions.tsx");
+    expect(access).toContain("<ResponsiveDetailPanel");
+    expect(access).toContain("Confirm: ${label}");
+    expect(read("src/app/settings/offline-storage-panel.tsx")).toContain("<AlertDialog");
+    const billing = read("src/app/billing/billing-manage-dialog.tsx");
+    expect(billing).toContain("No subscription change is made here.");
+    expect(billing).toContain("Open customer portal");
   });
 
-  it("keeps non-destructive form submissions direct", () => {
+  it("submits feed interactions directly while reviewing named relationship decisions", () => {
     const feedCards = read("src/components/social/feed-card-list.tsx");
+    const feedForm = read("src/components/social/feed-action-form.tsx");
     const friendMenu = read("src/app/friends/friend-action-menu.tsx");
     const groups = read("src/app/(app)/groups/page.tsx");
-
-    expect(feedCards).toContain("addFeedReactionAction");
-    expect(feedCards).toContain("addFeedCommentAction");
-    expect(friendMenu).toContain("acceptFriendRequestAction");
-    expect(friendMenu).toContain("sendFriendRequestAction");
-    expect(friendMenu).toContain("unblockUserAction");
-    expect(groups).toContain("joinGroupAction");
+    expect(feedCards).toContain('operation={item.viewerReacted ? "unreact" : "reaction"}');
+    expect(feedCards).toContain('operation="comment" reset');
+    expect(feedForm).toContain("feedInteractionFormAction({ ok: false }, data)");
+    for (const operation of [
+      'accept: "Accept request"',
+      'request: "Send friend request"',
+      'unblock: "Unblock golfer"',
+    ])
+      expect(friendMenu).toContain(operation);
+    expect(friendMenu).toContain("relationshipFormAction({ ok: false }, form)");
+    expect(groups).toContain("<GroupDecision");
+    const decision = read("src/app/groups/group-decision.tsx");
+    expect(decision).toContain("Review the named group before confirming your decision.");
+    expect(decision).toContain("groupMembershipFormAction");
   });
 
   it("keeps the custom hero, cinematic chapters, real product screens and Course Twin", () => {
@@ -335,10 +387,11 @@ describe("social, account, admin and public shadcn pass", () => {
     expect(cinematicSections).toContain("product-practice.avif");
     expect(cinematicStyles).toContain("[data-marketing-reveal]");
     expect(cinematicStyles).toContain("--scene-y");
-    expect(mobileMenu).toContain("<Sheet>");
+    expect(mobileMenu).toContain("<Sheet onOpenChange=");
     expect(beta).toContain("final-green-desktop.avif");
     expect(beta).toContain('data-scroll-pause="beta"');
-    expect(faq).toContain("<Accordion");
+    expect(faq).toContain("<details");
+    expect(faq).toContain("<summary>{item.question}</summary>");
     expect(courseTwin).toContain("<Skeleton");
     expect(courseTwin).toContain("<Alert");
     expect(cinematicStyles).toMatch(/\.finalCtaStage\s*\{[\s\S]*?background:/);

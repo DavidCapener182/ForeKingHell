@@ -21,11 +21,11 @@ const dangerSource = readFileSync(
 
 describe("group clubhouse detail", () => {
   it("uses the required Overview, Activity and Members tabs", () => {
-    expect(tabsSource).toContain('label: "Overview"');
-    expect(tabsSource).toContain('label: "Activity"');
-    expect(tabsSource).toContain('label: "Members"');
-    expect(source).toContain('activeSection === "overview"');
-    expect(source).toContain('activeSection === "activity"');
+    expect(source).toContain('label: "Overview"');
+    expect(source).toContain('label: "Activity"');
+    expect(source).toContain('label: "Members"');
+    expect(tabsSource).toContain("keepMounted");
+    expect(tabsSource).toContain('window.addEventListener("popstate", sync)');
     expect(source).toContain("<GroupOverview data={data} />");
     expect(source).toContain("<GroupActivity data={data} />");
     expect(source).toContain("<GroupMembers data={data} />");
@@ -43,21 +43,27 @@ describe("group clubhouse detail", () => {
   });
 
   it("keeps the feed and member roster compact instead of using admin tables", () => {
-    expect(source).toContain("data.posts.map");
+    expect(source).toContain("[...data.posts]");
+    expect(source).toContain(".map((post) => (");
     expect(source).toContain("data.members.map");
-    expect(source).toContain("<Item");
+    expect(source).toContain("<GroupMemberList");
     expect(source).not.toContain("DataTableFrame");
     expect(source).not.toContain("DesktopTableWorkbenchControls");
     expect(source).not.toContain("<Table");
     expect(source).not.toContain("DesktopWorkbenchLayout");
   });
 
-  it("opens members in a dialog and confirms leave or delete in an alert dialog", () => {
+  it("opens members in a dialog and confirms leave or delete with an explicit consequence and confirmation", () => {
     expect(source).toContain("<GroupMembersDialog");
-    expect(memberDialogSource).toContain("<Dialog>");
-    expect(memberDialogSource).toContain("<DialogContent");
+    expect(memberDialogSource).toContain("<ResponsiveDetailPanel");
+    expect(memberDialogSource).toContain("<GroupMemberList members={members}");
     expect(source).toContain("<GroupDangerActions");
-    expect(dangerSource).toContain("<AlertDialog>");
+    expect(dangerSource).toContain("<ResponsiveDetailPanel");
+    expect(dangerSource).toContain("if (!pending) setOpen(next)");
+    expect(dangerSource).toContain("cannot be undone");
+    expect(dangerSource).toContain('data.set("groupId", groupId)');
+    expect(dangerSource).toContain("await groupDangerFormAction");
+    expect(dangerSource).toContain('role="alert"');
     expect(dangerSource).toContain("Delete group");
     expect(dangerSource).toContain("Leave group");
   });

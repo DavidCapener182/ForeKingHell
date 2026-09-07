@@ -21,7 +21,7 @@ describe("mobile pushed-screen header contract", () => {
     }
   });
 
-  it("keeps desktop-only compare controls visible while companion traffic falls back", () => {
+  it("keeps compare navigation visible in its shared route", () => {
     const analyseCompare = source("src/app/(app)/analyse/compare/page.tsx");
     expect(analyseCompare).toContain(
       'className="flex flex-wrap items-center justify-between gap-2"',
@@ -30,14 +30,18 @@ describe("mobile pushed-screen header contract", () => {
     expect(analyseCompare).not.toContain('className="hidden flex-wrap');
   });
 
-  it("keeps redirected desktop back rows visible without CSS-hidden duplicate trees", () => {
+  it("keeps back rows visible independently of responsive data sections", () => {
     for (const file of [
       "src/app/(app)/analyse/conditions/page.tsx",
       "src/app/(app)/analyse/workspace/page.tsx",
     ]) {
       expect(source(file), file).toContain('className="min-h-11 w-fit px-0"');
-      expect(source(file), file).not.toContain("lg:hidden");
-      expect(source(file), file).not.toContain("hidden lg:");
+      const backControl =
+        source(file).match(
+          /<Button[^>]*className="min-h-11 w-fit px-0"[^>]*>[\s\S]*?<\/Button>/,
+        )?.[0] ?? "";
+      expect(backControl, file).toContain('href="/analyse"');
+      expect(backControl, file).not.toMatch(/className="[^"]*\bhidden\b/);
     }
 
     const newCourse = source("src/app/(app)/courses/new/page.tsx");

@@ -55,38 +55,65 @@ describe.skipIf(!enabled)("moderation partial bulk results", () => {
   });
   it("reports only changed records under overlapping bulk requests and preserves exact audit history", async () => {
     const ids: string[] = [];
-    for (let i=0;i<4;i++) ids.push((await sql`insert into fkh_moderation_events(target_type,target_id,actor_user_id,event_type,status,reason) values('synthetic',${owner},${operator},'fixture','open','Synthetic partial bulk') returning id`)[0].id);
+    for (let i = 0; i < 4; i++)
+      ids.push(
+        (
+          await sql`insert into fkh_moderation_events(target_type,target_id,actor_user_id,event_type,status,reason) values('synthetic',${owner},${operator},'fixture','open','Synthetic partial bulk') returning id`
+        )[0].id,
+      );
     await resolveModerationEvent(ids[3]);
     const results = await Promise.all([
-      bulkResolveModerationEvents([ids[0],ids[1],ids[3],crypto.randomUUID()]),
-      bulkResolveModerationEvents([ids[1],ids[2],ids[3]]),
+      bulkResolveModerationEvents([ids[0], ids[1], ids[3], crypto.randomUUID()]),
+      bulkResolveModerationEvents([ids[1], ids[2], ids[3]]),
     ]);
-    expect(results.reduce((sum,count)=>sum+count,0)).toBe(3);
-    expect(results.every(count=>count>=1 && count<=2)).toBe(true);
-    const audits = await sql`select target_id,metadata_json from fkh_admin_audit_log where actor_user_id=${operator} and action='moderation_event_resolved'`;
+    expect(results.reduce((sum, count) => sum + count, 0)).toBe(3);
+    expect(results.every((count) => count >= 1 && count <= 2)).toBe(true);
+    const audits =
+      await sql`select target_id,metadata_json from fkh_admin_audit_log where actor_user_id=${operator} and action='moderation_event_resolved'`;
     expect(audits).toHaveLength(4);
-    const [unrelated] = await sql`insert into fkh_admin_audit_log(actor_user_id,action,target_type,target_id) values(${operator},'admin_access_granted','user',${owner}) returning id`;
+    const [unrelated] =
+      await sql`insert into fkh_admin_audit_log(actor_user_id,action,target_type,target_id) values(${operator},'admin_access_granted','user',${owner}) returning id`;
     const page = await getAdminModerationData();
-    expect(page.auditRows.some(row=>row.id===unrelated.id)).toBe(false);
-    const ownAudit = page.auditRows.filter(row=>row.actorUserId===operator);
+    expect(page.auditRows.some((row) => row.id === unrelated.id)).toBe(false);
+    const ownAudit = page.auditRows.filter((row) => row.actorUserId === operator);
     expect(ownAudit).toHaveLength(4);
-    expect(ownAudit.every(row=>row.action==='moderation_event_resolved' && row.targetType==='moderation_event')).toBe(true);
-    expect(new Set(ownAudit.map(row=>row.targetId))).toEqual(new Set(ids));
-    expect(ownAudit.every(row=>row.createdAt instanceof Date)).toBe(true);
-    expect(ownAudit.every(row=>row.metadataJson.outcome===undefined)).toBe(true);
+    expect(
+      ownAudit.every(
+        (row) =>
+          row.action === "moderation_event_resolved" && row.targetType === "moderation_event",
+      ),
+    ).toBe(true);
+    expect(new Set(ownAudit.map((row) => row.targetId))).toEqual(new Set(ids));
+    expect(ownAudit.every((row) => row.createdAt instanceof Date)).toBe(true);
+    expect(ownAudit.every((row) => row.metadataJson.outcome === undefined)).toBe(true);
 
-    expect(new Set(audits.map(row=>row.target_id))).toEqual(new Set(ids));
-    expect((await sql`select count(*)::int as count from fkh_moderation_events where id in ${sql(ids)} and status='resolved'`)[0].count).toBe(4);
+    expect(new Set(audits.map((row) => row.target_id))).toEqual(new Set(ids));
+    expect(
+      (
+        await sql`select count(*)::int as count from fkh_moderation_events where id in ${sql(ids)} and status='resolved'`
+      )[0].count,
+    ).toBe(4);
     await expect(bulkResolveModerationEvents(ids)).rejects.toThrow("No selected open");
-    expect(await sql`select id from fkh_admin_audit_log where actor_user_id=${operator} and action='moderation_event_resolved'`).toHaveLength(4);
+    expect(
+      await sql`select id from fkh_admin_audit_log where actor_user_id=${operator} and action='moderation_event_resolved'`,
+    ).toHaveLength(4);
   });
   it("keeps report resolution separate from detected events and reports a partial count", async () => {
-    const reports = await sql`insert into fkh_social_reports(reporter_user_id,target_type,target_id,reason,status) values(${operator},'synthetic',${owner},'Synthetic open','open'),(${operator},'synthetic',${owner},'Synthetic resolved','resolved') returning id,status`;
-    const count = await bulkResolveSocialReports([...reports.map(row=>row.id),crypto.randomUUID()]);
+    const reports =
+      await sql`insert into fkh_social_reports(reporter_user_id,target_type,target_id,reason,status) values(${operator},'synthetic',${owner},'Synthetic open','open'),(${operator},'synthetic',${owner},'Synthetic resolved','resolved') returning id,status`;
+    const count = await bulkResolveSocialReports([
+      ...reports.map((row) => row.id),
+      crypto.randomUUID(),
+    ]);
     expect(count).toBe(1);
     const page = await getAdminModerationData();
-    const audits = page.auditRows.filter(row=>row.actorUserId===operator);
+    const audits = page.auditRows.filter((row) => row.actorUserId === operator);
     expect(audits).toHaveLength(1);
-    expect(audits[0]).toMatchObject({action:'social_report_resolved',targetType:'social_report',targetId:reports.find(row=>row.status==='open')!.id,metadataJson:{bulkCount:1}});
+    expect(audits[0]).toMatchObject({
+      action: "social_report_resolved",
+      targetType: "social_report",
+      targetId: reports.find((row) => row.status === "open")!.id,
+      metadataJson: { bulkCount: 1 },
+    });
   });
 });

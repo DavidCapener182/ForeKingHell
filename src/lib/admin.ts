@@ -435,10 +435,12 @@ export async function getAdminModerationData() {
     })
     .from(adminAuditLog)
     .leftJoin(users, eq(users.id, adminAuditLog.actorUserId))
-    .where(and(
-      inArray(adminAuditLog.action, ["social_report_resolved", "moderation_event_resolved"]),
-      inArray(adminAuditLog.targetType, ["social_report", "moderation_event"]),
-    ))
+    .where(
+      and(
+        inArray(adminAuditLog.action, ["social_report_resolved", "moderation_event_resolved"]),
+        inArray(adminAuditLog.targetType, ["social_report", "moderation_event"]),
+      ),
+    )
     .orderBy(desc(adminAuditLog.createdAt), desc(adminAuditLog.id))
     .limit(80);
 
@@ -480,9 +482,12 @@ export async function getAdminChallengesData() {
   const resultMap = new Map(resultCounts.map((row) => [row.key, row.count]));
 
   const templateCounts = await countBy(challenges.templateId, challenges);
-  const referenceMap = new Map(templateCounts.map(row => [row.key, row.count]));
+  const referenceMap = new Map(templateCounts.map((row) => [row.key, row.count]));
   return {
-    templates: templateRows.map(row => ({...row, referenceCount: referenceMap.get(row.id) ?? 0})),
+    templates: templateRows.map((row) => ({
+      ...row,
+      referenceCount: referenceMap.get(row.id) ?? 0,
+    })),
     challenges: challengeRows.map((row) => ({
       ...row,
       templateName: row.templateName ?? "Custom",
@@ -520,7 +525,11 @@ export async function grantLifetimeFullAccessByEmail(email: string, expectedUser
   return target;
 }
 
-export async function grantAdminAccessByEmail(email: string, role: AdminRole, expectedUserId?: string) {
+export async function grantAdminAccessByEmail(
+  email: string,
+  role: AdminRole,
+  expectedUserId?: string,
+) {
   if (role !== "owner" && role !== "operator") throw new Error("Choose a valid admin role.");
   const admin = role === "owner" ? await requireAdminOwner() : await requireAdminUser();
   const target = await findUserByEmail(email);

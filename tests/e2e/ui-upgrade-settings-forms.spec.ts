@@ -72,10 +72,12 @@ test("Settings retains section drafts and reviews exact invitations across width
     await page.getByRole("button", { name: "Save changes", exact: true }).click();
     await expect(page.getByRole("status")).toHaveText("Settings saved.");
     await expect(page.locator("[data-dirty-form-bar]")).toHaveCount(0);
-    await page.evaluate(()=>sessionStorage.setItem("fkh:theme-preview","dark"));
-    await page.getByRole("textbox",{name:"Display name",exact:true}).fill("Discard only this general draft");
-    await page.getByRole("button",{name:"Reset",exact:true}).click();
-    expect(await page.evaluate(()=>sessionStorage.getItem("fkh:theme-preview"))).toBe("dark");
+    await page.evaluate(() => sessionStorage.setItem("fkh:theme-preview", "dark"));
+    await page
+      .getByRole("textbox", { name: "Display name", exact: true })
+      .fill("Discard only this general draft");
+    await page.getByRole("button", { name: "Reset", exact: true }).click();
+    expect(await page.evaluate(() => sessionStorage.getItem("fkh:theme-preview"))).toBe("dark");
     await page.getByRole("button", { name: "All settings sections", exact: true }).click();
     await page.getByRole("button", { name: "Sharing", exact: true }).click();
     await page.getByRole("button", { name: "Invite collaborator", exact: true }).click();

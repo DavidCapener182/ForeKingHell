@@ -342,13 +342,26 @@ export async function getProfilePageData(username: string) {
     ? await getVisibleFeedItemsForViewer(viewerUserId, { ownerUserId: profile.userId, limit: 6 })
     : await getPublicFeedItemsForProfile(profile.userId, 6);
   const stats = await getProfileStats(profile.userId, profile.visibilitySettingsJson, relationship);
-  const [pendingRequest] = viewerUserId && (relationship === "incoming" || relationship === "outgoing")
-    ? await getDb().select({ id: friendRequests.id }).from(friendRequests).where(and(
-      eq(friendRequests.status, "pending"),
-      eq(friendRequests.requesterUserId, relationship === "outgoing" ? viewerUserId : profile.userId),
-      eq(friendRequests.recipientUserId, relationship === "outgoing" ? profile.userId : viewerUserId),
-    )).limit(1) : [];
-
+  const [pendingRequest] =
+    viewerUserId && (relationship === "incoming" || relationship === "outgoing")
+      ? await getDb()
+          .select({ id: friendRequests.id })
+          .from(friendRequests)
+          .where(
+            and(
+              eq(friendRequests.status, "pending"),
+              eq(
+                friendRequests.requesterUserId,
+                relationship === "outgoing" ? viewerUserId : profile.userId,
+              ),
+              eq(
+                friendRequests.recipientUserId,
+                relationship === "outgoing" ? profile.userId : viewerUserId,
+              ),
+            ),
+          )
+          .limit(1)
+      : [];
 
   return {
     pendingRequestId: pendingRequest?.id ?? null,
@@ -356,7 +369,8 @@ export async function getProfilePageData(username: string) {
     profile: {
       ...profileSummary(profile, relationship, { isFollowing: isFollowingProfile }),
       handicapBand: canViewProfileScope(profile.visibilitySettingsJson?.handicap, relationship)
-        ? profile.handicapBand : null,
+        ? profile.handicapBand
+        : null,
     },
     stats,
     recentFeed,
@@ -767,8 +781,16 @@ export async function getVisibleFeedItemsForViewer(
     .limit(limit * 3);
   const owners = await profilesByUserId([...new Set(rows.map((item) => item.userId))]);
   const visible = rows
-    .filter((item) => canViewFeedItem(item, viewerUserId, socialIds, blockedIds, hiddenTypeSet,
-      owners.get(item.userId)?.visibilitySettingsJson))
+    .filter((item) =>
+      canViewFeedItem(
+        item,
+        viewerUserId,
+        socialIds,
+        blockedIds,
+        hiddenTypeSet,
+        owners.get(item.userId)?.visibilitySettingsJson,
+      ),
+    )
     .slice(0, limit);
 
   return hydrateFeedItems(visible, viewerUserId);
@@ -790,7 +812,10 @@ export async function getPublicFeedItemsForProfile(ownerUserId: string, limit = 
 
   const owners = await profilesByUserId([ownerUserId]);
   const settings = owners.get(ownerUserId)?.visibilitySettingsJson;
-  return hydrateFeedItems(rows.filter((item) => canViewFeedCategory(item, "", new Set(), settings)), "");
+  return hydrateFeedItems(
+    rows.filter((item) => canViewFeedCategory(item, "", new Set(), settings)),
+    "",
+  );
 }
 
 export async function addFeedReaction(feedItemId: string) {
@@ -1374,8 +1399,14 @@ async function getVisibleFeedItem(feedItemId: string, viewerUserId: string) {
   ]);
   const socialIds = new Set([viewerUserId, ...friendIds]);
   const owners = await profilesByUserId([item.userId]);
-  return canViewFeedItem(item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes),
-    owners.get(item.userId)?.visibilitySettingsJson)
+  return canViewFeedItem(
+    item,
+    viewerUserId,
+    socialIds,
+    blockedIds,
+    new Set(hiddenTypes),
+    owners.get(item.userId)?.visibilitySettingsJson,
+  )
     ? item
     : null;
 }
@@ -1402,8 +1433,14 @@ async function getVisibleFeedComment(commentId: string, viewerUserId: string) {
   ]);
   const socialIds = new Set([viewerUserId, ...friendIds]);
   const owners = await profilesByUserId([row.item.userId]);
-  return canViewFeedItem(row.item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes),
-    owners.get(row.item.userId)?.visibilitySettingsJson)
+  return canViewFeedItem(
+    row.item,
+    viewerUserId,
+    socialIds,
+    blockedIds,
+    new Set(hiddenTypes),
+    owners.get(row.item.userId)?.visibilitySettingsJson,
+  )
     ? row.comment
     : null;
 }
@@ -1534,9 +1571,12 @@ function canViewFeedCategory(
 ) {
   if (item.userId === viewerUserId) return true;
   const categories: Record<string, "pbs" | "achievements" | "rounds" | "practice"> = {
-    new_pb: "pbs", longest_drive: "pbs",
-    achievement_unlock: "achievements", level_up: "achievements",
-    round_completed: "rounds", post_round_recap: "rounds",
+    new_pb: "pbs",
+    longest_drive: "pbs",
+    achievement_unlock: "achievements",
+    level_up: "achievements",
+    round_completed: "rounds",
+    post_round_recap: "rounds",
     practice_completed: "practice",
   };
   const category = categories[item.itemType];
@@ -1729,8 +1769,11 @@ function canViewProfileScope(
   visibility: SocialVisibility | undefined,
   relationship: SocialProfileSummary["relationship"],
 ) {
-  return relationship === "self" || visibility === "public" ||
-    (visibility === "friends" && relationship === "friend");
+  return (
+    relationship === "self" ||
+    visibility === "public" ||
+    (visibility === "friends" && relationship === "friend")
+  );
 }
 
 async function getProfileStats(

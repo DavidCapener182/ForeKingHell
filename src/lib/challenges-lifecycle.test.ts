@@ -4,11 +4,13 @@ import { filterImportedChallengeEvidenceRows } from "@/lib/challenges";
 
 describe("imported challenge lifecycle evidence", () => {
   it("never restores modelled distances into measured challenge evidence", () => {
-    expect(filterImportedChallengeEvidenceRows([
-      { ...shot(999, "included"), qualityTag: "modelled" },
-      { ...shot(999, "restored"), qualityTag: "modelled" },
-      shot(250, "included"),
-    ]).map((row) => row.totalYd)).toEqual([250]);
+    expect(
+      filterImportedChallengeEvidenceRows([
+        { ...shot(999, "included"), qualityTag: "modelled" },
+        { ...shot(999, "restored"), qualityTag: "modelled" },
+        shot(250, "included"),
+      ]).map((row) => row.totalYd),
+    ).toEqual([250]);
   });
 
   it("scores included evidence instead of a longer excluded shot", () => {

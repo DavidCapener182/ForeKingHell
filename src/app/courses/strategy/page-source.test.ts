@@ -81,7 +81,7 @@ describe("course strategy surface split", () => {
 
   it("uses the shadcn Textarea for post-round review context", () => {
     const reviewQuestion =
-      source.match(/function ReviewQuestion[\s\S]*?function RoundResultCard/)?.[0] ?? "";
+      source.match(/function ReviewQuestion[\s\S]*?function shortDate/)?.[0] ?? "";
     expect(reviewQuestion).toContain("<Textarea");
     expect(reviewQuestion).not.toContain("<textarea");
   });
@@ -107,8 +107,8 @@ describe("course strategy surface split", () => {
   it("uses one visible shadcn composition for each workbench mode", () => {
     expect(source).toContain("data-course-strategy-plan");
     expect(source).toContain("data-course-strategy-post-round");
-    expect(source).toContain('from "@/components/ui/item"');
-    expect(source).toContain("<AlertTitle>No completed round yet</AlertTitle>");
+    expect(source).toContain("<PostRoundResults");
+    expect(source).toContain("No completed round yet");
     expect(source).toContain("<AlertTitle>Review context saved</AlertTitle>");
     expect(source).not.toContain('className="hidden lg:contents"');
     expect(source).not.toContain('className="hidden gap-4 lg:grid"');

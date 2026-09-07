@@ -5,18 +5,19 @@ import { describe, expect, it } from "vitest";
 const source = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 
 describe("Import UploadDropzone loader theme", () => {
-  it("uses the shared GolfLoader with semantic ordinary copy", () => {
+  it("shows named read progress and recoverable file errors with semantic styling", () => {
     const upload = source("src/app/import/upload-dropzone.tsx");
-    const loader = source("src/components/visuals/golf-loader.tsx");
-    const loaderCopy = loader.match(/<div>\s*<p[\s\S]*?<\/div>/)?.[0] ?? "";
-
-    expect(upload).toContain('import { GolfLoader } from "@/components/visuals/golf-loader"');
-    expect(upload).toContain("<GolfLoader");
-    expect(upload).toContain('label="Reading launch data"');
-    expect(loaderCopy).toContain("text-foreground");
-    expect(loaderCopy).toContain("text-muted-foreground");
-    expect(loaderCopy).not.toMatch(/text-(?:slate|zinc|neutral|stone)-\d{2,3}/);
-    expect(loader).toContain("loader-golfer.png");
-    expect(loader).toContain("drop-shadow-");
+    expect(upload).toContain('role="status"');
+    expect(upload).toContain("Reading {readProgress.fileName}");
+    expect(upload).toContain("<Progress");
+    expect(upload).toContain("aria-label={`Reading ${readProgress.fileName}`}");
+    expect(upload).toContain("value={percent(readProgress)}");
+    expect(upload).toContain('role="alert"');
+    expect(upload).toContain("onRetry?.(error.file)");
+    expect(upload).toContain("Retry file");
+    expect(upload).toContain("onDismissError?.(error.id)");
+    expect(upload).toContain("text-muted-foreground");
+    expect(upload).toContain("text-destructive");
+    expect(upload).not.toMatch(/text-(?:slate|zinc|neutral|stone)-\d{2,3}/);
   });
 });

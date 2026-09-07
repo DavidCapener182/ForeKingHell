@@ -13,13 +13,10 @@ const capabilitySource = readFileSync(
 );
 
 describe("Data Chat responsive boundary", () => {
-  it("keeps the route desktop-only with a companion handoff fallback", () => {
-    expect(capabilitySource).toContain(
-      '"data-chat": desktopOnly(\n    "Build recommended practice"',
-    );
-    expect(capabilitySource).toContain('"/practice"');
-    expect(source).toContain('<DesktopWorkbenchLayout scope="data-chat">');
-    expect(source).toContain('data-data-chat-panel="desktop"');
+  it("keeps one responsive conversation route available to the companion", () => {
+    expect(capabilitySource).toContain('"data-chat": companionMore()');
+    expect(source).toContain('data-workbench-scope="data-chat"');
+    expect(source).toContain('data-data-chat-panel="responsive"');
     expect(source).not.toContain("MobileAppShell");
     expect(source).not.toContain("MobileTopBar");
     expect(source).not.toContain("MobileRouteTabs");
@@ -28,11 +25,15 @@ describe("Data Chat responsive boundary", () => {
     expect(source).not.toContain("lg:hidden");
   });
 
-  it("keeps one desktop conversation and a sticky workbench composer", () => {
+  it("keeps one conversation with desktop evidence and a phone evidence sheet", () => {
     expect(panelSource).toContain("data-data-chat-composer");
     expect(panelSource).toContain('<ResizablePanelGroup orientation="horizontal"');
     expect(panelSource).toContain("<ResizableHandle withHandle");
-    expect(panelSource).toContain('<ResizablePanel defaultSize="67" minSize="65" maxSize="70">');
+    expect(panelSource).toContain('defaultSize={wide ? "67" : "100"}');
+    expect(panelSource).toContain('minSize={wide ? "65" : "100"}');
+    expect(panelSource).toContain('maxSize={wide ? "70" : "100"}');
+    expect(panelSource).toContain("<Sheet open={citationOpen} onOpenChange={setCitationOpen}>");
+    expect(panelSource).toContain("<SheetTitle>Cited evidence</SheetTitle>");
     expect(panelSource).toContain('<ResizablePanel defaultSize="33" minSize="30" maxSize="35">');
     expect(panelSource).toContain("<EvidenceContextPanel");
     expect(panelSource).toContain("h-full min-h-0 min-w-0 overflow-y-auto");

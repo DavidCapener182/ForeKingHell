@@ -156,12 +156,19 @@ export async function adminFormAction(
       case "grant-admin": {
         const role = readString(formData, "role");
         if (role !== "owner" && role !== "operator") throw new Error("Choose a valid admin role.");
-        await grantAdminAccessByEmail(required("email"), role, readString(formData, "userId") || undefined);
+        await grantAdminAccessByEmail(
+          required("email"),
+          role,
+          readString(formData, "userId") || undefined,
+        );
         message = "Admin access granted.";
         break;
       }
       case "grant-lifetime":
-        await grantLifetimeFullAccessByEmail(required("email"), readString(formData, "userId") || undefined);
+        await grantLifetimeFullAccessByEmail(
+          required("email"),
+          readString(formData, "userId") || undefined,
+        );
         message = "Lifetime full access granted.";
         break;
       case "deactivate-admin":
@@ -199,16 +206,26 @@ export async function adminFormAction(
 function safeAdminFormError(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   const allowed = new Set([
-    "Owner access is required.", "Active admin access is required.",
+    "Owner access is required.",
+    "Active admin access is required.",
     "This account has changed. Refresh its details before trying again.",
-    "No user exists for that email address.", "Choose a valid admin role.",
+    "No user exists for that email address.",
+    "Choose a valid admin role.",
     "The last active owner cannot be demoted.",
-    "You cannot deactivate your own admin access.", "Active admin access was not found.",
-    "The last active owner cannot be deactivated.", "Report not found.",
-    "Select at least one open report.", "No selected open reports could be resolved.",
-    "Moderation event not found.", "Select at least one open moderation event.",
-    "No selected open moderation events could be resolved.", "Choose a valid admin action.",
-    "Missing email.", "Missing userId.", "Missing reportId.", "Missing eventId.",
+    "You cannot deactivate your own admin access.",
+    "Active admin access was not found.",
+    "The last active owner cannot be deactivated.",
+    "Report not found.",
+    "Select at least one open report.",
+    "No selected open reports could be resolved.",
+    "Moderation event not found.",
+    "Select at least one open moderation event.",
+    "No selected open moderation events could be resolved.",
+    "Choose a valid admin action.",
+    "Missing email.",
+    "Missing userId.",
+    "Missing reportId.",
+    "Missing eventId.",
   ]);
   return allowed.has(message) ? message : "The admin action could not be completed. Try again.";
 }

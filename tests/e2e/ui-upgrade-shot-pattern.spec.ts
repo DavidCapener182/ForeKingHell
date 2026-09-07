@@ -90,7 +90,9 @@ test("Shot pattern exposes full mobile setup and selected projection scope", asy
         await parent.getByRole("button", { name: "Apply setup", exact: true }).click();
         if (width < 1024) await expect(page.getByRole("dialog")).toBeHidden();
         await expect(page.getByText(/Projection from your measured shots/)).toBeVisible();
-        await expect(page.getByRole("img", { name: "Shot pattern course view", exact: true })).toContainText("Hole 2");
+        await expect(
+          page.getByRole("img", { name: "Shot pattern course view", exact: true }),
+        ).toContainText("Hole 2");
         await page.locator("summary").filter({ hasText: "Hole and club evidence" }).click();
         await expect(
           page.getByRole("heading", { name: "Shot-pattern setup board", exact: true }),

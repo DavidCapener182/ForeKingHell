@@ -24,7 +24,10 @@ vi.mock("@/lib/today-activity-data", () => ({ getTodayActivity: async () => [] }
 vi.mock("@/db/client", () => ({
   getDb: () => ({
     select: () => ({
-      from: () => ({ where: () => Object.assign(Promise.resolve([]), { orderBy: () => ({ limit: async () => [] }) }) }),
+      from: () => ({
+        where: () =>
+          Object.assign(Promise.resolve([]), { orderBy: () => ({ limit: async () => [] }) }),
+      }),
     }),
   }),
 }));

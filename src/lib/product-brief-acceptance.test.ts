@@ -84,11 +84,11 @@ describe("product brief acceptance", () => {
     );
     const challenges = source("src/app/(app)/challenges/page.tsx");
     for (const field of [
-      "Sessions and rounds",
-      "Largest improvement",
-      "Largest decline",
+      "Recorded entries / real rounds",
+      "Largest control improvement",
+      "Largest control decline",
       "Practice completed",
-      "Data-quality issues",
+      "Current data-quality backlog",
       "New personal bests",
       "One next action",
     ]) {
@@ -100,21 +100,24 @@ describe("product brief acceptance", () => {
       "Which club caused trouble?",
       "Did equipment or weather change?",
       "Which shots should be reviewed?",
-      "Strongest club",
-      "Most costly club",
-      "Biggest difference",
-      "Practice recommendation",
     ]) {
       expect(courseStrategy).toContain(field);
     }
-    for (const component of [
-      "ChallengeTabs",
-      "ActiveChallengeGrid",
-      "AvailableChallengeGrid",
-      "CompletedChallengeGrid",
-      "challengeImageSrc",
+    const results = source("src/app/courses/strategy/post-round-results.tsx");
+    for (const field of [
+      "Best lateral control",
+      "Largest lateral miss",
+      "Change from earlier shots",
+      "Next evidence check",
     ]) {
-      expect(challenges).toContain(component);
+      expect(results).toContain(field);
     }
+    expect(challenges).toContain("<ChallengeWorkspace");
+    const workspace = source("src/app/challenges/challenge-workspace.tsx");
+    expect(workspace).toContain("<UntitledTabs");
+    for (const state of ["active:", "available:", "completed:"]) {
+      expect(workspace).toContain(state);
+    }
+    expect(workspace).toContain("Only evidence meeting these rules counts.");
   });
 });

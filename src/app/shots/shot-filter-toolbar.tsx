@@ -206,9 +206,7 @@ export function ShotFilterToolbar({
           onValueChange={(q) => setDraft({ ...draft, q })}
           placeholder="Source file or course"
         />
-        <div className={styles.quickFilters}>
-          {fields(draft, setDraft, false)}
-        </div>
+        <div className={styles.quickFilters}>{fields(draft, setDraft, false)}</div>
         <Button className="min-h-11" type="submit" disabled={pending}>
           {pending ? "Applying…" : "Search / apply"}
         </Button>

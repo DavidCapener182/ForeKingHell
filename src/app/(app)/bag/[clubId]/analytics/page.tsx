@@ -140,9 +140,15 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
   }
 
   const { club, analytics, shots: clubShots } = data;
-  const profileStock = calculateStockYardage(clubShots, clubShots.length, {clubType:club.type});
+  const profileStock = calculateStockYardage(clubShots, clubShots.length, { clubType: club.type });
   const touchClub = isShortGameTouchClubType(club.type);
-  const profileCarry = touchClub ? calculateShortGameTouchSummary(clubShots, clubShots.length, {clubType:club.type}).carryMedianYd : profileStock.coursePlayCarryYd ?? (profileStock.bestStockCarryYd !== null && profileStock.sampleSize >= 5 ? Math.floor(profileStock.bestStockCarryYd / 5) * 5 : null);
+  const profileCarry = touchClub
+    ? calculateShortGameTouchSummary(clubShots, clubShots.length, { clubType: club.type })
+        .carryMedianYd
+    : (profileStock.coursePlayCarryYd ??
+      (profileStock.bestStockCarryYd !== null && profileStock.sampleSize >= 5
+        ? Math.floor(profileStock.bestStockCarryYd / 5) * 5
+        : null));
   const accent = clubAccent(club.type);
   const clubName = formatClubType(club.type);
   const brandModel = [club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model";
@@ -229,7 +235,10 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
                 size="lg"
                 className="rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
               >
-                <Link href={`/practice?mode=quick-range&club=${encodeURIComponent(club.type)}`} prefetch={false}>
+                <Link
+                  href={`/practice?mode=quick-range&club=${encodeURIComponent(club.type)}`}
+                  prefetch={false}
+                >
                   <Target className="size-4" />
                   Practise this club
                 </Link>
@@ -239,7 +248,8 @@ export default async function ClubAnalyticsPage({ params }: PageProps) {
               {
                 label: touchClub ? "Touch median" : "Recommended carry",
                 value: formatYards(profileCarry),
-                detail: "All-time profile scope; detailed diagnostics below use latest 50 qualifying shots",
+                detail:
+                  "All-time profile scope; detailed diagnostics below use latest 50 qualifying shots",
               },
               {
                 label: "Trust index",

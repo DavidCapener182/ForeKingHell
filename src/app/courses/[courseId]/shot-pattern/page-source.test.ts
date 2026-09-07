@@ -31,7 +31,7 @@ describe("course shot-pattern desktop setup board", () => {
     expect(source).toContain('data-workbench-scope="shot-pattern-clubs"');
     expect(source).toContain('data-workbench-export-table="shot-pattern-clubs"');
     expect(source).toContain('label="Shot pattern club evidence table" stickyFirstColumn');
-    expect(source).toContain("Desktop review of mapped holes");
+    expect(source).toContain("Review mapped holes, tee sets and club-pattern samples");
     expect(source).toContain("tabIndex={0}");
   });
 

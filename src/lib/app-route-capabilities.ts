@@ -76,7 +76,11 @@ export const mobileCapabilities = {
   billing: companionMore(),
   settings: companionMore(),
   notifications: companionMore(),
-  admin: companionHidden("Go to Today", "/today", "Administration is available in the full workbench."),
+  admin: companionHidden(
+    "Go to Today",
+    "/today",
+    "Administration is available in the full workbench.",
+  ),
   partners: companionHidden(
     "Go to Today",
     "/today",
@@ -130,18 +134,49 @@ const desktopOnlyPrefixes = [
   "/coach/workspace",
 ] as const;
 
-const companionExactRoutes = ["/partners", "/admin/system-checks", "/admin/challenges", "/admin/billing", "/admin/moderation", "/admin/users", "/admin", "/billing", "/profile", "/social-intelligence", "/feed", "/groups", "/friends", "/achievements", "/leaderboard", "/course-records", "/simulator-lab", "/strokes-gained", "/compare", "/analyse", "/analyse/workspace", "/analyse/session-impact", "/analyse/conditions", "/analyse/compare", "/data-chat", "/coach/workspace", "/coach/reports", "/coach/diagnosis", "/coach", "/courses", "/courses/new", "/equipment", "/equipment/experiments"] as const;
-const companionExceptions = ["/profile", "/groups", "/courses/strategy"] as const;
-const summaryOnlyPrefixes = [
-  "/coach",
-  "/leaderboard",
+const companionExactRoutes = [
+  "/partners",
+  "/admin/system-checks",
+  "/admin/challenges",
+  "/admin/billing",
+  "/admin/moderation",
+  "/admin/users",
+  "/admin",
+  "/billing",
+  "/profile",
+  "/social-intelligence",
+  "/feed",
+  "/groups",
+  "/friends",
   "/achievements",
+  "/leaderboard",
+  "/course-records",
+  "/simulator-lab",
+  "/strokes-gained",
+  "/compare",
+  "/analyse",
+  "/analyse/workspace",
+  "/analyse/session-impact",
+  "/analyse/conditions",
+  "/analyse/compare",
+  "/data-chat",
+  "/coach/workspace",
+  "/coach/reports",
+  "/coach/diagnosis",
+  "/coach",
+  "/courses",
+  "/courses/new",
+  "/equipment",
+  "/equipment/experiments",
 ] as const;
+const companionExceptions = ["/profile", "/groups", "/courses/strategy"] as const;
+const summaryOnlyPrefixes = ["/coach", "/leaderboard", "/achievements"] as const;
 
 export function isDesktopOnlyCompanionPath(pathname: string) {
   if (/^\/courses\/[^/]+\/records\/[^/]+$/.test(pathname)) return false;
   if (/^\/course-records\/[^/]+$/.test(pathname)) return false;
-  if (/^\/courses\/[^/]+(?:\/(?:holes|shot-pattern|records|tournaments))?$/.test(pathname)) return false;
+  if (/^\/courses\/[^/]+(?:\/(?:holes|shot-pattern|records|tournaments))?$/.test(pathname))
+    return false;
   if (companionExactRoutes.some((route) => pathname === route)) return false;
   if (companionExceptions.some((route) => pathMatches(pathname, route))) return false;
   return desktopOnlyPrefixes.some((route) => pathMatches(pathname, route));
@@ -166,7 +201,16 @@ function companionMore(): MobileRouteCapability {
 
 // These pages are available directly, but remain outside the mobile navigation.
 // Route authorization and unknown nested-path handoffs are controlled separately.
-function companionHidden(fallbackLabel: string, fallbackRoute: string, explanation: string): MobileRouteCapability {
-  return { mobileExperience: "companion", mobileNav: false,
-    mobileFallbackLabel: fallbackLabel, mobileFallbackRoute: fallbackRoute, mobileExplanation: explanation };
+function companionHidden(
+  fallbackLabel: string,
+  fallbackRoute: string,
+  explanation: string,
+): MobileRouteCapability {
+  return {
+    mobileExperience: "companion",
+    mobileNav: false,
+    mobileFallbackLabel: fallbackLabel,
+    mobileFallbackRoute: fallbackRoute,
+    mobileExplanation: explanation,
+  };
 }

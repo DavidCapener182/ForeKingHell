@@ -134,7 +134,12 @@ test("Course Twin fallback and communication recovery preserve selected state", 
       await expect(room.getByRole("textbox", { name: "Group chat message" })).toHaveValue(
         "Synthetic retained draft",
       );
-      if(width===390) await page.screenshot({path:info.outputPath(`P54-draft-${surface}.png`),animations:"disabled",fullPage:true});
+      if (width === 390)
+        await page.screenshot({
+          path: info.outputPath(`P54-draft-${surface}.png`),
+          animations: "disabled",
+          fullPage: true,
+        });
       await room.getByRole("button", { name: "Send message", exact: true }).click();
       await expect(room.getByRole("textbox", { name: "Group chat message" })).toHaveValue("");
       expect(posts).toBe(2);

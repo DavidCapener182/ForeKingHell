@@ -5,68 +5,50 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/challenges/page.tsx"), "utf8");
 const challengeDataSource = readFileSync(join(process.cwd(), "src/lib/challenges.ts"), "utf8");
 
+const workspace = readFileSync(
+  join(process.cwd(), "src/app/challenges/challenge-workspace.tsx"),
+  "utf8",
+);
 describe("challenge progression hub", () => {
-  it("selects one request surface before loading the desktop workbench", () => {
-    const staticWorkbenchImport =
-      source.match(
-        /import(?: type)? \{[^}]*\} from "@\/components\/app\/desktop-workbench";/,
-      )?.[0] ?? "";
-
-    expect(source).toContain("getRequestAppSurface()");
-    expect(source).toContain(
-      'surface === "workbench" ? await import("@/components/app/desktop-workbench") : null',
-    );
-    expect(source).toContain('surface === "companion" ? (');
-    expect(source).toContain('surface === "workbench" && DesktopWorkbenchLayout ? (');
-    expect(staticWorkbenchImport).not.toContain("DesktopWorkbenchLayout");
-    expect(source).not.toContain('className="hidden lg:contents"');
+  it("uses one responsive workspace with URL-selected state", () => {
+    expect(source).toContain("<PageShell>");
+    expect(source).toContain("<ChallengeWorkspace");
+    expect(source).toContain('initialTab={params?.tab ?? "active"}');
+    expect(workspace).toContain("<UntitledTabs");
+    expect(workspace).toContain('label="Challenge status"');
+    expect(workspace).toContain('url.searchParams.set("tab", tab)');
+    expect(workspace).toContain("key === active");
   });
-
-  it("uses exactly the active, available and completed progression tabs", () => {
-    expect(source).toContain('{ key: "active", label: "Active", href: "/challenges" }');
-    expect(source).toContain(
-      '{ key: "available", label: "Available", href: "/challenges?tab=available" }',
-    );
-    expect(source).toContain(
-      '{ key: "completed", label: "Completed", href: "/challenges?tab=completed" }',
-    );
-    expect(source).not.toContain('label: "Seasons"');
-    expect(source).not.toContain('label: "Templates"');
-    expect(source).toContain('aria-label="Challenge status"');
-    expect(source).toContain('aria-current={activeTab === tab.key ? "page" : undefined}');
+  it("separates joined progress from open entry and closed history", () => {
+    expect(workspace).toContain("active: challenges.filter((c) => c.viewerJoined && !finished(c))");
+    expect(workspace).toContain('!c.viewerJoined && c.status === "open" && !finished(c)');
+    expect(workspace).toContain('!c.viewerJoined && (c.status !== "open" || finished(c))');
+    expect(workspace).toContain("c.viewerJoined && finished(c)");
+    expect(workspace).toContain("Closed to entry");
   });
-
-  it("makes active progress and the next attempt the primary hierarchy", () => {
-    expect(source).toContain("data-active-challenge-card");
-    expect(source).toContain("aria-label={`${challenge.title} progress`}");
-    expect(source).toContain("h-4 bg-background/80");
-    expect(source).not.toContain('label="Current value"');
-    expect(source).toContain("Time left");
-    expect(source).toContain("Best attempt");
-    expect(source).toContain("Next useful action");
-    expect(source).toContain("nextChallengeAction(challenge)");
-    expect(source).toContain("Attempts timeline");
-    expect(source).toContain("compact={index > 0}");
+  it("shows qualifying progress and the next measured action", () => {
+    expect(workspace).toContain("<progress");
+    expect(workspace).toContain("htmlFor={`evidence-${c.id}`}");
+    expect(workspace).toContain("c.viewerEvidenceCount");
+    expect(workspace).toContain("c.evidenceTargetCount");
+    expect(workspace).toContain("href={`/import?challengeId=${c.id}`}");
+    expect(workspace).toContain("View attempts and evidence");
   });
-
-  it("keeps available cards compact and defers rules to a sheet", () => {
-    expect(source).toContain("data-available-challenge-tile");
-    expect(source).toContain('label="Evidence"');
-    expect(source).toContain('label="Achievement"');
-    expect(source).toContain("<RulesSheet challenge={challenge} />");
-    expect(source).toContain("<SheetContent");
-    expect(source).toContain("challenge.rulesBullets.map");
-    expect(source).toContain("joinChallengeAction");
+  it("keeps rules inspectable and closed entries unavailable", () => {
+    expect(workspace).toContain("<ResponsiveDetailPanel");
+    expect(workspace).toContain("rules.rulesBullets.map");
+    expect(workspace).toContain("rules.evidenceRequirement");
+    expect(workspace).toContain("joinChallengeAction(data)");
+    expect(workspace).toContain('finished(challenge) || challenge.status !== "open"');
+    expect(workspace).toContain("disabled={unavailable || pending || !ready}");
   });
-
-  it("renders completed challenges as achievement cards", () => {
-    expect(source).toContain("data-completed-challenge-card");
-    expect(source).toContain("Achievement cabinet");
-    expect(source).toContain("Challenge achievement");
-    expect(source).toContain("Finished #");
-    expect(source).toContain("viewerScoreLabel");
+  it("distinguishes recorded outcomes from provisional rank and participation", () => {
+    expect(workspace).toContain("Recorded result after close");
+    expect(workspace).toContain("Provisional rank");
+    expect(workspace).toContain("c.viewerScoreLabel");
+    expect(workspace).toContain("c.viewerVerificationLabel");
+    expect(workspace).toContain("A joined entry is not a completed result");
   });
-
   it("uses verified imported evidence for progress fields", () => {
     for (const field of [
       "viewerScoreLabel",
@@ -83,24 +65,5 @@ describe("challenge progression hub", () => {
     );
     expect(challengeDataSource).toContain("const evidenceCounts = new Map<string, number>()");
     expect(challengeDataSource).toContain("eligibleRows.length");
-  });
-});
-
-describe("challenge progression mobile", () => {
-  it("puts the current active challenge before every secondary item", () => {
-    expect(source).toContain("const [current, ...remaining] = challenges;");
-    expect(source).toContain("<ActiveChallengeCard challenge={current} featured />");
-    expect(source).toContain("remaining.map");
-    expect(source).toContain("Current challenge");
-    expect(source).toContain("Also in progress");
-  });
-
-  it("keeps the mobile composition active until the desktop surface takes over", () => {
-    expect(source).toContain("<MobileAppShell>");
-    expect(source).toContain("<MobilePageTabs");
-    expect(source).not.toContain("MobileRouteTabs");
-    expect(source).not.toContain("<MobileTabBar");
-    expect(source).not.toContain('className="hidden lg:contents"');
-    expect(source).not.toContain('className="hidden sm:contents"');
   });
 });

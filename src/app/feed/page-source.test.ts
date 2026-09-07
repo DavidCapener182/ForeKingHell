@@ -21,9 +21,9 @@ const socialSource = readFileSync(join(process.cwd(), "src/lib/social.ts"), "utf
 describe("clubhouse chronological activity feed", () => {
   it("renders one chronological feed without digest or recommendation surfaces", () => {
     expect(source).toContain('<PageShell className="bg-muted/20">');
-    expect(source).toContain('<DesktopWorkbenchLayout scope="feed">');
+    expect(source).not.toContain("DesktopWorkbenchLayout");
     expect(source).toContain("data-feed-timeline-first");
-    expect(source).toContain("Newest first · no suggested posts");
+    expect(source).toContain("Newest first · up to 40 loaded visible activities");
     expect(source.match(/<FeedCardList\b/g)).toHaveLength(1);
     expect(cardSource).toContain("groupItemsByDay(items)");
     expect(cardSource).toContain("data-feed-activity-timeline");
@@ -42,7 +42,7 @@ describe("clubhouse chronological activity feed", () => {
     }
   });
 
-  it("keeps the compact composer in front of the feed and opens the full form in a Sheet", () => {
+  it("keeps the compact composer in front of the feed and opens the full form in a responsive panel", () => {
     const composer = source.indexOf('<Card id="create-feed-post"');
     const filters = source.indexOf("<FeedFilterControls");
     const stream = source.indexOf("<FeedCardList items={filteredItems}");
@@ -51,8 +51,8 @@ describe("clubhouse chronological activity feed", () => {
     expect(filters).toBeGreaterThan(composer);
     expect(stream).toBeGreaterThan(filters);
     expect(source).toContain("<StatusUpdateComposerSheet");
-    expect(composerSource).toContain("<Sheet>");
-    expect(composerSource).toContain("<SheetTrigger asChild>");
+    expect(composerSource).toContain("<ResponsiveDetailPanel");
+    expect(composerSource).toContain("onBusyChange");
     expect(composerSource).toContain("createStatusUpdateAction");
     expect(composerSource).toContain('name="visibility"');
     expect(composerSource).toContain('name="body"');
@@ -64,9 +64,9 @@ describe("clubhouse chronological activity feed", () => {
     }
 
     expect(filterSource).toContain("filters.map");
-    expect(filterSource).toContain("<ButtonGroup");
-    expect(filterSource).toContain('aria-current={active ? "page" : undefined}');
-    expect(filterSource).toContain("<DropdownMenu");
+    expect(filterSource).toContain('name="filter"');
+    expect(filterSource).toContain("value={draft.filter}");
+    expect(filterSource).toContain("<ResponsiveDetailPanel");
     expect(filterSource).not.toContain("<Tabs");
   });
 
@@ -108,10 +108,9 @@ describe("clubhouse chronological activity feed", () => {
   it("uses avatars, dropdown controls, reactions and collapsed comments consistently", () => {
     expect(cardSource).toContain("<SocialAvatar");
     expect(cardSource).toContain("<FeedItemControls");
-    expect(cardSource).toContain("addFeedReactionAction");
-    expect(cardSource).toContain("removeFeedReactionAction");
+    expect(cardSource).toContain('operation={item.viewerReacted ? "unreact" : "reaction"}');
     expect(cardSource).toContain("<Collapsible");
-    expect(cardSource).toContain("addFeedCommentAction");
+    expect(cardSource).toContain('<FeedActionForm operation="comment" reset>');
     expect(cardSource).toContain('placeholder="Write a comment"');
   });
 
@@ -133,7 +132,7 @@ describe("clubhouse chronological activity feed", () => {
   it("exports the selected chronological view without adding another feed surface", () => {
     expect(source).toContain("exportHref={exportHref}");
     expect(source).toContain("exportItemCount={filteredItems.length}");
-    expect(filterSource).toContain("data-feed-export-current-view");
+    expect(filterSource).toContain("href={exportHref}");
     expect(filterSource).toContain("download={exportFileName}");
     expect(exportSource).toContain('from "@/lib/csv"');
     expect(exportSource).toContain('"Activity"');

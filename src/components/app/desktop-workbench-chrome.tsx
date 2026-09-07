@@ -1,9 +1,9 @@
 "use client";
 
 import { WorkbenchBreadcrumbs } from "./workbench-breadcrumbs";
-import { buildWorkbenchBreadcrumbItems } from "@/lib/workbench-breadcrumbs";
 
 import Link from "next/link";
+import { buildWorkbenchBreadcrumbItems } from "@/lib/workbench-breadcrumbs";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -134,8 +134,6 @@ type AssistantContext = {
     icon: LucideIcon;
   }>;
 };
-
-
 
 const recentStorageKey = "fkh:desktop-recent-items";
 const pinnedStorageKey = "fkh:desktop-pinned-items";
@@ -328,7 +326,11 @@ export function DesktopWorkbenchChrome({
 
   const activeItem = useMemo(() => findActiveItem(navGroups, pathname), [navGroups, pathname]);
   const breadcrumbItems = useMemo(
-    () => buildWorkbenchBreadcrumbItems(activeItem ? {label: activeItem.item.label, href: activeItem.item.href} : undefined, pathname),
+    () =>
+      buildWorkbenchBreadcrumbItems(
+        activeItem ? { label: activeItem.item.label, href: activeItem.item.href } : undefined,
+        pathname,
+      ),
     [activeItem, pathname],
   );
   const assistantContext = useMemo(() => getAssistantContext(pathname), [pathname]);
@@ -744,75 +746,77 @@ export function DesktopWorkbenchChrome({
   return (
     <>
       <span hidden data-command-centre-ready={hydrated ? "true" : "false"} />
-      {!commandOnly ? <header
-        className="sticky top-0 z-40 hidden min-h-14 border-b border-border bg-background/92 px-4 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/82 lg:block"
-        data-desktop-workbench-hydrated={hydrated ? "true" : "false"}
-        inert={!hydrated}
-        aria-busy={hydrated ? undefined : true}
-      >
-        <div className={cn("flex min-w-0 items-center gap-2 2xl:gap-3", chromeStyles.chrome)}>
-          <WorkbenchBreadcrumbs items={breadcrumbItems} />
+      {!commandOnly ? (
+        <header
+          className="sticky top-0 z-40 hidden min-h-14 border-b border-border bg-background/92 px-4 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/82 lg:block"
+          data-desktop-workbench-hydrated={hydrated ? "true" : "false"}
+          inert={!hydrated}
+          aria-busy={hydrated ? undefined : true}
+        >
+          <div className={cn("flex min-w-0 items-center gap-2 2xl:gap-3", chromeStyles.chrome)}>
+            <WorkbenchBreadcrumbs items={breadcrumbItems} />
 
-          <button
-            type="button"
-            onClick={openCommandPalette}
-            className="focus-aaa ml-auto grid h-9 min-w-0 max-w-xl flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-card/76 px-3 text-left text-sm text-muted-foreground shadow-sm outline-none transition-colors hover:border-primary/40 hover:bg-card lg:min-w-[12rem] 2xl:min-w-[18rem]"
-            aria-label="Open command palette"
-          >
-            <Search className="size-4" aria-hidden />
-            <span className="truncate">
-              Search pages, clubs, rounds, friends, courses or actions
-            </span>
-            <span className="hidden items-center gap-1 text-[11px] font-semibold text-muted-foreground lg:flex">
-              <ShortcutKey>⌘</ShortcutKey>
-              <ShortcutKey>K</ShortcutKey>
-            </span>
-          </button>
-
-          <Button asChild variant="outline" className="h-9 w-auto shrink-0 gap-2 px-2.5">
-            <Link href={pageAction.href} aria-label={pageAction.label}>
-              <PageActionIcon className="size-4" aria-hidden />
-              <span className="hidden xl:inline">{pageAction.label}</span>
-            </Link>
-          </Button>
-
-          {assistantContext ? (
-            <Button
+            <button
               type="button"
-              variant="secondary"
-              className="h-9 w-auto shrink-0 gap-2 px-2.5"
-              onClick={() => setAssistantOpen(true)}
-              aria-label={`Open AI assistant for ${assistantContext.label}`}
+              onClick={openCommandPalette}
+              className="focus-aaa ml-auto grid h-9 min-w-0 max-w-xl flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-card/76 px-3 text-left text-sm text-muted-foreground shadow-sm outline-none transition-colors hover:border-primary/40 hover:bg-card lg:min-w-[12rem] 2xl:min-w-[18rem]"
+              aria-label="Open command palette"
             >
-              <PanelRightOpen className="size-4" />
-              <span className="hidden 2xl:inline">Assistant</span>
+              <Search className="size-4" aria-hidden />
+              <span className="truncate">
+                Search pages, clubs, rounds, friends, courses or actions
+              </span>
+              <span className="hidden items-center gap-1 text-[11px] font-semibold text-muted-foreground lg:flex">
+                <ShortcutKey>⌘</ShortcutKey>
+                <ShortcutKey>K</ShortcutKey>
+              </span>
+            </button>
+
+            <Button asChild variant="outline" className="h-9 w-auto shrink-0 gap-2 px-2.5">
+              <Link href={pageAction.href} aria-label={pageAction.label}>
+                <PageActionIcon className="size-4" aria-hidden />
+                <span className="hidden xl:inline">{pageAction.label}</span>
+              </Link>
             </Button>
-          ) : null}
 
-          <WorkspaceLinksMenu
-            open={workspaceLinksOpen}
-            onOpenChange={setWorkspaceLinksOpen}
-            pinnedLinks={pinnedLinks}
-            recentLinks={recentLinks}
-            savedViewLinks={savedViewCommands}
-            onPinCurrent={pinCurrentPage}
-            onNavigate={closeCommandAndNavigate}
-            onOpenShortcuts={() => setShortcutsOpen(true)}
-            onExportCurrent={() => findCurrentExportControl()?.click()}
-            workspaceSwitcher={
-              <WorkspaceSwitcher
-                pathname={pathname}
-                isAdmin={isAdmin}
-                embedded
-                onNavigate={() => setWorkspaceLinksOpen(false)}
-              />
-            }
-            notificationMenu={<NotificationCentre embedded />}
-          />
+            {assistantContext ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-9 w-auto shrink-0 gap-2 px-2.5"
+                onClick={() => setAssistantOpen(true)}
+                aria-label={`Open AI assistant for ${assistantContext.label}`}
+              >
+                <PanelRightOpen className="size-4" />
+                <span className="hidden 2xl:inline">Assistant</span>
+              </Button>
+            ) : null}
 
-          {accountMenu}
-        </div>
-      </header> : null}
+            <WorkspaceLinksMenu
+              open={workspaceLinksOpen}
+              onOpenChange={setWorkspaceLinksOpen}
+              pinnedLinks={pinnedLinks}
+              recentLinks={recentLinks}
+              savedViewLinks={savedViewCommands}
+              onPinCurrent={pinCurrentPage}
+              onNavigate={closeCommandAndNavigate}
+              onOpenShortcuts={() => setShortcutsOpen(true)}
+              onExportCurrent={() => findCurrentExportControl()?.click()}
+              workspaceSwitcher={
+                <WorkspaceSwitcher
+                  pathname={pathname}
+                  isAdmin={isAdmin}
+                  embedded
+                  onNavigate={() => setWorkspaceLinksOpen(false)}
+                />
+              }
+              notificationMenu={<NotificationCentre embedded />}
+            />
+
+            {accountMenu}
+          </div>
+        </header>
+      ) : null}
 
       <DesktopCommandPalette
         open={commandOpen}
@@ -827,7 +831,10 @@ export function DesktopWorkbenchChrome({
         commands={filteredCommands}
         loading={shouldLoadWorkspaceCommands && !workspaceCommandsLoaded}
         loadError={workspaceCommandsError}
-        onRetry={() => { setWorkspaceCommandsError(false); setWorkspaceCommandsLoaded(false); }}
+        onRetry={() => {
+          setWorkspaceCommandsError(false);
+          setWorkspaceCommandsLoaded(false);
+        }}
         activeIndex={safeActiveCommandIndex}
         pinnedLinks={pinnedLinks}
         savedViewLinks={savedViewCommands}

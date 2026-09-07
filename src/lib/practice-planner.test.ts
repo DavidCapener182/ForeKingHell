@@ -14,6 +14,7 @@ import {
   scoreCompletedPractice,
   scorePracticePlanSessionMatch,
   selectPracticePlannerInitialSavedPlan,
+  savedPracticePlanToPracticePlan,
   shouldAutoLinkPracticePlanMatch,
   type ImportedPracticeSessionSummary,
   type PracticePlan,
@@ -22,6 +23,28 @@ import {
 } from "@/lib/practice-planner";
 
 describe("practice planner", () => {
+  it("restores the saved baseline instead of substituting a newer unrelated session", () => {
+    const latest = context();
+    latest.latestPractice.sessionId = "new-session";
+    const saved = savedPlanRecord({
+      id: "old-plan",
+      status: "planned",
+      sourceSessionId: null,
+      result: null,
+    });
+    saved.sourcePractice = {
+      ...latest.latestPractice,
+      sessionId: "original-session",
+      dateLabel: "30 August",
+    };
+    expect(savedPracticePlanToPracticePlan(saved, latest).sourceContext.latestPractice).toEqual(
+      saved.sourcePractice,
+    );
+    delete saved.sourcePractice;
+    expect(
+      savedPracticePlanToPracticePlan(saved, latest).sourceContext.latestPractice.sessionId,
+    ).toBeNull();
+  });
   it("honours an explicit low-sample bag club without changing automatic priority scores", () => {
     const data = context();
     const options = {

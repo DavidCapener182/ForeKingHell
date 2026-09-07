@@ -93,8 +93,19 @@ export function DesktopCommandPalette({
           placeholder="Search driver, latest round, 7 iron, friends, courses..."
           aria-label="Search command palette"
         />
-        {loading ? <p role="status" className={styles.status}>Loading your clubs, rounds, sessions and people…</p> : null}
-        {loadError ? <div role="alert" className={styles.status}>Your saved items could not be loaded. Page navigation is still available.<button type="button" onClick={onRetry}>Retry search</button></div> : null}
+        {loading ? (
+          <p role="status" className={styles.status}>
+            Loading your clubs, rounds, sessions and people…
+          </p>
+        ) : null}
+        {loadError ? (
+          <div role="alert" className={styles.status}>
+            Your saved items could not be loaded. Page navigation is still available.
+            <button type="button" onClick={onRetry}>
+              Retry search
+            </button>
+          </div>
+        ) : null}
         <div className={cn("grid min-h-0 gap-0 md:grid-cols-[minmax(0,1fr)_18rem]", styles.body)}>
           <CommandList
             id="command-palette-results"

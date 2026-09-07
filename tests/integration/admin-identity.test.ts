@@ -1,10 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { closeDb } from "@/db/client";
-import {
-  grantLifetimeFullAccessByEmail,
-  grantAdminAccessByEmail,
-} from "@/lib/admin";
+import { grantLifetimeFullAccessByEmail, grantAdminAccessByEmail } from "@/lib/admin";
 const actor = vi.hoisted(() => ({ userId: "" }));
 vi.mock("@/lib/current-user", () => ({ requireCurrentUserId: async () => actor.userId }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -53,17 +50,34 @@ describe.skipIf(!enabled)("admin bound account identity", () => {
   });
   it("rejects stale account identity before role, entitlement or audit changes", async () => {
     actor.userId = owner;
-    const before = (await sql`select count(*)::int as count from fkh_admin_audit_log where actor_user_id=${owner}`)[0].count;
-    await expect(grantAdminAccessByEmail(email, "operator", operator)).rejects.toThrow("This account has changed");
-    await expect(grantLifetimeFullAccessByEmail(email, operator)).rejects.toThrow("This account has changed");
-    expect((await sql`select role from fkh_admin_users where user_id=${owner}`)[0].role).toBe("owner");
+    const before = (
+      await sql`select count(*)::int as count from fkh_admin_audit_log where actor_user_id=${owner}`
+    )[0].count;
+    await expect(grantAdminAccessByEmail(email, "operator", operator)).rejects.toThrow(
+      "This account has changed",
+    );
+    await expect(grantLifetimeFullAccessByEmail(email, operator)).rejects.toThrow(
+      "This account has changed",
+    );
+    expect((await sql`select role from fkh_admin_users where user_id=${owner}`)[0].role).toBe(
+      "owner",
+    );
     expect(await sql`select id from fkh_entitlements where user_id=${owner}`).toHaveLength(0);
-    expect((await sql`select count(*)::int as count from fkh_admin_audit_log where actor_user_id=${owner}`)[0].count).toBe(before);
+    expect(
+      (
+        await sql`select count(*)::int as count from fkh_admin_audit_log where actor_user_id=${owner}`
+      )[0].count,
+    ).toBe(before);
     const targetEmail = `bound-${crypto.randomUUID()}@example.invalid`;
     await sql`update fkh_users set email=${targetEmail} where id=${operator}`;
     await grantAdminAccessByEmail(targetEmail, "operator", operator);
-    expect((await sql`select role from fkh_admin_users where user_id=${operator}`)[0].role).toBe("operator");
-    expect((await sql`select count(*)::int as count from fkh_admin_audit_log where actor_user_id=${owner} and target_user_id=${operator}`)[0].count).toBe(1);
+    expect((await sql`select role from fkh_admin_users where user_id=${operator}`)[0].role).toBe(
+      "operator",
+    );
+    expect(
+      (
+        await sql`select count(*)::int as count from fkh_admin_audit_log where actor_user_id=${owner} and target_user_id=${operator}`
+      )[0].count,
+    ).toBe(1);
   });
-
 });

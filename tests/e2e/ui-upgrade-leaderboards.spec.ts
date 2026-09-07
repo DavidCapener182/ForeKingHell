@@ -53,7 +53,7 @@ test("Leaderboards keep full scope filters and player details on both surfaces",
         [1023, 800],
         [1024, 800],
       ]) {
-        if (process.env.P62_SORT_CHECK === "1" && ![1440,390].includes(width)) continue;
+        if (process.env.P62_SORT_CHECK === "1" && ![1440, 390].includes(width)) continue;
         await page.setViewportSize({ width, height });
         await page.goto(
           `/surface/${surface}?next=${encodeURIComponent("/leaderboard?tab=friends&period=monthly")}`,

@@ -98,7 +98,16 @@ export function sessionPracticeHref(
   clubType: string | null,
   clubLabel: string | null,
   purpose = "control",
+  sourceSessionId?: string,
 ) {
+  if (sourceSessionId) {
+    const params = new URLSearchParams({
+      sourceSessionId,
+      intent: purpose === "baseline" ? "distance_mapping" : "confidence",
+    });
+    if (clubType) params.set("club", clubType);
+    return `/practice?${params.toString()}`;
+  }
   if (!clubType) return "/practice";
   const params = new URLSearchParams({
     club: clubType,

@@ -130,13 +130,21 @@ export async function getBillingPageData() {
 }
 
 export function getCheckoutAvailability(): Record<PlanKey, Record<BillingInterval, boolean>> {
-  return Object.fromEntries(billingPlans.map((plan) => {
-    const configured = (interval: BillingInterval) => {
-      const priceName = plan.priceEnv[interval];
-      return Boolean(plan.key !== "free" && !plan.internal && process.env.STRIPE_SECRET_KEY && priceName && process.env[priceName]);
-    };
-    return [plan.key, { monthly: configured("monthly"), yearly: configured("yearly") }];
-  })) as Record<PlanKey, Record<BillingInterval, boolean>>;
+  return Object.fromEntries(
+    billingPlans.map((plan) => {
+      const configured = (interval: BillingInterval) => {
+        const priceName = plan.priceEnv[interval];
+        return Boolean(
+          plan.key !== "free" &&
+          !plan.internal &&
+          process.env.STRIPE_SECRET_KEY &&
+          priceName &&
+          process.env[priceName],
+        );
+      };
+      return [plan.key, { monthly: configured("monthly"), yearly: configured("yearly") }];
+    }),
+  ) as Record<PlanKey, Record<BillingInterval, boolean>>;
 }
 
 function withDefaultAiPlanLimits(rows: Array<typeof planLimits.$inferSelect>) {

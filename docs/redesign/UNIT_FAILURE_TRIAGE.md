@@ -1,0 +1,81 @@
+# Current unit failure inventory — 7 September 08:15
+
+Source: `output/playwright/redesign/full-unit-after-challenges.json`. 168 failed tests; 2462 passed tests; 111 pending tests. 73 files contain failed assertions. Disposable backend integration checks run separately.
+
+Each failure needs investigation against retained behavior; do not weaken requirements to clear this gate.
+
+| Test file                                                      | Failing cases |
+| -------------------------------------------------------------- | ------------- |
+| `src/components/premium-theme-source.test.ts`                  | 1             |
+| `src/app/core-workbench-loading-source.test.ts`                | 1             |
+| `src/app/mobile-priority-surfaces-source.test.ts`              | 1             |
+| `src/app/native-card-composition-source.test.ts`               | 7             |
+| `src/app/navigation-targets-source.test.ts`                    | 1             |
+| `src/lib/app-route-capabilities.test.ts`                       | 3             |
+| `src/lib/clubhouse-theme-contract.test.ts`                     | 1             |
+| `src/lib/mobile-route-audit.test.ts`                           | 2             |
+| `src/lib/product-brief-acceptance.test.ts`                     | 1             |
+| `src/lib/product-phase5-source.test.ts`                        | 3             |
+| `src/lib/production-readiness.test.ts`                         | 3             |
+| `src/components/app/design-system-source.test.ts`              | 1             |
+| `src/components/app/mobile-control-adoption-source.test.ts`    | 2             |
+| `src/components/app/mobile-detail-header-source.test.ts`       | 1             |
+| `src/components/app/route-metadata.test.ts`                    | 1             |
+| `src/components/app/state-motion-hooks-source.test.ts`         | 1             |
+| `src/components/training/TrainingLoadRangeView-source.test.ts` | 2             |
+| `src/app/achievements/achievements-client-source.test.ts`      | 1             |
+| `src/app/analyse/mobile-ia-source.test.ts`                     | 3             |
+| `src/app/analyse/page-source.test.ts`                          | 2             |
+| `src/app/bag/page-source.test.ts`                              | 8             |
+| `src/app/challenges/page-source.test.ts`                       | 7             |
+| `src/app/coach/mobile-ia-source.test.ts`                       | 3             |
+| `src/app/coach/page-source.test.ts`                            | 4             |
+| `src/app/coach/workspace-source.test.ts`                       | 2             |
+| `src/app/compare/compare-source.test.ts`                       | 2             |
+| `src/app/course-records/page-source.test.ts`                   | 2             |
+| `src/app/course-twins/page-source.test.ts`                     | 2             |
+| `src/app/dashboard/page-source.test.ts`                        | 6             |
+| `src/app/data-chat/data-chat-responsive.test.ts`               | 2             |
+| `src/app/equipment/page-source.test.ts`                        | 3             |
+| `src/app/goals/page-source.test.ts`                            | 3             |
+| `src/app/handicap/page-source.test.ts`                         | 4             |
+| `src/app/import/page-source.test.ts`                           | 4             |
+| `src/app/import/shot-preview-source.test.ts`                   | 1             |
+| `src/app/import/upload-dropzone-theme-source.test.ts`          | 1             |
+| `src/app/play/companion-page-source.test.ts`                   | 1             |
+| `src/app/practice/page-source.test.ts`                         | 1             |
+| `src/app/providers/page-source.test.ts`                        | 2             |
+| `src/app/progress/page-source.test.ts`                         | 7             |
+| `src/app/progress/progress-companion.test.tsx`                 | 1             |
+| `src/app/quick-bag/quick-bag-client-source.test.ts`            | 3             |
+| `src/app/rapsodo/rapsodo-sync-client-source.test.ts`           | 2             |
+| `src/app/rounds/page-source.test.ts`                           | 1             |
+| `src/app/sessions/mobile-session-story.test.tsx`               | 1             |
+| `src/app/sessions/session-review-report-source.test.ts`        | 1             |
+| `src/app/sessions/session-timeline.test.tsx`                   | 5             |
+| `src/app/sessions/session-url-state-source.test.ts`            | 1             |
+| `src/app/shots/page-source.test.ts`                            | 1             |
+| `src/app/simulator-lab/page-source.test.ts`                    | 2             |
+| `src/app/simulator-lab/page.test.tsx`                          | 2             |
+| `src/app/speed/page-source.test.ts`                            | 3             |
+| `src/app/strokes-gained/page-source.test.ts`                   | 1             |
+| `src/app/today/page-source.test.ts`                            | 1             |
+| `src/app/(app)/today/today-companion-page.test.tsx`            | 3             |
+| `src/app/analyse/compare/page-source.test.ts`                  | 2             |
+| `src/app/analyse/workspace/page-source.test.ts`                | 2             |
+| `src/app/bag/[clubId]/club-analysis-tabs-source.test.ts`       | 2             |
+| `src/app/bag/[clubId]/club-detail-client-source.test.ts`       | 2             |
+| `src/app/challenges/[challengeId]/page-source.test.ts`         | 5             |
+| `src/app/coach/diagnosis/page-source.test.ts`                  | 2             |
+| `src/app/course-records/[recordId]/page-source.test.ts`        | 2             |
+| `src/app/equipment/experiments/page-source.test.ts`            | 1             |
+| `src/app/import/result/mobile-result.test.tsx`                 | 3             |
+| `src/app/import/result/page-source.test.ts`                    | 2             |
+| `src/app/play/[courseId]/course-twin-runtime.test.tsx`         | 1             |
+| `src/app/practice/quick-range/quick-range-session.test.tsx`    | 3             |
+| `src/app/rounds/[sessionId]/page-source.test.ts`               | 1             |
+| `src/app/stats/training-over-time/page-source.test.ts`         | 2             |
+| `src/app/courses/[courseId]/holes/page-source.test.ts`         | 2             |
+| `src/app/courses/[courseId]/shot-pattern/page-source.test.ts`  | 1             |
+| `src/app/courses/[courseId]/records/page-source.test.ts`       | 2             |
+| `src/app/speed/sessions/[sessionId]/page-source.test.ts`       | 2             |

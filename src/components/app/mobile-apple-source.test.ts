@@ -42,7 +42,9 @@ describe("Apple mobile shell contract", () => {
     expect(mobileNavSource).toContain("prepareNavigation(item.href)");
     expect(mobileNavSource).toContain("prepareNavigation(backNavigation.href)");
     expect(mobileNavSource).toContain("scroll={false}");
-    expect(mobileNavSource).toContain("ios-inline-title min-w-0 truncate text-center");
+    expect(mobileNavSource).toMatch(
+      /ios-inline-title[^"\n]*min-w-0[^"\n]*truncate[^"\n]*text-center/,
+    );
     expect(mobileNavSource).toContain("data-mobile-route-label");
     expect(mobileNavSource).toContain("{pageTitle}");
     expect(mobileNavSource).toContain("data-compact-title-visible");

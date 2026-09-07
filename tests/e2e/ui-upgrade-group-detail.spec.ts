@@ -140,7 +140,7 @@ test("Group clubhouse preserves drafts, member facts and confirmed group consequ
         ).toBe("active");
         await page.getByRole("button", { name: "Leave group", exact: true }).click();
         await dialog.getByRole("button", { name: "Confirm leave", exact: true }).click();
-        await expect(page).toHaveURL(/\/groups\?tab=mine/, {timeout:60000});
+        await expect(page).toHaveURL(/\/groups\?tab=mine/, { timeout: 60000 });
         expect(
           (
             await db`select status from fkh_group_memberships where group_id=${group} and user_id=${owners[1]}`
@@ -151,7 +151,7 @@ test("Group clubhouse preserves drafts, member facts and confirmed group consequ
         await page.addStyleTag({ content: "nextjs-portal {pointer-events:none !important;}" });
         await page.getByRole("button", { name: "Delete group", exact: true }).click();
         await dialog.getByRole("button", { name: "Delete permanently", exact: true }).click();
-        await expect(page).toHaveURL(/\/groups\?tab=mine/, {timeout:60000});
+        await expect(page).toHaveURL(/\/groups\?tab=mine/, { timeout: 60000 });
         expect((await db`select id from fkh_groups where id=${group}`).length).toBe(0);
         expect((await db`select id from fkh_group_posts where group_id=${group}`).length).toBe(0);
       }

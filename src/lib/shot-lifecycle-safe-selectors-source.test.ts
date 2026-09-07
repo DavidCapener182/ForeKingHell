@@ -25,7 +25,13 @@ describe("safe lifecycle selectors", () => {
     const activation = source("src/lib/activation-journey.ts");
 
     expect(activation).toContain("raw: count()");
-    expect(activation).toContain("count(*) filter (where ${shotEvidenceSqlPredicate()})");
+    expect(activation).toContain("count(*) filter (where ${shotEvidenceSqlPredicate()}");
+    for (const metric of ["carryYd", "totalYd", "ballSpeedMph", "clubSpeedMph"]) {
+      expect(activation).toContain(`\${shots.${metric}} > 0`);
+      expect(activation).toContain(`\${shots.${metric}} < 'Infinity'::double precision`);
+    }
+    expect(activation).toContain("${clubs.id} = ${shots.clubId}");
+    expect(activation).toContain("${clubs.userId} = ${userId} and ${clubs.active} = true");
     expect(activation).toContain("sessionTotal > 0 && rawShotTotal > 0");
     expect(activation).toContain("hasClubs && eligibleShotTotal >= 12");
     expect(activation).toContain('eq(shots.reviewStatus, "restored")');

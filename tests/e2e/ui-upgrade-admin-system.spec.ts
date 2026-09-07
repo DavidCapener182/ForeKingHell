@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 test("System checks preserve unknown health and dated recorded failures across both surfaces", async ({
   page,
@@ -72,6 +73,41 @@ test("System checks preserve unknown health and dated recorded failures across b
         const search = page.getByRole("textbox", { name: "Search checks", exact: true });
         await expect(search).toBeEnabled({ timeout: 60000 });
         await search.fill("Authentication");
+        const register = page.getByRole("region", { name: "Health register", exact: true });
+        await expect(page).toHaveURL(/healthQuery=Authentication/);
+        await register.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitemcheckbox", { name: "Last check", exact: true }).click();
+        await page.keyboard.press("Escape");
+        await expect(
+          register.locator('[data-column="lastCheck"]').filter({ visible: true }),
+        ).toHaveCount(0);
+        const viewName = `Authentication ${surface} ${width}`;
+        await register.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.getByRole("menuitem", { name: "Save current view", exact: true }).click();
+        const saveView = page.getByRole("dialog", { name: "Save table view" });
+        await saveView.getByRole("textbox", { name: "View name" }).fill(viewName);
+        await saveView.getByRole("button", { name: "Save view", exact: true }).click();
+        await search.fill("Billing");
+        await register.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitem", { name: "Show all columns", exact: true }).click();
+        await register.getByRole("button", { name: "Saved views", exact: true }).click();
+        await page.locator('a[role="menuitem"]').filter({ hasText: viewName }).click();
+        await expect(search).toHaveValue("Authentication");
+        await page.reload();
+        await expect(search).toHaveValue("Authentication");
+        await expect(
+          register.locator('[data-column="lastCheck"]').filter({ visible: true }),
+        ).toHaveCount(0);
+        const downloadReady = page.waitForEvent("download");
+        await register.locator('[data-export-table-id="admin-system-health"]').click();
+        const download = await downloadReady;
+        const csv = await readFile((await download.path())!, "utf8");
+        expect(csv).toContain("Authentication availability");
+        expect(csv).not.toContain("Billing");
+        expect(csv).not.toContain("Last check");
+        await register.getByRole("button", { name: /^Columns/ }).click();
+        await page.getByRole("menuitem", { name: "Show all columns", exact: true }).click();
+
         await page
           .getByRole("button", { name: "Inspect Authentication availability", exact: true })
           .click();
