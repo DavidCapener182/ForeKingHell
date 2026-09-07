@@ -186,7 +186,7 @@ export function MobileHoleStrategy({
         <div className={styles.mobileRecommended} aria-live="polite">
           <p>Recommended play · {mode.label}</p>
           <div className={styles.mobileClubCarry}>
-            <h3>{mode.club}</h3>
+            <h2>{mode.club}</h2>
             {evidence ? (
               <div>
                 <strong>{Math.round(evidence.carryYd)}</strong>

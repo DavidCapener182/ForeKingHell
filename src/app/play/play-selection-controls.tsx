@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { LoaderCircle } from "lucide-react";
 
 import { selectCompanionPlayContextAction } from "@/app/play/actions";
@@ -23,6 +25,7 @@ export type PlaySelectionControlsProps = {
   selectedCourseId: string | null;
   selectedTeeId: string | null;
   destination?: "/play" | "/courses/strategy";
+  showSearch?: boolean;
 };
 
 export function PlaySelectionControls({
@@ -31,8 +34,11 @@ export function PlaySelectionControls({
   selectedCourseId,
   selectedTeeId,
   destination = "/play",
+  showSearch = false,
 }: PlaySelectionControlsProps) {
+  const staged = destination === "/courses/strategy";
   const router = useRouter();
+  const [query, setQuery] = useState("");
   const [isPending, startTransition] = useTransition();
   const [optimisticCourseId, setOptimisticCourseId] = useState(selectedCourseId);
   const [optimisticTeeId, setOptimisticTeeId] = useState(selectedTeeId);
@@ -53,8 +59,8 @@ export function PlaySelectionControls({
   }, [selectionError]);
 
   const select = (courseId: string, teeSetId?: string | null) => {
-    const previousCourseId = optimisticCourseId;
-    const previousTeeId = optimisticTeeId;
+    const previousCourseId = staged ? selectedCourseId : optimisticCourseId;
+    const previousTeeId = staged ? selectedTeeId : optimisticTeeId;
     const field = teeSetId ? "tee" : "course";
     setSelectionError(null);
     setOptimisticCourseId(courseId);
@@ -62,8 +68,15 @@ export function PlaySelectionControls({
     startTransition(async () => {
       try {
         const result = await selectCompanionPlayContextAction(courseId, teeSetId);
-        const query = new URLSearchParams({ courseId: result.courseId });
+        const query =
+          destination === "/courses/strategy"
+            ? new URLSearchParams(window.location.search)
+            : new URLSearchParams();
+        if (result.courseId !== selectedCourseId)
+          for (const key of ["roundId", "hole", "option", "saved"]) query.delete(key);
+        query.set("courseId", result.courseId);
         if (result.teeSetId) query.set("teeSetId", result.teeSetId);
+        else query.delete("teeSetId");
         router.replace(`${destination}?${query.toString()}`, { scroll: false });
       } catch {
         setOptimisticCourseId(previousCourseId);
@@ -80,11 +93,34 @@ export function PlaySelectionControls({
 
   return (
     <div className="grid gap-3" aria-busy={isPending}>
+      {showSearch ? (
+        <label className="grid gap-2 text-sm font-medium">
+          Search courses
+          <Input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="min-h-11"
+          />
+          <span className="text-xs text-muted-foreground">
+            {
+              courses.filter((course) => course.name.toLowerCase().includes(query.toLowerCase()))
+                .length
+            }{" "}
+            matching courses
+          </span>
+        </label>
+      ) : null}
       <SelectionField label="Course" detail="Strategy-ready and saved courses">
         <Select
           value={optimisticCourseId ?? ""}
           disabled={isPending}
-          onValueChange={(value) => select(value)}
+          onValueChange={(value) => {
+            if (staged) {
+              setOptimisticCourseId(value);
+              setOptimisticTeeId(null);
+            } else select(value);
+          }}
         >
           <SelectTrigger
             ref={courseTriggerRef}
@@ -95,12 +131,18 @@ export function PlaySelectionControls({
             <SelectValue placeholder="Choose a course" />
           </SelectTrigger>
           <SelectContent>
-            {courses.map((course) => (
-              <SelectItem key={course.id} value={course.id}>
-                {course.name}
-                {course.detail ? ` · ${course.detail}` : ""}
-              </SelectItem>
-            ))}
+            {courses
+              .filter(
+                (course) =>
+                  course.id === optimisticCourseId ||
+                  course.name.toLowerCase().includes(query.toLowerCase()),
+              )
+              .map((course) => (
+                <SelectItem key={course.id} value={course.id}>
+                  {course.name}
+                  {course.detail ? ` · ${course.detail}` : ""}
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
       </SelectionField>
@@ -109,7 +151,9 @@ export function PlaySelectionControls({
           <Select
             value={optimisticTeeId ?? ""}
             disabled={isPending}
-            onValueChange={(value) => select(selectedCourseId!, value)}
+            onValueChange={(value) =>
+              staged ? setOptimisticTeeId(value) : select(selectedCourseId!, value)
+            }
           >
             <SelectTrigger
               ref={teeTriggerRef}
@@ -129,6 +173,37 @@ export function PlaySelectionControls({
             </SelectContent>
           </Select>
         </SelectionField>
+      ) : null}
+      {staged ? (
+        <div className="grid gap-2">
+          {optimisticCourseId !== selectedCourseId ? (
+            <p className="text-sm">Apply the course to load its available tees.</p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              disabled={isPending}
+              onClick={() => {
+                setOptimisticCourseId(selectedCourseId);
+                setOptimisticTeeId(selectedTeeId);
+                setQuery("");
+                setSelectionError(null);
+              }}
+            >
+              Reset setup
+            </Button>
+            <Button
+              type="button"
+              className="min-h-11"
+              disabled={isPending || !optimisticCourseId}
+              onClick={() => select(optimisticCourseId!, optimisticTeeId)}
+            >
+              Apply setup
+            </Button>
+          </div>
+        </div>
       ) : null}
       {isPending ? (
         <p

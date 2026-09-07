@@ -1,8 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { and, eq } from "drizzle-orm";
+import { redirect, unstable_rethrow } from "next/navigation";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import { sessions } from "@/db/schema";
@@ -16,7 +16,14 @@ export async function savePostRoundReviewAction(formData: FormData) {
   const [session] = await getDb()
     .select({ id: sessions.id, notes: sessions.notes })
     .from(sessions)
-    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+    .where(
+      and(
+        eq(sessions.id, sessionId),
+        eq(sessions.userId, userId),
+        inArray(sessions.type, ["real_round", "simulated_course"]),
+        eq(sessions.roundStatus, "complete"),
+      ),
+    )
     .limit(1);
 
   if (!session) throw new Error("Round not found.");
@@ -40,7 +47,25 @@ export async function savePostRoundReviewAction(formData: FormData) {
     source: "course_strategy",
     status: "saved",
   });
-  redirect(`/courses/strategy?mode=post&roundId=${encodeURIComponent(sessionId)}&saved=1`);
+  const destination = new URLSearchParams({ mode: "post", roundId: sessionId, saved: "1" });
+  for (const key of ["courseId", "teeSetId", "hole", "option"]) {
+    const value = optionalString(formData, key);
+    if (value) destination.set(key, value);
+  }
+  redirect(`/courses/strategy?${destination}`);
+}
+
+export async function savePostRoundReviewWithStateAction(
+  _state: { error: string | null },
+  formData: FormData,
+): Promise<{ error: string | null }> {
+  try {
+    await savePostRoundReviewAction(formData);
+    return { error: null };
+  } catch (error) {
+    unstable_rethrow(error);
+    return { error: "Your notes could not be saved. They are still here; try again." };
+  }
 }
 
 function requiredString(formData: FormData, key: string) {

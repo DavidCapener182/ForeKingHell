@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StrategyModeNavigation } from "@/app/courses/strategy/strategy-navigation";
 import { cookies } from "next/headers";
 import { SELECTED_COURSE_COOKIE, SELECTED_TEE_COOKIE } from "@/lib/selected-course";
 import { PlaySelectionControls } from "@/app/play/play-selection-controls";
@@ -16,9 +17,19 @@ import { requireCurrentUserId } from "@/lib/current-user";
 export default async function CourseStrategyCompanionPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ courseId?: string; teeSetId?: string }>;
+  searchParams?: Promise<{
+    courseId?: string;
+    teeSetId?: string;
+    mode?: string;
+    roundId?: string;
+    saved?: string;
+  }>;
 }) {
   const params = await searchParams;
+  if (params?.mode === "post") {
+    const { PostRoundCompanion } = await import("@/app/courses/strategy/post-round-companion");
+    return <PostRoundCompanion roundId={params.roundId} saved={params.saved} />;
+  }
   const userId = await requireCurrentUserId();
   const cookieStore = await cookies();
   const rememberedCourse = cookieStore.get(SELECTED_COURSE_COOKIE)?.value;
@@ -35,6 +46,11 @@ export default async function CourseStrategyCompanionPage({
   return (
     <PageShell>
       <div className="grid min-w-0 gap-3" data-course-strategy-companion>
+        <StrategyModeNavigation
+          mode="pre"
+          courseId={data.selectedCourse?.id}
+          teeSetId={data.selectedTee?.id}
+        />
         <PlaySetupDrawer
           compact
           label={data.selectedCourse?.name ?? "Choose a mapped course"}
@@ -43,6 +59,7 @@ export default async function CourseStrategyCompanionPage({
           <PlaySelectionControls
             key={`${data.selectedCourse?.id}:${data.selectedTee?.id}`}
             destination="/courses/strategy"
+            showSearch
             courses={data.courseOptions}
             tees={data.teeOptions.map((tee) => ({
               id: tee.id,
@@ -54,6 +71,22 @@ export default async function CourseStrategyCompanionPage({
           />
         </PlaySetupDrawer>
 
+        <details className="rounded-xl border bg-card p-3">
+          <summary className="min-h-11 cursor-pointer text-sm font-semibold">
+            Conditions and readiness
+          </summary>
+          <p className="text-sm leading-6">
+            Confirm wind, lie, elevation, hazards and pin position on the course. The plan uses
+            saved geometry and trusted bag evidence; it does not establish current weather or
+            guarantee a result.
+          </p>
+          <Link
+            className="inline-flex min-h-11 items-center underline"
+            href={`/rounds/new?${new URLSearchParams({ ...(data.selectedCourse ? { courseId: data.selectedCourse.id } : {}), ...(data.selectedTee ? { teeSetId: data.selectedTee.id } : {}) })}`}
+          >
+            Prepare round context
+          </Link>
+        </details>
         {data.selectedCourse && data.strategies.length > 0 ? (
           <MobileHoleStrategy
             key={`${data.selectedCourse.id}:${data.selectedTee?.id ?? "none"}`}
