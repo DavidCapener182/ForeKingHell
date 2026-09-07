@@ -66,6 +66,61 @@ export async function deleteGroupAction(formData: FormData) {
   redirect("/groups?deleted=1");
 }
 
+type GroupFormResult = { ok: boolean; error?: string; slug?: string };
+
+export async function createGroupFormAction(
+  _previous: GroupFormResult,
+  formData: FormData,
+): Promise<GroupFormResult> {
+  try {
+    const group = await createGroup({
+      name: requiredString(formData, "name"),
+      description: formString(formData, "description"),
+      groupType: parseGroupType(formString(formData, "groupType")),
+      visibility: parseVisibility(formData.get("visibility"), "private"),
+      rules: formString(formData, "rules"),
+    });
+    return { ok: true, slug: group.slug };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not create group. Try again.",
+    };
+  }
+}
+
+export async function groupMembershipFormAction(
+  _previous: GroupFormResult,
+  formData: FormData,
+): Promise<GroupFormResult> {
+  try {
+    switch (requiredString(formData, "operation")) {
+      case "join":
+        await joinGroup(requiredString(formData, "groupId"), formString(formData, "inviteCode"));
+        return { ok: true };
+      case "code": {
+        const slug = await joinGroupByInviteCode(requiredString(formData, "inviteCode"));
+        return { ok: true, slug };
+      }
+      case "accept": {
+        const slug = await respondToGroupInvite(requiredString(formData, "inviteId"), "accepted");
+        return { ok: true, slug };
+      }
+      case "decline":
+        await respondToGroupInvite(requiredString(formData, "inviteId"), "declined");
+        return { ok: true };
+      default:
+        throw new Error("Unknown group membership operation.");
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Could not update group membership. Try again.",
+    };
+  }
+}
+
 function parseGroupType(value: string | null) {
   return groupTypes.includes(value as (typeof groupTypes)[number])
     ? (value as (typeof groupTypes)[number])

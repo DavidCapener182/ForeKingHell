@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-348 desktop / 348 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P65 Groups**, next P66 Group clubhouse. 144 UI entries remain. Continue the UI pass with acceptance gaps retained.
+352 desktop / 352 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P66 Group clubhouse**, next P67 Clubhouse feed. 140 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P65 Groups**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P66 Group clubhouse**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -356,3 +356,7 @@ P63-C01–C06 implemented;344partial/0full. Full sharedpage removes mobile ledge
 
 ## P64 UI checkpoint
 P64-C01–C04 implemented;348partial/0full. Full Friends task bothsurfaces: counted URL tabs/search preserved, full relationship rows, named review with inert Cancel and confirmed pending/errors, invitation link/QR preview and actual clipboard feedback. friends-browser.log PASS4.6m all12: accept/remove/request/cancel/block/unblock exact synthetic rows; Cancel leaves request/friendship unchanged; invitationcopy exactreadback; zero pageerrors. Types/lintpass,390screenshot inspected. Files friends/page,tabs,directory,actionmenu,invitedialog,actionstate wrapper/tests, scopedcapability, browserfixture. Full acceptance gaps perCSV. Runtime freeze explicitly released. Next P65 four prompts read; rootowns groups page/directorytabs/create-sheet/decisionUI; otheragent owns index state wrappers+tests. Preserve all other dirty files. After P65 check, updateeachrow/Excel/commitupgradebranch thenP66. No merge/deploy.
+
+
+## P65 UI checkpoint
+P65-C01–C04 implemented;352partial/0full. Full directorytabs/counts/history, wrappedprivacy+facts, namedinvite/join review, complete retainedcreateform/privacyreview/confirmedstate. Actual groups-browser-final.log PASS2.2m all12 with Back/reload/accept/Cancel/create exactpublicsavedvisibility andonlycreatoradminmembership/noinvites; zero pageerrors. Initial raceawaitURL and wrongexpectedowner-vs-admin role test assumptions corrected, no production role change. Backend feed failure reproduced persistedgroup then fixed atomicgroup/membership/feed:11testsPASS1.24s. Types/lintpass,390companion screenshotinspected. Files groups/page,directorytabs,create-sheet,newgroup-decision,actions/tests,libgroups/tests,capability+browser. Next P66 sixpromptsread, drafts in /tmp/fkh-group-{section-tabs,member-list,post-form,danger-actions}.tsx; integrate afterP65commit. Otheragent will addpost/dangerstateactions and fix currentviewerRole sourcedfromlastmember. No activebrowserfreeze afterexplicitrelease. Continue tracker/Excel/scopedupgradecommits, no merge/deploy.

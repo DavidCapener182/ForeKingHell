@@ -95,3 +95,6 @@ Official Calendars https://www.untitledui.com/react/components/calendars and Act
 
 ## P64 Friends
 Specified official Tabs, Tables, Avatars, Dropdowns and Modals references use current installed React Aria tab adapter, semantic desktop list/full mobile rows, existing Avatar and focus-managed ResponsiveDetailPanel. Paid advanced examples remain unavailable; named local confirmation panels, native labelled invitation link and existing QR route are the explicit accessible alternatives. Types confirm current exports; no paid source copied.
+
+## P65 Groups directory
+Official Underline tabs, section headers/badges/buttons and inputs/select/textarea references reuse current React Aria tabs and existing input/button exports. Paid advanced domain-list and creation-sheet examples remain unavailable; explicit accessible alternatives are semantic full-width group rows, labelled native selects, retained draft review forms and existing focus-managed ResponsiveDetailPanel. No paid source or new vendor package claimed.
