@@ -72,6 +72,17 @@ export default async function SessionComparePage({ searchParams }: { searchParam
   ]);
   const provenance = buildComparisonProvenance(data);
   const confidence = provenance[0];
+  const practiceQuery = new URLSearchParams();
+  const practiceClub = data.clubs.find((club) => club.id === data.filters.clubId);
+  if (practiceClub) practiceQuery.set("club", practiceClub.type.toLowerCase());
+  if (
+    data.filters.focus === "session" &&
+    data.filters.condition === "same" &&
+    data.focus.sessionBreakdown.length === 1
+  ) {
+    practiceQuery.set("sourceSessionId", data.focus.sessionBreakdown[0].id);
+  }
+  const practiceHref = `/practice${practiceQuery.size ? `?${practiceQuery}` : ""}`;
   const saveFilters = {
     focusSessionId: data.filters.sessionId,
     baselineSessionId: data.filters.baselineSessionId,
@@ -288,7 +299,7 @@ export default async function SessionComparePage({ searchParams }: { searchParam
             </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/practice" prefetch={false}>
+            <Link href={practiceHref} prefetch={false}>
               <Target className="size-4" aria-hidden />
               Build practice plan
             </Link>
