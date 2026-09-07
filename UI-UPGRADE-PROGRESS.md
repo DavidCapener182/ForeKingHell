@@ -847,12 +847,12 @@ Next/current: restore saved views, columns and filtered CSV controls to SharedSe
 - Final fullunits2788passed,0failed,149pending; `/tmp/fkh-review-fixes-unit-final.json`. Finalnormalbuild/types andall24budgetsPASS: `/tmp/fkh-review-final-build.log`, `/tmp/fkh-review-final-budgets.log`. Formatting/diffchecks passed.
 - Current: publish finalreviewfixes, resolve remaining2threads afterpublication, verify all6requiredjobs atnewSHA, squashmergePR59 normally and verifyorigin/main. No agent has further runtime edits in flight. All492componentacceptance statuses remain partial; maintainexistingtrackedblockers.
 
-
 ## 7 September — Remaining acceptance and feature closure resumed
 
 User authorised finishing the remaining list after production release. Work remains on `upgrade/untitled-ui-migration`; main/deployment release is complete, not an open blocker. Preserve all 492 rows and their prior evidence; no blanket acceptance promotion.
 
 Implementation plan:
+
 1. Reconcile stale blocker claims against released code/tests, retaining unverified requirements explicitly.
 2. Close confirmed defects and incomplete handoffs: P05 session carry-only summary; P13 equipment validation/retry; P17 exact Coach drill transfer; P19 report retry.
 3. Complete remaining shared/state/browser verification, then proceed route by route through history, provider, specialist and administrative gaps.
@@ -862,13 +862,11 @@ Current ownership: root owns tracker/checkpoint and P19 reports; session_bag_loa
 
 Current component: P19-C01 durable report retry; parallel bounded P05/P13/P17 fixes. Next: shared acceptance and remaining first unresolved route requirements. Fully accepted IDs remain none; all492 still partial. Changed files/checks for this checkpoint: this document only; read AGENTS, DESIGN, PRODUCT, master contract and Next use-client guide; clean source checkout apart from unrelated workbook lock. Resume from this section, incorporate agent results, inspect current diffs and run scoped validation before marking any acceptance.
 
-
 ### Acceptance closure — P05 carry-only median verified
 
 P05-C02 runtime fix reviewed: sessionCarryMedian uses authoritative included shot IDs and selected club independently of missing directional fields. 17 unit tests pass; browser `/tmp/fkh-p05-carry-browser-retry.log` PASS18.9s at both surfaces and all six sizes, including excluded999yd, unchanged raw data and unavailable direction. No broader page acceptance promoted. Changed session detail page, session-carry-summary.ts/test and ui-upgrade-session-carry-only.spec.ts. Removed this obsolete defect from all P05 blocker copies; also reconciled code-confirmed Goals integration, release-verified activation eligibility and shared-round differential blocker notes without claiming new browser checks.
 
 Current: root P19 report durable retry (3 real disposable-DB tests pass; browser running), equipment agent P13, Coach agent P17, session agent now P04 full history search/pagination. Next shared acceptance then route-specific remaining requirements. Preserve agent file ownership and unrelated workbook lock.
-
 
 ### Acceptance closure — P13 and P19 retries
 
@@ -876,23 +874,19 @@ P13-C02/C04/C05 fixes reviewed: invalid numeric fields fail before writes; nulla
 
 P19-C01 durable report request identity implemented without schema migration or raw token storage. Owner-scoped transaction lock, payload fingerprint, duplicate recovery to history; a changed draft gets a new identity.3DBtests PASS771ms `/tmp/fkh-report-durable-retry.log`; six-size UI recovery PASS3.1s `/tmp/fkh-report-retry-browser.log`; scoped lint and8report contracts pass. Browser fixture shows repeated attempt same UUID, changed draft different UUID. A full reload begins a new draft/attempt; raw token recovery deliberately unavailable. Full12variant create/password/frozen-data/expiry/revoke matrix currently running `/tmp/fkh-report-sharing-matrix-fixed.log`; first run stopped on obsolete password error-text assertion, actual inline error correct. No acceptance promotion.
 
-
 ### P19 sharing matrix complete
 
 `/tmp/fkh-report-sharing-matrix-current.log`12PASS1.2m: authorised synthetic owner creates password-protected frozen report on both surfaces at1440x900,1280x800,390x844,360x800,1023x800,1024x800. Wrong password rejected; correct password opens; later owner changes do not mutate snapshot; expired/revoked links unavailable; zero pageerrors; fixture cleanup done. Screenshots `output/playwright/ui-upgrade/report-sharing-{surface}-{width}.png`; desktop1440/mobile360 inspected. Earlier failures were obsolete error-copy assertions (password message and route-specific unavailable heading), reconciled without suppressing access assertions. Shared acceptance remains partial for nativeAT/zoom/theme/fullstates. Current next root P38 provider history coverage; P04/P17/sharednav agents running.
 
-
 ### P38 history pagination implementation in progress
 
 Root owns provider-integrations.ts, Providers page, provider-history-pagination.test.ts and ui-upgrade-providers.spec.ts. Added independent owner-scoped20-row session/job/file pages with deterministic timestamp+ID order and clamped page numbers. Latest20 health sample remains independent of browsing older pages, explicitly labelled; latest operation reads latestJobs. Navigation preserves other query/page state and Diagnostics selection; CSV scope explicitly currentpage.7DB/source tests PASS517ms `/tmp/fkh-provider-history-db.log`, scoped lint clean. Extended actual browser fixture with olderrecords/next/previous/reload/tabpreservation; queued behind Coach, Sessions and Navigation on3116. Do not mark P38 validated until browser passes. Per-stage sync timestamps/operation retry and live provider service matrix remain distinct gaps.
-
 
 ### Shared navigation verified; offline worker follow-up started
 
 G02/G03/G06: command session result now opens exact `/sessions/{id}`, failed lookup returns503 forRetry, More includes5authorised secondary destinations and search aliases.14unit/source tests+1realDB owner/foreign/retry test pass. `/tmp/fkh-navigation-browser-final.log` PASS13.2s all12surface/sizes: Home/arrows/Enter, exact entityhref, error/empty/retry, More restoredtools/alias/focus, desktopcollapse.98routefamilies checked against canonicaltasks and player/admingates. Source reviewed byroot; no role expansion. Per-route taskacceptance and nativeAT/devicechecks remain separate. Agent now owns G12/G13 public/sw.js unconditionalskipWaiting defect and realserviceworker isolated-browser proof; no3116use.
 
 Full current unit suite `/tmp/fkh-closure-unit-reconciled.log`:2807PASS,0failed,156skipped; new scopedDBtests executed separately. Earlier5sourcecontractfailures reconciled to explicitCoachactions and server-filtered Sessions while preserving accessibility/ownership assertions. Types `/tmp/fkh-closure-types-verified.log` clean. Production build `/tmp/fkh-closure-build.log` running. Root P38browserqueued afterSessions; Coachgeometry afterP38. Report fingerprint refined to exclude password and compare through salted verifier;3DBtestsPASS `/tmp/fkh-report-retry-password-final.log` including changed password rejection.
-
 
 ### P38 server pagination and timeline repaired and verified
 
