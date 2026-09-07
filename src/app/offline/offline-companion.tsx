@@ -7,6 +7,7 @@ import {
   type OfflineSavedRound,
 } from "@/lib/offline-saved-rounds";
 import { MobileLiveRound } from "@/app/rounds/mobile-live-round";
+import { parseQuickRangeDraft } from "@/app/practice/quick-range/quick-range-draft";
 import { QuickRangeCompanionSession } from "@/app/practice/quick-range/quick-range-session";
 import { Suspense, useEffect, useRef, useState } from "react";
 import type { PracticePlan } from "@/lib/practice-planner";
@@ -28,6 +29,9 @@ import { offlineDestination } from "@/lib/offline-destination";
 import { createOfflineConnectionCheck } from "@/lib/offline-connection";
 import { OfflineNavigation } from "./offline-navigation";
 import styles from "./offline.module.css";
+import { BRAND_NAME } from "@/lib/brand";
+import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
+import { Input } from "@/components/ui/input";
 
 type SavedPractice = {
   planId: string;
@@ -36,10 +40,14 @@ type SavedPractice = {
   completedBlockIds: string[];
   note: string;
   finished?: boolean;
+  savedAt?: string;
   remainingBalls?: Record<string, number>;
 };
 type SavedBag = QuickBagSnapshot;
 export function OfflineCompanion() {
+  const [loaded, setLoaded] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [resourceQuery, setResourceQuery] = useState("");
   const [openedAt] = useState(() => Date.now());
   const [books, setBooks] = useState<CaddieBookSnapshot[]>([]);
   const [bookId, setBookId] = useState<string | null>(null);
@@ -72,7 +80,7 @@ export function OfflineCompanion() {
       );
     } else {
       setConnectionMessage(
-        "Still unable to reach ForeKingHell. Check your connection and try again. Your saved golf stays available.",
+        `Still unable to reach ${BRAND_NAME}. Check your connection and try again. Your saved golf stays available.`,
       );
     }
     connectingRef.current = false;
@@ -92,7 +100,7 @@ export function OfflineCompanion() {
       setAccount(null);
       setView("saved");
       setMessage(
-        "The account on this device changed. Reopen ForeKingHell online before continuing.",
+        `The account on this device changed. Reopen ${BRAND_NAME} online before continuing.`,
       );
     };
     const checkAccount = () => {
@@ -159,7 +167,9 @@ export function OfflineCompanion() {
           setMessage(
             "This round has no usable saved copy on this device. Choose another saved activity or reconnect to open it.",
           );
-        const quickDraft = parseSaved(localStorage.getItem(`fkh:quick-range:${id}`));
+        const quickDraft = parseQuickRangeDraft(
+          parseSaved(localStorage.getItem(`fkh:quick-range:${id}`)),
+        );
         setQuick(Boolean(quickDraft && ["active", "paused"].includes(quickDraft.state)));
         const savedBag = readQuickBagSnapshot(localStorage.getItem(`fkh:quick-bag:${id}`), id);
         setBag(savedBag);
@@ -188,6 +198,8 @@ export function OfflineCompanion() {
         }
       } catch {
         setMessage("Saved activity could not be opened on this device.");
+      } finally {
+        setLoaded(true);
       }
     };
     const onHistory = () => {
@@ -211,12 +223,12 @@ export function OfflineCompanion() {
   useMobileActivity(view === "practice" && !practice?.finished);
   function updatePractice(update: Partial<SavedPractice>) {
     if (!practice || !account) return;
-    const next = { ...practice, ...update };
+    const next = { ...practice, ...update, savedAt: new Date().toISOString() };
     setPractice(next);
     try {
       if (localStorage.getItem("fkh:offline-account") !== account) return;
       localStorage.setItem(`fkh:active-practice:${account}`, JSON.stringify(next));
-      setMessage("Saved on this iPhone. Open Practice after reconnecting to sync.");
+      setMessage("Saved locally on this device. Open Practice after reconnecting to review sync.");
     } catch {
       setMessage("Storage unavailable. Keep this page open.");
     }
@@ -316,15 +328,23 @@ export function OfflineCompanion() {
       className={styles.screen}
       data-immersive={immersive}
     >
+      <div className={styles.connection} role="status">
+        <strong>
+          <WifiOff aria-hidden size={18} /> Connection unavailable
+        </strong>
+        <p>
+          You are using local saved copies. Reconnecting does not confirm that queued changes have
+          synced.
+        </p>
+      </div>
       {!immersive ? (
-        <div className={styles.connection}>
-          <strong>
-            <WifiOff aria-hidden size={18} /> Connection unavailable
-          </strong>
-          <p>
-            Saved practice and course essentials stay available. Latest data needs a connection.
-          </p>
-        </div>
+        <Button
+          variant="outline"
+          className="min-h-11 justify-self-start"
+          onClick={() => setMoreOpen(true)}
+        >
+          Find saved resources
+        </Button>
       ) : null}
       {view !== "saved" && view !== "round" && !(view === "practice" && !practice?.finished) ? (
         <Button variant="ghost" className="min-h-11 justify-self-start" onClick={showSaved}>
@@ -337,7 +357,7 @@ export function OfflineCompanion() {
           detail={
             view === "bag"
               ? "Your saved distances, ready to use."
-              : "Keep playing with what’s saved on this iPhone."
+              : "Keep playing with what’s saved on this device."
           }
         />
       ) : null}
@@ -357,7 +377,7 @@ export function OfflineCompanion() {
         <QuickRangeCompanionSession accountId={account} focus="Distance control" />
       ) : null}
       {view === "saved" ? (
-        <>
+        <div className={styles.resources}>
           {message ? (
             <p role="status" className="mobile-type-callout text-muted-foreground">
               {message}
@@ -370,7 +390,7 @@ export function OfflineCompanion() {
                   <MobileListRow
                     key={item.context.sessionId}
                     label={item.context.course}
-                    detail={`${item.context.tee ?? "Tee not recorded"} · ${item.finished ? "Round finished" : `Hole ${item.holes[item.index].holeNumber}`}`}
+                    detail={`${item.context.tee ?? "Tee not recorded"} · ${item.finished ? "Round finished" : `Hole ${item.holes[item.index].holeNumber}`} · saved time not recorded`}
                     status={
                       item.dirty.length ||
                       item.inFlight ||
@@ -392,14 +412,14 @@ export function OfflineCompanion() {
                 {quick ? (
                   <MobileListRow
                     label="Quick Range"
-                    detail="Resume your saved activity"
+                    detail="Resume local activity · saved time not recorded"
                     onClick={() => navigate("quick")}
                   />
                 ) : null}
                 {practice ? (
                   <MobileListRow
                     label={practice.plan.title}
-                    detail={`${practice.completedBlockIds.length} of ${practice.plan.blocks.length} blocks complete`}
+                    detail={`${practice.completedBlockIds.length} of ${practice.plan.blocks.length} blocks complete · ${practice.savedAt ? `saved ${savedDate(practice.savedAt)}` : "saved time not recorded"}`}
                     status={
                       practice.finished
                         ? "Activity finished · measured results need an import"
@@ -417,7 +437,7 @@ export function OfflineCompanion() {
                 {bag?.clubs.length ? (
                   <MobileListRow
                     label="Quick Bag"
-                    detail={`${bag.clubs.length} clubs · saved distances`}
+                    detail={`${bag.clubs.length} clubs · saved ${savedDate(bag.storedAt)}`}
                     onClick={() => navigate("bag")}
                   />
                 ) : null}
@@ -437,7 +457,9 @@ export function OfflineCompanion() {
               </MobileGroupedList>
             </MobileSection>
           ) : null}
-          {!hasSavedSection ? (
+          {!loaded ? (
+            <p role="status">Reading saved resources on this device…</p>
+          ) : !hasSavedSection ? (
             <MobileSection
               title={
                 section === "sessions"
@@ -454,7 +476,7 @@ export function OfflineCompanion() {
           ) : null}
           <p className="mobile-type-footnote text-muted-foreground">
             Saved copies may be older than your latest online data. Reopen the activity online to
-            sync changes.
+            review pending changes and any conflicts. No saved date means freshness is unknown.
           </p>
           <Button className="min-h-12" disabled={connecting} onClick={reconnect}>
             {connecting ? "Checking connection…" : "Reconnect and open app"}
@@ -462,7 +484,7 @@ export function OfflineCompanion() {
           <p role="status" aria-live="polite" className="mobile-type-callout text-muted-foreground">
             {connectionMessage}
           </p>
-        </>
+        </div>
       ) : view === "book" && book && account ? (
         <div className="grid gap-3" data-offline-caddie-book>
           <div>
@@ -563,6 +585,101 @@ export function OfflineCompanion() {
           {message}
         </p>
       ) : null}
+      <ResponsiveDetailPanel
+        open={moreOpen}
+        onOpenChange={setMoreOpen}
+        title="Find saved resources"
+        description="Only copies available on this device can open offline. Reconnect for other account tasks."
+      >
+        <label className="grid gap-2 text-sm">
+          Search saved resources
+          <Input
+            value={resourceQuery}
+            onChange={(e) => setResourceQuery(e.target.value)}
+            type="search"
+          />
+        </label>
+        <div className="mt-4 grid gap-3">
+          {[
+            ...rounds.map((item) => ({
+              id: `round-${item.context.sessionId}`,
+              title: item.context.course,
+              detail: "Saved round · local edits may be pending",
+              kind: "round",
+              resourceId: item.context.sessionId,
+            })),
+            ...books.map((item) => ({
+              id: `book-${item.course.id}`,
+              title: item.course.name,
+              detail: `Caddie book · saved ${savedDate(item.storedAt)}`,
+              kind: "book",
+              resourceId: item.course.id,
+            })),
+            ...(practice
+              ? [
+                  {
+                    id: "practice",
+                    title: practice.plan.title,
+                    detail: "Saved practice · local progress",
+                    kind: "practice",
+                    resourceId: "practice",
+                  },
+                ]
+              : []),
+            ...(quick
+              ? [
+                  {
+                    id: "quick",
+                    title: "Quick Range",
+                    detail: "Saved local activity",
+                    kind: "quick",
+                    resourceId: "quick",
+                  },
+                ]
+              : []),
+            ...(bag?.clubs.length
+              ? [
+                  {
+                    id: "bag",
+                    title: "Quick Bag",
+                    detail: `Saved ${savedDate(bag.storedAt)}`,
+                    kind: "bag",
+                    resourceId: "bag",
+                  },
+                ]
+              : []),
+          ]
+            .filter((item) =>
+              `${item.title} ${item.detail}`
+                .toLowerCase()
+                .includes(resourceQuery.trim().toLowerCase()),
+            )
+            .map((item) => (
+              <Button
+                key={item.id}
+                variant="outline"
+                className="h-auto min-h-14 flex-col items-start whitespace-normal text-left"
+                onClick={() => {
+                  setMoreOpen(false);
+                  if (item.kind === "round") {
+                    const selected = rounds.find((r) => r.context.sessionId === item.resourceId);
+                    if (selected) openRound(selected);
+                  } else if (item.kind === "book") {
+                    const selected = books.find((b) => b.course.id === item.resourceId);
+                    if (selected) openBook(selected);
+                  } else navigate(item.kind);
+                }}
+              >
+                <span>{item.title}</span>
+                <span className="text-xs font-normal text-muted-foreground">{item.detail}</span>
+              </Button>
+            ))}
+          <p className="text-sm text-muted-foreground">
+            If a resource is not listed, there is no matching usable saved copy. Session reviews,
+            imports, sharing and account settings need a connection.
+          </p>
+        </div>
+      </ResponsiveDetailPanel>
       {!immersive ? (
         <OfflineNavigation section={view === "bag" ? "bag" : section} onSelect={selectSection} />
       ) : null}
@@ -578,6 +695,7 @@ function parseSaved(raw: string | null) {
   }
 }
 function savedDate(value: string) {
+  if (!Number.isFinite(Date.parse(value))) return "time not recorded";
   return new Date(value).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",

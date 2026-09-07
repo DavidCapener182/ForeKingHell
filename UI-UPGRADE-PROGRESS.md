@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-461 desktop / 461 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P87 Offline saved golf**, next P88 Shared round. 31 UI entries remain. Continue the UI pass with acceptance gaps retained.
+466 desktop / 466 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P88 Shared round**, next P89 Shared Course Twin. 26 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P87 Offline saved golf**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P88 Shared round**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -468,3 +468,7 @@ P85-C01–C03 UI implemented on both surfaces. Shared complete six-step evidence
 ## P86 Data notice UI pass, 7 September
 
 P86-C01–C03 UI implemented on both viewports. One semantic title/right action, full factual sections and exact data/sharing/privacy/danger settings links with practical scope descriptions. Removed ordinary developer environment setup and public-launch checklist; did not invent retention or legal promises. src/app/privacy/page.tsx and ui-upgrade-privacy.spec.ts changed. privacy-browser-final.log PASS2.1s all6 required sizes, full essential sections, keyboard focus,44px links, anchors/no overflow/page errors. Initial test expected legacy brand, corrected to actual LM World Tour. Types/lint clean;390 full-page capture inspected. Policy approval/signed-in browser/native accessibility and actual destructive outcomes remain outstanding. Other agent export-pagination-db.log1PASS confirms5000+1 owned rows with continuation; no whole-export transaction promise. Resume P87, coordinate offline files and preserve renderers/local conflict process.
+
+## P87 Offline saved golf UI pass, 7 September
+
+P87-C01–C05 UI implemented with partial verification; existing complete specialist renderers reused. Changed offline-companion.tsx/offline.module.css and ui-upgrade-offline.spec.ts. Local-only banner remains visible during activities; source dates/unknown legacy freshness, searchable saved-resource panel, wide-screen grouping/navigation and existing five phone destinations. Quick Range menu now uses its real parser so invalid copies are not offered. Local practice writes add actual savedAt without changing conflict/sync semantics. offline-browser-final.log1PASS6.1s all6 sizes search/close/failure recovery/owned resources/no overflow; exact round reload retains score and dirty state, account switch clears private view. Types/lint clean;390 screenshot reviewed. Initial browser run interrupted to correct blocked connection-probe fixture URL; no mutation API allowed. Broader task/device/offline-sync acceptance explicitly remains per CSV. Next P88 wrappers/boundaries; suppress display of differential for incomplete scorecard without changing golf calculation.
