@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import { DesktopWorkbenchControls } from "@/components/app/desktop-workbench-controls";
+import { csvCell } from "@/lib/csv";
 import { Button } from "@/components/ui/button";
 import { UntitledSelect, UntitledTextField } from "@/components/untitled-ui/form-controls";
 import {
@@ -64,6 +66,17 @@ export type ShotPreviewRow = {
     distanceRemainingYd: number | null;
   } | null;
 };
+const previewMetrics = ["carry", "total", "ball-speed", "launch", "side"];
+const importShotPreviewColumns = [
+  { id: "file", label: "Source file and row", locked: true },
+  { id: "club", label: "Club", locked: true },
+  { id: "carry", label: "Carry (yd)" },
+  { id: "total", label: "Total (yd)" },
+  { id: "ball-speed", label: "Ball speed (mph)" },
+  { id: "launch", label: "Launch (deg)" },
+  { id: "side", label: "Side carry (yd)" },
+  { id: "review", label: "Review and corrections", locked: true },
+];
 const metric = (value: number | null | undefined) =>
   value === null || value === undefined
     ? "Unavailable"
@@ -92,11 +105,55 @@ export function ShotPreview({
   const active = shots.find((shot) => identity(shot) === selected);
   const needsReview = (shot: ShotPreviewRow) =>
     !shot.correctedClub &&
-    (shot.clubType === "unknown" || shot.clubType === "other" ||
+    (shot.clubType === "unknown" ||
+      shot.clubType === "other" ||
       ["unknown", "inferred"].includes(shot.clubIdentityProvenance ?? ""));
   const unresolved = shots.filter(needsReview).length;
+  function exportFilteredShots() {
+    const rows = [
+      [
+        "File",
+        "Source row",
+        "Shot",
+        "Club",
+        "Carry (yd)",
+        "Total (yd)",
+        "Ball speed (mph)",
+        "Launch (deg)",
+        "Side carry (yd)",
+        "Hole",
+        "Warnings",
+      ],
+      ...filtered.map((shot) => [
+        shot.fileName,
+        shot.rowNumber,
+        shot.fileShotNumber,
+        shot.correctedClub ?? shot.clubLabel,
+        shot.carryYd ?? "",
+        shot.totalYd ?? "",
+        shot.ballSpeedMph ?? "",
+        shot.launchAngleDeg ?? "",
+        shot.sideCarryYd ?? "",
+        shot.courseShot?.holeNumber ?? "",
+        (shot.warnings ?? []).join("; "),
+      ]),
+    ];
+    const csv = rows
+      .map((row) => row.map((value) => csvCell(String(value))).join(","))
+      .join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "import-preview-filtered.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
   return (
-    <section className="min-w-0 rounded-xl border border-border bg-card" data-import-shot-preview>
+    <section
+      className="min-w-0 rounded-xl border border-border bg-card"
+      data-import-shot-preview
+      data-workbench-scope="import-shot-preview"
+    >
       <header className="grid gap-2 border-b border-border p-4">
         <h2 className="text-lg font-semibold">Review shots</h2>
         <p className="text-sm text-muted-foreground">
@@ -114,6 +171,29 @@ export function ShotPreview({
           }}
           placeholder="File, club or shot number"
         />
+        <DesktopWorkbenchControls
+          viewKey="import-shot-preview"
+          scope="import-shot-preview"
+          currentViewLabel="Import preview"
+          resultLabel={`${filtered.length} filtered shots`}
+          columns={importShotPreviewColumns}
+          showExport={false}
+          localView={{
+            state: { search },
+            restore: (state) => {
+              setSearch(typeof state.search === "string" ? state.search : "");
+              setPage(0);
+            },
+          }}
+        />
+        <Button
+          variant="outline"
+          className="min-h-11 justify-self-start"
+          disabled={!filtered.length}
+          onClick={exportFilteredShots}
+        >
+          Export {filtered.length} filtered shots
+        </Button>
       </header>
       {unresolved ? (
         <p role="status" className="px-4 pt-3 text-sm text-destructive">
@@ -141,8 +221,22 @@ export function ShotPreview({
                 <span className="break-words text-xs text-muted-foreground">
                   {shot.fileName} · Source row {shot.rowNumber}
                 </span>
-                <span className="text-sm">
-                  Carry {metric(shot.carryYd)} yd · Total {metric(shot.totalYd)} yd
+                <span className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
+                  <span className="whitespace-nowrap" data-column="carry">
+                    Carry {metric(shot.carryYd)} yd{" "}
+                  </span>
+                  <span className="whitespace-nowrap" data-column="total">
+                    Total {metric(shot.totalYd)} yd{" "}
+                  </span>
+                  <span className="whitespace-nowrap" data-column="ball-speed">
+                    Ball {metric(shot.ballSpeedMph)} mph{" "}
+                  </span>
+                  <span className="whitespace-nowrap" data-column="launch">
+                    Launch {metric(shot.launchAngleDeg)}°{" "}
+                  </span>
+                  <span className="whitespace-nowrap" data-column="side">
+                    Side {metric(shot.sideCarryYd)} yd
+                  </span>
                 </span>
                 {shot.warnings?.length ? (
                   <span className="text-xs text-destructive">
@@ -159,27 +253,29 @@ export function ShotPreview({
           role="region"
           aria-label="Parsed shot measurements"
         >
-          <Table>
+          <Table data-workbench-export-table="import-shot-preview">
             <TableCaption>
               Current import preview. Showing {visible.length} of {filtered.length} matching rows.
             </TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead scope="col">Source file / row</TableHead>
+                <TableHead scope="col" data-column="file" className="sticky left-0 z-20 bg-card">
+                  Source file / row
+                </TableHead>
                 <TableHead scope="col">Club</TableHead>
-                <TableHead scope="col" className="text-right">
+                <TableHead scope="col" data-column="carry" className="text-right">
                   Carry yd
                 </TableHead>
-                <TableHead scope="col" className="text-right">
+                <TableHead scope="col" data-column="total" className="text-right">
                   Total yd
                 </TableHead>
-                <TableHead scope="col" className="text-right">
+                <TableHead scope="col" data-column="ball-speed" className="text-right">
                   Ball mph
                 </TableHead>
-                <TableHead scope="col" className="text-right">
+                <TableHead scope="col" data-column="launch" className="text-right">
                   Launch °
                 </TableHead>
-                <TableHead scope="col" className="text-right">
+                <TableHead scope="col" data-column="side" className="text-right">
                   Side yd
                 </TableHead>
                 <TableHead scope="col">Review</TableHead>
@@ -188,7 +284,10 @@ export function ShotPreview({
             <TableBody>
               {visible.map((shot) => (
                 <TableRow key={identity(shot)}>
-                  <TableCell className="max-w-64 whitespace-normal break-words">
+                  <TableCell
+                    data-column="file"
+                    className="sticky left-0 z-10 max-w-64 whitespace-normal break-words bg-card"
+                  >
                     {shot.fileName}
                     <span className="block text-xs text-muted-foreground">
                       Shot {shot.fileShotNumber} · Source row {shot.rowNumber}
@@ -204,7 +303,11 @@ export function ShotPreview({
                     shot.launchAngleDeg,
                     shot.sideCarryYd,
                   ].map((value, index) => (
-                    <TableCell key={index} className="text-right tabular-nums">
+                    <TableCell
+                      key={index}
+                      data-column={previewMetrics[index]}
+                      className="text-right tabular-nums"
+                    >
                       {metric(value)}
                     </TableCell>
                   ))}

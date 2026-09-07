@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { Button as AriaButton, type ButtonProps } from "react-aria-components/Button";
 import { TextField } from "react-aria-components/TextField";
@@ -53,14 +53,19 @@ export function UntitledTextField({label, name, value, defaultValue, onValueChan
  * String keys are the exact option values submitted under the native form name. */
 export function UntitledSelect({label, name, value, defaultValue, onValueChange, required, disabled, description, error, className, options}:
   FieldProps & {options: Array<{value: string; label: string; disabled?: boolean}>}) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [portalContainer, setPortalContainer] = useState<Element | undefined>();
   return <Select name={name} value={value} defaultValue={defaultValue}
+    onOpenChange={(open) => {
+      if (open) setPortalContainer(triggerRef.current?.closest('[role="dialog"], [role="alertdialog"]') ?? undefined);
+    }}
     onChange={(key) => onValueChange?.(key === null ? "" : String(key))}
     isRequired={required} isDisabled={disabled} isInvalid={Boolean(error)} validationBehavior="native"
     disabledKeys={options.filter((option) => option.disabled).map((option) => option.value)}
     className={cn(styles.field, className)}>
     <Label className={styles.label}>{label}</Label>
-    <AriaButton className={cn(styles.input, styles.selectTrigger)}><SelectValue /><ChevronDown size={16} aria-hidden /></AriaButton>
-    <Popover className={styles.popover}>
+    <AriaButton ref={triggerRef} className={cn(styles.input, styles.selectTrigger)}><SelectValue /><ChevronDown size={16} aria-hidden /></AriaButton>
+    <Popover UNSTABLE_portalContainer={portalContainer} className={styles.popover}>
       <ListBox className={styles.list} items={options}>
         {(option) => <ListBoxItem id={option.value} textValue={option.label} className={styles.option}>{option.label}</ListBoxItem>}
       </ListBox>

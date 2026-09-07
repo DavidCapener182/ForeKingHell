@@ -595,38 +595,46 @@ Reviewed remaining billing.ts diff: catches checkout/portal fetch rejection, kee
 
 Root reviewed import action notification catches and equipment path refresh helper; existing actual save failures/validation/ownership remain unchanged. Fresh postcommit-recovery-integration.log6PASS/3files1.92s: import single/batch receipt retention with mocked persistence; real disposable equipment persistence/invalid inputs/retire/history/snapshot with refresh success/failure; billing transport recovery with mockedStripe and no subscription mutation. Files import/actions.ts/actions-outcome.test.ts, equipment/actions.ts/equipment-workflows.test.ts; billing alreadycommitted. Browser postcommit refresh-failure presentation remains separate acceptance. Continue manifest: course atomicity/catalog ownership, offline commit markers, speed archive and account bootstrap.
 
-## 7 September 16:35 — Course persistence integration
+## 7 September — Course persistence integration
 
 Reviewed and integrated course action transactions for manual, Google and OSM setup, validation of initial numeric inputs, saved-course enrichment warning recovery, ownerless-shared catalogue update restriction and stale selected-tee cookie removal. Files: src/app/courses/actions.ts, src/lib/course-twin-catalog-import.ts, src/app/play/select/route.ts and their three associated regression files. Fresh authorised fixture run: output/playwright/ui-upgrade/course-integration-reviewed.log — 21 tests, 3 files passed in 2.19s. Provider calls mocked. Updated P47-C01/C02/C03 and P49-C05 evidence; no acceptance status promoted.
 
 Current integration: course group verified; next: offline transaction markers and retry ledger from docs/redesign/BACKEND_INTEGRATION_MANIFEST.md. Resume by inspecting remaining diffs, coordinating ownership with the redesign thread and running bounded fixture regressions. Preserve all other dirty hunks. All 492 entries remain partial verification, zero fully accepted; native/browser fault matrices, intermittent development timing errors and remaining full-unit failures are outstanding.
 
-## 7 September 16:38 — Offline persistence integration
+## 7 September — Offline persistence integration
 
 Reviewed five manifest runtime files: offline-operation-ledger.ts, api/offline/imports/route.ts, rounds/actions.ts, shot-club-correction.ts, imports/save-rapsodo-import.ts. Round receipts now commit with their domain transaction; expired attempts cannot complete newer claims. Transient imports return retryable status; duplicate import receipts retain saved session IDs. Strict round calendar-date validation retained. Fresh offline-integration-reviewed.log: 33 tests/3 files passed in 2.99s using authorised local fixtures; tests cover rollback, post-save recovery, replay, account isolation and original evidence preservation. Physical offline/browser reconnection remains outstanding; statuses remain partial.
 
 Next: repair the newly identified comparison-to-practice link losing selected context, then resume remaining backend manifest groups. Other agent notified of ownership. Latest other-agent full unit snapshot reported 2570 passed, 211 failed, 146 pending, with further targeted passes separate; overall completion remains zero accepted entries.
 
-## 7 September 16:48 — Comparison practice handoff fixed
+## 7 September — Comparison practice handoff fixed
 
 Changed src/app/(app)/analyse/compare/page.tsx and added ui-upgrade-comparison-practice-handoff.spec.ts. Build practice plan now uses the selected club type and actual single focus session, only for session/same-condition comparisons; period and condition groups do not invent a single-session source. Fresh actual browser run comparison-practice-handoff-recovered.log passed49.8s across both surfaces and six required sizes, exact source-session link on arrival, original shot values unchanged, zero page errors. 390 companion screenshot inspected; TypeScript and scoped lint pass. First run failed initial navigation due stalled fixture server; read-only health probe also timed out. Recovered only PID61010/port3116, new PID28219, same .next-e2e/local fixture DB; log dev-server-recovered-1645.log. Port3000 untouched.
 
 Next: integrate reviewed speed archive group, then restore saved views, columns and CSV export on /course-records and /courses/[courseId]/records. Other agent notified; root owns these UI files. All492 rows still partial, zero fully accepted; retain broader outstanding acceptance and existing failures.
 
-## 7 September 16:54 — Speed original-evidence integration
+## 7 September — Speed original-evidence integration
 
 Reviewed speed/actions.ts, speed-training-data.ts, speed session detail page and speed-state-workflows.test.ts. Imported original swings/raw provider payload are archived under transaction lock before correction, retained across later corrections and exposed separately from current calculations. Fresh DB workflow speed-archive-integration-reviewed.log passes980ms. New disclosure viewport/keyboard verification remains outstanding; no acceptance status promoted.
 
 Current UI regression work: CourseRecordBoard and CourseCategoryList now include shared saved-view/column/export controls and URL-backed local filters. record-view-query.ts and record-controls browser test added. Types/scoped lint passed; initial browser selector missed Columns8/8 count, corrected; labels run currently active. Next finish this browser matrix, address any defects, update P55/P56 evidence and commit only scoped files. Then assess ShotPreview saved-view/column gap and remaining backend manifest. Preserve all unrelated dirty work.
 
-## 7 September 17:01 — Course record controls restored and verified
+## 7 September — Course record controls restored and verified
 
 Changed course-record-board.tsx, course-category-list.tsx and new record-view-query.ts. Restored shared saved-view/column/density/export/copy controls on both board routes; search/sort live in URL, optional mobile fields match column choices and identity/category/proof remain fixed. record-controls-browser-hydrated.log PASS1.5m:24route/surface/size combinations, actual CSV download contents, saved-view restoration, column persistence/reload, no page overflow or errors. Settled360 companion category screenshot inspected. TypeScript/scoped lint passed. P55-C02/P56-C01 evidence updated, still partial broader acceptance. Two initial failures were test selectors for column count and Remove-vs-restore menu items; retained failure logs. Other agent reconciling the two old source tests separately.
 
 Next/current: restore Import ShotPreview local saved views/columns without navigating away or replacing filtered-batch export with page-only export. Root owns shot-preview.tsx and optional transient-view extension to desktop-workbench-controls.tsx, coordinated with other thread. Goals weekly positive-finite measurement query fix ready from other agent, tests pass1.17s but not yet integrated by root. Continue remaining manifest/acceptance work;492partial/0accepted, no merge/deploy.
 
-## 7 September 17:08 — Goals weekly measured-evidence fix
+## 7 September — Goals weekly measured-evidence fix
 
 Reviewed other-agent two-file patch: Goals weekly counter now requires positive finite carry, total or ball speed instead of merely non-null. Ownership, date and review predicates unchanged. Actual page/local fixture regression reproduced false1/4 count before; goal-weekly-fixed.log passes1.17s, now0/0 then1/1 after valid reading. Agent types/lint pass; root inspected diff/test/log. P33-C01 evidence updated; browser acceptance still separate.
 
 Current: Import Preview saved views/columns implemented but not yet verified. Shared controls support optional local-state restore without navigation, retain default route behavior, and allow the import's existing full filtered export to remain authoritative. New isolated fixture tests cover26rows/filter25, correction retention, saved search/column restore and export beyond first20. Initial command attempted default server startup and failed existing-dev lock without replacing3000; rerun uses explicit3116 configuration. Test selector for React Aria club picker corrected from native select to actual button/listbox; verification pending. Preserve current source/test files and continue this test, then actual import smoke, tracker update and commit.
+
+## 7 September — Import local views and modal picker verified
+
+Updated shot-preview.tsx, desktop-workbench-controls.tsx and form-controls.tsx, plus new isolated preview fixture/test and reconciled source test. Saved views restore local search/columns without navigating away from pending files/corrections. Full filtered CSV export remains independent of the20-row preview page and optional hidden columns. Mobile metric values stay with units. Browser found a real React Aria popup outside Radix modal could not receive clicks; installed Popover UNSTABLE_portalContainer now targets the closest dialog, retaining modal focus/pointer behavior. No forced clicks or suppressed errors.
+
+Validation: import-preview-controls-final.log PASS8.1s, six sizes with actual corrected-club persistence, saved view restore, filtered25-row CSV frompage2, zero errors/overflow;360image inspected. import-preview-actual-and-forms.log2PASS36.8s covers actual import both surfaces/all required sizes plus shared form/recovery/dialog suite. Types/lint clean, source contracts8PASS379ms. Course source reconciliation plus shared controls10PASS140ms also reviewed and included. Failed native-select selector and popup-interception logs retained. P35-C08/G10 remain partial overall acceptance.
+
+Next: review remaining admin/current-user/notification-read-state backend manifest groups and other-agent full-unit queue; newly reported actual UI defects take priority. Latest complete unit JSON:2926total,2608passed,171failed,147pending; do not subtract targeted passes without a full rerun. All492entries partial, zero fully accepted. Runtime3116 PID28219 remains isolated fixture, dev-server-recovered-1645.log; no production/main changes. Continue scoped upgrades, preserve all unrelated dirty files and workbook lock.

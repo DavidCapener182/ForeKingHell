@@ -55,6 +55,7 @@ type SavedView = DesktopSavedViewSuggestion & {
   createdAt: string;
   density?: "comfortable" | "compact";
   visibleColumnIds?: string[];
+  localState?: Record<string, string>;
 };
 
 type DesktopWorkbenchControlsProps = {
@@ -67,6 +68,11 @@ type DesktopWorkbenchControlsProps = {
   exportTableId?: string;
   exportFileName?: string;
   className?: string;
+  showExport?: boolean;
+  localView?: {
+    state: Record<string, string>;
+    restore: (state: Record<string, string>) => void;
+  };
 };
 
 const densityStorageKey = "fkh:desktop-workbench-density";
@@ -82,6 +88,8 @@ export function DesktopWorkbenchControls({
   exportTableId = scope,
   exportFileName = `${scope}-view.csv`,
   className,
+  showExport = true,
+  localView,
 }: DesktopWorkbenchControlsProps) {
   const savedViewsKey = `fkh:saved-views:${viewKey}`;
   const visibleColumnsKey = `fkh:visible-columns:${viewKey}`;
@@ -230,8 +238,14 @@ export function DesktopWorkbenchControls({
       createdAt: savedAtIso,
       density,
       visibleColumnIds: Array.from(visibleColumnIds),
+      ...(localView ? { localState: localView.state } : {}),
     };
-    const next = [view, ...savedViews.filter((saved) => saved.href !== view.href)].slice(0, 10);
+    const next = [
+      view,
+      ...savedViews.filter((saved) =>
+        localView ? saved.title !== view.title : saved.href !== view.href,
+      ),
+    ].slice(0, 10);
     setSavedViews(next);
     window.localStorage.setItem(savedViewsKey, JSON.stringify(next));
     window.dispatchEvent(new CustomEvent(desktopSavedViewsUpdatedEvent));
@@ -240,6 +254,7 @@ export function DesktopWorkbenchControls({
   }
 
   function applySavedView(view: SavedView) {
+    if (localView) localView.restore(view.localState ?? {});
     let appliedColumnCount: number | null = null;
     let appliedDensity: "comfortable" | "compact" | null = null;
 
@@ -404,17 +419,27 @@ export function DesktopWorkbenchControls({
               {savedViews.length > 0 ? (
                 savedViews.map((view) => (
                   <div key={view.id} className="grid gap-0.5">
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href={view.href}
-                        prefetch={false}
+                    {localView ? (
+                      <DropdownMenuItem
+                        onSelect={() => applySavedView(view)}
                         className="grid gap-0.5"
-                        onClick={() => applySavedView(view)}
                       >
                         <span className="font-medium">{view.title}</span>
                         <span className="text-xs text-muted-foreground">{view.detail}</span>
-                      </Link>
-                    </DropdownMenuItem>
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href={view.href}
+                          prefetch={false}
+                          className="grid gap-0.5"
+                          onClick={() => applySavedView(view)}
+                        >
+                          <span className="font-medium">{view.title}</span>
+                          <span className="text-xs text-muted-foreground">{view.detail}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem
                       variant="destructive"
                       onSelect={(event) => {
@@ -524,71 +549,75 @@ export function DesktopWorkbenchControls({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={exportCurrentTable}
-            disabled={!hydrated}
-            data-export-current-view
-            data-export-table-id={exportTableId}
-          >
-            <span
-              className="t-icon-swap"
-              data-state={exportStatus === "done" ? "b" : "a"}
-              aria-hidden="true"
+          {showExport && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={exportCurrentTable}
+              disabled={!hydrated}
+              data-export-current-view
+              data-export-table-id={exportTableId}
             >
-              <span className="t-icon" data-icon="a">
-                <Download className="size-4" />
+              <span
+                className="t-icon-swap"
+                data-state={exportStatus === "done" ? "b" : "a"}
+                aria-hidden="true"
+              >
+                <span className="t-icon" data-icon="a">
+                  <Download className="size-4" />
+                </span>
+                <span className="t-icon" data-icon="b">
+                  <Check className="size-4" />
+                </span>
               </span>
-              <span className="t-icon" data-icon="b">
-                <Check className="size-4" />
+              <span
+                key={exportStatus}
+                className="t-text-state"
+                data-motion-ready={exportStatus !== "idle" ? "true" : "false"}
+              >
+                {exportStatus === "done"
+                  ? "Exported"
+                  : exportStatus === "missing"
+                    ? "No table"
+                    : "Export"}
               </span>
-            </span>
-            <span
-              key={exportStatus}
-              className="t-text-state"
-              data-motion-ready={exportStatus !== "idle" ? "true" : "false"}
+            </Button>
+          )}
+          {!localView && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void copyCurrentViewLink()}
+              disabled={!hydrated}
+              data-copy-current-view
             >
-              {exportStatus === "done"
-                ? "Exported"
-                : exportStatus === "missing"
-                  ? "No table"
-                  : "Export"}
-            </span>
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void copyCurrentViewLink()}
-            disabled={!hydrated}
-            data-copy-current-view
-          >
-            <span
-              className="t-icon-swap"
-              data-state={copyStatus === "done" ? "b" : "a"}
-              aria-hidden="true"
-            >
-              <span className="t-icon" data-icon="a">
-                <Copy className="size-4" />
+              <span
+                className="t-icon-swap"
+                data-state={copyStatus === "done" ? "b" : "a"}
+                aria-hidden="true"
+              >
+                <span className="t-icon" data-icon="a">
+                  <Copy className="size-4" />
+                </span>
+                <span className="t-icon" data-icon="b">
+                  <Check className="size-4" />
+                </span>
               </span>
-              <span className="t-icon" data-icon="b">
-                <Check className="size-4" />
+              <span
+                key={copyStatus}
+                className="t-text-state"
+                data-motion-ready={copyStatus !== "idle" ? "true" : "false"}
+              >
+                {copyStatus === "done"
+                  ? "Copied"
+                  : copyStatus === "failed"
+                    ? "Copy failed"
+                    : "Copy link"}
               </span>
-            </span>
-            <span
-              key={copyStatus}
-              className="t-text-state"
-              data-motion-ready={copyStatus !== "idle" ? "true" : "false"}
-            >
-              {copyStatus === "done"
-                ? "Copied"
-                : copyStatus === "failed"
-                  ? "Copy failed"
-                  : "Copy link"}
-            </span>
-          </Button>
+            </Button>
+          )}
           <span
             className="sr-only"
             aria-live="polite"
@@ -616,7 +645,8 @@ export function DesktopWorkbenchControls({
           <DialogHeader>
             <DialogTitle>Save table view</DialogTitle>
             <DialogDescription>
-              Save the current columns, density and filters for this desktop workspace.
+              Save the current columns, density and filters for this workspace.
+              {localView ? " Applying this view keeps the current files and edits open." : ""}
             </DialogDescription>
           </DialogHeader>
           <form
