@@ -226,7 +226,7 @@ function ScoringTrend({ rounds }: { rounds: RoundsWorkspaceRound[] }) {
 
   return (
     <section
-      className="grid gap-3 rounded-xl border bg-card px-4 py-4 shadow-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+      className="grid min-w-0 gap-4 rounded-xl border bg-card p-4 shadow-sm"
       aria-labelledby="scoring-trend-title"
       data-scoring-trend
     >
@@ -274,6 +274,11 @@ function ScoringTrend({ rounds }: { rounds: RoundsWorkspaceRound[] }) {
           )}
         </div>
       </div>
+      <p className="text-sm leading-6 text-muted-foreground">
+        {points.length > 0
+          ? `Score to par across the latest ${points.length} completed ${anchor?.scorecardHoles.length}-hole ${anchor?.type === "real_round" ? "course" : "simulator"} ${points.length === 1 ? "round" : "rounds"}. Lower bars are better.`
+          : "Scores appear here once par and a completed total are available."}
+      </p>
       <LabEvidenceList
         title="Comparable scoring points"
         rows={points.map((round) => ({
@@ -291,11 +296,6 @@ function ScoringTrend({ rounds }: { rounds: RoundsWorkspaceRound[] }) {
           ],
         }))}
       />
-      <p className="text-xs leading-5 text-muted-foreground sm:max-w-44 sm:text-right">
-        {points.length > 0
-          ? `Score to par across the latest ${points.length} completed ${anchor?.scorecardHoles.length}-hole ${anchor?.type === "real_round" ? "course" : "simulator"} ${points.length === 1 ? "round" : "rounds"}. Lower bars are better.`
-          : "Scores appear here once par and a completed total are available."}
-      </p>
     </section>
   );
 }

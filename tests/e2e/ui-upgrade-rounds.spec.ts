@@ -77,6 +77,16 @@ test("Rounds retain URL history filters and compare matching source and hole cou
         });
         await expect(page.locator("[data-scoring-trend]")).toContainText(/9-hole course/);
         if (surface === "workbench") {
+          const sections = await page.locator("[data-scoring-trend]").evaluate((el) =>
+            Array.from(el.children).map((child) => {
+              const r = child.getBoundingClientRect();
+              return { top: r.top, bottom: r.bottom, width: r.width };
+            }),
+          );
+          expect(sections).toHaveLength(3);
+          expect(sections[0].width).toBeGreaterThan(200);
+          expect(sections[1].top).toBeGreaterThanOrEqual(sections[0].bottom);
+          expect(sections[2].top).toBeGreaterThanOrEqual(sections[1].bottom);
           await page
             .getByRole("combobox", { name: "Round type", exact: true })
             .selectOption("simulator");
