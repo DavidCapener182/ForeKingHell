@@ -147,3 +147,30 @@ describe("history search", () => {
     expect(sessions.filter((row) => sessionMatchesHistoryFilters(row, filters))).toEqual([]);
   });
 });
+
+describe("server history catalog", () => {
+  const options = { sources: ["Rapsodo", "Manual"], clubs: ["7i", "driver"], serverFiltered: true };
+  it("retains valid catalog filters when the current result page is empty", () => {
+    const resolved = resolveSessionHistorySearchParams(
+      "q=missing&source=Manual&club=driver",
+      [],
+      options,
+    );
+    expect(resolved.changed).toBe(false);
+    expect(resolved.filters.source).toBe("Manual");
+    expect(resolved.filters.club).toBe("driver");
+  });
+  it("resets pagination when criteria change but preserves unrelated URL state", () => {
+    expect(
+      buildSessionHistoryQuery(
+        "historyPage=3&historyLimit=900&campaign=summer",
+        { source: "Manual" },
+        [],
+        options,
+      ),
+    ).toBe("campaign=summer&source=Manual");
+    expect(clearSessionHistoryQuery("historyPage=3&historyLimit=900&q=old&campaign=summer")).toBe(
+      "campaign=summer",
+    );
+  });
+});

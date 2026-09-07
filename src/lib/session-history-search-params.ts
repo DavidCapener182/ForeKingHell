@@ -24,6 +24,13 @@ export type SessionHistoryFilterSession = {
 
 export type SessionHistorySearchParamsInput = Record<string, string | string[] | undefined>;
 
+export type SessionHistoryFilterOptions = {
+  sources: string[];
+  clubs: string[];
+  preserveSelection?: boolean;
+  serverFiltered?: boolean;
+};
+
 export const DEFAULT_SESSION_HISTORY_FILTERS: Readonly<SessionHistoryFilters> = {
   type: "all",
   source: "all",
@@ -37,6 +44,7 @@ const ownedQueryKeys = ["type", "source", "club", "date", "session", "q"] as con
 export function resolveSessionHistorySearchParams(
   input: SessionHistorySearchParamsInput | string,
   sessions: readonly SessionHistoryFilterSession[],
+  options?: SessionHistoryFilterOptions,
 ) {
   const params = toUrlSearchParams(input);
   let changed = false;
@@ -70,7 +78,9 @@ export function resolveSessionHistorySearchParams(
     changed = true;
   } else if (
     sourceResult.value !== null &&
-    sessions.some((session) => session.sourceLabel === sourceResult.value)
+    (options
+      ? options.sources.includes(sourceResult.value)
+      : sessions.some((session) => session.sourceLabel === sourceResult.value))
   ) {
     source = sourceResult.value;
   } else if (sourceResult.value !== null) {
@@ -88,7 +98,9 @@ export function resolveSessionHistorySearchParams(
     changed = true;
   } else if (
     clubResult.value !== null &&
-    sessions.some((session) => session.clubs.includes(clubResult.value!))
+    (options
+      ? options.clubs.includes(clubResult.value)
+      : sessions.some((session) => session.clubs.includes(clubResult.value!)))
   ) {
     club = clubResult.value;
   } else if (clubResult.value !== null) {
@@ -131,11 +143,12 @@ export function resolveSessionHistorySearchParams(
     changed = true;
   } else if (
     sessionResult.value !== null &&
-    sessions.some(
-      (session) =>
-        session.id === sessionResult.value &&
-        sessionMatchesHistoryFilters(session, filtersWithoutSession),
-    )
+    (options?.preserveSelection ||
+      sessions.some(
+        (session) =>
+          session.id === sessionResult.value &&
+          (options?.serverFiltered || sessionMatchesHistoryFilters(session, filtersWithoutSession)),
+      ))
   ) {
     sessionId = sessionResult.value;
   } else if (sessionResult.value !== null) {
@@ -154,9 +167,10 @@ export function buildSessionHistoryQuery(
   currentQuery: string,
   patch: SessionHistoryFilterPatch,
   sessions: readonly SessionHistoryFilterSession[],
+  options?: SessionHistoryFilterOptions,
 ) {
   const params = new URLSearchParams(currentQuery);
-  const current = resolveSessionHistorySearchParams(currentQuery, sessions).filters;
+  const current = resolveSessionHistorySearchParams(currentQuery, sessions, options).filters;
   const filterChanged = (["type", "source", "club", "date", "search"] as const).some(
     (key) => Object.hasOwn(patch, key) && patch[key] !== current[key],
   );
@@ -172,12 +186,16 @@ export function buildSessionHistoryQuery(
     params.delete("session");
   }
 
-  return resolveSessionHistorySearchParams(params.toString(), sessions).query;
+  if (filterChanged) {
+    params.delete("historyPage");
+    params.delete("historyLimit");
+  }
+  return resolveSessionHistorySearchParams(params.toString(), sessions, options).query;
 }
 
 export function clearSessionHistoryQuery(currentQuery: string) {
   const params = new URLSearchParams(currentQuery);
-  for (const key of ownedQueryKeys) params.delete(key);
+  for (const key of [...ownedQueryKeys, "historyPage", "historyLimit"]) params.delete(key);
   return params.toString();
 }
 

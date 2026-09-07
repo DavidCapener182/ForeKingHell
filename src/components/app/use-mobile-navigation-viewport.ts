@@ -19,6 +19,14 @@ export function useMobileNavigationViewport(location: string) {
   const lastLocation = useRef<string | null>(null);
   const historyNavigation = useRef(false);
   const cancelRestore = useRef<(() => void) | null>(null);
+  const historyHandler = useRef<((event: PopStateEvent) => void) | null>(null);
+  // Next can commit a route and clean up its effect before later popstate
+  // listeners run. Keep this listener alive across those route effect changes.
+  useEffect(() => {
+    const handle = (event: PopStateEvent) => historyHandler.current?.(event);
+    window.addEventListener("popstate", handle, true);
+    return () => window.removeEventListener("popstate", handle, true);
+  }, []);
   const remember = useCallback(() => {
     if (pending.current || mobilePageScrollLocked()) return;
     if (mobileNavigationLocation(window.location.href) !== location) return;
@@ -116,6 +124,22 @@ export function useMobileNavigationViewport(location: string) {
     const queueTitle = () => {
       if (frame === null) frame = requestAnimationFrame(updateTitle);
     };
+    // A link can commit before the scroll event's animation frame runs.
+    // Save its departure position synchronously while this route still owns it.
+    const rememberBeforeLink = (event: MouseEvent) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+        return;
+      const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null;
+      if (
+        !(anchor instanceof HTMLAnchorElement) ||
+        anchor.target === "_blank" ||
+        anchor.hasAttribute("download")
+      )
+        return;
+      if (new URL(anchor.href, window.location.href).origin === window.location.origin) {
+        remember();
+      }
+    };
     const handleScroll = () => {
       scrollChanged = true;
       queueTitle();
@@ -149,9 +173,9 @@ export function useMobileNavigationViewport(location: string) {
     resize.observe(document.body);
     window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", queueTitle);
-    // Capture before Next can synchronously commit and replace this route effect.
-    window.addEventListener("popstate", onHistoryNavigation, true);
+    historyHandler.current = onHistoryNavigation;
     window.addEventListener("pagehide", remember);
+    document.addEventListener("click", rememberBeforeLink, true);
     queueTitle();
     return () => {
       cancelRestore.current?.();
@@ -160,8 +184,8 @@ export function useMobileNavigationViewport(location: string) {
       resize.disconnect();
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", queueTitle);
-      window.removeEventListener("popstate", onHistoryNavigation, true);
       window.removeEventListener("pagehide", remember);
+      document.removeEventListener("click", rememberBeforeLink, true);
       if (frame !== null) cancelAnimationFrame(frame);
     };
   }, [location, remember]);

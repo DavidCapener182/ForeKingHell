@@ -605,6 +605,11 @@ export function PracticePlannerClient({
       focusClubs: saved.focusClubs,
       blocks: saved.blocks,
       generation: saved.generation,
+      confidenceLabel:
+        saved.generation?.prescriptionConfidence ??
+        (saved.generation?.sgHandoff || saved.generation?.simulatorHandoff
+          ? "Low"
+          : plan.confidenceLabel),
       createdAt: saved.plannedAt,
       sourceContext: {
         ...context,
@@ -639,7 +644,12 @@ export function PracticePlannerClient({
       <PracticeWorkflow plan={plan} savedPlanId={savedPlanId} comparison={comparison} />
 
       <PracticeTodayCard plan={plan} focusSummary={focusSummary} outcome={outcome} />
-      <PracticeSourceEvidence source={plan.sourceContext.latestPractice} />
+      <PracticeSourceEvidence
+        source={plan.sourceContext.latestPractice}
+        coachSource={Boolean(plan.generation.coachHandoff)}
+        sgSource={plan.generation.sgHandoff}
+        simulatorSource={plan.generation.simulatorHandoff}
+      />
       {savedPlanId ? (
         <Button asChild variant="outline" className="min-h-11 w-fit">
           <Link href={`/practice?mode=guided&planId=${savedPlanId}`}>Open guided session</Link>

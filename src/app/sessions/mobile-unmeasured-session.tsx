@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { MobileSection } from "@/components/app/mobile-screen";
 import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
-import { MobileAppShell } from "@/components/app/mobile-app-shell";
 import { PageShell } from "@/components/app/page-shell";
 import { UntitledPageHeader as PageHeader } from "@/components/untitled-ui/headers";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,7 @@ export function MobileUnmeasuredSession({
   const importHref = plan ? `/import?practicePlanId=${encodeURIComponent(plan.id)}` : "/import";
   return (
     <PageShell>
-      <MobileAppShell className="gap-6" data-mobile-unmeasured-session>
+      <section className="grid min-w-0 gap-6 [&>*]:min-w-0" data-mobile-unmeasured-session>
         <PageHeader
           title={session.fileName ?? session.courseName ?? plan?.title ?? "Practice recorded"}
           description={new Intl.DateTimeFormat("en-GB", {
@@ -76,7 +75,7 @@ export function MobileUnmeasuredSession({
           <MobileListRow label="All sessions" href="/sessions" />
           <MobileListRow label="Choose practice" href="/practice" />
         </MobileGroupedList>
-      </MobileAppShell>
+      </section>
     </PageShell>
   );
 }

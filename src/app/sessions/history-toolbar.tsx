@@ -27,8 +27,14 @@ export function HistoryToolbar({
   count,
   onChange,
   onClear,
+  filterOptions,
+  matchingTotal,
+  pending,
 }: {
   sessions: SessionTimelineItem[];
+  filterOptions?: import("@/lib/session-history-search-params").SessionHistoryFilterOptions;
+  matchingTotal?: number;
+  pending?: boolean;
   filters: SessionHistoryFilters;
   count: number;
   onChange: (patch: SessionHistoryFilterPatch) => void;
@@ -69,7 +75,7 @@ export function HistoryToolbar({
         onValueChange={(source) => change({ source })}
         options={[
           { value: "all", label: "All sources" },
-          ...[...new Set(sessions.map((s) => s.sourceLabel))]
+          ...[...(filterOptions?.sources ?? new Set(sessions.map((s) => s.sourceLabel)))]
             .sort()
             .map((source) => ({ value: source, label: source })),
         ]}
@@ -81,7 +87,7 @@ export function HistoryToolbar({
         onValueChange={(club) => change({ club })}
         options={[
           { value: "all", label: "All clubs" },
-          ...[...new Set(sessions.flatMap((s) => s.clubs))]
+          ...[...(filterOptions?.clubs ?? new Set(sessions.flatMap((s) => s.clubs)))]
             .sort()
             .map((club) => ({ value: club, label: formatClubType(club) })),
         ]}
@@ -108,7 +114,7 @@ export function HistoryToolbar({
         options={[
           { value: "latest", label: "Latest matching session" },
           ...sessions
-            .filter((session) => sessionMatchesHistoryFilters(session, value))
+            .filter((session) => filterOptions || sessionMatchesHistoryFilters(session, value))
             .map((session) => ({
               value: session.id,
               label: `${session.title} · ${session.dateLabel} · ${session.sourceLabel}`,
@@ -122,6 +128,7 @@ export function HistoryToolbar({
       className="grid min-w-0 gap-3 rounded-xl border bg-card p-3"
       aria-label="Filter session history"
       data-session-toolbar
+      aria-busy={pending}
       data-ready={ready}
     >
       <div className="grid min-w-0 items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -134,7 +141,11 @@ export function HistoryToolbar({
           onValueChange={(search) => onChange({ search })}
         />
         <p role="status" className="py-3 text-sm tabular-nums text-muted-foreground">
-          {count} of {sessions.length} loaded sessions
+          {pending
+            ? "Searching saved history…"
+            : matchingTotal !== undefined
+              ? `${matchingTotal} matching sessions · ${count} on this page`
+              : `${count} of ${sessions.length} loaded sessions`}
         </p>
       </div>
       <div className="hidden gap-3 lg:grid lg:grid-cols-5">{fields(filters, onChange)}</div>

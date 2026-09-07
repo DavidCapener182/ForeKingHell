@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useCallback, useMemo, useEffect, useRef, useTransition } from "react";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 
 import {
   buildSessionHistoryQuery,
@@ -9,16 +9,47 @@ import {
   resolveSessionHistorySearchParams,
   sessionHistoryHref,
   type SessionHistoryFilterPatch,
+  type SessionHistoryFilterOptions,
   type SessionHistoryFilterSession,
 } from "@/lib/session-history-search-params";
 
-export function useSessionHistoryUrlState(sessions: readonly SessionHistoryFilterSession[]) {
+export function useSessionHistoryUrlState(
+  sessions: readonly SessionHistoryFilterSession[],
+  options?: SessionHistoryFilterOptions,
+) {
+  const router = useRouter();
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [pending, startTransition] = useTransition();
+  useEffect(
+    () => () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    },
+    [],
+  );
+  useEffect(() => {
+    if (!options) return;
+    const restore = () => {
+      // Cross-route Back is restored by Next. Refresh only an already visible
+      // History page when moving between its shallow filter entries.
+      const toolbar = document.querySelector("[data-session-toolbar]");
+      if (!toolbar?.getClientRects().length) return;
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+      startTransition(() => router.refresh());
+    };
+    window.addEventListener("popstate", restore, true);
+    return () => window.removeEventListener("popstate", restore, true);
+  }, [options, router]);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentQuery = searchParams.toString();
   const filters = useMemo(
-    () => resolveSessionHistorySearchParams(currentQuery, sessions).filters,
-    [currentQuery, sessions],
+    () =>
+      resolveSessionHistorySearchParams(
+        currentQuery,
+        sessions,
+        options ? { ...options, serverFiltered: true } : undefined,
+      ).filters,
+    [currentQuery, sessions, options],
   );
 
   const writeHistoryEntry = useCallback(
@@ -35,14 +66,30 @@ export function useSessionHistoryUrlState(sessions: readonly SessionHistoryFilte
 
   const updateFilters = useCallback(
     (patch: SessionHistoryFilterPatch) => {
-      writeHistoryEntry(buildSessionHistoryQuery(currentQuery, patch, sessions));
+      if (options && Object.keys(patch).some((key) => key !== "sessionId")) {
+        if (refreshTimer.current) clearTimeout(refreshTimer.current);
+        refreshTimer.current = setTimeout(
+          () => startTransition(() => router.refresh()),
+          patch.search !== undefined ? 250 : 0,
+        );
+      }
+      writeHistoryEntry(
+        buildSessionHistoryQuery(
+          currentQuery,
+          patch,
+          sessions,
+          options ? { ...options, serverFiltered: true } : undefined,
+        ),
+      );
     },
-    [currentQuery, sessions, writeHistoryEntry],
+    [currentQuery, sessions, writeHistoryEntry, options, router],
   );
 
   const clearFilters = useCallback(() => {
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
     writeHistoryEntry(clearSessionHistoryQuery(currentQuery));
-  }, [currentQuery, writeHistoryEntry]);
+    if (options) startTransition(() => router.refresh());
+  }, [currentQuery, writeHistoryEntry, options, router]);
 
-  return { filters, updateFilters, clearFilters };
+  return { filters, updateFilters, clearFilters, pending };
 }

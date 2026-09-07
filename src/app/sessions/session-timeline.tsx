@@ -70,6 +70,9 @@ export type SessionTimelineItem = {
 };
 
 type SessionTimelineProps = {
+  filterOptions?: import("@/lib/session-history-search-params").SessionHistoryFilterOptions;
+  matchingTotal?: number;
+  pending?: boolean;
   sessions: SessionTimelineItem[];
   accountId?: string;
   filters?: SessionHistoryFilters;
@@ -80,13 +83,21 @@ type SessionTimelineProps = {
 export function UrlBackedSessionTimeline({
   sessions,
   accountId,
-}: Pick<SessionTimelineProps, "sessions" | "accountId">) {
-  const { filters, updateFilters, clearFilters } = useSessionHistoryUrlState(sessions);
+  filterOptions,
+  matchingTotal,
+}: Pick<SessionTimelineProps, "sessions" | "accountId" | "filterOptions" | "matchingTotal">) {
+  const { filters, updateFilters, clearFilters, pending } = useSessionHistoryUrlState(
+    sessions,
+    filterOptions,
+  );
 
   return (
     <SessionTimeline
       sessions={sessions}
       accountId={accountId}
+      filterOptions={filterOptions}
+      matchingTotal={matchingTotal}
+      pending={pending}
       filters={filters}
       onFiltersChange={updateFilters}
       onClearFilters={clearFilters}
@@ -100,10 +111,19 @@ export function SessionTimeline({
   filters = DEFAULT_SESSION_HISTORY_FILTERS,
   onFiltersChange = noop,
   onClearFilters = noop,
+  filterOptions,
+  matchingTotal,
+  pending,
 }: SessionTimelineProps) {
   const { visible, focused: activeSession } = useMemo(
-    () => deriveSessionHistoryView(sessions, filters),
-    [filters, sessions],
+    () =>
+      filterOptions
+        ? {
+            visible: sessions,
+            focused: sessions.find((row) => row.id === filters.sessionId) ?? sessions[0] ?? null,
+          }
+        : deriveSessionHistoryView(sessions, filters),
+    [filters, sessions, filterOptions],
   );
   const grouped = useMemo(() => groupSessions(visible), [visible]);
   const visibleSessionIds = useMemo(() => visible.map((session) => session.id), [visible]);
@@ -190,6 +210,9 @@ export function SessionTimeline({
     <div className="grid min-w-0 gap-3" data-sessions-history-workbench>
       <HistoryToolbar
         sessions={sessions}
+        filterOptions={filterOptions}
+        matchingTotal={matchingTotal}
+        pending={pending}
         filters={filters}
         count={visible.length}
         onChange={onFiltersChange}
@@ -347,6 +370,7 @@ function DesktopSessionRow({
         aria-label={`Preview ${session.title}`}
         onClick={onInspect}
         data-session-inspect
+        data-session-id={session.id}
       >
         <span className="block space-y-1">
           <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">

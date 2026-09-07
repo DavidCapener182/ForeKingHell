@@ -18,14 +18,16 @@ describe("companion local-control adoption", () => {
     }
   });
 
-  it("keeps extracted History filters local while persisting their URL state", () => {
+  it("keeps History selection local while fetching full-dataset URL filters", () => {
     const history = read("src/app/sessions/sessions-companion-list.tsx");
     const urlState = read("src/app/sessions/use-session-history-url-state.ts");
     expect(history).toContain("<HistoryToolbar");
     expect(history).toContain("onChange={onFiltersChange}");
     expect(history).toContain("deriveSessionHistoryView(sessions, filters)");
     expect(urlState).toContain("window.history.pushState");
-    expect(urlState).toContain("buildSessionHistoryQuery(currentQuery, patch, sessions)");
+    expect(urlState).toContain("buildSessionHistoryQuery(");
+    expect(urlState).toContain('Object.keys(patch).some((key) => key !== "sessionId")');
+    expect(urlState).toContain("router.refresh()");
     for (const source of [history, urlState]) {
       expect(source).not.toContain("router.push");
       expect(source).not.toContain("router.replace");

@@ -1,3 +1,14 @@
+import {
+  parseSimulatorPracticeSource,
+  type SimulatorPracticeSource,
+} from "@/lib/simulator-practice-handoff";
+import {
+  parseSgPracticeSource,
+  type SgPracticeSource,
+} from "@/lib/strokes-gained-practice-handoff";
+import { parseCoachPracticeTarget } from "@/lib/coach-practice-handoff";
+import { evaluateCoachDrillProgress } from "@/lib/coach-drill-awards";
+import type { CoachDrillChallenge } from "@/lib/coach";
 import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import "server-only";
 import { createHash } from "node:crypto";
@@ -226,6 +237,7 @@ export type PracticeBlock = {
     maxBigMisses?: number;
     unit?: string;
     evidenceMode?: "launch_monitor" | "manual";
+    coachTarget?: Pick<CoachDrillChallenge, "clubType" | "completionTarget" | "winRule">;
   };
 };
 
@@ -379,6 +391,10 @@ export type PracticeScore = {
 };
 
 export type PracticePlanGeneration = {
+  prescriptionConfidence?: "High" | "Medium" | "Low";
+  simulatorHandoff?: SimulatorPracticeSource;
+  sgHandoff?: SgPracticeSource;
+  coachHandoff?: { clubId: string; drillId: string; fingerprint: string };
   source: "rules" | "openai";
   label: string;
   model: string | null;
@@ -457,6 +473,8 @@ export type ImportedPracticeSessionSummary = {
 };
 
 export type ImportedPracticeShotRow = {
+  launchAngleDeg?: number | null;
+  smashFactor?: number | null;
   id: string;
   clubType: string;
   shotNumber: number | null;
@@ -1257,10 +1275,57 @@ function evaluatePracticeBlockFromShots(
   const matchedPlannedVolume =
     plannedBalls === null ? actualBalls > 0 : actualBalls >= plannedBalls;
   const metrics = blockMetrics(blockItem, relevantRows);
-  const result = evaluateBlockResult(blockItem, actualBalls, matchedPlannedVolume, metrics);
+  const coachTarget = blockItem.scoringRules.coachTarget;
+  const coachProgress = coachTarget
+    ? evaluateCoachDrillProgress(
+        coachTarget,
+        relevantRows.map((row) => ({
+          ...row,
+          sideCarryYd: row.offlineYd,
+          launchAngleDeg: row.launchAngleDeg ?? null,
+          smashFactor: row.smashFactor ?? null,
+          shotCategory: row.shotCategory ?? null,
+        })),
+      )
+    : null;
+  const missingCoachMeasurement = coachTarget
+    ? relevantRows.some((row) => {
+        const present = (value: number | null | undefined) =>
+          typeof value === "number" && Number.isFinite(value);
+        switch (coachTarget.winRule.kind) {
+          case "playable":
+            return !present(row.offlineYd);
+          case "launch-window":
+            return !present(row.launchAngleDeg);
+          case "solid-strike":
+            return !present(row.smashFactor);
+          case "delivery-window":
+            return !present(row.clubPathDeg) || !present(row.launchDirectionDeg);
+          case "carry-window":
+            return !present(row.carryYd);
+          default:
+            return false;
+        }
+      })
+    : false;
+  const result: PracticeBlockEvaluationResult = coachProgress
+    ? !coachProgress.completed
+      ? "insufficient_data"
+      : coachProgress.won
+        ? "passed"
+        : missingCoachMeasurement
+          ? "insufficient_data"
+          : "failed"
+    : ["coach_target", "sg_category_observations", "simulator_prescription_observations"].includes(
+          blockItem.scoringRules.metric,
+        )
+      ? "insufficient_data"
+      : evaluateBlockResult(blockItem, actualBalls, matchedPlannedVolume, metrics);
   const decision = blockDecisionFromResult(blockItem, result);
   const confidence = blockEvaluationConfidence(scoringMode, actualBalls, plannedBalls);
-  const passLabel = blockMetricPassLabel(blockItem, metrics);
+  const passLabel = coachProgress
+    ? `${coachProgress.winCount}/${coachProgress.winTarget} Coach target ${coachTarget?.winRule.kind === "carry-window" ? "sets" : "shots"}`
+    : blockMetricPassLabel(blockItem, metrics);
   const actual =
     actualBalls > 0
       ? `${passLabel} from ${actualBalls}/${plannedBalls ?? actualBalls} matching shots - ${formatRate(metrics.playableRate)} playable - ${formatYards(metrics.offlineAverageYd)} offline`
@@ -1569,6 +1634,21 @@ export async function getLatestPracticeSessionReview(
   };
 }
 
+export function isObservationOnlyPracticePlan(plan: PracticePlan): boolean {
+  const observationMetric = (block: PracticeBlock) =>
+    ["sg_category_observations", "simulator_prescription_observations"].includes(
+      block.scoringRules.metric,
+    );
+  const prescription =
+    Boolean(plan.generation.sgHandoff || plan.generation.simulatorHandoff) ||
+    plan.blocks.some(observationMetric);
+  return (
+    prescription &&
+    plan.blocks.length > 0 &&
+    plan.blocks.every((block) => observationMetric(block) || !isLaunchMonitorScoredBlock(block))
+  );
+}
+
 export function scoreCompletedPractice(
   plan: PracticePlan,
   result: PracticeResultInput,
@@ -1578,6 +1658,10 @@ export function scoreCompletedPractice(
     [],
   ),
 ): PracticeScore {
+  if (isObservationOnlyPracticePlan(plan))
+    throw new Error(
+      "This prescription records observations; it has no automatic measured outcome.",
+    );
   const plannedBalls =
     plan.totalBalls ?? plan.blocks.reduce((total, item) => total + (item.ballCount ?? 0), 0);
   const actualBalls =
@@ -2236,6 +2320,8 @@ async function evaluateAndPersistPracticeEvidenceRollup(
     matchReasonPrefix?: string;
   } = {},
 ) {
+  const plan = savedPlanToPracticePlan(saved);
+  if (isObservationOnlyPracticePlan(plan)) return null;
   const evidence =
     options.evidence ?? (await getPracticeEvidenceRollupForPlan(userId, saved, representative));
 
@@ -2251,7 +2337,7 @@ async function evaluateAndPersistPracticeEvidenceRollup(
       ? `${options.matchReasonPrefix} · ${baseMatch.reason}`
       : baseMatch.reason,
   };
-  const plan = savedPlanToPracticePlan(saved);
+
   const evaluated = evaluatePracticePlanAgainstImportedSession(
     plan,
     evidence.summary,
@@ -2932,6 +3018,8 @@ async function getImportedPracticeSessionSummary(
       faceAngleDeg: directionalMetricSql(shots.faceAngleDeg),
       ballSpeedMph: shots.ballSpeedMph,
       clubSpeedMph: shots.clubSpeedMph,
+      launchAngleDeg: shots.launchAngleDeg,
+      smashFactor: shots.smashFactor,
       reviewStatus: shots.reviewStatus,
       shotCategory: shots.shotCategory,
       qualityTag: shots.qualityTag,
@@ -2951,6 +3039,8 @@ async function getImportedPracticeSessionSummary(
       row.launchDirectionDeg === null ? null : roundOne(Number(row.launchDirectionDeg)),
     clubPathDeg: row.clubPathDeg === null ? null : roundOne(Number(row.clubPathDeg)),
     faceAngleDeg: row.faceAngleDeg === null ? null : roundOne(Number(row.faceAngleDeg)),
+    launchAngleDeg: row.launchAngleDeg === null ? null : Number(row.launchAngleDeg),
+    smashFactor: row.smashFactor === null ? null : Number(row.smashFactor),
     ballSpeedMph: row.ballSpeedMph === null ? null : roundOne(Number(row.ballSpeedMph)),
     clubSpeedMph: row.clubSpeedMph === null ? null : roundOne(Number(row.clubSpeedMph)),
     reviewStatus: row.reviewStatus,
@@ -3528,6 +3618,7 @@ function block(
     target: number;
     maxBigMisses?: number;
     evidenceMode?: "launch_monitor" | "manual";
+    coachTarget?: Pick<CoachDrillChallenge, "clubType" | "completionTarget" | "winRule">;
   },
 ): PracticeBlock {
   return {
@@ -4407,6 +4498,7 @@ function dbBlockToView(
     recordPrompt: blockRow.recordPrompt,
     scoringRules: {
       metric: String(blockRow.scoringRulesJson.metric ?? "completion"),
+      coachTarget: parseCoachPracticeTarget(blockRow.scoringRulesJson.coachTarget),
       target: asNumber(blockRow.scoringRulesJson.target) ?? 1,
       maxBigMisses: asNumber(blockRow.scoringRulesJson.maxBigMisses) ?? undefined,
       unit:
@@ -4442,7 +4534,9 @@ export function savedPracticePlanToPracticePlan(
     energy: "normal",
     intent: "latest_weakness",
     focusClubs: uniqueClubs(saved.focusClubs),
-    confidenceLabel: "Medium",
+    confidenceLabel:
+      saved.generation?.prescriptionConfidence ??
+      (saved.generation?.sgHandoff || saved.generation?.simulatorHandoff ? "Low" : "Medium"),
     trainingStatus: saved.status === "analysed" ? "Imported session matched" : "Saved plan",
     why: [saved.summary],
     blocks: saved.blocks,
@@ -4511,6 +4605,28 @@ function parsePlanGeneration(value: unknown): PracticePlanGeneration {
     creditsRemaining:
       typeof value.creditsRemaining === "number" ? Math.max(0, value.creditsRemaining) : null,
     note: typeof value.note === "string" && value.note.trim() ? value.note.trim() : null,
+    ...(["High", "Medium", "Low"].includes(String(value.prescriptionConfidence))
+      ? { prescriptionConfidence: value.prescriptionConfidence as "High" | "Medium" | "Low" }
+      : {}),
+    ...(parseSimulatorPracticeSource(value.simulatorHandoff)
+      ? { simulatorHandoff: parseSimulatorPracticeSource(value.simulatorHandoff) }
+      : {}),
+    ...(parseSgPracticeSource(value.sgHandoff)
+      ? { sgHandoff: parseSgPracticeSource(value.sgHandoff) }
+      : {}),
+    ...(isRecord(value.coachHandoff) &&
+    typeof value.coachHandoff.clubId === "string" &&
+    typeof value.coachHandoff.drillId === "string" &&
+    typeof value.coachHandoff.fingerprint === "string" &&
+    /^[a-f0-9]{64}$/.test(value.coachHandoff.fingerprint)
+      ? {
+          coachHandoff: {
+            clubId: value.coachHandoff.clubId,
+            drillId: value.coachHandoff.drillId,
+            fingerprint: value.coachHandoff.fingerprint,
+          },
+        }
+      : {}),
   };
 }
 

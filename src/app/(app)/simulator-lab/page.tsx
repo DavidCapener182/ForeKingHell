@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+import { simulatorPracticeFingerprint } from "@/lib/simulator-practice-handoff";
+import { SimulatorPracticeDraftForm } from "@/app/simulator-lab/practice-draft-form";
 import Link from "next/link";
 import { UrlTabs } from "@/components/untitled-ui/url-tabs";
 import { LabEvidenceList, LabShotEvidence } from "@/app/simulator-lab/lab-evidence";
@@ -598,6 +601,17 @@ function RangeRealityCockpit({
                 </div>
                 <p className="mt-1 text-sm leading-5 text-muted-foreground">{item.detail}</p>
                 <p className="mt-2 text-sm leading-5">{item.drill}</p>
+                {reality.evidence?.sampleSize ? (
+                  <SimulatorPracticeDraftForm
+                    prescriptionId={item.id}
+                    fingerprint={simulatorPracticeFingerprint(reality, item.id)}
+                    creationId={randomUUID()}
+                  />
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Import usable range evidence before saving this prescription.
+                  </p>
+                )}
               </div>
             ))}
             <Button asChild variant="outline" className="rounded-xl">
@@ -795,7 +809,10 @@ function ConfidenceTimeline({ reality }: { reality: RangeRealityHandicapData }) 
   const scored = timeline.filter((item) => item.value !== null);
   if (scored.length === 0) {
     return (
-      <EmptyPanel icon={LineChart} text="Add more full-swing range sessions to plot progress." />
+      <div>
+        <EmptyPanel icon={LineChart} text="Add more full-swing range sessions to plot progress." />
+        <ConfidenceTimelineValues reality={reality} />
+      </div>
     );
   }
   const chartWidth = 1100;
@@ -864,6 +881,11 @@ function ConfidenceTimeline({ reality }: { reality: RangeRealityHandicapData }) 
           {timeline.map((item, index) =>
             item.value === null ? null : (
               <g key={item.id}>
+                <title>
+                  {item.label}: {item.valueLabel}; {item.confidenceScore}% confidence;{" "}
+                  {item.sampleSize ?? "unknown"} shots used across {item.sessionCount ?? "unknown"}{" "}
+                  sessions.
+                </title>
                 <circle
                   cx={xScale(index)}
                   cy={yScale(item.value)}
@@ -891,22 +913,38 @@ function ConfidenceTimeline({ reality }: { reality: RangeRealityHandicapData }) 
           Shaded area shows confidence, line shows lower-is-better handicap estimate.
         </p>
       </div>
+      <ConfidenceTimelineValues reality={reality} />
+    </div>
+  );
+}
+
+function ConfidenceTimelineValues({ reality }: { reality: RangeRealityHandicapData }) {
+  return (
+    <>
       <dl className="mt-3 grid gap-2" aria-label="Monthly confidence values">
-        {timeline.map((item) => (
+        {reality.estimate.timeline.map((item) => (
           <div key={item.id} className="flex flex-wrap justify-between gap-2 border-t py-2 text-sm">
             <dt>{item.label}</dt>
             <dd>
               {item.value === null ? "No supported estimate" : item.valueLabel} ·{" "}
               {item.confidenceScore}% confidence
+              <span className="block text-muted-foreground">
+                {item.sampleSize === undefined || item.sessionCount === undefined
+                  ? "Sample depth unavailable"
+                  : `${item.sampleSize} shots used · ${item.sessionCount} ${item.sessionCount === 1 ? "session" : "sessions"}`}
+                {item.availableShotCount === undefined
+                  ? ""
+                  : ` · ${item.availableShotCount} usable shots available`}
+              </span>
             </dd>
           </div>
         ))}
       </dl>
       <p className="mt-2 text-xs text-muted-foreground">
-        Only actual monthly checkpoints are shown. Missing values are gaps; per-checkpoint sample
-        counts are unavailable in the current model output.
+        Only actual monthly checkpoints are shown. Missing values remain gaps. Each checkpoint uses
+        at most the latest 100 usable shots from that month.
       </p>
-    </div>
+    </>
   );
 }
 

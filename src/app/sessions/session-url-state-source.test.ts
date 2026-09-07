@@ -32,6 +32,10 @@ const toolbarSource = readFileSync(
   join(process.cwd(), "src/app/sessions/history-toolbar.tsx"),
   "utf8",
 );
+const pageLoaderSource = readFileSync(
+  join(process.cwd(), "src/lib/session-history-page.ts"),
+  "utf8",
+);
 describe("Sessions URL state boundaries", () => {
   it("awaits Next 16 searchParams in the server page before selecting a surface", () => {
     expect(pageSource).toContain("searchParams: Promise<SessionHistorySearchParamsInput>");
@@ -41,14 +45,18 @@ describe("Sessions URL state boundaries", () => {
 
   it("sanitises incoming bookmarks after loading the user's available filters", () => {
     for (const source of [workbenchPageSource, companionPageSource]) {
-      expect(source).toContain("resolveSessionHistorySearchParams(searchParams");
-      expect(source).toContain("if (resolved.changed)");
-      expect(source).toContain("redirect(sessionHistoryHref(resolved.query))");
+      expect(source).toContain("loadHistoryPage(userId, searchParams");
+      expect(source).toContain("result.query !== original");
+      expect(source).toContain("redirect(sessionHistoryHref(result.query))");
     }
   });
 
-  it("uses shallow browser history so filtering is bookmarkable and Back restores it", () => {
+  it("uses browser history with server refresh so full-dataset filters and Back are restored", () => {
+    expect(pageLoaderSource).toContain("resolveSessionHistorySearchParams(input, [],");
+    expect(pageLoaderSource).toContain("resolveSessionHistorySearchParams(resolved.query, rows,");
     expect(urlStateSource).toContain("useSearchParams");
+    expect(urlStateSource).toContain('window.addEventListener("popstate", restore, true)');
+    expect(urlStateSource).toContain("router.refresh()");
     expect(urlStateSource).toContain("window.history.pushState");
     expect(urlStateSource).toContain("buildSessionHistoryQuery");
     expect(urlStateSource).toContain("clearSessionHistoryQuery");

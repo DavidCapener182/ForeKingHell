@@ -19,16 +19,26 @@ import {
 export function SessionsCompanionList({
   sessions,
   accountId,
+  filterOptions,
+  matchingTotal,
 }: {
   sessions: SessionTimelineItem[];
   accountId: string;
+  filterOptions?: import("@/lib/session-history-search-params").SessionHistoryFilterOptions;
+  matchingTotal?: number;
 }) {
-  const { filters, updateFilters, clearFilters } = useSessionHistoryUrlState(sessions);
+  const { filters, updateFilters, clearFilters, pending } = useSessionHistoryUrlState(
+    sessions,
+    filterOptions,
+  );
 
   return (
     <SessionsCompanionHistory
       sessions={sessions}
       accountId={accountId}
+      filterOptions={filterOptions}
+      matchingTotal={matchingTotal}
+      pending={pending}
       filters={filters}
       onFiltersChange={updateFilters}
       onClearFilters={clearFilters}
@@ -42,16 +52,28 @@ export function SessionsCompanionHistory({
   filters,
   onFiltersChange,
   onClearFilters,
+  filterOptions,
+  matchingTotal,
+  pending,
 }: {
   sessions: SessionTimelineItem[];
   accountId: string;
   filters: SessionHistoryFilters;
+  filterOptions?: import("@/lib/session-history-search-params").SessionHistoryFilterOptions;
+  matchingTotal?: number;
+  pending?: boolean;
   onFiltersChange: (patch: SessionHistoryFilterPatch) => void;
   onClearFilters: () => void;
 }) {
   const { visible, focused } = useMemo(
-    () => deriveSessionHistoryView(sessions, filters),
-    [filters, sessions],
+    () =>
+      filterOptions
+        ? {
+            visible: sessions,
+            focused: sessions.find((row) => row.id === filters.sessionId) ?? sessions[0] ?? null,
+          }
+        : deriveSessionHistoryView(sessions, filters),
+    [filters, sessions, filterOptions],
   );
 
   useEffect(() => {
@@ -76,6 +98,9 @@ export function SessionsCompanionHistory({
     <div className="grid gap-4">
       <HistoryToolbar
         sessions={sessions}
+        filterOptions={filterOptions}
+        matchingTotal={matchingTotal}
+        pending={pending}
         filters={filters}
         count={visible.length}
         onChange={onFiltersChange}
@@ -102,6 +127,7 @@ export function SessionsCompanionHistory({
               {grouped.map((session) => (
                 <div key={session.id} className="grid gap-2 border-b pb-3 last:border-b-0">
                   <Link
+                    data-session-id={session.id}
                     data-session-focused={session.id === focused?.id ? "true" : undefined}
                     href={session.isRound ? `/rounds/${session.id}` : `/sessions/${session.id}`}
                     className={`grid gap-3 rounded-2xl border bg-card p-4 active:bg-secondary ${session.id === focused?.id ? "border-primary/40" : "border-border"}`}

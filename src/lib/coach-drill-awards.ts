@@ -121,7 +121,7 @@ export async function getCoachDrillAwardStatuses(
 }
 
 export function evaluateCoachDrillProgress(
-  challenge: CoachDrillChallenge,
+  challenge: Pick<CoachDrillChallenge, "clubType" | "completionTarget" | "winRule">,
   drillShots: CoachDrillShot[],
 ): CoachDrillProgress {
   const cleanShots = drillShots.filter(isCleanFullShot);

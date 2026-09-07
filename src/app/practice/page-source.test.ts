@@ -66,7 +66,9 @@ describe("practice planner desktop workflow", () => {
     expect(companionSource).toContain("<ButtonGroup");
     expect(companionSource).toContain("<Carousel");
     expect(companionSource).toContain("data-practice-block-carousel");
-    expect(companionSource).toContain('className="w-full min-w-0 max-w-full"');
+    expect(companionSource).toContain(
+      'className="w-full min-w-0 max-w-full [&>[data-slot=carousel-content]]:overflow-clip"',
+    );
     expect(companionSource).toContain("clubSummary(plan)");
     expect(companionSource).toContain("balls remaining");
     expect(companionSource).toContain("Success target");

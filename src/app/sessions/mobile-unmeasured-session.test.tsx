@@ -31,6 +31,9 @@ describe("unmeasured mobile session", () => {
     expect(html).not.toContain("confidence");
     expect(html).not.toContain("improved");
     expect(html.match(/<h1\b/g)).toHaveLength(1);
+    expect(html).toContain("data-mobile-unmeasured-session");
+    expect(html).not.toContain("ios-mobile-screen");
+    expect(html).not.toContain("companionScreen");
     if (process.env.FKH_CAPTURE_EMPTY_SESSION === "1") {
       writeFileSync("/tmp/fkh-empty-session-fixture.html", html);
     }
