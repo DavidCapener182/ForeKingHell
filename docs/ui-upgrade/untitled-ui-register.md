@@ -146,3 +146,6 @@ Previously checked official metrics/tooltips, tables/paginations, modals/buttons
 
 ## P82 Partners
 Specified official metrics/tooltips, inputs/select/textarea/buttons, section headers/badges/domain lists and tables/pagination use previously checked references. Paid advanced examples unavailable. Accessible local alternatives: labelled native creation fields, focus-managed full review sheets, complete semantic offer articles and responsive searchable sponsor table/details. Local exports checked with types; no paid vendor source installed.
+
+## P83 Public home
+Specified official page/section headers/contentdividers, navigation, tables/radiogroups/buttons and input references reuse checked sources. Paid advanced examples unavailable. Local accessible alternatives preserve branded golf art: semantic fullplan lists, native FAQ disclosure, existing focus-managed searched Sheet and ResponsiveDetailPanel, genuine feature/full-image links. No new paid exports or installation claimed.

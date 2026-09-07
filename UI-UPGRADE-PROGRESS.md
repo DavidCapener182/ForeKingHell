@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-438 desktop / 438 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P83 Public home page**, next P84 Sign in or join. 54 UI entries remain. Continue the UI pass with acceptance gaps retained.
+451 desktop / 451 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P84 Sign in or join**, next P85 First-run onboarding. 41 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P83 Public home page**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P84 Sign in or join**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -444,3 +444,11 @@ P82-C01–C05 UI implemented partial. Full shared responsive forms with exact sp
 Checks: partners-browser.log isolated six-size test passed; actual failed on sponsor metadata object rendering. Fixed JSON serialization, partners-browser-final.log1PASS53.4s all12, full identity/details/forms Cancel, no previewclick, no overflow/pageerrors. Companion390 inspected. Types/lint clean before small serialization fix; final rerun queued. Backend creation/canonicalclick4PASS600ms; validation4PASS; old-owned-sponsor beyond newest40 regressionPASS547ms. Full browser actual create/destination and broad acceptance outstanding.
 
 Resume: P83 all13prompts read; marketing files clean/owned by root. Preserve existing art/renderers. Concrete gaps: full pricing features/terms, stale FAQ mobile nav, screenshot full-image access, feature links, no-JS FAQ, readable mobile header/hero. Other agent read-only pricing/FAQ audit complete; no marketing edits. P82 freeze released. P81 commit092a8dcc.
+
+## P83 Public home UI pass, 7 September
+
+P83-C01–C13 addressed with existing art/3D preserved: skip/focus-safe public header, searchable mobile links close on navigation, normal-flow mobile title/CTA, precise preview captions/fullimage access, real authenticated feature routes, full billing-catalogue feature/price/term lists, shared FAQ native disclosures including noJS, modelled Twin full static detail and explicit interactive launch. Existing brand/practice/privacy/beta/footer sections retained with readable shared controls/copy. FAQ mobile labels corrected from actual nav.
+
+Checks: public-home-browser.log1PASS17.4s but screenshot exposed animationdelay in reducedmotion keeping hero copy hidden. Added explicit animationnone/opacity1 and new checks. public-home-browser-final.log1PASS10.5s at6sizes with noJSFAQ, exactJSONLD/pricingfeatures, anchors/menu, staticTwin, nooverflow/pageerrors. Final390hero/1440pricing inspected; small cream mobileheadline contrast rule added afterward, recapturepending. Types/scopedlintclean; liveWebGL/normalmotion/nativezoom/fullstate acceptance not claimed.
+
+Resume P84 fourprompts read. Root owns login page/form UI; preserve email/password, Google and secureemail-link auth contracts. Otheragent read-only auth mode audit requested; no serverchanges yet. P83freeze released. P82commita4ee8701.

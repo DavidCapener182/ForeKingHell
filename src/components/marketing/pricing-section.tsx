@@ -44,22 +44,31 @@ export function PricingSection() {
               </div>
               <p>{plan.description}</p>
               <ul>
-                {plan.features.slice(0, 3).map((feature) => (
+                {plan.features.map((feature) => (
                   <li key={feature}>
                     <Check aria-hidden /> {feature}
                   </li>
                 ))}
               </ul>
               <footer>
-                <span>Yearly {plan.yearlyPrice}</span>
+                <span>
+                  {plan.key === "free"
+                    ? "No paid subscription"
+                    : `Or ${plan.yearlyPrice} billed yearly`}
+                </span>
                 <Link href={joinForBillingHref}>
-                  {plan.key === "free" ? "Start free" : `Choose ${plan.name}`}
+                  {plan.key === "free" ? "Start free" : "Sign in to compare plans"}
                   <ArrowRight aria-hidden />
                 </Link>
               </footer>
             </article>
           ))}
         </Reveal>
+        <p className={styles.pricingTerms}>
+          Paid plans renew on the billing period selected at checkout. Sign in to review
+          availability and payment terms before purchasing; browsing these plans does not start a
+          subscription.
+        </p>
       </div>
     </section>
   );

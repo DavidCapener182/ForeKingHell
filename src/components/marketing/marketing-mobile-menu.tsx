@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,8 +24,16 @@ export function MarketingMobileMenu({
 }: {
   navigation: ReadonlyArray<readonly [label: string, href: string]>;
 }) {
+  const [query, setQuery] = useState("");
+  const links = [
+    ...navigation,
+    ["Features", "#features"],
+    ["FAQ", "#faq"],
+    ["Privacy notice", "/privacy"],
+  ] as const;
+  const shown = links.filter(([label]) => label.toLowerCase().includes(query.toLowerCase()));
   return (
-    <Sheet>
+    <Sheet onOpenChange={() => setQuery("")}>
       <SheetTrigger asChild>
         <Button
           className={styles.menuTrigger}
@@ -52,27 +62,40 @@ export function MarketingMobileMenu({
             </Button>
           </SheetClose>
         </div>
+        <label className="grid gap-2 px-4 text-sm">
+          Find a page or section
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} />
+        </label>
         <nav className={styles.mobileLinks} aria-label="Public product navigation">
-          {navigation.map(([label, href]) => (
+          {shown.map(([label, href]) => (
             <SheetClose asChild key={href}>
               <a href={href}>{label}</a>
             </SheetClose>
           ))}
         </nav>
+        {!shown.length ? (
+          <p className="px-4" role="status">
+            No sections match this search.
+          </p>
+        ) : null}
         <div className={styles.mobileMenuActions}>
-          <Button asChild variant="outline" className="min-h-12 w-full">
-            <Link href="/login" onClick={() => trackPlausibleEvent("Public Sign In Clicked")}>
-              Sign in
-            </Link>
-          </Button>
-          <Button asChild className="min-h-12 w-full">
-            <Link
-              href={marketingJoinBetaHref}
-              onClick={() => trackPlausibleEvent("Public Join Beta Clicked")}
-            >
-              Join the beta
-            </Link>
-          </Button>
+          <SheetClose asChild>
+            <Button asChild variant="outline" className="min-h-12 w-full">
+              <Link href="/login" onClick={() => trackPlausibleEvent("Public Sign In Clicked")}>
+                Sign in
+              </Link>
+            </Button>
+          </SheetClose>
+          <SheetClose asChild>
+            <Button asChild className="min-h-12 w-full">
+              <Link
+                href={marketingJoinBetaHref}
+                onClick={() => trackPlausibleEvent("Public Join Beta Clicked")}
+              >
+                Join the beta
+              </Link>
+            </Button>
+          </SheetClose>
         </div>
       </SheetContent>
     </Sheet>

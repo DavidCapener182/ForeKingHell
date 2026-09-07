@@ -76,6 +76,9 @@ export function MarketingHeader() {
 
   return (
     <header className={styles.header} data-state={headerState}>
+      <a href="#hero-title" className={styles.skipLink}>
+        Skip to product introduction
+      </a>
       <div className={styles.headerInner}>
         <Link href="/" className={styles.brand} aria-label={`${BRAND_NAME} home`}>
           <span>{BRAND_NAME}</span>
