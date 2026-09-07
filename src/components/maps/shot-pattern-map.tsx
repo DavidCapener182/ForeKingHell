@@ -1,4 +1,5 @@
 "use client";
+import { useClientReady } from "@/hooks/use-client-ready";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type * as Leaflet from "leaflet";
@@ -127,6 +128,7 @@ export function ShotPatternMap({
   initialData = null,
   defaultControls,
 }: ShotPatternMapProps) {
+  const ready = useClientReady();
   const [mapContainerNode, setMapContainerNode] = useState<HTMLDivElement | null>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
   const layerRef = useRef<Leaflet.LayerGroup | null>(null);
@@ -160,6 +162,52 @@ export function ShotPatternMap({
     clubId: defaultControls.clubId,
     clubType: defaultControls.clubType,
   });
+  const [clubQuery, setClubQuery] = useState("");
+  const setupSnapshot = useRef<ReturnType<typeof captureSetup> | null>(null);
+  function captureSetup() {
+    return {
+      teeSetId,
+      holeNumber,
+      clubSelection,
+      mode,
+      outlierMode,
+      targetPlacementOverride,
+      holeLengthOverride,
+      showDots,
+      showEnvelope,
+    };
+  }
+  function restoreSetup(value: ReturnType<typeof captureSetup>) {
+    setTeeSetId(value.teeSetId);
+    setHoleNumber(value.holeNumber);
+    setClubSelection(value.clubSelection);
+    setMode(value.mode);
+    setOutlierMode(value.outlierMode);
+    setTargetPlacementOverride(value.targetPlacementOverride);
+    setHoleLengthOverride(value.holeLengthOverride);
+    setShowDots(value.showDots);
+    setShowEnvelope(value.showEnvelope);
+  }
+  function changeSetupOpen(open: boolean) {
+    if (open) setupSnapshot.current = captureSetup();
+    else if (setupSnapshot.current) {
+      restoreSetup(setupSnapshot.current);
+      setupSnapshot.current = null;
+    }
+    setMobileControlsOpen(open);
+  }
+  function resetSetup() {
+    setTeeSetId(defaultControls.teeSetId ?? teeSets[0]?.id ?? "");
+    setHoleNumber(defaultControls.holeNumber ?? holes[0]?.holeNumber ?? 1);
+    setClubSelection({ clubId: defaultControls.clubId, clubType: defaultControls.clubType });
+    setMode(defaultControls.mode);
+    setOutlierMode(defaultControls.outlierMode);
+    setTargetPlacementOverride(null);
+    setHoleLengthOverride(null);
+    setShowDots(true);
+    setShowEnvelope(true);
+    setClubQuery("");
+  }
   const visibleHoles = holesByTeeSet[teeSetId] ?? holes;
   const selectedHoleNumber = visibleHoles.some((hole) => hole.holeNumber === holeNumber)
     ? holeNumber
@@ -174,7 +222,7 @@ export function ShotPatternMap({
     data: initialData,
     error: null,
   });
-  const data = response.data;
+  const data = response.key === requestKey ? response.data : null;
   const error = response.key === requestKey ? response.error : null;
   const isLoading = response.key !== requestKey;
   const selectedHole = data?.hole ?? null;
@@ -447,7 +495,7 @@ export function ShotPatternMap({
   }, [mapContainerNode, leaflet]);
 
   useEffect(() => {
-    if (response.key === requestKey && response.data && !response.error) {
+    if (response.key === requestKey && (response.data || response.error)) {
       return;
     }
 
@@ -478,6 +526,7 @@ export function ShotPatternMap({
         return (await response.json()) as ShotPatternApiData;
       })
       .then((payload) => {
+        if (abortController.signal.aborted) return;
         setResponse({
           key: requestKey,
           data: payload,
@@ -817,9 +866,11 @@ export function ShotPatternMap({
     targetLine?.playablePercent !== null &&
     targetLine?.playablePercent !== undefined &&
     targetLine.playablePercent >= 65;
-  const targetLineStatusLabel = targetLine?.beyondCapability
-    ? "Out of range"
-    : `${targetLine?.playablePercent ?? 0}% green`;
+  const targetLineStatusLabel = !targetLine
+    ? "No target evidence"
+    : targetLine.beyondCapability
+      ? "Out of range"
+      : `${targetLine?.playablePercent ?? 0}% green`;
   const bestTargetClub = useMemo(() => {
     return bestClubForTarget(renderedClubOptions, targetDistanceYd);
   }, [renderedClubOptions, targetDistanceYd]);
@@ -837,33 +888,56 @@ export function ShotPatternMap({
   const showSatelliteMap = mapMode === "satellite";
 
   return (
-    <div className="relative h-[100svh] min-h-[100svh] overflow-hidden bg-slate-950 lg:grid lg:h-auto lg:min-h-0 lg:grid-cols-[minmax(300px,0.42fr)_minmax(0,1fr)] lg:gap-4 lg:overflow-visible lg:bg-transparent">
+    <div className="relative grid gap-4 lg:grid-cols-[minmax(300px,0.42fr)_minmax(0,1fr)]">
       <ResponsiveDetailPanel
         open={mobileControlsOpen}
-        onOpenChange={setMobileControlsOpen}
+        onOpenChange={changeSetupOpen}
         trigger={
           <Button
+            disabled={!ready}
             ref={mobileControlsTriggerRef}
             type="button"
             variant="secondary"
-            className="absolute inset-x-3 bottom-[calc(4.65rem+env(safe-area-inset-bottom))] z-[870] min-h-11 justify-between rounded-xl border border-border bg-card/95 px-3 text-foreground shadow-xl backdrop-blur lg:hidden"
+            className="min-h-11 w-full justify-between rounded-xl border border-border bg-card px-3 text-foreground"
             aria-expanded={mobileControlsOpen}
             aria-controls="shot-pattern-mobile-controls"
             data-mobile-shot-pattern-trigger
           >
-            <span className="min-w-0 truncate text-left">
+            <span className="min-w-0 whitespace-normal text-left">
               Hole {selectedHoleNumber} ·{" "}
               {shortClubLabel(selectedClubOption?.label ?? clubSelection.clubType)} ·{" "}
               {targetLineStatusLabel}
             </span>
             <span className="inline-flex shrink-0 items-center gap-1.5">
               <SlidersHorizontal className="size-4" aria-hidden />
-              Setup
+              Setup (
+              {Number(mode !== defaultControls.mode) +
+                Number(outlierMode !== defaultControls.outlierMode) +
+                Number(Boolean(targetPlacementOverride)) +
+                Number(Boolean(holeLengthOverride))}
+              )
             </span>
           </Button>
         }
         title={`${courseName} shot pattern`}
         description={`Hole ${selectedHoleNumber} · ${shortClubLabel(selectedClubOption?.label ?? clubSelection.clubType)}. Adjust the target and evidence filter.`}
+        footer={
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" className="min-h-11" onClick={resetSetup}>
+              Reset setup
+            </Button>
+            <Button
+              type="button"
+              className="min-h-11"
+              onClick={() => {
+                setupSnapshot.current = null;
+                setMobileControlsOpen(false);
+              }}
+            >
+              Apply setup
+            </Button>
+          </div>
+        }
         inlineAtDesktop
         className="lg:rounded-lg lg:bg-[var(--surface-soft)]"
         contentClassName="space-y-3 lg:space-y-4"
@@ -944,6 +1018,14 @@ export function ShotPatternMap({
           </label>
 
           <div className="grid gap-1.5 sm:gap-2">
+            <label className="grid gap-2">
+              Search clubs
+              <Input
+                className="min-h-11"
+                value={clubQuery}
+                onChange={(event) => setClubQuery(event.target.value)}
+              />
+            </label>
             <Label htmlFor="shot-pattern-club">Club</Label>
             <Select
               value={clubSelectValue}
@@ -961,14 +1043,21 @@ export function ShotPatternMap({
                 <SelectValue placeholder="Choose a club" />
               </SelectTrigger>
               <SelectContent>
-                {renderedClubOptions.map((option) => (
-                  <SelectItem
-                    key={`${option.clubId ?? "type"}-${option.clubType}`}
-                    value={option.clubId ? `club:${option.clubId}` : `type:${option.clubType}`}
-                  >
-                    {option.label} · {optionSampleLabel(option.sampleSize)}
-                  </SelectItem>
-                ))}
+                {renderedClubOptions
+                  .filter(
+                    (option) =>
+                      option.label.toLowerCase().includes(clubQuery.toLowerCase()) ||
+                      (option.clubId ? `club:${option.clubId}` : `type:${option.clubType}`) ===
+                        clubSelectValue,
+                  )
+                  .map((option) => (
+                    <SelectItem
+                      key={`${option.clubId ?? "type"}-${option.clubType}`}
+                      value={option.clubId ? `club:${option.clubId}` : `type:${option.clubType}`}
+                    >
+                      {option.label} · {optionSampleLabel(option.sampleSize)}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -1053,7 +1142,7 @@ export function ShotPatternMap({
                 <TargetMetric label="Left miss" value={`${targetLine?.leftMissYd ?? "--"}L`} />
                 <TargetMetric label="Right miss" value={`${targetLine?.rightMissYd ?? "--"}R`} />
               </div>
-              <p className="hidden text-xs text-muted-foreground sm:block">
+              <p className="text-xs text-muted-foreground">
                 {targetLine?.beyondCapability
                   ? `No line score: recent ${data?.pattern.clubLabel ?? "club"} max is ${numberFormatter.format(targetLine.capabilityDistanceYd ?? 0)} yd.`
                   : targetLine?.surfaceMode === "mapped"
@@ -1121,13 +1210,27 @@ export function ShotPatternMap({
           {error ? (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-2 min-h-11"
+                onClick={() => setResponse({ key: "", data: null, error: null })}
+              >
+                Retry pattern
+              </Button>
             </Alert>
           ) : null}
         </div>
       </ResponsiveDetailPanel>
 
       <div className="min-h-0 space-y-3">
-        <div className="map-frame shot-pattern-mobile-map relative h-[100svh] min-h-[100svh] overflow-hidden lg:h-[72vh] lg:min-h-[620px]">
+        <p className="rounded-lg border bg-card p-3 text-sm">
+          Projection from your measured shots, not a tracked on-course shot or a guaranteed landing.
+          {data
+            ? ` ${data.pattern.summary.includedSampleSize}/${data.pattern.summary.sampleSize} measured shots included. ${data.pattern.summary.warning ?? ""}`
+            : " Waiting for the selected pattern."}
+        </p>
+        <div className="map-frame shot-pattern-mobile-map relative h-[65dvh] min-h-[360px] overflow-hidden lg:h-[72vh] lg:min-h-[620px]">
           {showStaticSatellite && satelliteImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -1259,8 +1362,17 @@ export function ShotPatternMap({
           />
         ) : (
           <div className="flex items-center justify-center gap-2 rounded-xl border border-dashed bg-card p-6 text-center text-sm text-muted-foreground">
-            <Spinner className="size-4" />
-            <span>Shot pattern data is loading.</span>
+            {error ? (
+              <span role="alert">
+                Pattern unavailable. Open Setup to retry; your selected course and controls are
+                retained.
+              </span>
+            ) : (
+              <>
+                <Spinner className="size-4" />
+                <span role="status">Shot pattern data is loading.</span>
+              </>
+            )}
           </div>
         )}
       </div>
