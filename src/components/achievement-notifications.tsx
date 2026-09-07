@@ -168,7 +168,9 @@ function AchievementToastCard({
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
-      onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false); }}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false);
+      }}
       data-open={open ? "true" : "false"}
       className={cn(
         "t-toast pointer-events-auto overflow-hidden rounded-[8px] border border-border bg-card text-foreground shadow-sm",
@@ -192,8 +194,8 @@ function AchievementToastCard({
         <Button
           type="button"
           variant="ghost"
-          size="icon-sm"
-          className="shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground"
+          size="icon"
+          className="size-11 shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground"
           onClick={beginDismiss}
           aria-label="Dismiss achievement notification"
         >
@@ -207,7 +209,7 @@ function AchievementToastCard({
             href={achievementUnlockHref(notification.achievementId)}
             className="block rounded-[8px] border border-border bg-muted/40 px-3 py-2 transition-colors hover:bg-muted"
           >
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="break-words text-sm font-medium">{notification.name}</p>
               <div className="flex shrink-0 items-center gap-2">
                 <Badge className={cn("border capitalize", tierToastStyles[notification.tier])}>
@@ -217,8 +219,8 @@ function AchievementToastCard({
               </div>
             </div>
             <div className="mt-1 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-              <span className="truncate">{notification.description}</span>
-              <span className="shrink-0 font-medium text-primary">
+              <span className="min-w-0 break-words">{notification.description}</span>
+              <span className="min-w-0 break-all font-medium text-primary">
                 +{notification.xpAwarded.toLocaleString("en-GB")} XP
               </span>
             </div>

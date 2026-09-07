@@ -10,17 +10,29 @@ import { listOfflineActions } from "@/lib/offline-queue";
 
 export function CompanionSyncStatus({ accountId }: { accountId: string }) {
   const isOnline = useSyncExternalStore(subscribeOnline, onlineSnapshot, serverOnlineSnapshot);
-  const [snapshot, setSnapshot] = useState<{accountId: string; count: number; needsAttention: number; error: boolean} | null>(null);
+  const [snapshot, setSnapshot] = useState<{
+    accountId: string;
+    count: number;
+    needsAttention: number;
+    error: boolean;
+  } | null>(null);
   const request = useRef(0);
   const state = snapshot?.accountId === accountId ? snapshot : null;
   const refresh = useCallback(() => {
     const current = ++request.current;
     listOfflineActions(accountId)
       .then((actions) => {
-        if (request.current === current) setSnapshot({accountId, count: actions.length, needsAttention: actions.filter((action) => action.status === "dead_letter").length, error: false});
+        if (request.current === current)
+          setSnapshot({
+            accountId,
+            count: actions.length,
+            needsAttention: actions.filter((action) => action.status === "dead_letter").length,
+            error: false,
+          });
       })
       .catch(() => {
-        if (request.current === current) setSnapshot({accountId, count: 0, needsAttention: 0, error: true});
+        if (request.current === current)
+          setSnapshot({ accountId, count: 0, needsAttention: 0, error: true });
       });
   }, [accountId]);
 
@@ -38,8 +50,28 @@ export function CompanionSyncStatus({ accountId }: { accountId: string }) {
     };
   }, [refresh]);
 
-  if (!state) return <p role="status" className="text-sm text-muted-foreground">Checking saved actions…</p>;
-  if (state.error) return <Alert variant="destructive"><TriangleAlert aria-hidden /><AlertTitle>Saved actions could not be checked</AlertTitle><AlertDescription>Your sync status is unknown. <Button type="button" variant="outline" onClick={refresh}>Check again</Button><a href="/settings">Review local storage in Settings</a></AlertDescription></Alert>;
+  if (!state)
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        Checking saved actions…
+      </p>
+    );
+  if (state.error)
+    return (
+      <Alert variant="destructive">
+        <TriangleAlert aria-hidden />
+        <AlertTitle>Saved actions could not be checked</AlertTitle>
+        <AlertDescription className="grid gap-2">
+          Your sync status is unknown.{" "}
+          <Button type="button" variant="outline" className="min-h-11 w-fit" onClick={refresh}>
+            Check again
+          </Button>
+          <a href="/settings" className="inline-flex min-h-11 items-center underline">
+            Review local storage in Settings
+          </a>
+        </AlertDescription>
+      </Alert>
+    );
   if (state.count === 0 && isOnline) return null;
 
   const presentation = state.needsAttention
@@ -62,7 +94,8 @@ export function CompanionSyncStatus({ accountId }: { accountId: string }) {
         ? {
             icon: CloudUpload,
             title: "Actions queued on this device",
-            detail: "Waiting for connection. Saved actions remain on this device until sync succeeds.",
+            detail:
+              "Waiting for connection. Saved actions remain on this device until sync succeeds.",
             status: "Waiting for connection",
             tone: "attention" as const,
           }
@@ -106,7 +139,7 @@ export function CompanionSyncStatus({ accountId }: { accountId: string }) {
             type="button"
             size="sm"
             variant="outline"
-            className="w-fit"
+            className="min-h-11 w-fit"
             disabled={!isOnline}
             onClick={retrySync}
             aria-label={isOnline ? "Retry queued upload sync" : "Retry queued upload when online"}
@@ -115,7 +148,9 @@ export function CompanionSyncStatus({ accountId }: { accountId: string }) {
             {isOnline ? "Retry sync" : "Retry when online"}
           </Button>
         ) : null}
-        <a href="/settings" className="min-h-11 content-center underline">Review saved actions in Settings</a>
+        <a href="/settings" className="min-h-11 content-center underline">
+          Review saved actions in Settings
+        </a>
       </AlertDescription>
     </Alert>
   );

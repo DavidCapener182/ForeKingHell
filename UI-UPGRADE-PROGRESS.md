@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-485 desktop / 485 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P95–P98 combined browser verification; then shared UI gaps**. 7 UI entries remain. Tournament alias functional assertions passed, but all four tests fail on development Performance.measure negative timestamps; acceptance remains outstanding.
+**492 desktop / 492 mobile entries have UI implemented with partial verification; 0 fully accepted.** All 98 route UI batches and shared UI pass are addressed. Current: integration defects and acceptance verification. This is not overall completion. Tournament aliases still fail the development runtime page-error assertion.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **G04/G08/G09/G11/G12/G13/G14 final shared UI reconciliation and controls**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **release the three coordinated backend fixes; investigate redirect timing errors and complete acceptance checks**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -514,3 +514,11 @@ P98-C01 UI alias applied: required tab=submit, exact encoded ID/query preserved.
 ### P95–P98 canonical tournament aliases
 
 All four preserve event identity and repeated source query while forcing their documented tab. Combined browser exercises both surfaces at all six sizes; exact destination, selected tab, query, 390 reload/Back, no overflow and no entry mutation assertions pass. Final page-error assertions fail with Next development Performance.measure negative timestamps. No browser pass claimed. Seven canonical query unit tests pass. Continue shared UI controls, then investigate the timing error in an isolated production runtime.
+
+### Final shared UI pass
+
+G04/G13/G14: entity breadcrumb parents, 44px recovery/dismiss controls and readable achievement content implemented. Actual component fixture passes all six sizes (final-shared-browser.log, 1 test/5.3s); 360 screenshot inspected. Initial fixture lacked process.env stub and could not mount; corrected fixture only. Three breadcrumb plus seven canonical-query tests pass (540ms), two PWA policy tests pass (184ms), scoped lint and TypeScript pass. G08/G09/G11/G12 reconciled against existing shared implementation: their remaining work is acceptance, not unimplemented UI. Every row remains partial.
+
+Changed final shared files: desktop-workbench-chrome.tsx (only owned delta), workbench-breadcrumbs.tsx, workbench-breadcrumbs.ts and tests, companion-sync-status.tsx, achievement-notifications.tsx; isolated final-shared fixture/test. Preserve other agent dirty changes.
+
+Exact next steps: release only weekly-change-review-data.ts, activation-journey.ts and share/[token]/page.tsx to the coordinated backend agent for their three known failing regressions. Root must continue acceptance/integration, starting with redirect Performance.measure stack capture and isolated production-runtime comparison. Keep tracker partial until each full acceptance is evidenced. Do not rerun unchanged failing broad suites or deploy.
