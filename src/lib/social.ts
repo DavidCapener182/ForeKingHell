@@ -342,8 +342,16 @@ export async function getProfilePageData(username: string) {
     ? await getVisibleFeedItemsForViewer(viewerUserId, { ownerUserId: profile.userId, limit: 6 })
     : await getPublicFeedItemsForProfile(profile.userId, 6);
   const stats = await getProfileStats(profile.userId, profile.visibilitySettingsJson, relationship);
+  const [pendingRequest] = viewerUserId && (relationship === "incoming" || relationship === "outgoing")
+    ? await getDb().select({ id: friendRequests.id }).from(friendRequests).where(and(
+      eq(friendRequests.status, "pending"),
+      eq(friendRequests.requesterUserId, relationship === "outgoing" ? viewerUserId : profile.userId),
+      eq(friendRequests.recipientUserId, relationship === "outgoing" ? profile.userId : viewerUserId),
+    )).limit(1) : [];
+
 
   return {
+    pendingRequestId: pendingRequest?.id ?? null,
     viewerProfile: viewerProfile ? profileSummary(viewerProfile, "self") : null,
     profile: {
       ...profileSummary(profile, relationship, { isFollowing: isFollowingProfile }),
@@ -757,8 +765,10 @@ export async function getVisibleFeedItemsForViewer(
     )
     .orderBy(desc(feedItems.createdAt))
     .limit(limit * 3);
+  const owners = await profilesByUserId([...new Set(rows.map((item) => item.userId))]);
   const visible = rows
-    .filter((item) => canViewFeedItem(item, viewerUserId, socialIds, blockedIds, hiddenTypeSet))
+    .filter((item) => canViewFeedItem(item, viewerUserId, socialIds, blockedIds, hiddenTypeSet,
+      owners.get(item.userId)?.visibilitySettingsJson))
     .slice(0, limit);
 
   return hydrateFeedItems(visible, viewerUserId);
@@ -778,7 +788,9 @@ export async function getPublicFeedItemsForProfile(ownerUserId: string, limit = 
     .orderBy(desc(feedItems.createdAt))
     .limit(Math.min(Math.max(limit, 1), 20));
 
-  return hydrateFeedItems(rows, "");
+  const owners = await profilesByUserId([ownerUserId]);
+  const settings = owners.get(ownerUserId)?.visibilitySettingsJson;
+  return hydrateFeedItems(rows.filter((item) => canViewFeedCategory(item, "", new Set(), settings)), "");
 }
 
 export async function addFeedReaction(feedItemId: string) {
@@ -1361,7 +1373,9 @@ async function getVisibleFeedItem(feedItemId: string, viewerUserId: string) {
     getHiddenFeedTypes(viewerUserId),
   ]);
   const socialIds = new Set([viewerUserId, ...friendIds]);
-  return canViewFeedItem(item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes))
+  const owners = await profilesByUserId([item.userId]);
+  return canViewFeedItem(item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes),
+    owners.get(item.userId)?.visibilitySettingsJson)
     ? item
     : null;
 }
@@ -1387,7 +1401,9 @@ async function getVisibleFeedComment(commentId: string, viewerUserId: string) {
     getHiddenFeedTypes(viewerUserId),
   ]);
   const socialIds = new Set([viewerUserId, ...friendIds]);
-  return canViewFeedItem(row.item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes))
+  const owners = await profilesByUserId([row.item.userId]);
+  return canViewFeedItem(row.item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes),
+    owners.get(row.item.userId)?.visibilitySettingsJson)
     ? row.comment
     : null;
 }
@@ -1510,12 +1526,32 @@ async function hydrateFeedItems(
     .filter((item): item is FeedItemView => Boolean(item));
 }
 
+function canViewFeedCategory(
+  item: FeedItemRow,
+  viewerUserId: string,
+  socialIds: Set<string>,
+  settings?: ProfileRow["visibilitySettingsJson"],
+) {
+  if (item.userId === viewerUserId) return true;
+  const categories: Record<string, "pbs" | "achievements" | "rounds" | "practice"> = {
+    new_pb: "pbs", longest_drive: "pbs",
+    achievement_unlock: "achievements", level_up: "achievements",
+    round_completed: "rounds", post_round_recap: "rounds",
+    practice_completed: "practice",
+  };
+  const category = categories[item.itemType];
+  if (!category) return true;
+  const visibility = settings?.[category] ?? defaultProfileVisibilitySettings()[category];
+  return visibility === "public" || (visibility === "friends" && socialIds.has(item.userId));
+}
+
 function canViewFeedItem(
   item: FeedItemRow,
   viewerUserId: string,
   socialIds: Set<string>,
   blockedIds: Set<string>,
   hiddenTypes: Set<string> = new Set(),
+  ownerSettings?: ProfileRow["visibilitySettingsJson"],
 ) {
   if (blockedIds.has(item.userId)) {
     return false;
@@ -1531,6 +1567,10 @@ function canViewFeedItem(
 
   if (item.userId === viewerUserId) {
     return true;
+  }
+
+  if (!canViewFeedCategory(item, viewerUserId, socialIds, ownerSettings)) {
+    return false;
   }
 
   if (item.visibility === "public") {

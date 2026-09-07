@@ -110,3 +110,6 @@ Specified official forms/select/textarea, section headers, tables/paginations an
 
 ## P69 Your Profile
 Specified Avatars/Badges, Underline tabs, Metrics, domain lists, Tables/Paginations, Inputs/Select/Textarea, File uploaders, Toggles and Modals references reuse checked current exports. Paid advanced examples remain unavailable; accessible alternatives are retained React Aria tabs, semantic full-field cards/table/mobile details, labelled native fields, persistent native dialog with focus return, actual local image preparation progress, and existing responsive share panel. No paid vendor implementation claimed.
+
+## P70 Public Profile
+Specified Avatars/Badges/Dropdowns, Modals/Buttons, Tables/Paginations and Activity feeds references reuse current accessible adapters. Paid advanced examples unavailable; explicit alternatives are existing named-person confirmation menu, semantic sortable permitted summary table, full native mobile disclosures and dated permitted feed/ledger. No raw shot expansion or new paid component claimed.

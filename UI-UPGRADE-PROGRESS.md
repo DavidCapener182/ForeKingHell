@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-375 desktop / 375 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P70 Public profile**, next P71. 117 UI entries remain. Continue the UI pass with acceptance gaps retained.
+379 desktop / 379 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P71 Settings**, next P72 Notification preferences. 113 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P70 Public profile**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P71 Settings**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -378,3 +378,8 @@ Resume: P69 prompts read; Profile drafts prepared /tmp/fkh-profile-{page,section
 P69-C01–C09 UI implemented with partial verification;375/492 UI implemented,0 accepted. Shared full-width identity/sections; full achievement labels/unlock source disclosures; dated search/order record table and complete mobile detail panel; preserved native modal editor draft; stateful save errors; media progress/failure/retry/restore; saved sharing scopes and exact profile-link/QR error feedback. Existing per-scope loader bug corrected: accepted friends no longer override private rounds/bag/handicap; profile header handicap filtered too.
 Changed profile page/UI files, profile-records.tsx, profile actions and social loader, scoped tests. Types profile-types-final.log terminal clean; scoped lint ready clean; isolated profile-edit.log PASS4.5s atall6sizes (draft retained, invalid image keeps saved avatar, save failure/retry identical payload); backend profile-privacy-final.log6PASS plus profile-populated-privacy.log actual populated bag/round/handicap visibility1PASS1.62s.
 Actual profile-browser.log and profile-browser-repeat.log BOTH FAILED initial60s navigation during local compilation, before UI assertions. Full actual viewport screenshots/save/privacy/QR remain outstanding. UI-first user direction: defer this matrix and continue P70 instead of repeated compile waits. P69 runtime freeze explicitly released; other agent proceeds P70 category privacy plus exact pending request ID. Root owns public-profile UI. Rerun tests/e2e/ui-upgrade-profile.spec.ts on3116 when compile recovers, preserve failed logs. Prepared P70 /tmp/fkh-public-profile-page.tsx; detailedP70prompts read.
+
+## P70 Public Profile UI checkpoint
+P70-C01–C04 UI implemented partial;379/492 UI,0 fully accepted. One shared identity header, current relationship actions using exact pendingRequestId and existing confirmed state API, full permitted activity/ledger, complete mobile stock-bag details and searchable/orderable semantic table. Additional category privacy filtering restricts collection/public/item/comment access without widening item.visibility; owner/unmapped behavior retained.
+Changed public profile page/public-profile-bag.tsx/social.ts/capability and feed-category privacy + browser tests. public-profile-types-final.log and scoped lint clean. public-profile-final.log2files3backendtestsPASS1.78s. Actual profiles-browser-ready.log overall1PASS(P70),1FAIL(P69 initial60s goto),3.9m: P70 all12 surface/size combinations passed exact pending request Cancel/accept, private categories/header absent, shared full bag detail, search, block Cancel,0pageerrors/overflow. Companion390 capture inspected: caught the closing confirmation transition, so a neutral page capture remains outstanding; fixture now waits for dialog removal before future screenshots. Existing6feed item limit disclosed; broader acceptance stays outstanding. P69 remains route-unverified after additional compile timeout.
+Runtime freeze explicitly released. NextP71 Settings14components; all detailed prompts read. /tmp/fkh-settings-{workspace.tsx,workspace.module.css,dirty-form.tsx,access-actions.tsx} are prepared drafts. Other agent owns Settings/notification action state wrappers+tests; root owns page/UI including offline/theme local adjustments. Continue this branch, preserve tracker, do not rerun passed P70 without a regression.
