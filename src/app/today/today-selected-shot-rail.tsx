@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Ban, RotateCcw, X } from "lucide-react";
 
+import { ClubCorrection } from "@/app/shots/mobile-shot-explorer";
 import { ShotDeleteButton, ShotReviewButton } from "@/app/shots/shot-review-controls";
 import {
   SelectedShotDetail,
@@ -15,9 +16,11 @@ import { isRestorableShotReviewStatus } from "@/lib/shot-review";
 export function TodaySelectedShotRail({
   shot,
   onClose,
+  correctionClubs = [],
 }: {
   shot: TodayChartShot;
   onClose: () => void;
+  correctionClubs?: Array<{ value: string; label: string }>;
 }) {
   const [detailTab, setDetailTab] = useState<"overview" | "source" | "history">("overview");
   const detail = shot.detail ?? null;
@@ -34,18 +37,19 @@ export function TodaySelectedShotRail({
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
             Selected shot
           </p>
-          <h3 className="mt-1 truncate text-base font-semibold text-foreground">
+          <h3 className="mt-1 break-words text-base font-semibold text-foreground">
             {detail?.clubLabel ?? shot.clubLabel} · shot{" "}
             {detail?.shotNumberLabel ?? shot.shotNumber ?? "--"}
           </h3>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          <p className="mt-0.5 break-words text-xs text-muted-foreground">
             {detail?.shotAtLabel ?? "Today"} · {detail?.fileNameLabel ?? "Measured session"}
           </p>
         </div>
         <Button
           type="button"
           variant="ghost"
-          size="icon-sm"
+          size="icon"
+          className="size-11 shrink-0"
           aria-label="Close selected shot details"
           onClick={onClose}
         >
@@ -82,6 +86,11 @@ export function TodaySelectedShotRail({
               </div>
             )}
           </div>
+          {correctionClubs.length ? (
+            <div className="border-b border-border p-4">
+              <ClubCorrection shotId={shot.id} clubs={correctionClubs} />
+            </div>
+          ) : null}
           <SelectedShotDetail
             shot={detail}
             tab={detailTab}

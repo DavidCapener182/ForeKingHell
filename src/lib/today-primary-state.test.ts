@@ -90,9 +90,62 @@ describe("Today primary state priority", () => {
     expect(state.action).toBe("Plan range session");
     expect(state.href).toContain("club=7i");
   });
+
+  it("does not treat an old source session as a fresh review because a plan links to it", () => {
+    vi.setSystemTime(new Date("2026-09-06T12:00:00Z"));
+    const state = resolveTodayPrimaryState({
+      currentPlan: {
+        id: "saved / plan",
+        title: "Carry calibration",
+        status: "planned",
+        timeMinutes: 30,
+        sourceSessionId: "session-1",
+      },
+      activeRound: null,
+      recommendation,
+      latestData: review,
+    });
+    expect(state.status).toBe("Ready");
+    expect(state.href).toBe("/practice?planId=saved%20%2F%20plan");
+  });
+
+  it("uses a completed plan's identity for importing evidence", () => {
+    const state = resolveTodayPrimaryState({
+      currentPlan: {
+        id: "plan-2",
+        title: "Carry calibration",
+        status: "completed",
+        timeMinutes: 30,
+      },
+      activeRound: null,
+      recommendation,
+      latestData: null,
+    });
+    expect(state.href).toBe("/import?practicePlanId=plan-2");
+    expect(todayHeroEvidence({ state, recommendation, latestData: null })).toMatchObject({
+      heading: "Activity status",
+      confidence: "Evidence needed",
+      evidenceLabel: "Matching shots still needed",
+    });
+  });
 });
 
 describe("Today hero evidence", () => {
+  it("offers first import when no measured baseline exists", () => {
+    const state = resolveTodayPrimaryState({
+      currentPlan: null,
+      activeRound: null,
+      latestData: null,
+      recommendation: {
+        ...recommendation,
+        clubType: null,
+        clubLabel: "Baseline",
+        evidenceLabel: "Baseline needed",
+      },
+    });
+    expect(state.href).toBe("/import");
+    expect(state.action).toBe("Import first session");
+  });
   it("summarises the combined measured review instead of the recommendation sample", () => {
     const combinedReview = {
       ...review,

@@ -16,6 +16,7 @@ type ActiveRound = {
 } | null;
 
 type LatestPracticeReview = {
+  dateKey?: string;
   dateLabel: string;
   sessions: Array<{ id: string }>;
   shots: unknown[];
@@ -28,7 +29,7 @@ export function buildTodayRecommendation(context: PracticePlannerContext) {
   const opportunity = context.latestPractice.biggestOpportunity;
   const club =
     context.latestPractice.clubs.find((item) => item.clubType === opportunity) ??
-    [...context.latestPractice.clubs].sort((left, right) => left.score - right.score)[0] ??
+    [...context.latestPractice.clubs].sort((left, right) => left.score - right.score).at(0) ??
     null;
   const bagClub = context.bag.clubs.find((item) => item.clubType === club?.clubType) ?? null;
   const confidence =
@@ -85,14 +86,14 @@ export function resolveTodayPrimaryState({
       reason: "Your practice is still active. Continue at the current block.",
       status: "In progress",
       tone: "positive",
-      href: "/practice",
+      href: `/practice?planId=${encodeURIComponent(currentPlan.id)}`,
       action: "Continue practice",
     };
   }
   if (
     latestData?.sessions[0]?.id &&
     latestData.shots.length > 0 &&
-    isReviewReadyDate(currentPlan?.sourceSessionId ? null : latestData.dateLabel)
+    isReviewReadyDate(latestData.dateKey ?? latestData.dateLabel)
   ) {
     return {
       eyebrow: "New session ready",
@@ -104,7 +105,7 @@ export function resolveTodayPrimaryState({
       action: "Review session",
     };
   }
-  if (currentPlan?.status === "awaiting_import") {
+  if (currentPlan && ["awaiting_import", "completed"].includes(currentPlan.status)) {
     return {
       eyebrow: "Practice finished",
       title: "Add the measured session",
@@ -133,8 +134,20 @@ export function resolveTodayPrimaryState({
       reason: `${currentPlan.timeMinutes} minutes planned and ready to start.`,
       status: "Ready",
       tone: "info",
-      href: "/practice",
+      href: `/practice?planId=${encodeURIComponent(currentPlan.id)}`,
       action: "Start plan",
+    };
+  }
+  if (!latestData?.shots.length && !recommendation.clubType) {
+    return {
+      eyebrow: "Start your improvement journey",
+      title: "Add your first measured session",
+      reason:
+        "Import your launch-monitor shots to see your club numbers and choose a useful first practice. Your original readings stay available to review.",
+      status: "Baseline needed",
+      tone: "info",
+      href: "/import",
+      action: "Import first session",
     };
   }
   return {
@@ -146,12 +159,6 @@ export function resolveTodayPrimaryState({
     href: `/practice?intent=latest_weakness&club=${encodeURIComponent(recommendation.clubType ?? "")}&time=${recommendation.minutes}&source=today`,
     action: "Plan range session",
   };
-}
-
-export function todayConfidencePercent(confidence: string) {
-  if (/high|ready|progress/i.test(confidence)) return 88;
-  if (/moderate|info/i.test(confidence)) return 64;
-  return 38;
 }
 
 export function todayHeroEvidence({
@@ -173,6 +180,17 @@ export function todayHeroEvidence({
     };
   }
 
+  if (["In progress", "Evidence needed", "Ready"].includes(state.status)) {
+    return {
+      heading: "Activity status",
+      confidence: state.status,
+      evidenceLabel:
+        state.status === "Evidence needed" ? "Matching shots still needed" : "Activity tracking",
+      contextLabel: "Next step",
+      contextValue: state.action,
+    };
+  }
+
   return {
     heading: "Decision confidence",
     confidence: recommendation.confidence,
@@ -182,8 +200,7 @@ export function todayHeroEvidence({
   };
 }
 
-function isReviewReadyDate(dateLabel: string | null) {
-  if (dateLabel === null) return true;
+function isReviewReadyDate(dateLabel: string) {
   const date = new Date(dateLabel);
   if (Number.isNaN(date.getTime())) return false;
   const age = Date.now() - date.getTime();

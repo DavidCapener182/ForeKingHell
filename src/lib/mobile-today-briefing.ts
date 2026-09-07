@@ -78,7 +78,7 @@ export function buildMobileTodayChange(
   const previous = (data.previousComparisonShots ?? []).filter(
     (s) => s.clubType === comparison.clubType && s.carryYd !== null,
   );
-  if (!latest.length || !previous.length) return null;
+  if (latest.length < 6 || previous.length < 6) return null;
   return {
     clubLabel: formatCompanionClubType(comparison.clubType),
     delta: Math.round(comparison.carryDeltaYd!),
@@ -120,3 +120,14 @@ function evidenceSessions(shots: TodayPracticeShot[]) {
   return [...grouped.values()];
 }
 export type MobileTodayChange = NonNullable<ReturnType<typeof buildMobileTodayChange>>;
+
+/** Describe a supported change without equating extra distance with improvement. */
+export function todayReviewTakeaway(data: TodayPracticeData) {
+  if (data.overall.verdict === "new") return null;
+  const change = buildMobileTodayChange(data);
+  if (!change) return null;
+  return {
+    title: `${change.clubLabel} carry is ${Math.abs(change.delta)} yd ${change.delta < 0 ? "shorter" : "longer"}`,
+    summary: `Compared with your previous comparable practice: ${change.latest.count} current and ${change.previous.count} earlier carry readings. Review the pattern before changing your target distance.`,
+  };
+}

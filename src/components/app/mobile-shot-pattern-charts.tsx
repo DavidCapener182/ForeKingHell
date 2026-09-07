@@ -1,5 +1,7 @@
 "use client";
 
+import { TodaySelectedShotRail } from "@/app/today/today-selected-shot-rail";
+import type { ShotMasterDetailRow } from "@/app/shots/shots-master-detail-table";
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -11,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Drawer,
+  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerHeader,
@@ -56,12 +59,16 @@ export function MobileShotPatternCharts({
   compact = false,
   defaultToAllClubs = false,
   layout = "mobile",
+  details = [],
+  correctionClubs = [],
 }: {
   points: ShotPatternPoint[];
   preferredClub?: string | null;
   compact?: boolean;
   defaultToAllClubs?: boolean;
   layout?: "mobile" | "desktop";
+  details?: ShotMasterDetailRow[];
+  correctionClubs?: Array<{ value: string; label: string }>;
 }) {
   const clubs = useMemo(() => shotPatternClubs(points), [points]);
   const [mode, setMode] = useState<ChartMode>("dispersion");
@@ -223,7 +230,9 @@ export function MobileShotPatternCharts({
       ) : null}
 
       <ShotDetailDrawer
-        shot={selectedShot}
+        shot={selected.find((point) => point.id === selectedShot?.id) ?? null}
+        detail={details.find((detail) => detail.id === selectedShot?.id)}
+        correctionClubs={correctionClubs}
         onOpenChange={(open) => !open && setSelectedShot(null)}
       />
     </section>
@@ -671,9 +680,9 @@ function AccessibleShotTable({
               <TableRow>
                 <TableHead>Shot</TableHead>
                 <TableHead>Club</TableHead>
-                <TableHead>Carry</TableHead>
-                <TableHead>Lateral</TableHead>
-                <TableHead>Apex</TableHead>
+                <TableHead>Carry yd</TableHead>
+                <TableHead>Lateral yd</TableHead>
+                <TableHead>Apex ft</TableHead>
                 <TableHead>Trust</TableHead>
                 <TableHead className="text-right">Details</TableHead>
               </TableRow>
@@ -688,7 +697,13 @@ function AccessibleShotTable({
                   <TableCell>{formatMeasure(point.apexFt, "ft")}</TableCell>
                   <TableCell>{point.trusted ? "Trusted" : "Unusual"}</TableCell>
                   <TableCell className="text-right">
-                    <Button type="button" variant="ghost" size="sm" onClick={() => onSelect(point)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="min-h-11"
+                      onClick={() => onSelect(point)}
+                    >
                       Inspect
                     </Button>
                   </TableCell>
@@ -705,13 +720,20 @@ function AccessibleShotTable({
 function ShotDetailDrawer({
   shot,
   onOpenChange,
+  detail,
+  correctionClubs,
 }: {
   shot: ShotPatternPoint | null;
+  detail?: ShotMasterDetailRow;
+  correctionClubs: Array<{ value: string; label: string }>;
   onOpenChange: (open: boolean) => void;
 }) {
   return (
     <Drawer open={Boolean(shot)} onOpenChange={onOpenChange} repositionInputs={false}>
-      <DrawerContent className="pb-[env(safe-area-inset-bottom)]" data-shot-detail-drawer>
+      <DrawerContent
+        className="max-h-[90dvh] overflow-y-auto pb-[env(safe-area-inset-bottom)]"
+        data-shot-detail-drawer
+      >
         <DrawerHeader className="text-left">
           <div className="flex items-start justify-between gap-3">
             <span>
@@ -727,7 +749,26 @@ function ShotDetailDrawer({
             ) : null}
           </div>
         </DrawerHeader>
-        {shot ? (
+        <DrawerClose asChild>
+          <Button type="button" variant="outline" className="mx-4 mb-3 min-h-11">
+            Close shot details
+          </Button>
+        </DrawerClose>
+        {shot && detail ? (
+          <div className="px-4 pb-4">
+            <TodaySelectedShotRail
+              shot={{
+                ...shot,
+                launchDirectionDeg: shot.launchDirectionDeg ?? null,
+                totalYd: shot.totalYd ?? null,
+                ballSpeedMph: shot.ballSpeedMph ?? null,
+                detail,
+              }}
+              onClose={() => onOpenChange(false)}
+              correctionClubs={correctionClubs}
+            />
+          </div>
+        ) : shot ? (
           <div className="grid grid-cols-2 gap-2 px-4 pb-4">
             <ShotMetric label="Carry" value={formatMeasure(shot.carryYd, "yd")} />
             <ShotMetric label="Total" value={formatMeasure(shot.totalYd ?? null, "yd")} />

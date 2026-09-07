@@ -2,6 +2,7 @@ import { formatCompanionClubType } from "@/lib/club-format";
 import { companionReviewRoute } from "@/lib/session-review-route";
 import type { TodayPracticeData } from "@/lib/today-session-data";
 import type { TodayPrimaryState } from "@/lib/today-sync-state";
+import { todayReviewTakeaway } from "@/lib/mobile-today-briefing";
 
 export function practiceDateKey(now: Date) {
   return new Intl.DateTimeFormat("en-CA", {
@@ -42,7 +43,7 @@ export function buildMobileTodayReview(data: TodayPracticeData | null, now: Date
   const state: TodayPrimaryState = {
     eyebrow: "Practice complete · Today",
     title: "Your practice today",
-    reason,
+    reason: todayReviewTakeaway(data)?.title ?? reason,
     status: "Review ready",
     tone: "positive",
     href: "#today-practice-review",
