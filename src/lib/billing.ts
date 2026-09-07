@@ -236,10 +236,10 @@ export async function createCheckoutSession(input: {
       "content-type": "application/x-www-form-urlencoded",
     },
     body: params,
-  });
-  const payload = (await response.json().catch(() => null)) as unknown;
+  }).catch(() => null);
+  const payload = (await response?.json().catch(() => null)) as unknown;
 
-  if (!response.ok || !isRecord(payload) || typeof payload.url !== "string") {
+  if (!response?.ok || !isRecord(payload) || typeof payload.url !== "string") {
     return {
       url: `/billing?checkout=error&plan=${plan.key}`,
       error: readStripeError(payload) ?? "Stripe Checkout could not be started.",
@@ -284,10 +284,10 @@ export async function createCustomerPortalSession(origin: string) {
       "content-type": "application/x-www-form-urlencoded",
     },
     body: params,
-  });
-  const payload = (await response.json().catch(() => null)) as unknown;
+  }).catch(() => null);
+  const payload = (await response?.json().catch(() => null)) as unknown;
 
-  if (!response.ok || !isRecord(payload) || typeof payload.url !== "string") {
+  if (!response?.ok || !isRecord(payload) || typeof payload.url !== "string") {
     return {
       url: "/billing?portal=error",
       error: readStripeError(payload) ?? "Stripe Billing Portal could not be opened.",
