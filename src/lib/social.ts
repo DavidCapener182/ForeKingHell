@@ -345,7 +345,11 @@ export async function getProfilePageData(username: string) {
 
   return {
     viewerProfile: viewerProfile ? profileSummary(viewerProfile, "self") : null,
-    profile: profileSummary(profile, relationship, { isFollowing: isFollowingProfile }),
+    profile: {
+      ...profileSummary(profile, relationship, { isFollowing: isFollowingProfile }),
+      handicapBand: canViewProfileScope(profile.visibilitySettingsJson?.handicap, relationship)
+        ? profile.handicapBand : null,
+    },
     stats,
     recentFeed,
   };
@@ -1681,15 +1685,22 @@ async function getRelationship(
   return request.requesterUserId === viewerUserId ? "outgoing" : "incoming";
 }
 
+function canViewProfileScope(
+  visibility: SocialVisibility | undefined,
+  relationship: SocialProfileSummary["relationship"],
+) {
+  return relationship === "self" || visibility === "public" ||
+    (visibility === "friends" && relationship === "friend");
+}
+
 async function getProfileStats(
   userId: string,
   visibilitySettings: ProfileRow["visibilitySettingsJson"],
   relationship: SocialProfileSummary["relationship"],
 ) {
-  const canSeePublic = relationship === "self" || relationship === "friend";
-  const canSeeRounds = canSeePublic || visibilitySettings?.rounds === "public";
-  const canSeeBag = canSeePublic || visibilitySettings?.bag === "public";
-  const canSeeHandicap = canSeePublic || visibilitySettings?.handicap === "public";
+  const canSeeRounds = canViewProfileScope(visibilitySettings?.rounds, relationship);
+  const canSeeBag = canViewProfileScope(visibilitySettings?.bag, relationship);
+  const canSeeHandicap = canViewProfileScope(visibilitySettings?.handicap, relationship);
   const [roundCountRow, gapRows, handicapProfile] = await Promise.all([
     canSeeRounds
       ? getDb()

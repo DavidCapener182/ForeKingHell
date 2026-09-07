@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-366 desktop / 366 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P69 Your profile**, next P70 Public profile. 126 UI entries remain. Continue the UI pass with acceptance gaps retained.
+375 desktop / 375 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P70 Public profile**, next P71. 117 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P69 Your profile**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P70 Public profile**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -373,3 +373,8 @@ P67-C01–C04 implemented;362partial/0full. Fullsharedfeed/all6actualscopes, loa
 P68-C01–C04 UI implemented with partial verification. Shared full workspace, saved full recap body and exact historical own evidence, unavailable foreign/deleted evidence, explicit current generation scope (latest8 own activities), retained review/error/retry generator, named report confirmation, searchable/sortable safety table and full mobile record details. Changed social-intelligence page, social-task-form, saved-recaps, safety-records, backend state action/evidence lookup and scoped fixtures. No actual AI request in browser; isolated generation action stub tests failure/retry with identical reviewed parameters.
 Checks: social-generation.log PASS9.9s all6sizes; social-intelligence-browser-repeat.log PASS1.7m both surfaces x6 sizes, saved evidence unchanged, report Cancel inert/exact confirmed rows, full mobile safety details,0pageerrors; companion390 screenshot inspected. Types/lint clean; social-recap-final.log6backendtests pass. First actual navigation cold compilation timed out; repeat passed with no source change/restart. Broader acceptance remains in each CSV row,0 fully accepted.
 Resume: P69 prompts read; Profile drafts prepared /tmp/fkh-profile-{page,section-tabs,edit-sheet,share-dialog}.tsx. P68 runtime freeze explicitly released; other agent owns profile action wrapper and per-scope backend privacy fix/tests. Root owns Profile UI files and capability exact route; coordinate new freeze before browser matrix. Continue P69 thenP70.
+
+## P69 Your Profile UI checkpoint
+P69-C01–C09 UI implemented with partial verification;375/492 UI implemented,0 accepted. Shared full-width identity/sections; full achievement labels/unlock source disclosures; dated search/order record table and complete mobile detail panel; preserved native modal editor draft; stateful save errors; media progress/failure/retry/restore; saved sharing scopes and exact profile-link/QR error feedback. Existing per-scope loader bug corrected: accepted friends no longer override private rounds/bag/handicap; profile header handicap filtered too.
+Changed profile page/UI files, profile-records.tsx, profile actions and social loader, scoped tests. Types profile-types-final.log terminal clean; scoped lint ready clean; isolated profile-edit.log PASS4.5s atall6sizes (draft retained, invalid image keeps saved avatar, save failure/retry identical payload); backend profile-privacy-final.log6PASS plus profile-populated-privacy.log actual populated bag/round/handicap visibility1PASS1.62s.
+Actual profile-browser.log and profile-browser-repeat.log BOTH FAILED initial60s navigation during local compilation, before UI assertions. Full actual viewport screenshots/save/privacy/QR remain outstanding. UI-first user direction: defer this matrix and continue P70 instead of repeated compile waits. P69 runtime freeze explicitly released; other agent proceeds P70 category privacy plus exact pending request ID. Root owns public-profile UI. Rerun tests/e2e/ui-upgrade-profile.spec.ts on3116 when compile recovers, preserve failed logs. Prepared P70 /tmp/fkh-public-profile-page.tsx; detailedP70prompts read.

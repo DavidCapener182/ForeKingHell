@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type ChangeEvent, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Camera, ImageIcon, Trash2 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -34,25 +34,29 @@ export function ProfileMediaEditor({
   const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl ?? "");
   const [headerImageUrl, setHeaderImageUrl] = useState(initialHeaderImageUrl ?? "");
   const [status, setStatus] = useState<string | null>(null);
+  const [processing, setProcessing] = useState<"avatar" | "header" | null>(null);
+  const [failed, setFailed] = useState<"avatar" | "header" | null>(null);
+  const files = useRef<Partial<Record<"avatar" | "header", File>>>({});
+  const lock = useRef(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const headerInputRef = useRef<HTMLInputElement>(null);
 
-  async function handlePhotoChange(
-    event: ChangeEvent<HTMLInputElement>,
-    target: "avatar" | "header",
-  ) {
-    const file = event.target.files?.[0];
-
+  async function handlePhotoChange(file: File | undefined, target: "avatar" | "header") {
     if (!file) {
       return;
     }
 
     if (!file.type.startsWith("image/")) {
       setStatus("Choose an image file.");
-      event.target.value = "";
       return;
     }
 
+    if (lock.current) return;
+    lock.current = true;
+    files.current[target] = file;
+    setFailed(null);
+    setProcessing(target);
+    setStatus(`Preparing ${file.name}. The previous photo stays saved until you save the profile.`);
     try {
       const nextUrl =
         target === "avatar"
@@ -67,32 +71,53 @@ export function ProfileMediaEditor({
         setStatus("Header photo ready. Save profile to keep it.");
       }
     } catch {
-      setStatus("That photo could not be loaded.");
+      setFailed(target);
+      setStatus(
+        "That photo could not be loaded. Your previous photo is retained; retry or choose another image.",
+      );
     } finally {
-      event.target.value = "";
+      lock.current = false;
+      setProcessing(null);
     }
   }
 
   return (
-    <div className="relative overflow-hidden">
+    <fieldset
+      disabled={processing !== null}
+      data-profile-media-processing={processing !== null}
+      className="relative min-w-0 overflow-hidden"
+    >
       <input
         ref={avatarInputRef}
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={(event) => handlePhotoChange(event, "avatar")}
+        aria-label="Choose avatar image file"
+        onChange={(event) => {
+          void handlePhotoChange(event.target.files?.[0], "avatar");
+          event.target.value = "";
+        }}
       />
       <input
         ref={headerInputRef}
         type="file"
         accept="image/*"
         className="hidden"
-        onChange={(event) => handlePhotoChange(event, "header")}
+        aria-label="Choose header image file"
+        onChange={(event) => {
+          void handlePhotoChange(event.target.files?.[0], "header");
+          event.target.value = "";
+        }}
       />
       <input form={formId} type="hidden" name="avatarUrl" value={avatarUrl} readOnly />
       <input form={formId} type="hidden" name="headerImageUrl" value={headerImageUrl} readOnly />
 
       <div
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          void handlePhotoChange(event.dataTransfer.files[0], "header");
+        }}
         className="relative h-36 bg-cover bg-center"
         style={{
           backgroundImage: profileHeaderBackground(profileHeaderImageUrl(headerImageUrl, username)),
@@ -103,6 +128,7 @@ export function ProfileMediaEditor({
             type="button"
             variant="secondary"
             size="sm"
+            style={{ minHeight: 44 }}
             className="bg-background/95 shadow-sm hover:bg-background"
             onClick={() => headerInputRef.current?.click()}
           >
@@ -114,6 +140,7 @@ export function ProfileMediaEditor({
               type="button"
               variant="secondary"
               size="icon-sm"
+              style={{ minHeight: 44, minWidth: 44 }}
               className="bg-background/95 shadow-sm hover:bg-background"
               aria-label="Remove header photo"
               onClick={() => {
@@ -128,7 +155,14 @@ export function ProfileMediaEditor({
       </div>
 
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 pb-4 pt-4">
-        <div className="flex min-w-0 items-start gap-3">
+        <div
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            void handlePhotoChange(event.dataTransfer.files[0], "avatar");
+          }}
+          className="flex min-w-0 flex-wrap items-start gap-3"
+        >
           <button
             type="button"
             className="group relative -mt-14 shrink-0 rounded-full bg-background p-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
@@ -150,13 +184,14 @@ export function ProfileMediaEditor({
           </button>
 
           <div className="min-w-0 pt-1">
-            <h2 className="truncate text-2xl font-semibold tracking-normal">{displayName}</h2>
+            <h2 className="break-words text-2xl font-semibold tracking-normal">{displayName}</h2>
             <p className="text-sm text-muted-foreground">@{username}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                style={{ minHeight: 44 }}
                 onClick={() => avatarInputRef.current?.click()}
               >
                 <Camera className="size-4" />
@@ -167,6 +202,7 @@ export function ProfileMediaEditor({
                   type="button"
                   variant="outline"
                   size="sm"
+                  style={{ minHeight: 44 }}
                   onClick={() => {
                     setAvatarUrl("");
                     setStatus("Avatar photo removed. Save profile to keep it removed.");
@@ -187,11 +223,45 @@ export function ProfileMediaEditor({
         </Button>
       </div>
 
+      <p className="px-5 pb-3 text-sm text-muted-foreground">
+        Choose a browser-supported image, or drop one onto the avatar or header preview. Images are
+        cropped to 256×256 or 1200×360 and saved as JPEG. Preview shows your draft; the public page
+        shows saved media.
+      </p>
+      {processing ? (
+        <div className="px-5 pb-3">
+          <label className="grid gap-2 text-sm">
+            Preparing {processing} photo
+            <progress className="w-full" />
+          </label>
+        </div>
+      ) : null}
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          setAvatarUrl(initialAvatarUrl ?? "");
+          setHeaderImageUrl(initialHeaderImageUrl ?? "");
+          setFailed(null);
+          setStatus("Saved photos restored in this draft.");
+        }}
+      >
+        Restore saved photos
+      </Button>
+      {failed ? (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void handlePhotoChange(files.current[failed], failed)}
+        >
+          Retry {failed} photo
+        </Button>
+      ) : null}
       <p className="sr-only" aria-live="polite">
         {status}
       </p>
       {status ? <p className="px-5 pb-4 text-xs text-muted-foreground">{status}</p> : null}
-    </div>
+    </fieldset>
   );
 }
 
