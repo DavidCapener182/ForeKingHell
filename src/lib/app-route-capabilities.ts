@@ -71,11 +71,7 @@ export const mobileCapabilities = {
   profile: summaryMore(),
   equipment: companionMore(),
   rapsodo: companionMore(),
-  providers: desktopOnly(
-    "Import or sync",
-    "/import",
-    "Provider operations are available in the full workbench.",
-  ),
+  providers: companionMore(),
   billing: desktopOnly(
     "Open settings",
     "/settings",
@@ -125,7 +121,6 @@ const desktopOnlyPrefixes = [
   "/simulator-lab",
   "/data-chat",
   "/equipment",
-  "/providers",
   "/billing",
   "/social-intelligence",
   "/groups",
