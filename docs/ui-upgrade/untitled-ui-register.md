@@ -98,3 +98,6 @@ Specified official Tabs, Tables, Avatars, Dropdowns and Modals references use cu
 
 ## P65 Groups directory
 Official Underline tabs, section headers/badges/buttons and inputs/select/textarea references reuse current React Aria tabs and existing input/button exports. Paid advanced domain-list and creation-sheet examples remain unavailable; explicit accessible alternatives are semantic full-width group rows, labelled native selects, retained draft review forms and existing focus-managed ResponsiveDetailPanel. No paid source or new vendor package claimed.
+
+## P66 Group clubhouse
+Official Underline tabs, domain list, Activity feeds/Dropdowns, forms, Tables/Paginations and Modals/Buttons references reuse installed adapters. Paid advanced templates remain unavailable: explicit alternatives are retained React Aria tabs, semantic dated articles, searchable desktop member table/full mobile detail rows, and focus-managed post/danger panels with native labelled fields. Existing server permission/scoring values retained; no paid source claimed.

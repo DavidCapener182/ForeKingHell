@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-352 desktop / 352 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P66 Group clubhouse**, next P67 Clubhouse feed. 140 UI entries remain. Continue the UI pass with acceptance gaps retained.
+358 desktop / 358 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P67 Clubhouse feed**, next P68 Recaps and safety. 134 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P66 Group clubhouse**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P67 Clubhouse feed**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -360,3 +360,7 @@ P64-C01–C04 implemented;348partial/0full. Full Friends task bothsurfaces: coun
 
 ## P65 UI checkpoint
 P65-C01–C04 implemented;352partial/0full. Full directorytabs/counts/history, wrappedprivacy+facts, namedinvite/join review, complete retainedcreateform/privacyreview/confirmedstate. Actual groups-browser-final.log PASS2.2m all12 with Back/reload/accept/Cancel/create exactpublicsavedvisibility andonlycreatoradminmembership/noinvites; zero pageerrors. Initial raceawaitURL and wrongexpectedowner-vs-admin role test assumptions corrected, no production role change. Backend feed failure reproduced persistedgroup then fixed atomicgroup/membership/feed:11testsPASS1.24s. Types/lintpass,390companion screenshotinspected. Files groups/page,directorytabs,create-sheet,newgroup-decision,actions/tests,libgroups/tests,capability+browser. Next P66 sixpromptsread, drafts in /tmp/fkh-group-{section-tabs,member-list,post-form,danger-actions}.tsx; integrate afterP65commit. Otheragent will addpost/dangerstateactions and fix currentviewerRole sourcedfromlastmember. No activebrowserfreeze afterexplicitrelease. Continue tracker/Excel/scopedupgradecommits, no merge/deploy.
+
+
+## P66 UI checkpoint
+P66-C01–C06 implemented;358partial/0full. Full retainedclubhousepanels, exactgroupidentity/privacy, completeweeklylist/no0tie fakeleader, datedloadedposts, searchabletable/mobilefullmemberdetails, postreview/draftretention, distinctnamedleave/deleteconfirmedstates. group-detail-browser-final.log PASS3.1m all12: draftacrosstabs, exactpost, Cancelinert, memberleave andownerdeletecascade, zeropageerrors. Realreadiness andfixedsocialfeedlauncheroverlap fixed; initialexpectedno-roundlabelcorrected toexistingDTO;12.1sdevPOSTexceeded10sassertionthen60snavbudgetpassed. Types/lintpass,390inspected. Backend16testsPASS1.41s including publicvisitorrole null ratherthanlastmember role, fullmembercounts unchanged. P65commit80aaa57d. NextP67 fourpromptsread, prepared/tmp/fkh-apply-feed-ui.py plus feedfilter/actionform/itemcontrols/statuscomposer/browserfixture. Rootownstheseandcopy-share-image-button; otheragentnowownsfeedactionsstatedispatcher+tests. No runtimefreeze afterexplicitrelease. Preserveotherchanges, updateeachrow/Excel/scopedcommits; no merge/deploy.

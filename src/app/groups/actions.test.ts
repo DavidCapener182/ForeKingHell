@@ -120,3 +120,57 @@ describe("Groups confirmed form actions", () => {
     expect(mocks.join).not.toHaveBeenCalled();
   });
 });
+
+describe("Clubhouse confirmed actions", () => {
+  it("saves the group and text fields without trusting a navigation slug", async () => {
+    const { groupPostFormAction } = await import("./actions");
+    const social = await import("@/lib/groups");
+    expect(
+      await groupPostFormAction(
+        { ok: false },
+        form({ groupId: "group", title: " Title ", body: " Body ", slug: "unrelated" }),
+      ),
+    ).toEqual({ ok: true });
+    expect(social.createGroupPost).toHaveBeenCalledWith("group", "Title", "Body");
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+  it.each(["leave", "delete"] as const)(
+    "waits for %s and preserves service errors",
+    async (operation) => {
+      const { groupDangerFormAction } = await import("./actions");
+      const social = await import("@/lib/groups");
+      const service = vi.mocked(operation === "leave" ? social.leaveGroup : social.deleteGroup);
+      let reject!: (error: Error) => void;
+      service.mockImplementation(
+        () =>
+          new Promise((_resolve, fail) => {
+            reject = fail;
+          }),
+      );
+      let settled = false;
+      const pending = groupDangerFormAction(
+        { ok: true },
+        form({ operation, groupId: "group" }),
+      ).then((value) => {
+        settled = true;
+        return value;
+      });
+      await Promise.resolve();
+      expect(settled).toBe(false);
+      expect(service).toHaveBeenCalledWith("group");
+      reject(new Error("Permission denied."));
+      expect(await pending).toEqual({ ok: false, error: "Permission denied." });
+      expect(mocks.redirect).not.toHaveBeenCalled();
+    },
+  );
+  it("rejects empty posts and unknown destructive operations", async () => {
+    const { groupDangerFormAction, groupPostFormAction } = await import("./actions");
+    expect(
+      (await groupPostFormAction({ ok: true }, form({ groupId: "group", body: " " }))).ok,
+    ).toBe(false);
+    expect(
+      (await groupDangerFormAction({ ok: true }, form({ groupId: "group", operation: "erase" })))
+        .ok,
+    ).toBe(false);
+  });
+});

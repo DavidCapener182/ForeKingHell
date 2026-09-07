@@ -242,7 +242,10 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
     .select()
     .from(groupMemberships)
     .where(and(eq(groupMemberships.groupId, group.id), eq(groupMemberships.status, "active")));
-  const [listItem] = await hydrateGroupList([group], memberships);
+  const [listItem] = await hydrateGroupList(
+    [group],
+    memberships.filter((membership) => membership.userId === userId),
+  );
   const postRows = await getDb()
     .select()
     .from(groupPosts)

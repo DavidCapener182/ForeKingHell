@@ -121,6 +121,50 @@ export async function groupMembershipFormAction(
   }
 }
 
+export async function groupPostFormAction(
+  _previous: { ok: boolean; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await createGroupPost(
+      requiredString(formData, "groupId"),
+      formString(formData, "title"),
+      requiredString(formData, "body"),
+    );
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not save post. Try again.",
+    };
+  }
+}
+
+export async function groupDangerFormAction(
+  _previous: { ok: boolean; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const groupId = requiredString(formData, "groupId");
+    switch (requiredString(formData, "operation")) {
+      case "leave":
+        await leaveGroup(groupId);
+        break;
+      case "delete":
+        await deleteGroup(groupId);
+        break;
+      default:
+        throw new Error("Unknown group operation.");
+    }
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not update group. Try again.",
+    };
+  }
+}
+
 function parseGroupType(value: string | null) {
   return groupTypes.includes(value as (typeof groupTypes)[number])
     ? (value as (typeof groupTypes)[number])

@@ -3,6 +3,7 @@ import postgres from "postgres";
 import { closeDb } from "@/db/client";
 import {
   createGroup,
+  getGroupDetailData,
   joinGroup,
   leaveGroup,
   deleteGroup,
@@ -157,6 +158,42 @@ describe.skipIf(!enabled)("group membership workflows", () => {
       await db.unsafe(`drop trigger if exists ${marker} on fkh_feed_items`);
       await db.unsafe(`drop function if exists ${marker}()`);
       if (owner) await db`delete from fkh_users where id=${owner}`;
+      await db.end();
+    }
+  });
+  it("reports the viewer role independently from other group members", async () => {
+    const db = postgres(url!, { max: 1 });
+    const owners: string[] = [];
+    try {
+      for (const name of [
+        "Synthetic role owner",
+        "Synthetic role member",
+        "Synthetic role visitor",
+      ])
+        owners.push((await db`insert into fkh_users(name) values(${name}) returning id`)[0].id);
+      actor.id = owners[0];
+      const group = await createGroup({
+        name: `Role ${crypto.randomUUID()}`,
+        groupType: "friends",
+        visibility: "public",
+      });
+      actor.id = owners[1];
+      await joinGroup(group.id);
+      for (const [id, role, canPost, canAdmin] of [
+        [owners[2], null, false, false],
+        [owners[0], "admin", true, true],
+        [owners[1], "member", true, false],
+      ] as const) {
+        actor.id = id;
+        const view = await getGroupDetailData(group.slug);
+        expect(view?.group.viewerRole).toBe(role);
+        expect(Number(view?.group.memberCount)).toBe(2);
+        expect(view?.members).toHaveLength(2);
+        expect(view?.canPost).toBe(canPost);
+        expect(view?.canAdmin).toBe(canAdmin);
+      }
+    } finally {
+      if (owners.length) await db`delete from fkh_users where id in ${db(owners)}`;
       await db.end();
     }
   });

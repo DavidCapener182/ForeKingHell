@@ -1,21 +1,10 @@
 "use client";
-
-import { LogOut, Trash2 } from "lucide-react";
-
-import { deleteGroupAction, leaveGroupAction } from "@/app/groups/actions";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { useClientReady } from "@/hooks/use-client-ready";
+import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { groupDangerFormAction } from "@/app/groups/actions";
+import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { Button } from "@/components/ui/button";
-
 export function GroupDangerActions({
   groupId,
   groupName,
@@ -27,37 +16,81 @@ export function GroupDangerActions({
   isOwner: boolean;
   isMember: boolean;
 }) {
+  const ready = useClientReady();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string>();
+  const [pending, start] = useTransition();
+  const lock = useRef(false);
   if (!isOwner && !isMember) return null;
-
+  const label = isOwner ? "Delete group" : "Leave group";
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant={isOwner ? "destructive" : "outline"}>
-          {isOwner ? <Trash2 className="size-4" /> : <LogOut className="size-4" />}
-          {isOwner ? "Delete group" : "Leave group"}
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            {isOwner ? `Delete ${groupName}?` : `Leave ${groupName}?`}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {isOwner
-              ? "This permanently removes the group, memberships, posts, and linked group records. This cannot be undone."
-              : "You will lose access to member-only posts, leaderboards, and challenges until you rejoin."}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <form action={isOwner ? deleteGroupAction : leaveGroupAction}>
-            <input type="hidden" name="groupId" value={groupId} />
-            <AlertDialogAction type="submit" variant="destructive">
-              {isOwner ? "Delete permanently" : "Leave group"}
-            </AlertDialogAction>
-          </form>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      <Button
+        disabled={!ready}
+        variant={isOwner ? "destructive" : "outline"}
+        onClick={() => {
+          setError(undefined);
+          setOpen(true);
+        }}
+      >
+        {label}
+      </Button>
+      <ResponsiveDetailPanel
+        open={open}
+        onOpenChange={(next) => {
+          if (!pending) setOpen(next);
+        }}
+        title={`${label}: ${groupName}`}
+        description={
+          isOwner
+            ? "Permanently delete this group for every member. This removes its memberships and posts and cannot be undone."
+            : "Leave this group. Access available only through membership will end; other members and the group remain."
+        }
+      >
+        <div className="grid gap-4" aria-busy={pending}>
+          <p className="break-words font-semibold">{groupName}</p>
+          {error ? (
+            <p role="alert" className="text-destructive">
+              {error}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={pending} variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={pending}
+              variant="destructive"
+              onClick={() => {
+                if (lock.current) return;
+                lock.current = true;
+                setError(undefined);
+                start(async () => {
+                  try {
+                    const data = new FormData();
+                    data.set("groupId", groupId);
+                    data.set("operation", isOwner ? "delete" : "leave");
+                    const result = await groupDangerFormAction({ ok: false }, data);
+                    if (!result.ok) {
+                      setError(result.error ?? "Could not complete this action. Try again.");
+                      return;
+                    }
+                    router.push("/groups?tab=mine");
+                    router.refresh();
+                  } catch {
+                    setError("Could not complete this action. Try again.");
+                  } finally {
+                    lock.current = false;
+                  }
+                });
+              }}
+            >
+              {pending ? "Saving…" : isOwner ? "Delete permanently" : "Confirm leave"}
+            </Button>
+          </div>
+        </div>
+      </ResponsiveDetailPanel>
+    </>
   );
 }
