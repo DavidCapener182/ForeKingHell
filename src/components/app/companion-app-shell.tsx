@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { MobileNav, type MobileNavProfile } from "@/components/app/mobile-nav";
+import { AppCommandMenu } from "@/components/app/app-command-menu";
 import { CompanionRouteProgress } from "@/components/app/companion-route-progress";
 import {
   isMobileCompanionHeroRoute,
@@ -12,15 +13,18 @@ import {
 } from "@/components/app/route-metadata";
 import { calculateUserLevel } from "@/lib/achievements/xp";
 import { cn } from "@/lib/utils";
+import previewStyles from "./companion-preview.module.css";
 
 export function CompanionAppShell({
   children,
   totalXp,
   profile = null,
+  isAdmin = false,
 }: {
   children: ReactNode;
   totalXp: number;
   profile?: MobileNavProfile;
+  isAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -67,6 +71,7 @@ export function CompanionAppShell({
       data-mobile-immersive-shell={immersive ? "course-twin" : undefined}
       data-companion-hero-shell={heroRoute ? "true" : undefined}
       className={cn(
+        previewStyles.shell,
         "relative flex min-h-dvh min-w-0 flex-1 flex-col overflow-x-clip bg-background",
         // Match the 3.25rem controls row + 12px clearance + one safe-area inset before hydration.
         immersive ? "pt-0" : "pt-[calc(3.25rem+12px+env(safe-area-inset-top,0px))]",
@@ -79,8 +84,15 @@ export function CompanionAppShell({
         Skip to content
       </a>
       {immersive ? null : (
-        <MobileNav pathname={pathname} totalXp={totalXp} level={level.level} profile={profile} />
+        <MobileNav
+          pathname={pathname}
+          totalXp={totalXp}
+          level={level.level}
+          profile={profile}
+          isAdmin={isAdmin}
+        />
       )}
+      <AppCommandMenu isAdmin={isAdmin} />
       <CompanionRouteProgress />
       {children}
     </div>

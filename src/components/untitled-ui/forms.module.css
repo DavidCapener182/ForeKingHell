@@ -1,0 +1,49 @@
+.dialog {
+  max-height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  scroll-padding-block: 1rem 6rem;
+}
+
+.dialog :is(button, input, select, [role="combobox"]) {
+  min-height: 2.75rem;
+  scroll-margin-block: 1rem 6rem;
+}
+
+.dialog :is(button, [data-slot="dialog-description"], [data-slot="alert-dialog-description"]) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.footer {
+  position: sticky;
+  bottom: -1rem;
+  flex-wrap: wrap;
+  background: var(--popover);
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.dirtyBar {
+  bottom: calc(0.75rem + env(safe-area-inset-bottom));
+  overflow-wrap: anywhere;
+}
+
+:global([data-app-surface="companion"]) .dirtyBar {
+  bottom: calc(5.25rem + env(safe-area-inset-bottom));
+}
+
+.dirtyBar button {
+  min-height: 2.75rem;
+  height: auto;
+  white-space: normal;
+}
+
+@media (max-width: 40rem) {
+  .dialog {
+    top: max(1rem, env(safe-area-inset-top));
+    transform: translateX(-50%);
+    translate: 0 0;
+    width: calc(100% - 2rem);
+    max-width: none;
+  }
+}

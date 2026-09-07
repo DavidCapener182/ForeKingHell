@@ -26,7 +26,13 @@ describe("session comparison page", () => {
   it("shows answer, confidence, next action and metric provenance", () => {
     expect(source).toContain("data.benefit.summary");
     expect(source).toContain("confidenceLabel");
-    expect(source).toContain('href="/practice"');
+    expect(source).toContain("href={practiceHref}");
+    expect(source).toContain('data.filters.focus === "session"');
+    expect(source).toContain('data.filters.condition === "same"');
+    expect(source).toContain("data.focus.sessionBreakdown.length === 1");
+    expect(source).toContain(
+      'practiceQuery.set("sourceSessionId", data.focus.sessionBreakdown[0].id)',
+    );
     expect(source).toContain("ComparisonProvenancePanel");
     expect(provenanceSource).toContain("Evidence & method");
     expect(provenanceSource).toContain("metric.source");
@@ -38,8 +44,8 @@ describe("session comparison page", () => {
     expect(source).toContain("<SessionComparisonToolbar");
     expect(toolbarSource).toContain("Focus session");
     expect(toolbarSource).toContain("Baseline session");
-    expect(toolbarSource).toContain("Environment / conditions");
-    expect(toolbarSource).toContain("<EntityCombobox");
+    expect(toolbarSource).toContain("Environment and conditions");
+    expect(toolbarSource).toContain("<ComparisonSearchSheet");
     expect(stageSource).toContain('value="overlay"');
     expect(stageSource).toContain('value="side-by-side"');
     expect(stageSource).toContain('value="delta"');
@@ -51,8 +57,13 @@ describe("session comparison page", () => {
   it("keeps one visible evidence tree and preserves compact save/delete workflows", () => {
     expect(source).toContain("<Table>");
     expect(source).toContain("<SaveComparisonDialog");
-    expect(source).toContain("<DeleteComparisonButton");
-    expect(source).toContain("divide-y divide-border/70");
+    expect(source).toContain("<SavedComparisons");
+    const saved = readFileSync(
+      join(process.cwd(), "src/app/analyse/compare/saved-comparisons.tsx"),
+      "utf8",
+    );
+    expect(saved).toContain("<DeleteComparisonButton");
+    expect(saved).toContain("divide-y overflow-y-auto");
     expect(source).not.toContain("<StatusTimeline");
     for (const obsoleteMobileSource of [
       "MobileSessionCompare",
@@ -61,8 +72,6 @@ describe("session comparison page", () => {
       "MobileFilterSheet",
       "BottomSheet",
       "@/components/app/ios-mobile",
-      "lg:hidden",
-      "hidden lg:",
     ]) {
       expect(source).not.toContain(obsoleteMobileSource);
     }

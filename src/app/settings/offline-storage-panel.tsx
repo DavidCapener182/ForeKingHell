@@ -58,21 +58,30 @@ export function OfflineStoragePanel() {
   const [retentionDays, setRetentionDays] = useState<OfflineImportRetentionDays>(0);
   const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [actions, setActions] = useState<OfflineActionRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string>();
   const [message, setMessage] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
+    setLoading(true);
+    setLoadError(undefined);
     setEnabled(isOfflineImportStorageEnabled());
     setRetentionDays(offlineImportRetentionDays());
     setLastSyncAt(getOfflineLastSyncAt());
     const ownerUserId = currentOfflineAccountId();
     if (!ownerUserId) {
       setActions([]);
+      setLoading(false);
+      setLoadError("The current offline account is not ready. Refresh after signing in.");
       return;
     }
     purgeExpiredOfflineActions()
       .then(() => listOfflineActions(ownerUserId))
       .then(setActions)
-      .catch(() => setActions([]));
+      .catch(() =>
+        setLoadError("Saved data could not be read. Previously loaded rows may be out of date."),
+      )
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -105,7 +114,7 @@ export function OfflineStoragePanel() {
             </p>
           </div>
           <div className="grid gap-1 rounded-lg border bg-muted/40 px-3 py-2 text-sm font-medium">
-            <Label>Import retention on this device</Label>
+            <Label htmlFor="offline-retention">Import retention on this device</Label>
             <Select
               value={String(retentionDays)}
               onValueChange={(value) => {
@@ -119,7 +128,7 @@ export function OfflineStoragePanel() {
                 );
               }}
             >
-              <SelectTrigger className="min-h-9 w-full bg-background">
+              <SelectTrigger id="offline-retention" className="min-h-11 w-full bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -133,8 +142,14 @@ export function OfflineStoragePanel() {
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <OfflineStorageMetric label="Queued actions" value={actions.length} />
-          <OfflineStorageMetric label="Queued import files" value={fileCount} />
+          <OfflineStorageMetric
+            label="Queued actions"
+            value={loading ? "Checking…" : loadError ? "Unavailable" : actions.length}
+          />
+          <OfflineStorageMetric
+            label="Queued import files"
+            value={loading ? "Checking…" : loadError ? "Unavailable" : fileCount}
+          />
           <OfflineStorageMetric
             label="Import expiry"
             value={enabled ? `${retentionDays} day${retentionDays === 1 ? "" : "s"}` : "Off"}
@@ -145,14 +160,27 @@ export function OfflineStoragePanel() {
           Last successful sync: {formatTimestamp(lastSyncAt)}
         </p>
 
+        {loadError ? (
+          <p role="alert" className="mt-3 rounded-lg border p-3 text-sm">
+            {loadError}
+          </p>
+        ) : null}
+        {loading ? (
+          <p role="status" className="mt-3 text-sm">
+            Reading saved actions…
+          </p>
+        ) : null}
         {message ? (
-          <Alert className="mt-3" data-tone="green" data-tone-role="surface">
+          <Alert className="mt-3">
             <ShieldCheck className="size-4" />
             <AlertDescription>{message}</AlertDescription>
           </Alert>
         ) : null}
 
         <div className="mt-4 flex flex-wrap gap-2">
+          <Button type="button" variant="outline" disabled={loading} onClick={refresh}>
+            Refresh saved data
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -214,7 +242,7 @@ export function OfflineStoragePanel() {
                 className="grid gap-1 rounded-lg border bg-muted/40 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto]"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-medium">
+                  <p className="break-words font-medium">
                     {action.kind === "import-csv" ? "CSV import retry" : "Round edit retry"}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -223,6 +251,13 @@ export function OfflineStoragePanel() {
                       ? `Needs review${action.lastErrorCode ? ` · ${action.lastErrorCode}` : ""}`
                       : `${action.retryCount} retries · ${formatRetry(action.nextRetryAt)}`}{" "}
                     · expires {formatExpiry(action)}
+                    <span className="block">
+                      Queued {formatTimestamp(action.createdAt)} · Payload{" "}
+                      {new TextEncoder()
+                        .encode(JSON.stringify(action.payload))
+                        .length.toLocaleString("en-GB")}{" "}
+                      bytes
+                    </span>
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1 justify-self-start sm:justify-self-end">
@@ -252,11 +287,17 @@ export function OfflineStoragePanel() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    confirmTitle="Remove this queued action?"
+                    confirmTitle={`Remove ${action.kind === "import-csv" ? "import" : "round edit"} queued ${formatTimestamp(action.createdAt)}?`}
                     confirmMessage="This removes the saved offline action from this device, so it cannot sync or retry later."
                     confirmActionLabel="Remove action"
                     onClick={() => {
-                      removeOfflineAction(action.id).then(refresh);
+                      removeOfflineAction(action.id)
+                        .then(refresh)
+                        .catch(() =>
+                          setMessage(
+                            "The saved action could not be removed. Refresh its current state before trying again.",
+                          ),
+                        );
                     }}
                   >
                     Remove
@@ -266,7 +307,11 @@ export function OfflineStoragePanel() {
             ))
           ) : (
             <p className="rounded-lg border border-dashed px-3 py-4 text-sm text-muted-foreground">
-              No pending offline actions on this device.
+              {loading
+                ? "Checking saved actions…"
+                : loadError
+                  ? "Saved action count is unavailable."
+                  : "No pending offline actions on this device."}
             </p>
           )}
         </div>

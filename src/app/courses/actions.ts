@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { reportServerFailure } from "@/lib/server-observability";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
@@ -34,34 +35,38 @@ export async function createCourseAction(formData: FormData) {
   const name = requiredString(formData, "name");
   const country = nullableString(formData, "country");
   const teeName = requiredString(formData, "teeName");
-  const par = numberFromForm(formData, "par") ?? 72;
-  const courseRating = decimalFromForm(formData, "courseRating");
-  const slopeRating = numberFromForm(formData, "slopeRating");
-  const yards = numberFromForm(formData, "yards");
+  const par = courseNumber(formData, "par", { integer: true, min: 1 }) ?? 72;
+  const courseRating = courseNumber(formData, "courseRating", { min: Number.MIN_VALUE });
+  const slopeRating = courseNumber(formData, "slopeRating", { integer: true, min: 55, max: 155 });
+  const yards = courseNumber(formData, "yards", { integer: true, min: 1 });
   const now = new Date();
 
-  const [course] = await db
-    .insert(courses)
-    .values({
-      name,
-      country,
-      provider: "manual",
-      externalId: `manual-${randomUUID()}`,
-      visibility: "private",
-      createdByUserId: userId,
-      updatedAt: now,
-    })
-    .returning({ id: courses.id });
+  const course = await db.transaction(async (tx) => {
+    const [course] = await tx
+      .insert(courses)
+      .values({
+        name,
+        country,
+        provider: "manual",
+        externalId: `manual-${randomUUID()}`,
+        visibility: "private",
+        createdByUserId: userId,
+        updatedAt: now,
+      })
+      .returning({ id: courses.id });
 
-  await db.insert(teeSets).values({
-    courseId: course.id,
-    name: teeName,
-    par,
-    courseRating,
-    slopeRating,
-    yards,
-    meters: yards === null ? null : Math.round(yards * 0.9144),
-    updatedAt: now,
+    await tx.insert(teeSets).values({
+      courseId: course.id,
+      name: teeName,
+      par,
+      courseRating,
+      slopeRating,
+      yards,
+      meters: yards === null ? null : Math.round(yards * 0.9144),
+      updatedAt: now,
+    });
+
+    return course;
   });
 
   revalidateCourses(course.id);
@@ -88,11 +93,6 @@ export async function createGoogleCourseAction(formData: FormData) {
     importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.par, 0) : 72;
   const teeSetYards =
     importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.yards, 0) : null;
-  const existingCourse = await findGoogleImportTargetCourse(
-    details,
-    importedHoles.length > 0,
-    userId,
-  );
   const courseValues = {
     address: details.address,
     country: details.country,
@@ -117,71 +117,81 @@ export async function createGoogleCourseAction(formData: FormData) {
     updatedAt: now,
   };
 
-  const [course] = existingCourse
-    ? await db
-        .update(courses)
-        .set(courseValues)
-        .where(and(eq(courses.id, existingCourse.id), importTargetAccess(userId)))
-        .returning({ id: courses.id })
-    : await db
-        .insert(courses)
-        .values({
-          ...courseValues,
-          externalId: details.placeId,
-          provider: "google-places",
-          visibility: "private",
-          createdByUserId: userId,
-        })
-        .onConflictDoUpdate({
-          target: [courses.provider, courses.externalId],
-          setWhere: importTargetAccess(userId),
-          set: courseValues,
-        })
-        .returning({ id: courses.id });
-
-  if (!course) {
-    throw new Error(
-      "The course could not be imported safely. Create a manual course or try again later.",
+  const course = await db.transaction(async (tx) => {
+    const existingCourse = await findGoogleImportTargetCourse(
+      details,
+      importedHoles.length > 0,
+      userId,
+      tx,
     );
-  }
+    const [course] = existingCourse
+      ? await tx
+          .update(courses)
+          .set(courseValues)
+          .where(and(eq(courses.id, existingCourse.id), importTargetAccess(userId)))
+          .returning({ id: courses.id })
+      : await tx
+          .insert(courses)
+          .values({
+            ...courseValues,
+            externalId: details.placeId,
+            provider: "google-places",
+            visibility: "private",
+            createdByUserId: userId,
+          })
+          .onConflictDoUpdate({
+            target: [courses.provider, courses.externalId],
+            setWhere: importTargetAccess(userId),
+            set: courseValues,
+          })
+          .returning({ id: courses.id });
 
-  const [teeSet] = await db
-    .insert(teeSets)
-    .values({
-      courseId: course.id,
-      name: teeSetName,
-      par: teeSetPar,
-      yards: teeSetYards,
-      meters: teeSetYards === null ? null : Math.round(teeSetYards * 0.9144),
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: [teeSets.courseId, teeSets.name],
-      set: {
+    if (!course) {
+      throw new Error(
+        "The course could not be imported safely. Create a manual course or try again later.",
+      );
+    }
+
+    const [teeSet] = await tx
+      .insert(teeSets)
+      .values({
+        courseId: course.id,
+        name: teeSetName,
         par: teeSetPar,
         yards: teeSetYards,
         meters: teeSetYards === null ? null : Math.round(teeSetYards * 0.9144),
         updatedAt: now,
-      },
-    })
-    .returning({ id: teeSets.id });
+      })
+      .onConflictDoUpdate({
+        target: [teeSets.courseId, teeSets.name],
+        set: {
+          par: teeSetPar,
+          yards: teeSetYards,
+          meters: teeSetYards === null ? null : Math.round(teeSetYards * 0.9144),
+          updatedAt: now,
+        },
+      })
+      .returning({ id: teeSets.id });
 
-  await upsertImportedHoleGeometry(course.id, teeSet.id, importedHoles, now);
-  await ensureCourseFeatures({ courseId: course.id, force: true });
-  if (importedHoles.length > 0) {
-    await deleteLegacyGoogleOsmTeeSet(course.id);
-  }
+    await upsertImportedHoleGeometry(course.id, teeSet.id, importedHoles, now, tx);
+    if (importedHoles.length > 0) {
+      await deleteLegacyGoogleOsmTeeSet(course.id, tx);
+    }
+
+    return course;
+  });
+  const enrichmentWarning = await enrichSavedCourse(course.id);
 
   revalidateCourses(course.id);
-  redirect(`/courses/${course.id}/holes`);
+  redirect(`/courses/${course.id}/holes${enrichmentWarning ? "?warning=feature-enrichment" : ""}`);
 }
 
 async function findGoogleImportTargetCourse(
   details: GoogleCourseDetails,
   canReplaceDuplicateGeometry: boolean,
   userId: string,
+  db: Pick<ReturnType<typeof getDb>, "select" | "delete"> = getDb(),
 ) {
-  const db = getDb();
   const rows = await db
     .select({
       country: courses.country,
@@ -207,7 +217,7 @@ async function findGoogleImportTargetCourse(
   if (seededMatch && exactGoogleMatch && seededMatch.id !== exactGoogleMatch.id) {
     const removedDuplicate =
       canReplaceDuplicateGeometry &&
-      (await deleteUnreferencedGoogleDuplicateCourse(exactGoogleMatch.id, userId));
+      (await deleteUnreferencedGoogleDuplicateCourse(exactGoogleMatch.id, userId, db));
 
     return removedDuplicate ? seededMatch : exactGoogleMatch;
   }
@@ -220,12 +230,11 @@ async function upsertImportedHoleGeometry(
   teeSetId: string,
   importedHoles: OsmHoleGeometry[],
   now: Date,
+  db: Pick<ReturnType<typeof getDb>, "insert"> = getDb(),
 ) {
   if (importedHoles.length === 0) {
     return;
   }
-
-  const db = getDb();
 
   for (const hole of importedHoles) {
     await db
@@ -273,16 +282,20 @@ async function upsertImportedHoleGeometry(
   }
 }
 
-async function deleteLegacyGoogleOsmTeeSet(courseId: string) {
-  const db = getDb();
-
+async function deleteLegacyGoogleOsmTeeSet(
+  courseId: string,
+  db: Pick<ReturnType<typeof getDb>, "delete"> = getDb(),
+) {
   await db
     .delete(teeSets)
     .where(and(eq(teeSets.courseId, courseId), eq(teeSets.name, "Google Places + OSM")));
 }
 
-async function deleteUnreferencedGoogleDuplicateCourse(courseId: string, userId: string) {
-  const db = getDb();
+async function deleteUnreferencedGoogleDuplicateCourse(
+  courseId: string,
+  userId: string,
+  db: Pick<ReturnType<typeof getDb>, "select" | "delete"> = getDb(),
+) {
   const [usage] = await db
     .select({
       courseFollows: sql<number>`(select count(*)::int from fkh_course_follows where course_id = ${courseId})`,
@@ -356,38 +369,41 @@ export async function createOsmCourseAction(formData: FormData) {
   const yards =
     importedHoles.length > 0 ? importedHoles.reduce((total, hole) => total + hole.yards, 0) : null;
 
-  const [course] = await db
-    .insert(courses)
-    .values({
-      name,
-      country,
-      provider: "osm",
-      externalId: `osm-${osmType}-${osmId}-${userId}`,
-      latitude,
-      longitude,
-      visibility: "private",
-      createdByUserId: userId,
-      updatedAt: now,
-    })
-    .returning({ id: courses.id });
+  const course = await db.transaction(async (tx) => {
+    const [course] = await tx
+      .insert(courses)
+      .values({
+        name,
+        country,
+        provider: "osm",
+        externalId: `osm-${osmType}-${osmId}-${userId}`,
+        latitude,
+        longitude,
+        visibility: "private",
+        createdByUserId: userId,
+        updatedAt: now,
+      })
+      .returning({ id: courses.id });
 
-  const [teeSet] = await db
-    .insert(teeSets)
-    .values({
-      courseId: course.id,
-      name: teeName,
-      par,
-      yards,
-      meters: yards === null ? null : Math.round(yards * 0.9144),
-      updatedAt: now,
-    })
-    .returning({ id: teeSets.id });
+    const [teeSet] = await tx
+      .insert(teeSets)
+      .values({
+        courseId: course.id,
+        name: teeName,
+        par,
+        yards,
+        meters: yards === null ? null : Math.round(yards * 0.9144),
+        updatedAt: now,
+      })
+      .returning({ id: teeSets.id });
 
-  await upsertImportedHoleGeometry(course.id, teeSet.id, importedHoles, now);
-  await ensureCourseFeatures({ courseId: course.id, force: true });
+    await upsertImportedHoleGeometry(course.id, teeSet.id, importedHoles, now, tx);
+    return course;
+  });
+  const enrichmentWarning = await enrichSavedCourse(course.id);
 
   revalidateCourses(course.id);
-  redirect(`/courses/${course.id}/holes`);
+  redirect(`/courses/${course.id}/holes${enrichmentWarning ? "?warning=feature-enrichment" : ""}`);
 }
 
 export async function updateTeeSetAction(formData: FormData) {
@@ -510,6 +526,27 @@ function nullableString(formData: FormData, key: string) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function courseNumber(
+  formData: FormData,
+  key: string,
+  options: { integer?: boolean; min: number; max?: number },
+) {
+  const value = formData.get(key);
+  if (value === null || (typeof value === "string" && !value.trim())) return null;
+  const parsed = typeof value === "string" ? Number(value) : NaN;
+  if (
+    !Number.isFinite(parsed) ||
+    (options.integer && !Number.isSafeInteger(parsed)) ||
+    parsed < options.min ||
+    (options.max !== undefined && parsed > options.max)
+  ) {
+    throw new Error(
+      `Enter a valid ${key}${options.integer ? " whole number" : ""}${options.max !== undefined ? ` between ${options.min} and ${options.max}` : " greater than zero"}.`,
+    );
+  }
+  return parsed;
+}
+
 function numberFromForm(formData: FormData, key: string) {
   const value = formData.get(key);
 
@@ -615,6 +652,16 @@ async function requireEditableCourse(courseId: string, userId: string) {
 
   if (!course) {
     throw new Error("You can only edit courses you created.");
+  }
+}
+
+async function enrichSavedCourse(courseId: string) {
+  try {
+    await ensureCourseFeatures({ courseId, force: true });
+    return false;
+  } catch (error) {
+    reportServerFailure("saved_course_enrichment_failed", error);
+    return true;
   }
 }
 

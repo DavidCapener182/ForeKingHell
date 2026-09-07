@@ -4,11 +4,12 @@ import { CalendarDays } from "lucide-react";
 
 import { SessionsCompanionList } from "@/app/sessions/sessions-companion-list";
 import { AppEmptyState } from "@/components/app/app-empty-state";
-import { MobileAppShell } from "@/components/mobile-sports";
-import { PageShell } from "@/components/premium";
+import { MobileAppShell } from "@/components/app/mobile-app-shell";
+import { PageShell } from "@/components/app/page-shell";
+import { UntitledPageHeader as PageHeader } from "@/components/untitled-ui/headers";
 import { Button } from "@/components/ui/button";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { getRecentSessionHistory } from "@/lib/session-history";
+import { loadHistoryPage, HistoryLoadMore } from "@/app/sessions/history-page-data";
 import {
   resolveSessionHistorySearchParams,
   sessionHistoryHref,
@@ -21,13 +22,22 @@ export default async function SessionsCompanionPage({
   searchParams: SessionHistorySearchParamsInput;
 }) {
   const userId = await requireCurrentUserId();
-  const sessions = await getRecentSessionHistory(userId, 24, { includeShotPatterns: false });
+  const { rows: sessions, total } = await loadHistoryPage(userId, searchParams, false);
   const resolved = resolveSessionHistorySearchParams(searchParams, sessions);
 
   if (resolved.changed) redirect(sessionHistoryHref(resolved.query));
 
   return (
     <PageShell>
+      <PageHeader
+        title="History"
+        description="Practice, simulator sessions and rounds in date order."
+        actions={
+          <Button asChild className="min-h-11">
+            <Link href="/import">Import session</Link>
+          </Button>
+        }
+      />
       <MobileAppShell className="gap-4" data-sessions-companion>
         {sessions.length > 0 ? (
           <SessionsCompanionList sessions={sessions} accountId={userId} />
@@ -50,6 +60,7 @@ export default async function SessionsCompanionPage({
           />
         )}
       </MobileAppShell>
+      <HistoryLoadMore loaded={sessions.length} total={total} query={resolved.query} />
     </PageShell>
   );
 }

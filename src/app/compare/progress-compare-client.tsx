@@ -5,6 +5,7 @@ import { BarChart3, TrendingUp } from "lucide-react";
 
 import {
   ComparisonWorkspace,
+  updateComparisonScope,
   type ComparisonTableRow,
   type SavedWorkspaceComparison,
 } from "@/app/compare/comparison-workspace";
@@ -14,6 +15,7 @@ import {
 } from "@/components/app/chart-accessible-fallback";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { StatusPill, type Tone } from "@/components/premium";
+import { Input } from "@/components/ui/input";
 import { Item, ItemContent } from "@/components/ui/item";
 import type {
   CompareClubRow,
@@ -34,13 +36,17 @@ const numberFormatter = new Intl.NumberFormat("en-GB", {
 export function ProgressCompareClient({
   data,
   savedComparisons = [],
+  initialMonth = false,
 }: {
+  initialMonth?: boolean;
   data: ProgressCompareData;
   savedComparisons?: SavedWorkspaceComparison[];
 }) {
-  const [draftFocus, setDraftFocus] = useState("last-7");
-  const [draftBaseline, setDraftBaseline] = useState("previous-7");
-  const [appliedWindow, setAppliedWindow] = useState<ProgressWindow>("week");
+  const [draftFocus, setDraftFocus] = useState(initialMonth ? "last-30" : "last-7");
+  const [draftBaseline, setDraftBaseline] = useState(initialMonth ? "previous-30" : "previous-7");
+  const [appliedWindow, setAppliedWindow] = useState<ProgressWindow>(
+    initialMonth ? "month" : "week",
+  );
   const comparison = appliedWindow === "week" ? data.previousWeek : data.previousMonth;
   const periods = appliedWindow === "week" ? data.weeklyPeriods : data.monthlyPeriods;
   const rows = data.latestSession ? progressComparisonRows(comparison) : [];
@@ -61,12 +67,17 @@ export function ProgressCompareClient({
 
   function applySelection() {
     const month = draftFocus === "last-30" || draftBaseline === "previous-30";
+    updateComparisonScope({
+      focusId: month ? "last-30" : "last-7",
+      baselineId: month ? "previous-30" : "previous-7",
+    });
     setAppliedWindow(month ? "month" : "week");
     setDraftFocus(month ? "last-30" : "last-7");
     setDraftBaseline(month ? "previous-30" : "previous-7");
   }
 
   function resetSelection() {
+    updateComparisonScope({ focusId: "last-7", baselineId: "previous-7" });
     setDraftFocus("last-7");
     setDraftBaseline("previous-7");
     setAppliedWindow("week");
@@ -88,12 +99,12 @@ export function ProgressCompareClient({
       focusOptions={[
         {
           value: "last-7",
-          label: "Last 7 days",
+          label: "Latest 7 days / 7-day baseline",
           description: `${integerFormatter.format(data.previousWeek.focus.stockShots)} stock shots`,
         },
         {
           value: "last-30",
-          label: "Last 30 days",
+          label: "Latest 7 days / 30-day baseline",
           description: `${integerFormatter.format(data.previousMonth.focus.stockShots)} stock shots`,
         },
       ]}
@@ -116,7 +127,7 @@ export function ProgressCompareClient({
           ? "Decision-ready period samples"
           : "Early period comparison"
       }
-      sampleDescription={`${comparison.benefit.summary} Current samples: ${integerFormatter.format(comparison.focus.stockShots)} and ${integerFormatter.format(comparison.baseline.stockShots)} stock shots.`}
+      sampleDescription={`${comparison.focus.detail} compared with ${comparison.baseline.detail}. ${comparison.benefit.summary} Current samples: ${integerFormatter.format(comparison.focus.stockShots)} and ${integerFormatter.format(comparison.baseline.stockShots)} stock shots.`}
       evidenceTitle="Progress comparison evidence"
       evidenceDescription="Sample context, club movement and period history support the single metric table."
       evidence={
@@ -289,6 +300,8 @@ function ProgressSampleItem({
 }
 
 function FocusClubEvidence({ rows }: { rows: CompareClubRow[] }) {
+  const [query, setQuery] = useState("");
+  const visible = rows.filter((row) => row.label.toLowerCase().includes(query.toLowerCase()));
   return (
     <section className="grid gap-3" aria-labelledby="progress-club-evidence-title">
       <div>
@@ -299,9 +312,18 @@ function FocusClubEvidence({ rows }: { rows: CompareClubRow[] }) {
           Each club keeps its carry, control and sample evidence without creating another table.
         </p>
       </div>
-      {rows.length ? (
+      <Input
+        aria-label="Search club movement"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        placeholder="Search club movement…"
+      />
+      <p role="status" className="text-sm text-muted-foreground">
+        {visible.length} clubs · club order
+      </p>
+      {visible.length ? (
         <div className="divide-y divide-border rounded-xl border">
-          {rows.map((row) => (
+          {visible.map((row) => (
             <div
               key={row.clubId}
               className="grid gap-2 px-4 py-3 lg:grid-cols-[minmax(8rem,0.8fr)_repeat(4,minmax(7rem,1fr))] lg:items-center"
@@ -320,6 +342,15 @@ function FocusClubEvidence({ rows }: { rows: CompareClubRow[] }) {
               />
               <EvidenceDelta label="Cone" value={formatSignedYards(row.delta.coneDeltaYd)} />
               <StatusPill tone={scoreTone(row)}>{scoreLabel(row)}</StatusPill>
+              <details className="lg:col-span-5">
+                <summary className="cursor-pointer py-3 text-sm font-semibold">
+                  Inspect {row.label} samples
+                </summary>
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <ProgressSampleItem label="Focus" sample={row.focus} tone="green" />
+                  <ProgressSampleItem label="Baseline" sample={row.baseline} tone="sky" />
+                </div>
+              </details>
             </div>
           ))}
         </div>
@@ -359,21 +390,25 @@ function PeriodTrendStrip({ periods }: { periods: ProgressPeriod[] }) {
       <div className="mt-4 grid gap-3">
         {chronological.map((period) => {
           const playable = period.summary.playableRate ?? 0;
-          const shotWidth = Math.max(8, (period.summary.stockShots / maxShots) * 100);
+          const shotWidth = (period.summary.stockShots / maxShots) * 100;
           return (
             <div key={period.key} className="grid gap-1">
               <div className="flex items-center justify-between gap-2 text-xs">
-                <span className="truncate font-medium">{period.label}</span>
+                <span className="font-medium">{period.label}</span>
                 <span className="text-muted-foreground">
                   {formatYards(period.summary.carryMedianYd)} ·{" "}
                   {formatYards(period.summary.shotConeWidthYd)} cone
                 </span>
               </div>
-              <div className="grid grid-cols-[minmax(0,1fr)_4.5rem] gap-2">
+              <p className="text-xs text-muted-foreground">
+                {period.detail} · {formatRate(period.summary.playableRate)} playable ·{" "}
+                {period.summary.stockShots} shots
+              </p>
+              <div aria-hidden="true" className="grid grid-cols-[minmax(0,1fr)_4.5rem] gap-2">
                 <div className="h-2.5 overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full bg-[var(--status-success-foreground)]"
-                    style={{ width: `${Math.max(5, Math.min(100, playable))}%` }}
+                    style={{ width: `${Math.max(0, Math.min(100, playable))}%` }}
                   />
                 </div>
                 <div className="h-2.5 overflow-hidden rounded-full bg-muted">

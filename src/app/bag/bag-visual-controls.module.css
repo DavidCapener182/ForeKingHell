@@ -1,0 +1,7 @@
+.layers {
+  min-width: 0;
+}
+.layers[data-window="false"] [data-pattern-layer="window"],
+.layers[data-median="false"] [data-pattern-layer="median"] {
+  display: none;
+}

@@ -242,7 +242,10 @@ export async function getGroupDetailData(slug: string): Promise<GroupDetailData 
     .select()
     .from(groupMemberships)
     .where(and(eq(groupMemberships.groupId, group.id), eq(groupMemberships.status, "active")));
-  const [listItem] = await hydrateGroupList([group], memberships);
+  const [listItem] = await hydrateGroupList(
+    [group],
+    memberships.filter((membership) => membership.userId === userId),
+  );
   const postRows = await getDb()
     .select()
     .from(groupPosts)
@@ -382,22 +385,24 @@ export async function createGroup(input: {
       status: "active",
       updatedAt: now,
     });
+    await createFeedItem(
+      {
+        userId,
+        itemType: "group_created",
+        headline: `${profile.displayName} created ${created.name}`,
+        metricLabel: "Group",
+        metricValue: labelForGroupType(groupType),
+        context: created.description,
+        proofUrl: `/groups/${created.slug}`,
+        sourceType: "group",
+        sourceId: created.id,
+        visibility,
+        verificationLabel: "Manual",
+        dedupeKey: `group-created:${created.id}`,
+      },
+      tx,
+    );
     return [created];
-  });
-
-  await createFeedItem({
-    userId,
-    itemType: "group_created",
-    headline: `${profile.displayName} created ${group.name}`,
-    metricLabel: "Group",
-    metricValue: labelForGroupType(groupType),
-    context: group.description,
-    proofUrl: `/groups/${group.slug}`,
-    sourceType: "group",
-    sourceId: group.id,
-    visibility,
-    verificationLabel: "Manual",
-    dedupeKey: `group-created:${group.id}`,
   });
 
   revalidateGroups();
@@ -475,26 +480,35 @@ export async function respondToGroupInvite(inviteId: string, response: "accepted
     throw new Error("Group not found.");
   }
 
-  if (response === "accepted") {
-    await getDb()
-      .insert(groupMemberships)
-      .values({
-        groupId: group.id,
-        userId,
-        role: "member",
-        status: "active",
-        updatedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: [groupMemberships.groupId, groupMemberships.userId],
-        set: { status: "active", updatedAt: new Date() },
-      });
-  }
-
-  await getDb()
-    .update(groupInvites)
-    .set({ status: response, respondedAt: new Date() })
-    .where(and(eq(groupInvites.id, invite.id), eq(groupInvites.inviteeUserId, userId)));
+  await getDb().transaction(async (tx) => {
+    const [claimed] = await tx
+      .update(groupInvites)
+      .set({ status: response, respondedAt: new Date() })
+      .where(
+        and(
+          eq(groupInvites.id, invite.id),
+          eq(groupInvites.inviteeUserId, userId),
+          eq(groupInvites.status, "pending"),
+        ),
+      )
+      .returning({ id: groupInvites.id });
+    if (!claimed) throw new Error("Group invite not found.");
+    if (response === "accepted") {
+      await tx
+        .insert(groupMemberships)
+        .values({
+          groupId: group.id,
+          userId,
+          role: "member",
+          status: "active",
+          updatedAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: [groupMemberships.groupId, groupMemberships.userId],
+          set: { status: "active", updatedAt: new Date() },
+        });
+    }
+  });
   revalidateGroups(group.slug);
 
   return group.slug;

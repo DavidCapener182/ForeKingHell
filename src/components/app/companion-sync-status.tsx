@@ -1,30 +1,39 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore, useRef } from "react";
 import { CloudUpload, RefreshCw, TriangleAlert, WifiOff } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { countOfflineActions, listOfflineActions } from "@/lib/offline-queue";
+import { listOfflineActions } from "@/lib/offline-queue";
 
 export function CompanionSyncStatus({ accountId }: { accountId: string }) {
   const isOnline = useSyncExternalStore(subscribeOnline, onlineSnapshot, serverOnlineSnapshot);
-  const [state, setState] = useState<{ count: number; needsAttention: number }>({
-    count: 0,
-    needsAttention: 0,
-  });
-
+  const [snapshot, setSnapshot] = useState<{
+    accountId: string;
+    count: number;
+    needsAttention: number;
+    error: boolean;
+  } | null>(null);
+  const request = useRef(0);
+  const state = snapshot?.accountId === accountId ? snapshot : null;
   const refresh = useCallback(() => {
-    Promise.all([countOfflineActions(accountId), listOfflineActions(accountId)])
-      .then(([count, actions]) =>
-        setState({
-          count,
-          needsAttention: actions.filter((action) => action.status === "dead_letter").length,
-        }),
-      )
-      .catch(() => setState({ count: 0, needsAttention: 0 }));
+    const current = ++request.current;
+    listOfflineActions(accountId)
+      .then((actions) => {
+        if (request.current === current)
+          setSnapshot({
+            accountId,
+            count: actions.length,
+            needsAttention: actions.filter((action) => action.status === "dead_letter").length,
+            error: false,
+          });
+      })
+      .catch(() => {
+        if (request.current === current)
+          setSnapshot({ accountId, count: 0, needsAttention: 0, error: true });
+      });
   }, [accountId]);
 
   useEffect(() => {
@@ -33,6 +42,7 @@ export function CompanionSyncStatus({ accountId }: { accountId: string }) {
     window.addEventListener("online", refresh);
     window.addEventListener("offline", refresh);
     return () => {
+      request.current += 1;
       window.clearTimeout(timer);
       window.removeEventListener("fkh-offline-queue-changed", refresh);
       window.removeEventListener("online", refresh);
@@ -40,29 +50,52 @@ export function CompanionSyncStatus({ accountId }: { accountId: string }) {
     };
   }, [refresh]);
 
+  if (!state)
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        Checking saved actions…
+      </p>
+    );
+  if (state.error)
+    return (
+      <Alert variant="destructive">
+        <TriangleAlert aria-hidden />
+        <AlertTitle>Saved actions could not be checked</AlertTitle>
+        <AlertDescription className="grid gap-2">
+          Your sync status is unknown.{" "}
+          <Button type="button" variant="outline" className="min-h-11 w-fit" onClick={refresh}>
+            Check again
+          </Button>
+          <a href="/settings" className="inline-flex min-h-11 items-center underline">
+            Review local storage in Settings
+          </a>
+        </AlertDescription>
+      </Alert>
+    );
   if (state.count === 0 && isOnline) return null;
 
   const presentation = state.needsAttention
     ? {
         icon: TriangleAlert,
-        title: "Upload needs attention",
-        detail: `${state.needsAttention} queued upload${state.needsAttention === 1 ? "" : "s"} need review in Settings.`,
+        title: "Saved actions need attention",
+        detail: `${state.needsAttention} queued action${state.needsAttention === 1 ? " needs" : "s need"} review in Settings.`,
         status: "Needs attention",
         tone: "attention" as const,
       }
     : isOnline
       ? {
           icon: RefreshCw,
-          title: "Syncing queued upload",
-          detail: `${state.count} upload${state.count === 1 ? "" : "s"} saved on this phone ${state.count === 1 ? "is" : "are"} waiting for a safe retry.`,
-          status: "Syncing",
+          title: "Actions queued for sync",
+          detail: `${state.count} action${state.count === 1 ? "" : "s"} saved on this device ${state.count === 1 ? "is" : "are"} waiting for a safe retry.`,
+          status: "Queued",
           tone: "info" as const,
         }
       : state.count > 0
         ? {
             icon: CloudUpload,
-            title: "Upload queued on this phone",
-            detail: "Waiting for connection. Analysis will appear after the upload syncs.",
+            title: "Actions queued on this device",
+            detail:
+              "Waiting for connection. Saved actions remain on this device until sync succeeds.",
             status: "Waiting for connection",
             tone: "attention" as const,
           }
@@ -101,19 +134,12 @@ export function CompanionSyncStatus({ accountId }: { accountId: string }) {
       </AlertTitle>
       <AlertDescription className="grid gap-2">
         <span>{presentation.detail}</span>
-        {!state.needsAttention ? (
-          <Progress
-            value={isOnline ? 65 : 15}
-            aria-label={`${presentation.status} upload progress`}
-            className="h-1.5"
-          />
-        ) : null}
         {state.count > 0 ? (
           <Button
             type="button"
             size="sm"
             variant="outline"
-            className="w-fit"
+            className="min-h-11 w-fit"
             disabled={!isOnline}
             onClick={retrySync}
             aria-label={isOnline ? "Retry queued upload sync" : "Retry queued upload when online"}
@@ -122,6 +148,9 @@ export function CompanionSyncStatus({ accountId }: { accountId: string }) {
             {isOnline ? "Retry sync" : "Retry when online"}
           </Button>
         ) : null}
+        <a href="/settings" className="min-h-11 content-center underline">
+          Review saved actions in Settings
+        </a>
       </AlertDescription>
     </Alert>
   );

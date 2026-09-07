@@ -26,14 +26,33 @@ export function SessionComparisonStage({
   delta,
   metrics,
   confidenceLabel,
+  initialMetric = "",
+  initialView = "side-by-side",
 }: {
   focus: CompareSampleSummary;
   baseline: CompareSampleSummary;
   delta: CompareDelta;
   metrics: StageMetric[];
   confidenceLabel: string;
+  initialMetric?: string;
+  initialView?: string;
 }) {
-  const [view, setView] = useState<ComparisonView>("side-by-side");
+  const [view, setView] = useState<ComparisonView>(
+    ["overlay", "side-by-side", "delta"].includes(initialView)
+      ? (initialView as ComparisonView)
+      : "side-by-side",
+  );
+  const [metricKey, setMetricKey] = useState(
+    metrics.some((metric) => metric.key === initialMetric)
+      ? initialMetric
+      : (metrics[0]?.key ?? ""),
+  );
+  const selectedMetric = metrics.find((metric) => metric.key === metricKey);
+  function remember(key: string, value: string) {
+    const url = new URL(window.location.href);
+    url.searchParams.set(key, value);
+    window.history.replaceState(null, "", url);
+  }
   const domain = useMemo(
     () => chartDomain(focus.dispersion, baseline.dispersion),
     [focus, baseline],
@@ -57,7 +76,12 @@ export function SessionComparisonStage({
         <ToggleGroup
           type="single"
           value={view}
-          onValueChange={(value) => value && setView(value as ComparisonView)}
+          onValueChange={(value) => {
+            if (value) {
+              setView(value as ComparisonView);
+              remember("view", value);
+            }
+          }}
           variant="outline"
           spacing={0}
           aria-label="Comparison chart view"
@@ -69,6 +93,34 @@ export function SessionComparisonStage({
         </ToggleGroup>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3 border-b p-4">
+        <label className="grid gap-1 text-sm font-medium">
+          Selected metric
+          <select
+            className="min-h-11 rounded-lg border bg-background px-3"
+            value={metricKey}
+            onChange={(event) => {
+              setMetricKey(event.target.value);
+              remember("metric", event.target.value);
+            }}
+          >
+            {metrics.map((metric) => (
+              <option key={metric.key} value={metric.key}>
+                {metric.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        {selectedMetric && (
+          <p className="text-sm" role="status">
+            {selectedMetric.label}:{" "}
+            {selectedMetric.value === null
+              ? "Unavailable"
+              : `${selectedMetric.value > 0 ? "+" : ""}${numberFormatter.format(selectedMetric.value)} ${selectedMetric.unit}`}{" "}
+            · {selectedMetric.confidence}
+          </p>
+        )}
+      </div>
       <div className="grid border-b border-border/70 md:grid-cols-2">
         <SampleHeader side="Focus" sample={focus} confidenceLabel={confidenceLabel} tone="focus" />
         <SampleHeader
@@ -120,6 +172,50 @@ export function SessionComparisonStage({
 
         {view === "delta" ? <DeltaView metrics={metrics} delta={delta} /> : null}
       </div>
+
+      <details className="border-t p-4">
+        <summary className="min-h-11 cursor-pointer font-medium">Exact plotted shot values</summary>
+        <div
+          className="mt-3 max-h-96 overflow-auto"
+          role="region"
+          aria-label="Plotted focus and baseline shot values"
+          tabIndex={0}
+        >
+          <table className="w-full text-sm">
+            <caption className="pb-2 text-left text-muted-foreground">
+              Only plotted shots with both carry and side carry. Positive side is right; negative is
+              left.
+            </caption>
+            <thead>
+              <tr>
+                <th className="text-left">Sample / shot</th>
+                <th className="text-right">Carry (yd)</th>
+                <th className="text-right">Side (yd)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { label: "Focus", points: focus.dispersion },
+                { label: "Baseline", points: baseline.dispersion },
+              ].flatMap((sample) =>
+                sample.points.map((point) => (
+                  <tr key={`${sample.label}-${point.id}`}>
+                    <th scope="row" className="border-t py-2 text-left font-normal">
+                      {sample.label} · {point.label}
+                    </th>
+                    <td className="border-t text-right tabular-nums">
+                      {numberFormatter.format(point.carryYd)}
+                    </td>
+                    <td className="border-t text-right tabular-nums">
+                      {numberFormatter.format(point.sideCarryYd)}
+                    </td>
+                  </tr>
+                )),
+              )}
+            </tbody>
+          </table>
+        </div>
+      </details>
 
       <p className="border-t border-border/70 px-4 py-2.5 text-xs leading-5 text-muted-foreground">
         Plotted points use trusted stock shots with recorded carry and side carry. Exact values and
@@ -237,8 +333,8 @@ function OverlayPlot({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm font-semibold">Dispersion overlay</p>
         <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-          <ChartKey colour="var(--foreground, #172017)" label="Focus" />
-          <ChartKey colour="var(--chart-comparison, #1555d6)" label="Baseline" />
+          <ChartKey colour="var(--foreground, #172017)" label="Focus · circles" />
+          <ChartKey colour="var(--chart-comparison, #1555d6)" label="Baseline · squares" />
         </div>
       </div>
       <ShotPlot
@@ -357,18 +453,32 @@ function ShotPlot({
         {numberFormatter.format(domain.maxCarry)} yd
       </text>
       {samples.flatMap((sample) =>
-        sample.points.map((point) => (
-          <circle
-            key={`${sample.label}-${point.id}`}
-            cx={x(point.sideCarryYd)}
-            cy={y(point.carryYd)}
-            r={sample.label === "Focus" ? 5 : 4.5}
-            fill={sample.colour}
-            fillOpacity={sample.opacity}
-            stroke="var(--card)"
-            strokeWidth="1"
-          />
-        )),
+        sample.points.map((point) =>
+          sample.label === "Baseline" ? (
+            <rect
+              key={`${sample.label}-${point.id}`}
+              x={x(point.sideCarryYd) - 4.5}
+              y={y(point.carryYd) - 4.5}
+              width={9}
+              height={9}
+              fill={sample.colour}
+              fillOpacity={sample.opacity}
+              stroke="var(--card)"
+              strokeWidth="1"
+            />
+          ) : (
+            <circle
+              key={`${sample.label}-${point.id}`}
+              cx={x(point.sideCarryYd)}
+              cy={y(point.carryYd)}
+              r={sample.label === "Focus" ? 5 : 4.5}
+              fill={sample.colour}
+              fillOpacity={sample.opacity}
+              stroke="var(--card)"
+              strokeWidth="1"
+            />
+          ),
+        ),
       )}
     </svg>
   );

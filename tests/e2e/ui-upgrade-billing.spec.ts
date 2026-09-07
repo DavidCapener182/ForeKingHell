@@ -1,0 +1,104 @@
+import { expect, test } from "@playwright/test";
+import postgres from "postgres";
+test("Billing keeps saved paid access and complete history visible on both surfaces without starting payments", async ({
+  page,
+  context,
+}, info) => {
+  const value = process.env.DATABASE_URL;
+  const target = value ? new URL(value) : null;
+  test.skip(
+    process.env.RUN_REDESIGN_DB_TESTS !== "1" ||
+      target?.hostname !== "127.0.0.1" ||
+      target.port !== "55432" ||
+      target.pathname !== "/fkh_redesign" ||
+      process.env.PLAYWRIGHT_BASE_URL !== "http://localhost:3116",
+    "Designated fixture only",
+  );
+  test.skip(info.project.name !== "chromium");
+  test.setTimeout(240000);
+  page.setDefaultNavigationTimeout(90000);
+  page.setDefaultTimeout(15000);
+  const db = postgres(value!, { max: 1 });
+  const users: string[] = [];
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  try {
+    users.push(
+      ...(
+        await db`insert into fkh_users(name,email) values('Synthetic billing user','billing-ui@example.invalid'),('Foreign billing user','foreign-billing@example.invalid') returning id`
+      ).map((r) => r.id),
+    );
+    await db`insert into fkh_subscriptions(user_id,plan_key,status,current_period_start,current_period_end,cancel_at_period_end) values(${users[0]},'pro','active','2026-01-01','2027-01-01',true),(${users[1]},'coach','past_due','2025-01-01','2025-02-01',false)`;
+    const enc = (v: unknown) => Buffer.from(JSON.stringify(v)).toString("base64url");
+    await context.clearCookies();
+    await context.addCookies([
+      {
+        name: "sb-playwright-auth-token",
+        value: encodeURIComponent(
+          JSON.stringify({
+            access_token: [
+              enc({ alg: "none" }),
+              enc({ sub: users[0], email: "billing-ui@example.invalid" }),
+              "playwright",
+            ].join("."),
+          }),
+        ),
+        domain: "localhost",
+        path: "/",
+      },
+    ]);
+    for (const surface of ["workbench", "companion"])
+      for (const [width, height] of [
+        [1440, 900],
+        [1280, 800],
+        [390, 844],
+        [360, 800],
+        [1023, 800],
+        [1024, 800],
+      ]) {
+        await page.setViewportSize({ width, height });
+        await page.goto(
+          `/surface/${surface}?next=${encodeURIComponent("/billing?checkout=success")}`,
+          { waitUntil: "domcontentloaded" },
+        );
+        await expect(
+          page.getByRole("heading", { name: "Your plan", level: 1, exact: true }),
+        ).toBeVisible({ timeout: 60000 });
+        await page.addStyleTag({ content: "nextjs-portal{pointer-events:none!important;}" });
+        await expect(
+          page.getByText("This return link does not confirm payment.", { exact: false }),
+        ).toBeVisible();
+        await expect(
+          page.getByText("Cancellation scheduled. Access continues until 01 Jan 2027.", {
+            exact: true,
+          }),
+        ).toBeVisible();
+        await expect(page.getByText("Foreign billing user", { exact: true })).toHaveCount(0);
+        if (width < 768) {
+          await page.getByText("Complete feature comparison", { exact: true }).click();
+          await expect(
+            page.getByRole("term").filter({ hasText: "Scorecard extracts" }),
+          ).toBeVisible();
+          await page.getByRole("button", { name: /Full.*Details/ }).click();
+          const panel = page.getByRole("dialog", { name: "Subscription details" });
+          await expect(panel).toContainText("01 Jan 2026 – 01 Jan 2027");
+          await expect(panel).toContainText("Ends after this period");
+          await page.keyboard.press("Escape");
+          await expect(panel).toHaveCount(0);
+        }
+        await page.getByText("Your access and usage limits", { exact: true }).click();
+        await expect(page.getByText("Monthly AI credits", { exact: true })).toBeVisible();
+        await expect(page.getByText("Internal safety cap", { exact: true })).toHaveCount(0);
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
+        ).toBe(true);
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({ path: info.outputPath(`P75-${surface}-${width}.png`) });
+      }
+    expect(await db`select id from fkh_subscriptions where user_id=${users[0]}`).toHaveLength(1);
+    expect(errors).toEqual([]);
+  } finally {
+    if (users.length) await db`delete from fkh_users where id in ${db(users)}`;
+    await db.end();
+  }
+});

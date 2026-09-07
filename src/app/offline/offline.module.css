@@ -60,3 +60,33 @@
   outline-offset: -3px;
   border-radius: 0.5rem;
 }
+
+.resources {
+  display: grid;
+  min-width: 0;
+  gap: 1.25rem;
+}
+.resources > p,
+.resources > button {
+  grid-column: 1 / -1;
+}
+.connection {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  background: var(--card);
+}
+@media (min-width: 1024px) {
+  .screen {
+    padding-inline: 2rem;
+  }
+  .resources {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .navigation {
+    position: static;
+    grid-row: 1;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+  }
+}

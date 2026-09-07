@@ -43,6 +43,19 @@ describe("scorecard proof tokens", () => {
     ).toBeNull();
   });
 
+  it("binds tournament proof to the selected round and rejects unbound proof", () => {
+    vi.stubEnv("SCORECARD_PROOF_SECRET", "test-proof-secret-with-more-than-32-bytes");
+    const scope = { scopeType: "tournament" as const, scopeId: input.scopeId, roundNumber: 2 };
+    const token = createScorecardProofToken({ ...input, ...scope });
+    expect(verifyScorecardProofToken(token, input.userId, scope)).toMatchObject({
+      roundNumber: 2,
+      totalScore: 72,
+    });
+    expect(verifyScorecardProofToken(token, input.userId, { ...scope, roundNumber: 1 })).toBeNull();
+    const unbound = createScorecardProofToken({ ...input, ...scope, roundNumber: null });
+    expect(verifyScorecardProofToken(unbound, input.userId, scope)).toBeNull();
+  });
+
   it("rejects another user, another scope type, and token tampering", () => {
     vi.stubEnv("SCORECARD_PROOF_SECRET", "test-proof-secret-with-more-than-32-bytes");
     const token = createScorecardProofToken(input);

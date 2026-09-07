@@ -76,11 +76,7 @@ export async function joinTournamentAction(formData: FormData) {
     redirect(`/tournaments/${encodeURIComponent(tournamentId)}?entryError=terms`);
   }
 
-  await joinTournament(tournamentId, {
-    accepted: true,
-    acceptedAt: new Date(),
-    version: TOURNAMENT_ENTRY_TERMS_VERSION,
-  });
+  await joinTournamentFromForm(formData, tournamentId);
   redirect(`/tournaments/${tournamentId}?joined=1`);
 }
 
@@ -92,6 +88,55 @@ export async function withdrawTournamentAction(formData: FormData) {
   redirect("/tournaments?tab=mine");
 }
 
+export async function joinTournamentFormAction(
+  _previousState: { ok: boolean; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const tournamentId = formString(formData, "tournamentId");
+    if (!tournamentId) throw new Error("Tournament is required.");
+    await joinTournamentFromForm(formData, tournamentId);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not enter tournament.",
+    };
+  }
+}
+
+async function joinTournamentFromForm(formData: FormData, tournamentId: string) {
+  if (
+    !hasAcceptedTournamentEntryTerms(
+      formData.get(TOURNAMENT_ENTRY_TERMS_ACCEPT_FIELD),
+      formData.get(TOURNAMENT_ENTRY_TERMS_VERSION_FIELD),
+    )
+  )
+    throw new Error("Accept the current tournament entry terms before registering.");
+  await joinTournament(tournamentId, {
+    accepted: true,
+    acceptedAt: new Date(),
+    version: TOURNAMENT_ENTRY_TERMS_VERSION,
+  });
+}
+
+export async function withdrawTournamentFormAction(
+  _previousState: { ok: boolean; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const tournamentId = formString(formData, "tournamentId");
+    if (!tournamentId) throw new Error("Tournament is required.");
+    await withdrawTournament(tournamentId);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not withdraw from tournament.",
+    };
+  }
+}
+
 export async function submitTournamentRoundAction(formData: FormData) {
   const tournamentId = formString(formData, "tournamentId");
 
@@ -99,7 +144,31 @@ export async function submitTournamentRoundAction(formData: FormData) {
     return;
   }
 
-  const submissionId = await submitTournamentRound({
+  const submissionId = await submitTournamentRound(
+    tournamentSubmissionInput(formData, tournamentId),
+  );
+
+  redirect(`/tournaments/${tournamentId}?submission=${submissionId}`);
+}
+
+export async function submitTournamentRoundFormAction(
+  _previousState: { ok: boolean; submissionId?: string; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; submissionId?: string; error?: string }> {
+  try {
+    const tournamentId = formString(formData, "tournamentId");
+    if (!tournamentId) throw new Error("Tournament is required.");
+    const submissionId = await submitTournamentRound(
+      tournamentSubmissionInput(formData, tournamentId),
+    );
+    return { ok: true, submissionId };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not save round." };
+  }
+}
+
+function tournamentSubmissionInput(formData: FormData, tournamentId: string) {
+  return {
     tournamentId,
     roundNumber: formNumber(formData, "roundNumber") ?? 1,
     grossScore: formNumber(formData, "grossScore") ?? 0,
@@ -110,9 +179,7 @@ export async function submitTournamentRoundAction(formData: FormData) {
     scorecardScreenshotPath: formString(formData, "scorecardScreenshotPath"),
     extractedScorecardTotal: formNumber(formData, "extractedScorecardTotal"),
     scorecardProofToken: formString(formData, "scorecardProofToken"),
-  });
-
-  redirect(`/tournaments/${tournamentId}?submission=${submissionId}`);
+  };
 }
 
 export async function addTournamentCommentAction(formData: FormData) {
@@ -159,5 +226,14 @@ function formNumber(formData: FormData, key: string) {
 function formDate(formData: FormData, key: string) {
   const value = formString(formData, key);
   const parsed = value ? new Date(`${value}T12:00:00.000Z`) : null;
-  return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
+  if (!value) return null;
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    !parsed ||
+    !Number.isFinite(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== value
+  ) {
+    throw new Error(`${key} must be a valid date.`);
+  }
+  return parsed;
 }

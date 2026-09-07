@@ -183,6 +183,16 @@ const baseAppRouteMetadata = [
     "gapping",
     "stock yardages",
   ]),
+  meta("best-shots", "/bag/longest", "Best shots by club", "Best shots", "Analyse", "bag", Trophy, [
+    "longest",
+    "furthest",
+    "farthest",
+    "personal best",
+    "pb",
+    "best carry",
+    "longest total",
+    "shot simulator",
+  ]),
   meta("compare", "/compare", "Compare", "Compare", "Analyse", "review", GitCompareArrows, [
     "comparison",
     "session compare",

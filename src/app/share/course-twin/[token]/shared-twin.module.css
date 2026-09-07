@@ -1,0 +1,34 @@
+.viewport {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+  background: #07150e;
+  color: #fff;
+  overflow: hidden;
+}
+.header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 1rem;
+  padding: max(0.75rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) 0.75rem
+    max(1rem, env(safe-area-inset-left));
+  border-bottom: 1px solid rgb(255 255 255 / 15%);
+}
+.runtime {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .header {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+  .header > a {
+    justify-self: start;
+  }
+}

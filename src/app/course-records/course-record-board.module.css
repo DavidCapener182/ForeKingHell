@@ -1,0 +1,36 @@
+.desktop {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  max-width: 100%;
+}
+.desktop th,
+.desktop td {
+  padding: 0.875rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.desktop thead th {
+  background: var(--muted);
+  white-space: nowrap;
+}
+.desktop tbody th {
+  position: sticky;
+  left: 0;
+  min-width: 12rem;
+  max-width: 20rem;
+  background: var(--card);
+  overflow-wrap: anywhere;
+}
+.mobile {
+  display: none;
+}
+@media (max-width: 767px) {
+  .desktop {
+    display: none;
+  }
+  .mobile {
+    display: grid;
+    gap: 0.75rem;
+  }
+}

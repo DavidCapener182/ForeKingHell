@@ -1,385 +1,159 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { and, count, eq, gte, inArray, or, sql } from "drizzle-orm";
-import { AlertTriangle, ArrowRight, CalendarDays, Flag, Target } from "lucide-react";
-
-import { saveSeasonPlanAction } from "@/app/goals/actions";
+import { getGoalImprovementProjectData } from "@/lib/goal-improvement-project";
+import { GoalProjectPanel } from "@/app/goals/goal-project-panel";
+import { and, countDistinct, eq, gte, lte, inArray, or, sql } from "drizzle-orm";
 import { GoalCreateDialog, GoalDeleteDialog, GoalEditSheet } from "@/app/goals/goal-form-panels";
+import { SeasonPlanEditor } from "@/app/goals/season-plan-editor";
+import { GoalEvidenceSheet } from "@/app/goals/goal-evidence-sheet";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
-import { MetricEvidenceDrawer, RecommendedAction } from "@/components/app/evidence-status";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { getDb } from "@/db/client";
 import { sessions, shots } from "@/db/schema";
-import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { requireCurrentUserId } from "@/lib/current-user";
 import {
   getProductPreferences,
   goalProgress,
   goalTypeLabel,
   type SeasonGoal,
-  type SeasonPlan,
 } from "@/lib/product-preferences";
-
 export const dynamic = "force-dynamic";
-
-export default async function GoalsPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ saved?: string; error?: string }>;
-}) {
-  const params = await searchParams;
+export default async function GoalsPage() {
   const userId = await requireCurrentUserId();
-  const since = sql<Date>`now() - interval '7 days'`;
-  const [surface, preferences, sessionRows, shotRows] = await Promise.all([
-    getRequestAppSurface(),
+  const [preferences, [week]] = await Promise.all([
     getProductPreferences(userId),
     getDb()
-      .select({ total: count(sessions.id) })
+      .select({ sessions: countDistinct(sessions.id), shots: countDistinct(shots.id) })
       .from(sessions)
-      .where(and(eq(sessions.userId, userId), gte(sessions.date, since))),
-    getDb()
-      .select({ total: count(shots.id) })
-      .from(shots)
-      .innerJoin(sessions, eq(shots.sessionId, sessions.id))
+      .innerJoin(shots, and(eq(shots.sessionId, sessions.id), eq(shots.userId, userId)))
       .where(
         and(
-          eq(shots.userId, userId),
           eq(sessions.userId, userId),
-          gte(sessions.date, since),
+          gte(sessions.date, sql<Date>`now() - interval '7 days'`),
+          lte(sessions.date, sql<Date>`now()`),
           shotEvidenceSqlPredicate(),
+          sql`(
+            (${shots.carryYd} > 0 and ${shots.carryYd} < 'Infinity'::double precision)
+            or (${shots.totalYd} > 0 and ${shots.totalYd} < 'Infinity'::double precision)
+            or (${shots.ballSpeedMph} > 0 and ${shots.ballSpeedMph} < 'Infinity'::double precision)
+          )`,
         ),
       ),
   ]);
+  const projectData = await getGoalImprovementProjectData(userId);
   const plan = preferences.seasonPlan;
-  const weeklySessions = Number(sessionRows[0]?.total ?? 0);
-  const weeklyShots = Number(shotRows[0]?.total ?? 0);
+  const weeklySessions = week?.sessions ?? 0;
+  const weeklyShots = week?.shots ?? 0;
   const rhythmMet = weeklySessions >= plan.weeklySessions;
-  const goalError = goalErrorMessage(params?.error);
-
   return (
     <PageShell>
-      <PageHeader
-        eyebrow={<StatusPill tone="sky">Season plan</StatusPill>}
-        title="Goals"
-        description="Turn one season outcome into a measurable weekly rhythm, then let imported sessions prove the progress."
-        actions={
-          <Button asChild className="min-h-11 rounded-xl">
-            <Link href="/practice/quick-range">
-              Start quick range
-              <ArrowRight className="size-4" aria-hidden />
+      <div className="grid min-w-0 gap-5" data-goals-ui>
+        <PageHeader
+          title="Goals"
+          description="Keep your season plan and numerical targets together. Saved values and verified evidence remain distinct."
+          actions={<GoalCreateDialog label="Add goal" />}
+        />
+        <section
+          className="grid gap-3 rounded-xl border bg-card p-4 sm:p-5"
+          data-season-outcome-card
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Season outcome</p>
+              <h2 className="mt-1 break-words text-xl font-semibold">{plan.outcome}</h2>
+            </div>
+            <StatusPill tone="slate">Saved plan</StatusPill>
+          </div>
+          <p className="text-sm leading-6 text-muted-foreground">
+            {plan.focus} · {plan.successMeasure}
+          </p>
+          <p className="text-sm">
+            {plan.targetDate ? `Target date ${formatDate(plan.targetDate)}` : "No target date set"}{" "}
+            · {plan.weeklySessions} measured sessions per week
+          </p>
+          <SeasonPlanEditor plan={plan} />
+        </section>
+        <GoalProjectPanel data={projectData} />
+        <section
+          className="grid gap-3 rounded-xl border bg-card p-4 sm:p-5"
+          aria-label="Plan steps"
+        >
+          <h2 className="text-xl font-semibold">This week’s commitment</h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            {weeklySessions} qualifying sessions · {weeklyShots} eligible measured shots · Last 7
+            days. Future activities and saved plans without measurements are excluded.
+          </p>
+          <ol className="divide-y">
+            <li className="flex flex-wrap items-center justify-between gap-2 py-3">
+              <div>
+                <h3 className="font-medium">1. Set the season plan</h3>
+                <p className="text-sm text-muted-foreground">
+                  {plan.weeklySessions} sessions per week focused on {plan.focus}.
+                </p>
+              </div>
+              <StatusPill tone="slate">Current saved plan</StatusPill>
+            </li>
+            <li className="flex flex-wrap items-center justify-between gap-2 py-3">
+              <div>
+                <h3 className="font-medium">2. Record measured sessions</h3>
+                <p className="text-sm text-muted-foreground">
+                  {weeklySessions} of {plan.weeklySessions} sessions this week.
+                </p>
+              </div>
+              <StatusPill tone={rhythmMet ? "green" : "amber"}>
+                {rhythmMet ? "Weekly count reached" : "Current commitment"}
+              </StatusPill>
+            </li>
+            <li className="flex flex-wrap items-center justify-between gap-2 py-3">
+              <div>
+                <h3 className="font-medium">3. Review the evidence</h3>
+                <p className="text-sm text-muted-foreground">
+                  Check changes and update saved goal values. Review completion is not recorded
+                  automatically.
+                </p>
+              </div>
+              <StatusPill tone="slate">Review needed</StatusPill>
+            </li>
+          </ol>
+          <Button asChild className="min-h-11 justify-self-start">
+            <Link
+              href={
+                rhythmMet
+                  ? "/progress"
+                  : `/practice/quick-range?focus=${encodeURIComponent(plan.focus)}`
+              }
+            >
+              {rhythmMet ? "Review weekly progress" : "Start focused practice"}
             </Link>
           </Button>
-        }
-      />
-
-      {goalError ? (
-        <Alert variant="destructive">
-          <AlertTriangle className="size-4" aria-hidden />
-          <AlertTitle>Goal not saved</AlertTitle>
-          <AlertDescription>{goalError}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {params?.saved === "1" ? (
-        <Alert>
-          <AlertDescription>Season plan saved.</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {params?.saved === "goal" ? (
-        <Alert>
-          <AlertDescription>Goal saved in the season plan.</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <Card className="border-primary/20 shadow-sm" data-season-outcome-card>
-        <CardHeader className="flex-row flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Season outcome
-            </p>
-            <CardTitle className="mt-2 text-3xl tracking-tight">{plan.outcome}</CardTitle>
-            <CardDescription className="mt-2 text-sm leading-6">
-              {plan.focus} is the current focus. {plan.successMeasure}.
-            </CardDescription>
-          </div>
-          <StatusPill tone={weeklySessions > 0 ? "sky" : "slate"}>
-            {weeklySessions > 0 ? "Moderate confidence" : "Insufficient evidence"}
-          </StatusPill>
-        </CardHeader>
-        {plan.targetDate ? (
-          <CardContent>
-            <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <CalendarDays className="size-4 text-primary" aria-hidden />
-              Target date {formatDate(plan.targetDate)}
-            </p>
-          </CardContent>
-        ) : null}
-      </Card>
-
-      {surface === "companion" ? (
-        <div className="grid gap-5" data-goals-companion>
-          <section className="grid gap-2" aria-label="This week">
-            <IOSSectionHeader title="This week" />
-            <IOSGroupedList label="Weekly goal status">
-              <IOSListRow
-                label="Measured rhythm"
-                value={`${weeklySessions} / ${plan.weeklySessions}`}
-                detail={`${weeklyShots} imported shots in the last 7 days`}
-                status={
-                  <span
-                    className={
-                      rhythmMet
-                        ? "text-xs font-medium text-[var(--status-success-foreground)]"
-                        : "text-xs font-medium text-[var(--status-warning-foreground)]"
-                    }
-                  >
-                    {rhythmMet ? "On track" : "Needs another measured session"}
-                  </span>
-                }
-              />
-              <IOSListRow
-                label="Practice focus"
-                value={plan.focus}
-                detail={`Complete ${plan.weeklySessions} measured sessions`}
-              />
-              <IOSListRow
-                label="Weekly game review"
-                detail="Strongest change, weakest signal and next evidence"
-                href="/progress"
-              />
-            </IOSGroupedList>
-          </section>
-
-          <section className="grid gap-2" aria-label="Current targets">
-            <IOSSectionHeader
-              title="Current targets"
-              description={
-                preferences.goals.length > 0
-                  ? `${preferences.goals.length} evidence-linked ${preferences.goals.length === 1 ? "goal" : "goals"}`
-                  : "No measured target yet"
-              }
-            />
-            {preferences.goals.length > 0 ? (
-              <IOSDisclosureGroup
-                label="Measured goals"
-                items={preferences.goals.map((goal) => mobileGoalDisclosure(goal))}
-              />
-            ) : (
-              <IOSGroupedList label="Measured goals">
-                <IOSListRow
-                  label="Add your first measured target"
-                  detail="Keep the season outcome broad and make this target numerical."
-                />
-              </IOSGroupedList>
-            )}
-          </section>
-
-          <section className="grid gap-2" aria-label="Plan controls">
-            <IOSSectionHeader
-              title="Plan controls"
-              description="Edit only when the season outcome or evidence target changes."
-            />
-            <IOSDisclosureGroup
-              label="Goal controls"
-              items={[
-                {
-                  value: "edit-plan",
-                  title: "Edit season plan",
-                  summary: `${plan.weeklySessions} / week`,
-                  description: plan.targetDate
-                    ? `Target ${formatDate(plan.targetDate)}`
-                    : "No target date",
-                  content: <SeasonPlanForm plan={plan} idPrefix="mobile-plan" />,
-                },
-                {
-                  value: "add-goal",
-                  title: "Add a measured goal",
-                  summary: "New",
-                  description: "Handicap, distance, speed, practice or competition",
-                  content: <GoalCreateDialog label="Add measured goal" />,
-                },
-                {
-                  value: "evidence-method",
-                  title: "How progress is proved",
-                  summary: `${weeklyShots} shots`,
-                  content: (
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      Only imported sessions count towards the weekly rhythm. Planned work or a
-                      manually ticked task does not replace measured shot evidence.
-                    </p>
-                  ),
-                },
-              ]}
-            />
-          </section>
-        </div>
-      ) : (
-        <>
-          <section
-            className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)]"
-            data-goals-workbench
-          >
-            <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Flag className="size-5 text-primary" aria-hidden />
-                  Set the plan
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form action={saveSeasonPlanAction} className="grid gap-4 sm:grid-cols-2">
-                  <Field label="Season outcome" htmlFor="outcome" className="sm:col-span-2">
-                    <Input
-                      id="outcome"
-                      name="outcome"
-                      defaultValue={plan.outcome}
-                      maxLength={160}
-                      required
-                    />
-                  </Field>
-                  <Field label="Target date" htmlFor="targetDate">
-                    <Input
-                      id="targetDate"
-                      name="targetDate"
-                      type="date"
-                      defaultValue={plan.targetDate}
-                    />
-                  </Field>
-                  <Field label="Primary focus" htmlFor="focus">
-                    <Input
-                      id="focus"
-                      name="focus"
-                      defaultValue={plan.focus}
-                      maxLength={80}
-                      required
-                    />
-                  </Field>
-                  <Field label="Measured sessions per week" htmlFor="weeklySessions">
-                    <Input
-                      id="weeklySessions"
-                      name="weeklySessions"
-                      type="number"
-                      min={1}
-                      max={7}
-                      defaultValue={plan.weeklySessions}
-                      required
-                    />
-                  </Field>
-                  <Field label="What success looks like" htmlFor="successMeasure">
-                    <Input
-                      id="successMeasure"
-                      name="successMeasure"
-                      defaultValue={plan.successMeasure}
-                      maxLength={180}
-                      required
-                    />
-                  </Field>
-                  <Button type="submit" className="min-h-11 sm:col-span-2">
-                    Save season plan
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-
-            <div className="grid gap-3">
-              <MetricEvidenceDrawer
-                label="Weekly rhythm"
-                value={`${weeklySessions} / ${plan.weeklySessions} sessions`}
-                confidence={
-                  rhythmMet
-                    ? "High confidence"
-                    : weeklySessions > 0
-                      ? "Low confidence"
-                      : "Insufficient evidence"
-                }
-                evidence={{
-                  measuredShots: weeklyShots,
-                  sessions: weeklySessions,
-                  dateRange: "Last 7 days",
-                  source: "Imported session evidence",
-                  explanation: rhythmMet
-                    ? "The planned measured-session rhythm has been reached this week."
-                    : "Only imported sessions count; planned or manually ticked practice does not prove completion.",
-                }}
-              />
-              <Card className="shadow-sm">
-                <CardContent className="grid gap-3 pt-5">
-                  <PlanStep
-                    icon={Target}
-                    title="This week"
-                    detail={`Complete ${plan.weeklySessions} measured sessions focused on ${plan.focus.toLowerCase()}.`}
-                  />
-                  <PlanStep
-                    icon={CalendarDays}
-                    title="Weekly review"
-                    detail="Review the strongest change, weakest signal and next evidence requirement in Progress."
-                  />
-                  <Button asChild variant="outline" className="min-h-11 rounded-xl">
-                    <Link href="/progress">Open weekly game review</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+        </section>
+        <section className="grid gap-3" aria-label="Measured targets">
+          <h2 className="text-xl font-semibold">Numerical targets</h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Current values are explicitly saved, matching the Goals tab in Progress. A source label
+            alone does not prove an imported measurement.
+          </p>
+          {preferences.goals.length ? (
+            <div className="grid min-w-0 gap-3 xl:grid-cols-2">
+              {preferences.goals.map((goal) => (
+                <GoalCard key={goal.id} goal={goal} />
+              ))}
             </div>
-          </section>
-
-          <section aria-labelledby="measured-goals-title" className="grid gap-4">
-            <div>
-              <p className="text-sm font-semibold text-primary">Measured targets</p>
-              <h2 id="measured-goals-title" className="mt-1 font-display text-2xl font-semibold">
-                Goals linked to evidence
-              </h2>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                Track handicap, carry, dispersion, speed, practice frequency, course records and
-                tournament outcomes. Current values remain explicit so an imported result can be
-                checked before it replaces the baseline.
-              </p>
-            </div>
-
-            {preferences.goals.length > 0 ? (
-              <div className="grid gap-3 xl:grid-cols-2">
-                {preferences.goals.map((goal) => (
-                  <GoalCard key={goal.id} goal={goal} />
-                ))}
-              </div>
-            ) : (
-              <AppEmptyState
-                title="No active measured goals"
-                description="Keep the season outcome broad and add one numerical target backed by imported evidence."
-                primaryAction={<GoalCreateDialog label="Add first goal" />}
-              />
-            )}
-
-            <div className="flex justify-end">
-              <GoalCreateDialog label="Add measured goal" />
-            </div>
-          </section>
-        </>
-      )}
-
-      <RecommendedAction
-        title={`Run a short ${plan.focus.toLowerCase()} session`}
-        detail="Quick Range keeps the session focused. The result is only scored after the measured shots are imported."
-        href={`/practice/quick-range?focus=${encodeURIComponent(plan.focus)}`}
-        actionLabel="Open Quick Range"
-      />
+          ) : (
+            <AppEmptyState
+              title="No numerical targets yet"
+              description="Set a starting value, current value, target and unit; keep the source description accurate."
+              primaryAction={<GoalCreateDialog label="Add first goal" />}
+            />
+          )}
+        </section>
+      </div>
     </PageShell>
   );
 }
-
 function shotEvidenceSqlPredicate() {
   return and(
     inArray(shots.reviewStatus, ["included", "restored"]),
@@ -395,137 +169,22 @@ function shotEvidenceSqlPredicate() {
   );
 }
 
-function goalErrorMessage(error: string | undefined) {
-  if (error === "goal_type") {
-    return "Choose a valid goal type and complete the required goal details.";
-  }
-
-  if (error === "goal_not_found") {
-    return "That goal could not be found. Refresh the page and try again.";
-  }
-
-  return null;
-}
-
-function mobileGoalDisclosure(goal: SeasonGoal) {
-  const progress = goalProgress(goal);
-  const movement = Math.round((goal.currentValue - goal.startingValue) * 10) / 10;
-
-  return {
-    value: `goal-${goal.id}`,
-    title: goal.title,
-    summary: `${progress}%`,
-    description: `${goal.currentValue} ${goal.unit} now · ${goal.targetValue} ${goal.unit} target`,
-    content: (
-      <div className="grid gap-4">
-        <dl className="grid gap-2 text-sm">
-          <div className="flex min-h-11 items-center justify-between gap-3 border-b border-border/70 py-2 last:border-0">
-            <dt className="text-muted-foreground">Starting value</dt>
-            <dd className="font-semibold tabular-nums">
-              {goal.startingValue} {goal.unit}
-            </dd>
-          </div>
-          <div className="flex min-h-11 items-center justify-between gap-3 border-b border-border/70 py-2 last:border-0">
-            <dt className="text-muted-foreground">Movement</dt>
-            <dd className="font-semibold tabular-nums">
-              {movement > 0 ? "+" : ""}
-              {movement} {goal.unit}
-            </dd>
-          </div>
-          <div className="flex min-h-11 items-center justify-between gap-3 border-b border-border/70 py-2 last:border-0">
-            <dt className="text-muted-foreground">Evidence</dt>
-            <dd className="max-w-[62%] text-right font-medium">{goal.evidenceSource}</dd>
-          </div>
-        </dl>
-        <div>
-          <Progress value={progress} aria-label={`${progress}% progress`} />
-          <p className="mt-2 text-sm leading-5 text-muted-foreground">Next: {goal.nextAction}</p>
-        </div>
-        <div className="flex min-h-11 items-center justify-between gap-3 border-t border-border/70 pt-3">
-          <p className="text-xs text-muted-foreground">
-            {goal.targetDate ? `Target ${formatDate(goal.targetDate)}` : "No deadline set"}
-          </p>
-          <div className="flex gap-2">
-            <GoalEditSheet goal={goal} />
-            <GoalDeleteDialog goal={goal} />
-          </div>
-        </div>
-      </div>
-    ),
-  };
-}
-
-function SeasonPlanForm({ plan, idPrefix }: { plan: SeasonPlan; idPrefix: string }) {
-  const id = (name: string) => `${idPrefix}-${name}`;
-
-  return (
-    <form action={saveSeasonPlanAction} className="grid gap-4 sm:grid-cols-2">
-      <Field label="Season outcome" htmlFor={id("outcome")} className="sm:col-span-2">
-        <Input
-          id={id("outcome")}
-          name="outcome"
-          defaultValue={plan.outcome}
-          maxLength={160}
-          required
-        />
-      </Field>
-      <Field label="Target date" htmlFor={id("target-date")}>
-        <Input
-          id={id("target-date")}
-          name="targetDate"
-          type="date"
-          defaultValue={plan.targetDate}
-        />
-      </Field>
-      <Field label="Primary focus" htmlFor={id("focus")}>
-        <Input id={id("focus")} name="focus" defaultValue={plan.focus} maxLength={80} required />
-      </Field>
-      <Field label="Measured sessions per week" htmlFor={id("weekly-sessions")}>
-        <Input
-          id={id("weekly-sessions")}
-          name="weeklySessions"
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={7}
-          defaultValue={plan.weeklySessions}
-          required
-        />
-      </Field>
-      <Field label="What success looks like" htmlFor={id("success-measure")}>
-        <Input
-          id={id("success-measure")}
-          name="successMeasure"
-          defaultValue={plan.successMeasure}
-          maxLength={180}
-          required
-        />
-      </Field>
-      <Button type="submit" className="min-h-11 sm:col-span-2">
-        Save season plan
-      </Button>
-    </form>
-  );
-}
-
 function GoalCard({ goal }: { goal: SeasonGoal }) {
   const progress = goalProgress(goal);
   const movement = Math.round((goal.currentValue - goal.startingValue) * 10) / 10;
-  const confidence = goal.evidenceSource.toLowerCase().includes("import")
-    ? "Moderate confidence"
-    : "Low confidence";
+  const confidence = "Measurement verification not recorded";
   return (
     <Card className="shadow-sm" data-goal-target-card>
       <CardContent className="grid gap-4 pt-5">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               {goalTypeLabel(goal.type)} · {goal.club}
             </p>
-            <h3 className="mt-1 text-xl font-semibold">{goal.title}</h3>
+            <h3 className="mt-1 break-words text-xl font-semibold">{goal.title}</h3>
           </div>
           <StatusPill tone={progress >= 100 ? "green" : progress > 0 ? "sky" : "amber"}>
-            {progress}%
+            {progress}% saved-value progress
           </StatusPill>
         </div>
         <ConnectedMetricBar
@@ -549,56 +208,18 @@ function GoalCard({ goal }: { goal: SeasonGoal }) {
           <p className="font-semibold">Next action</p>
           <p className="mt-1 text-muted-foreground">{goal.nextAction}</p>
         </div>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             {goal.targetDate ? `Target ${formatDate(goal.targetDate)}` : "No deadline set"}
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <GoalEvidenceSheet goal={goal} />
             <GoalEditSheet goal={goal} />
             <GoalDeleteDialog goal={goal} />
           </div>
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function Field({
-  label,
-  htmlFor,
-  className,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className={className}>
-      <Label htmlFor={htmlFor}>{label}</Label>
-      <div className="mt-2">{children}</div>
-    </div>
-  );
-}
-
-function PlanStep({
-  icon: Icon,
-  title,
-  detail,
-}: {
-  icon: typeof Target;
-  title: string;
-  detail: string;
-}) {
-  return (
-    <div className="flex gap-3 rounded-2xl bg-secondary/55 p-3">
-      <Icon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-      <div>
-        <p className="font-semibold">{title}</p>
-        <p className="mt-1 text-sm leading-5 text-muted-foreground">{detail}</p>
-      </div>
-    </div>
   );
 }
 

@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
+import { MobileSection } from "@/components/app/mobile-screen";
 import { MobileGroupedList, MobileListRow, MobileStatus } from "@/components/app/mobile-primitives";
-import { MobileAppShell } from "@/components/mobile-sports";
-import { PageShell } from "@/components/premium";
+import { MobileAppShell } from "@/components/app/mobile-app-shell";
+import { PageShell } from "@/components/app/page-shell";
+import { UntitledPageHeader as PageHeader } from "@/components/untitled-ui/headers";
 import { Button } from "@/components/ui/button";
 import type { SessionReviewMetadata } from "@/lib/session-review-metadata";
 
@@ -19,13 +20,12 @@ export function MobileUnmeasuredSession({
   return (
     <PageShell>
       <MobileAppShell className="gap-6" data-mobile-unmeasured-session>
-        <MobileLargeTitle
-          title={plan?.title ?? session.courseName ?? "Practice recorded"}
-          eyebrow={new Intl.DateTimeFormat("en-GB", {
+        <PageHeader
+          title={session.fileName ?? session.courseName ?? plan?.title ?? "Practice recorded"}
+          description={new Intl.DateTimeFormat("en-GB", {
             dateStyle: "long",
             timeZone: "Europe/London",
           }).format(session.date)}
-          detail={session.location ?? undefined}
         />
         <section className="grid gap-3" aria-label="Session status">
           <MobileStatus

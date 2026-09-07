@@ -1,0 +1,101 @@
+import { expect, test } from "@playwright/test";
+test.skip(process.env.PLAYWRIGHT_E2E_AUTH_BYPASS !== "1", "Requires authorised local fixture");
+test("P04 History UI and scoped shot detail", async ({ page }, info) => {
+  test.skip(info.project.name !== "chromium", "Explicit viewport matrix");
+  test.setTimeout(180000);
+  page.setDefaultTimeout(15000);
+  const errors: string[] = [];
+  let previewRequests = 0;
+  page.on("request", (request) => {
+    if (request.url().includes("/preview-shots")) previewRequests += 1;
+  });
+  page.on("pageerror", (error) => {
+    errors.push(error.stack ?? error.message);
+    console.log(error.stack);
+  });
+  for (const surface of ["workbench", "companion"]) {
+    await page.goto(`/surface/${surface}?next=${encodeURIComponent("/sessions")}`);
+    await expect(page.getByRole("heading", { level: 1, name: "History", exact: true })).toBeVisible(
+      { timeout: 60000 },
+    );
+    for (const [width, height] of [
+      [1440, 900],
+      [1280, 800],
+      [390, 844],
+      [360, 800],
+      [1023, 800],
+      [1024, 800],
+    ]) {
+      await page.setViewportSize({ width, height });
+      await page.evaluate(() => scrollTo(0, 0));
+      await expect(page.getByRole("searchbox", { name: "Search history" })).toBeVisible();
+      let focus = page.getByRole("button", { name: /Focus/ }).filter({ visible: true });
+      const drawer = (await focus.count()) === 0;
+      if (drawer)
+        await page
+          .getByRole("button", { name: /^Filters/ })
+          .filter({ visible: true })
+          .click();
+      focus = page.getByRole("button", { name: /Focus/ }).filter({ visible: true });
+      await focus.click();
+      await page.getByRole("option").nth(1).click();
+      if (drawer) await page.getByRole("button", { name: "Apply filters", exact: true }).click();
+      await expect(page).toHaveURL(/session=[0-9a-f-]{36}/);
+      const selectedUrl = page.url();
+      await page.reload();
+      await expect(page).toHaveURL(selectedUrl);
+      await expect(page.locator("[data-session-toolbar]")).toHaveAttribute("data-ready", "true");
+      await page.getByRole("button", { name: "Clear all", exact: true }).click();
+      await expect(page).not.toHaveURL(/session=/);
+      await page.screenshot({ path: info.outputPath(`P04-${surface}-${width}.png`) });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)).toBe(
+        false,
+      );
+    }
+    // Closed evidence controls must not fetch a workflow that has not been opened.
+    expect(previewRequests).toBe(0);
+    await page.setViewportSize({ width: 390, height: 844 });
+    if (surface === "workbench")
+      await page.getByText("Inspect shot measurements and source", { exact: true }).click();
+    else
+      await page
+        .getByRole("button", { name: "Preview shot evidence", exact: true })
+        .first()
+        .click();
+    const preview = page.locator("[data-session-shot-preview]").filter({ visible: true });
+    await expect(preview).toContainText(/\d+ shots · Page/, { timeout: 30000 });
+    const shot = preview
+      .getByRole("button")
+      .filter({ hasText: "Tap for source and all fields" })
+      .first();
+    if (await shot.count()) {
+      await shot.click();
+      await expect(page.getByRole("region", { name: "Selected shot detail" })).toBeVisible();
+      await page.screenshot({ path: info.outputPath(`P04-${surface}-390-shot.png`) });
+      await page.getByRole("button", { name: "Close shot details", exact: true }).click();
+    }
+    if (surface === "companion")
+      await page.getByRole("button", { name: "Close preview", exact: true }).click();
+    else {
+      const requestsAfterOpen = previewRequests;
+      await page.getByText("Inspect shot measurements and source", { exact: true }).click();
+      await expect(preview).toBeHidden();
+      await page.getByText("Inspect shot measurements and source", { exact: true }).click();
+      await expect(preview).toContainText(/\d+ shots · Page/);
+      expect(previewRequests).toBe(requestsAfterOpen);
+    }
+    previewRequests = 0;
+    await page
+      .getByRole("searchbox", { name: "Search history" })
+      .fill("no-such-session-ui-fixture");
+    await expect(page).toHaveURL(/q=no-such-session-ui-fixture/);
+    await expect(page.getByText("No sessions match these filters", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Clear all", exact: true }).click();
+    await expect(page).not.toHaveURL(/q=/);
+  }
+  const unavailable = await page.request.get(
+    "/api/sessions/00000000-0000-0000-0000-000000000000/preview-shots",
+  );
+  expect(unavailable.status()).toBe(404);
+  expect(errors).toEqual([]);
+});

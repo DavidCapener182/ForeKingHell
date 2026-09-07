@@ -4,10 +4,6 @@ import { describe, expect, it } from "vitest";
 
 const root = process.cwd();
 const source = readFileSync(join(root, "src/app/(app)/coach/page.tsx"), "utf8");
-const workbenchSource = readFileSync(
-  join(root, "src/components/app/ai-desktop-workbench.tsx"),
-  "utf8",
-);
 const dataChatSource = readFileSync(join(root, "src/app/data-chat/data-chat-panel.tsx"), "utf8");
 const lazyDataChatSource = readFileSync(
   join(root, "src/app/coach/lazy-coach-data-chat-panel.tsx"),
@@ -16,7 +12,7 @@ const lazyDataChatSource = readFileSync(
 
 describe("professional Coach workspace", () => {
   it("keeps one dominant diagnosis with the complete coaching read", () => {
-    expect(source).toContain("Your biggest scoring opportunity is…");
+    expect(source).toContain("Current evidence and practice priority");
     expect(source).toContain("data-primary-diagnosis");
     expect(source).toContain('label="What I see"');
     expect(source).toContain('label="Why it matters"');
@@ -41,8 +37,8 @@ describe("professional Coach workspace", () => {
     expect(source).toContain("index={1}");
     expect(source).toContain("index={2}");
     expect(source).toContain("index={3}");
-    expect(source).toContain('practiceHref("latest_weakness")');
-    expect(source).toContain('practiceHref("confidence")');
+    expect(source).toContain('practiceHref("latest_weakness", topClub)');
+    expect(source).toContain('practiceHref("confidence", secondaryClub)');
     expect(source).toContain('practiceHref("scoring")');
     expect(source).not.toContain("Open in Practice");
   });
@@ -61,16 +57,10 @@ describe("professional Coach workspace", () => {
 
   it("embeds Data Chat as a standalone resizable conversation and evidence workspace", () => {
     expect(source).toContain("<LazyCoachDataChatPanel");
-    expect(source).toContain("askStandalone");
+    expect(source).toContain('id: "ask"');
+    expect(source).toContain("<CoachAsk");
     expect(lazyDataChatSource).toContain('import("@/app/data-chat/data-chat-panel")');
     expect(lazyDataChatSource).toContain('questionId="coach-data-chat-question"');
-    expect(workbenchSource).toContain("askStandalone = false");
-    expect(workbenchSource).toContain(
-      '<ResizablePanel defaultSize="72" minSize="58" maxSize="80">',
-    );
-    expect(workbenchSource).toContain(
-      '<ResizablePanel defaultSize="28" minSize="20" maxSize="42">',
-    );
     expect(dataChatSource).toContain("<ResizablePanelGroup");
     expect(dataChatSource).toContain("<ResizableHandle withHandle");
     expect(dataChatSource).toContain('aria-label="Data Chat conversation"');
@@ -78,18 +68,16 @@ describe("professional Coach workspace", () => {
     expect(dataChatSource).toContain('className="rounded-none border-y bg-transparent p-0"');
   });
 
-  it("keeps phone Coach to diagnosis, why and one practice action", () => {
-    const start = source.indexOf("function MobileCoachSummary");
-    const end = source.indexOf("function CoachEmptyState", start);
-    const mobile = source.slice(start, end);
-
-    expect(source).toContain('surface === "companion"');
-    expect(mobile).toContain("Main diagnosis");
-    expect(mobile).toContain("Why");
-    expect(mobile).toContain("Build practice plan");
-    expect(mobile).not.toContain("MobileCompanionAccordion");
-    expect(mobile).not.toContain("Evidence browser");
-    expect(mobile).not.toContain("Data Chat");
+  it("keeps diagnosis primary and evidence and chat in separate selected sections", () => {
+    expect(source).toContain("<UrlTabs");
+    expect(source).toContain("defaultTabKey={activeTab}");
+    for (const id of ["diagnosis", "evidence", "ask"]) {
+      expect(source).toContain(`id: "${id}"`);
+    }
+    expect(source).toContain("Build focused practice");
+    expect(source).toContain("Contributing causes and confidence");
+    expect(source).toContain("<CoachEmptyState />");
+    expect(source).toContain("Import a session");
   });
 
   it("preserves the full-width app layout contract", () => {

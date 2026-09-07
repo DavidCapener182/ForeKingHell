@@ -1,42 +1,26 @@
+import { getPostRoundReviewData } from "@/lib/post-round-review-data";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import {
-  ArrowRight,
-  CheckCircle2,
-  CloudSun,
-  Flag,
-  GitCompareArrows,
-  MapPinned,
-  Sparkles,
-  Target,
-} from "lucide-react";
-import { and, asc, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
+import { ArrowRight, CheckCircle2, CloudSun, Flag, MapPinned, Sparkles } from "lucide-react";
 
 import { DataWarning, RecommendedAction } from "@/components/app/evidence-status";
 import { PageHeader, PageShell, StatusPill, type Tone } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Item, ItemContent } from "@/components/ui/item";
 import { Textarea } from "@/components/ui/textarea";
+import { PostRoundResults } from "@/app/courses/strategy/post-round-results";
+import { PostRoundReviewForm } from "@/app/courses/strategy/post-round-review-form";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { savePostRoundReviewAction } from "@/app/courses/strategy/actions";
+  StrategyContextFields,
+  StrategyCourseSelection,
+  StrategyModeNavigation,
+} from "@/app/courses/strategy/strategy-navigation";
 import { DigitalCaddieBook } from "@/app/courses/strategy/digital-caddie-book";
 import { getDashboardData } from "@/app/dashboard/dashboard-data";
-import { getDb } from "@/db/client";
-import { sessions, shots } from "@/db/schema";
 import { getCourseStrategyData } from "@/lib/course-strategy-data";
 import { courseStrategyMapFromManifest } from "@/lib/course-strategy-map";
 import { getCourseTwinManifest } from "@/lib/course-twin-data";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { buildPostRoundReview, readStoredPostRoundReview } from "@/lib/post-round-review";
-import { isShotEvidenceEligible } from "@/lib/shot-review";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +30,7 @@ export default async function CourseStrategyPage({
   searchParams?: Promise<{
     mode?: string;
     courseId?: string;
+    teeSetId?: string;
     roundId?: string;
     saved?: string;
   }>;
@@ -55,7 +40,7 @@ export default async function CourseStrategyPage({
   const userId = await requireCurrentUserId();
   const [data, strategyData, postRoundData] = await Promise.all([
     getDashboardData(),
-    getCourseStrategyData(params?.courseId),
+    getCourseStrategyData(params?.courseId, params?.teeSetId, "latest-reliable"),
     getPostRoundReviewData(params?.roundId),
   ]);
   const courseTwinManifest = strategyData.selectedCourse
@@ -78,45 +63,29 @@ export default async function CourseStrategyPage({
             : "Add the scorecard and measured evidence, then review where the plan held up and where it changed."
         }
         actions={
-          <div className="flex rounded-xl border border-border bg-card p-1">
-            <ModeLink href="/courses/strategy" active={mode === "pre"}>
-              Pre-round
-            </ModeLink>
-            <ModeLink href="/courses/strategy?mode=post" active={mode === "post"}>
-              Post-round
-            </ModeLink>
-          </div>
+          <StrategyModeNavigation
+            mode={mode}
+            courseId={strategyData.selectedCourse?.id}
+            teeSetId={strategyData.selectedTee?.id}
+          />
         }
       />
 
       {mode === "pre" ? (
         <div className="grid gap-3" data-course-strategy-plan>
-          <form action="/courses/strategy" className="flex flex-wrap items-end justify-end gap-2">
-            <input type="hidden" name="mode" value={mode} />
-            <label className="grid gap-1 text-sm font-semibold">
-              Course
-              <Select name="courseId" defaultValue={strategyData.selectedCourse?.id}>
-                <SelectTrigger className="min-h-11 min-w-64">
-                  <SelectValue placeholder="Choose a course" />
-                </SelectTrigger>
-                <SelectContent>
-                  {strategyData.courseOptions.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            <Button type="submit" variant="outline" className="min-h-11">
-              Load caddie book
-            </Button>
-          </form>
+          <StrategyCourseSelection
+            key={`${strategyData.selectedCourse?.id}-${strategyData.selectedTee?.id}`}
+            courses={strategyData.courseOptions}
+            tees={strategyData.teeOptions}
+            courseId={strategyData.selectedCourse?.id}
+            teeSetId={strategyData.selectedTee?.id}
+          />
           {strategyData.selectedCourse && strategyData.strategies.length ? (
             <DigitalCaddieBook
               strategies={strategyData.strategies}
               course={strategyData.selectedCourse}
               teeName={strategyData.selectedTee?.name}
+              teeSetId={strategyData.selectedTee?.id}
               courseTwinAvailable={Boolean(courseTwinManifest)}
               courseMap={courseMap}
             />
@@ -172,11 +141,14 @@ export default async function CourseStrategyPage({
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CloudSun className="size-5 text-primary" aria-hidden />
-                  Plays-like conditions
+                  Modelled plays-like conditions
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm leading-6 text-muted-foreground">{data.playsLike.summary}</p>
+                <p className="text-sm leading-6 text-muted-foreground">
+                  {data.playsLike.summary} Confirm actual conditions on the course before using
+                  these estimates.
+                </p>
                 <div className="mt-4 grid divide-y divide-border overflow-hidden rounded-lg border border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
                   {data.playsLike.rows.slice(0, 3).map((row) => (
                     <div key={`${row.clubId}-${row.baseYards}`} className="bg-muted/35 p-3">
@@ -201,7 +173,10 @@ export default async function CourseStrategyPage({
           <RecommendedAction
             title="Save the round context"
             detail="Add the course, tees and conditions before play so the post-round review can separate the plan from the outcome."
-            href="/rounds/new"
+            href={`/rounds/new?${new URLSearchParams({
+              ...(strategyData.selectedCourse ? { courseId: strategyData.selectedCourse.id } : {}),
+              ...(strategyData.selectedTee ? { teeSetId: strategyData.selectedTee.id } : {}),
+            })}`}
             actionLabel="Prepare round"
           />
         </div>
@@ -215,26 +190,32 @@ export default async function CourseStrategyPage({
                   Separate what you felt from what the shots show
                 </h2>
                 <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-                  Your answers are saved as context. Strongest club, costly club and the practice
-                  recommendation are calculated only from connected measured shots.
+                  Your answers are saved as context. Lateral-control readings use connected measured
+                  shots; they do not determine which club cost you the most strokes.
                 </p>
               </div>
               <form action="/courses/strategy" className="flex flex-wrap items-end gap-2">
                 <input type="hidden" name="mode" value="post" />
+                <StrategyContextFields
+                  courseId={strategyData.selectedCourse?.id}
+                  teeSetId={strategyData.selectedTee?.id}
+                />
                 <label className="grid gap-1 text-sm font-semibold">
                   Round to review
-                  <Select name="roundId" defaultValue={postRoundData.selectedRound?.id}>
-                    <SelectTrigger className="min-h-11 min-w-64">
-                      <SelectValue placeholder="Choose a round" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {postRoundData.rounds.map((round) => (
-                        <SelectItem key={round.id} value={round.id}>
-                          {round.courseName ?? "Recorded round"} · {shortDate(round.date)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <select
+                    name="roundId"
+                    defaultValue={postRoundData.selectedRound?.id ?? ""}
+                    className="min-h-11 w-full min-w-0 rounded-lg border bg-background px-3 text-base"
+                  >
+                    <option value="" disabled>
+                      Choose a completed round
+                    </option>
+                    {postRoundData.rounds.map((round) => (
+                      <option key={round.id} value={round.id}>
+                        {round.courseName ?? "Recorded round"} · {shortDate(round.date)}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <Button type="submit" variant="outline" className="min-h-11">
                   Load round
@@ -254,8 +235,12 @@ export default async function CourseStrategyPage({
                       </AlertDescription>
                     </Alert>
                   ) : null}
-                  <form action={savePostRoundReviewAction} className="grid gap-4">
+                  <PostRoundReviewForm key={postRoundData.selectedRound.id}>
                     <input type="hidden" name="sessionId" value={postRoundData.selectedRound.id} />
+                    <StrategyContextFields
+                      courseId={strategyData.selectedCourse?.id}
+                      teeSetId={strategyData.selectedTee?.id}
+                    />
                     <div className="grid gap-3 md:grid-cols-2">
                       <ReviewQuestion
                         label="What felt different?"
@@ -291,14 +276,20 @@ export default async function CourseStrategyPage({
                         Save review context
                       </Button>
                     </div>
-                  </form>
+                  </PostRoundReviewForm>
                 </>
               ) : (
                 <Alert>
                   <Flag aria-hidden="true" />
-                  <AlertTitle>No completed round yet</AlertTitle>
+                  <AlertTitle>
+                    {params?.roundId
+                      ? "This completed round is unavailable"
+                      : "No completed round yet"}
+                  </AlertTitle>
                   <AlertDescription>
-                    Add a scorecard first, then return here for the evidence review.
+                    {params?.roundId
+                      ? "Choose one of your completed rounds to continue."
+                      : "Add a scorecard first, then return here for the evidence review."}
                   </AlertDescription>
                 </Alert>
               )}
@@ -306,87 +297,10 @@ export default async function CourseStrategyPage({
           </Card>
 
           {postRoundData.selectedRound ? (
-            <section className="grid gap-4" aria-labelledby="post-round-results-title">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-primary">Answer</p>
-                  <h2
-                    id="post-round-results-title"
-                    className="mt-1 font-display text-2xl font-semibold"
-                  >
-                    What the round changed
-                  </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {postRoundData.scoreLabel} · {postRoundData.review.evidence}
-                  </p>
-                </div>
-                <StatusPill
-                  tone={
-                    postRoundData.review.confidence === "High"
-                      ? "green"
-                      : postRoundData.review.confidence === "Moderate"
-                        ? "sky"
-                        : "amber"
-                  }
-                >
-                  {postRoundData.review.confidence} confidence
-                </StatusPill>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <RoundResultCard
-                  label="Strongest club"
-                  value={postRoundData.review.strongest.value}
-                  detail={postRoundData.review.strongest.detail}
-                  tone="green"
-                />
-                <RoundResultCard
-                  label="Most costly club"
-                  value={postRoundData.review.mostCostly.value}
-                  detail={postRoundData.review.mostCostly.detail}
-                  tone="amber"
-                />
-                <RoundResultCard
-                  label="Biggest difference"
-                  value={postRoundData.review.biggestDifference.value}
-                  detail={postRoundData.review.biggestDifference.detail}
-                  tone="sky"
-                />
-                <RoundResultCard
-                  label="Practice recommendation"
-                  value={postRoundData.review.practiceRecommendation.value}
-                  detail={postRoundData.review.practiceRecommendation.detail}
-                  tone="green"
-                />
-              </div>
-              <div className="flex flex-wrap gap-2 rounded-2xl border bg-card p-4">
-                <Button asChild className="min-h-11 rounded-xl">
-                  <Link href="/practice" prefetch={false}>
-                    <Target className="size-4" aria-hidden />
-                    Build recommended practice
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" className="min-h-11 rounded-xl">
-                  <Link
-                    href={`/analyse/compare?sessionId=${postRoundData.selectedRound.id}`}
-                    prefetch={false}
-                  >
-                    <GitCompareArrows className="size-4" aria-hidden />
-                    Compare with another session
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" className="min-h-11 rounded-xl">
-                  <Link href={`/rounds/${postRoundData.selectedRound.id}`} prefetch={false}>
-                    Review scorecard and shots
-                  </Link>
-                </Button>
-              </div>
-              {postRoundData.review.confidence === "Low" ? (
-                <DataWarning
-                  title="Treat this as a provisional read"
-                  detail="Fewer than ten measured shots met the club-sample rule. The manual review is saved, but the app will not pretend it has a dependable performance verdict yet."
-                />
-              ) : null}
-            </section>
+            <PostRoundResults
+              review={postRoundData.review}
+              roundId={postRoundData.selectedRound.id}
+            />
           ) : null}
 
           <section className="grid gap-4 lg:grid-cols-3" aria-label="Post-round setup steps">
@@ -444,167 +358,12 @@ function ReviewQuestion({
   );
 }
 
-function RoundResultCard({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  tone: "green" | "amber" | "sky";
-}) {
-  return (
-    <Item variant="outline" className="items-start p-4">
-      <ItemContent className="space-y-0">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            {label}
-          </p>
-          <StatusPill tone={tone}>{tone === "amber" ? "Watch" : "Measured"}</StatusPill>
-        </div>
-        <p className="mt-3 text-xl font-semibold">{value}</p>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
-      </ItemContent>
-    </Item>
-  );
-}
-
-async function getPostRoundReviewData(requestedRoundId?: string) {
-  const db = getDb();
-  const userId = await requireCurrentUserId();
-  const rounds = await db
-    .select({
-      id: sessions.id,
-      date: sessions.date,
-      courseName: sessions.courseName,
-      notes: sessions.notes,
-      scorecard: sessions.scorecardJson,
-    })
-    .from(sessions)
-    .where(and(eq(sessions.userId, userId), eq(sessions.type, "real_round")))
-    .orderBy(desc(sessions.date))
-    .limit(30);
-  const selectedRound = rounds.find((round) => round.id === requestedRoundId) ?? rounds[0] ?? null;
-  if (!selectedRound) {
-    return {
-      rounds,
-      selectedRound,
-      answers: readStoredPostRoundReview(null),
-      review: buildPostRoundReview({ currentShots: [], baselineShots: [] }),
-      scoreLabel: "No scorecard selected",
-    };
-  }
-
-  const [currentShots, baselineShots] = await Promise.all([
-    db
-      .select({
-        clubId: shots.clubId,
-        clubType: shots.clubType,
-        carryYd: shots.carryYd,
-        sideYd: shots.sideCarryYd,
-        reviewStatus: shots.reviewStatus,
-        shotCategory: shots.shotCategory,
-        qualityTag: shots.qualityTag,
-      })
-      .from(shots)
-      .where(
-        and(
-          eq(shots.userId, userId),
-          eq(shots.sessionId, selectedRound.id),
-          shotEvidenceSqlPredicate(),
-        ),
-      )
-      .orderBy(asc(shots.shotAt)),
-    db
-      .select({
-        clubId: shots.clubId,
-        clubType: shots.clubType,
-        carryYd: shots.carryYd,
-        sideYd: shots.sideCarryYd,
-        reviewStatus: shots.reviewStatus,
-        shotCategory: shots.shotCategory,
-        qualityTag: shots.qualityTag,
-      })
-      .from(shots)
-      .innerJoin(sessions, and(eq(sessions.id, shots.sessionId), eq(sessions.userId, userId)))
-      .where(
-        and(
-          eq(shots.userId, userId),
-          lt(sessions.date, selectedRound.date),
-          shotEvidenceSqlPredicate(),
-        ),
-      )
-      .orderBy(desc(shots.shotAt))
-      .limit(2_000),
-  ]);
-
-  return {
-    rounds,
-    selectedRound,
-    answers: readStoredPostRoundReview(selectedRound.notes),
-    review: buildPostRoundReview({
-      currentShots: currentShots.filter(isShotEvidenceEligible),
-      baselineShots: baselineShots.filter(isShotEvidenceEligible),
-    }),
-    scoreLabel: roundScoreLabel(selectedRound.scorecard),
-  };
-}
-
-function shotEvidenceSqlPredicate() {
-  return and(
-    inArray(shots.reviewStatus, ["included", "restored"]),
-    or(
-      eq(shots.reviewStatus, "restored"),
-      and(
-        eq(shots.reviewStatus, "included"),
-        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
-        sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in ('exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup', 'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread', 'fat', 'mishit', 'thin', 'top')`,
-        sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in ('warm-up', 'warmup', 'warm_up')`,
-      ),
-    ),
-  );
-}
-
-function roundScoreLabel(scorecard: Array<{ score?: number | null; par: number }> | null) {
-  const completed = (scorecard ?? []).filter((hole) => typeof hole.score === "number");
-  if (!completed.length) return "Scorecard has no completed holes";
-  const score = completed.reduce((total, hole) => total + (hole.score ?? 0), 0);
-  const par = completed.reduce((total, hole) => total + hole.par, 0);
-  const relative = score - par;
-  return `${score} (${relative === 0 ? "E" : `${relative > 0 ? "+" : ""}${relative}`}) across ${completed.length} holes`;
-}
-
 function shortDate(value: Date) {
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
   }).format(value);
-}
-
-function ModeLink({
-  href,
-  active,
-  children,
-}: {
-  href: string;
-  active: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className={
-        active
-          ? "inline-flex min-h-11 items-center rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground"
-          : "inline-flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
-      }
-    >
-      {children}
-    </Link>
-  );
 }
 
 function ReviewStep({

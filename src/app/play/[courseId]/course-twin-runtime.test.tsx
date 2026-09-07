@@ -2,6 +2,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CourseTwinManifest } from "@/lib/course-twin-contract";
 
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock("react", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react")>()),
   useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) => getSnapshot(),
@@ -20,6 +25,8 @@ import { CourseTwinRuntime } from "./course-twin-runtime";
 const manifest = {
   course: { id: "course", name: "Course" },
   terrain: {},
+  quality: { warnings: [] },
+  attribution: [],
   bounds: { minX: 0, maxX: 100, minZ: 0, maxZ: 100 },
   holes: [],
 } as unknown as CourseTwinManifest;

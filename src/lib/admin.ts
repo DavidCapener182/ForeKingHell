@@ -359,7 +359,26 @@ export async function getAdminBillingData() {
     .orderBy(desc(entitlements.updatedAt))
     .limit(120);
 
+  const auditRows = await db
+    .select({
+      id: adminAuditLog.id,
+      actorUserId: adminAuditLog.actorUserId,
+      actorEmail: users.email,
+      targetUserId: adminAuditLog.targetUserId,
+      action: adminAuditLog.action,
+      targetType: adminAuditLog.targetType,
+      targetId: adminAuditLog.targetId,
+      createdAt: adminAuditLog.createdAt,
+      metadataJson: adminAuditLog.metadataJson,
+    })
+    .from(adminAuditLog)
+    .leftJoin(users, eq(users.id, adminAuditLog.actorUserId))
+    .where(eq(adminAuditLog.action, "lifetime_full_granted"))
+    .orderBy(desc(adminAuditLog.createdAt), desc(adminAuditLog.id))
+    .limit(80);
+
   return {
+    auditRows,
     planLimits: planRows,
     subscriptions: subscriptionRows.map((row) => ({
       ...row,
@@ -403,7 +422,29 @@ export async function getAdminModerationData() {
     .orderBy(desc(moderationEvents.createdAt))
     .limit(80);
 
-  return { reports, events };
+  const auditRows = await db
+    .select({
+      id: adminAuditLog.id,
+      actorUserId: adminAuditLog.actorUserId,
+      actorEmail: users.email,
+      action: adminAuditLog.action,
+      targetType: adminAuditLog.targetType,
+      targetId: adminAuditLog.targetId,
+      createdAt: adminAuditLog.createdAt,
+      metadataJson: adminAuditLog.metadataJson,
+    })
+    .from(adminAuditLog)
+    .leftJoin(users, eq(users.id, adminAuditLog.actorUserId))
+    .where(
+      and(
+        inArray(adminAuditLog.action, ["social_report_resolved", "moderation_event_resolved"]),
+        inArray(adminAuditLog.targetType, ["social_report", "moderation_event"]),
+      ),
+    )
+    .orderBy(desc(adminAuditLog.createdAt), desc(adminAuditLog.id))
+    .limit(80);
+
+  return { reports, events, auditRows };
 }
 
 export async function getAdminChallengesData() {
@@ -440,8 +481,13 @@ export async function getAdminChallengesData() {
   const attemptMap = new Map(attemptCounts.map((row) => [row.key, row.count]));
   const resultMap = new Map(resultCounts.map((row) => [row.key, row.count]));
 
+  const templateCounts = await countBy(challenges.templateId, challenges);
+  const referenceMap = new Map(templateCounts.map((row) => [row.key, row.count]));
   return {
-    templates: templateRows,
+    templates: templateRows.map((row) => ({
+      ...row,
+      referenceCount: referenceMap.get(row.id) ?? 0,
+    })),
     challenges: challengeRows.map((row) => ({
       ...row,
       templateName: row.templateName ?? "Custom",
@@ -464,30 +510,59 @@ export async function getAdminOperationsSnapshot() {
   return adminOperationsFromMetrics(metrics);
 }
 
-export async function grantLifetimeFullAccessByEmail(email: string) {
+export async function grantLifetimeFullAccessByEmail(email: string, expectedUserId?: string) {
   const admin = await requireAdminOwner();
   const target = await findUserByEmail(email);
 
   if (!target) {
     throw new Error("No user exists for that email address.");
   }
+  if (expectedUserId && target.id !== expectedUserId) {
+    throw new Error("This account has changed. Refresh its details before trying again.");
+  }
 
   await grantLifetimeFullAccess(target.id, admin.userId);
   return target;
 }
 
-export async function grantAdminAccessByEmail(email: string, role: AdminRole) {
+export async function grantAdminAccessByEmail(
+  email: string,
+  role: AdminRole,
+  expectedUserId?: string,
+) {
+  if (role !== "owner" && role !== "operator") throw new Error("Choose a valid admin role.");
   const admin = role === "owner" ? await requireAdminOwner() : await requireAdminUser();
   const target = await findUserByEmail(email);
 
   if (!target) {
     throw new Error("No user exists for that email address.");
   }
+  if (expectedUserId && target.id !== expectedUserId) {
+    throw new Error("This account has changed. Refresh its details before trying again.");
+  }
 
   const now = new Date();
   await getDb().transaction(async (tx) => {
-    if (role === "owner") {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('fkh_admin_owner_guard'))`);
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('fkh_admin_owner_guard'))`);
+    const [currentActor] = await tx
+      .select()
+      .from(adminUsers)
+      .where(and(eq(adminUsers.userId, admin.userId), eq(adminUsers.status, "active")))
+      .limit(1);
+    if (!currentActor) throw new Error("Active admin access is required.");
+    const [previous] = await tx
+      .select()
+      .from(adminUsers)
+      .where(eq(adminUsers.userId, target.id))
+      .limit(1);
+    if ((role === "owner" || previous?.role === "owner") && currentActor.role !== "owner")
+      throw new Error("Owner access is required.");
+    if (previous?.role === "owner" && previous.status === "active" && role !== "owner") {
+      const [{ count }] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(adminUsers)
+        .where(and(eq(adminUsers.role, "owner"), eq(adminUsers.status, "active")));
+      if (Number(count) <= 1) throw new Error("The last active owner cannot be demoted.");
     }
 
     await tx
@@ -532,6 +607,12 @@ export async function deactivateAdminAccess(targetUserId: string) {
 
   await getDb().transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('fkh_admin_owner_guard'))`);
+    const [currentActor] = await tx
+      .select({ role: adminUsers.role })
+      .from(adminUsers)
+      .where(and(eq(adminUsers.userId, admin.userId), eq(adminUsers.status, "active")))
+      .limit(1);
+    if (currentActor?.role !== "owner") throw new Error("Owner access is required.");
     const [target] = await tx
       .select({ role: adminUsers.role, status: adminUsers.status })
       .from(adminUsers)
@@ -573,10 +654,20 @@ export async function resolveSocialReport(reportId: string) {
   const now = new Date();
 
   await getDb().transaction(async (tx) => {
-    await tx
+    const changed = await tx
       .update(socialReports)
       .set({ status: "resolved", resolvedAt: now })
-      .where(eq(socialReports.id, reportId));
+      .where(and(eq(socialReports.id, reportId), eq(socialReports.status, "open")))
+      .returning({ id: socialReports.id });
+    if (!changed.length) {
+      const [existing] = await tx
+        .select({ id: socialReports.id })
+        .from(socialReports)
+        .where(eq(socialReports.id, reportId))
+        .limit(1);
+      if (!existing) throw new Error("Report not found.");
+      return;
+    }
     await tx.insert(adminAuditLog).values({
       actorUserId: admin.userId,
       action: "social_report_resolved",
@@ -597,20 +688,13 @@ export async function bulkResolveSocialReports(reportIds: string[]) {
   const now = new Date();
 
   return getDb().transaction(async (tx) => {
-    const openReports = await tx
-      .select({ id: socialReports.id })
-      .from(socialReports)
-      .where(and(inArray(socialReports.id, ids), eq(socialReports.status, "open")));
-    const openIds = openReports.map((report) => report.id);
-
-    if (openIds.length === 0) {
-      throw new Error("No selected open reports could be resolved.");
-    }
-
-    await tx
+    const changed = await tx
       .update(socialReports)
       .set({ status: "resolved", resolvedAt: now })
-      .where(and(inArray(socialReports.id, openIds), eq(socialReports.status, "open")));
+      .where(and(inArray(socialReports.id, ids), eq(socialReports.status, "open")))
+      .returning({ id: socialReports.id });
+    const openIds = changed.map((row) => row.id);
+    if (!openIds.length) throw new Error("No selected open reports could be resolved.");
 
     await tx.insert(adminAuditLog).values(
       openIds.map((reportId) => ({
@@ -631,10 +715,20 @@ export async function resolveModerationEvent(eventId: string) {
   const now = new Date();
 
   await getDb().transaction(async (tx) => {
-    await tx
+    const changed = await tx
       .update(moderationEvents)
       .set({ status: "resolved", resolvedAt: now })
-      .where(eq(moderationEvents.id, eventId));
+      .where(and(eq(moderationEvents.id, eventId), eq(moderationEvents.status, "open")))
+      .returning({ id: moderationEvents.id });
+    if (!changed.length) {
+      const [existing] = await tx
+        .select({ id: moderationEvents.id })
+        .from(moderationEvents)
+        .where(eq(moderationEvents.id, eventId))
+        .limit(1);
+      if (!existing) throw new Error("Moderation event not found.");
+      return;
+    }
     await tx.insert(adminAuditLog).values({
       actorUserId: admin.userId,
       action: "moderation_event_resolved",
@@ -655,20 +749,13 @@ export async function bulkResolveModerationEvents(eventIds: string[]) {
   const now = new Date();
 
   return getDb().transaction(async (tx) => {
-    const openEvents = await tx
-      .select({ id: moderationEvents.id })
-      .from(moderationEvents)
-      .where(and(inArray(moderationEvents.id, ids), eq(moderationEvents.status, "open")));
-    const openIds = openEvents.map((event) => event.id);
-
-    if (openIds.length === 0) {
-      throw new Error("No selected open moderation events could be resolved.");
-    }
-
-    await tx
+    const changed = await tx
       .update(moderationEvents)
       .set({ status: "resolved", resolvedAt: now })
-      .where(and(inArray(moderationEvents.id, openIds), eq(moderationEvents.status, "open")));
+      .where(and(inArray(moderationEvents.id, ids), eq(moderationEvents.status, "open")))
+      .returning({ id: moderationEvents.id });
+    const openIds = changed.map((row) => row.id);
+    if (!openIds.length) throw new Error("No selected open moderation events could be resolved.");
 
     await tx.insert(adminAuditLog).values(
       openIds.map((eventId) => ({
@@ -1114,4 +1201,15 @@ function safeAdminDisplayName(value: string | null | undefined) {
 
 function isSharedDatabaseArtifact(value: string | null | undefined) {
   return typeof value === "string" && /\bincert\b/i.test(value);
+}
+
+export async function resolveAdminGrantTarget(email: string) {
+  await requireAdminOwner();
+  const target = await findUserByEmail(email);
+  if (!target?.email) throw new Error("No user exists for that email address.");
+  return {
+    id: target.id,
+    displayName: safeAdminDisplayName(target.name) ?? "LM World Tour Player",
+    email: target.email,
+  };
 }

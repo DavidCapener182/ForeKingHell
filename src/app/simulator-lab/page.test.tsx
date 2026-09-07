@@ -6,6 +6,11 @@ const mocks = vi.hoisted(() => ({
   getSimulatorLabData: vi.fn(),
 }));
 
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock("@/lib/simulator-lab", () => ({
   getSimulatorLabData: mocks.getSimulatorLabData,
 }));
@@ -51,7 +56,7 @@ describe("/simulator-lab page", () => {
     expect(html).toContain("Performance Lab");
     expect(html).toContain("Gapping rows: 0");
     expect(html).toContain("Import a simulator session to unlock 30-day deltas.");
-    expect(html).toContain("Log a club setup and retest to prove the change.");
+    expect(html).toContain("Log a dated club setup and retest to compare associated changes.");
   });
 
   it("renders populated WITB, delta, ledger and roast states", async () => {
@@ -71,7 +76,7 @@ describe("/simulator-lab page", () => {
     expect(html).toContain("Playing profile");
     expect(html).toContain("Score killers");
     expect(html).toContain("What if?");
-    expect(html).toContain("Four rounds");
+    expect(html).toContain("Modelled four rounds");
     expect(html).toContain("Handicap confidence timeline");
     expect(html).toContain("Latest simulator block beat the 30-day baseline.");
     expect(html).toContain("9 deg loft / Sleeve down");

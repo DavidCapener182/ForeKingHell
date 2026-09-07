@@ -39,7 +39,8 @@ describe("rounds scoring index", () => {
   });
 
   it("puts one compact scoring trend above the list without a metric-card wall", () => {
-    expect(indexSource).toContain("<ScoringTrend rounds={rounds} />");
+    expect(indexSource).toContain("<ScoringTrend rounds={visibleRounds} />");
+    expect(indexSource).toContain("const visibleRounds");
     expect(indexSource).toContain("data-scoring-trend");
     expect(indexSource).toContain("Lower bars are better");
     expect(indexSource).not.toContain("@/components/ui/card");

@@ -10,8 +10,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-heading:
-    var(--font-display-source), var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   --font-score: var(--font-display-source), var(--font-ui-source), sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -102,7 +101,7 @@ html[data-theme="clubhouse"] :where(.soft-panel, .apple-panel, .apple-panel-stro
 html[data-theme="clubhouse"] :where(.metric-tile, .luxury-metric-card),
 html[data-theme="clubhouse"] :where(.premium-glass, .premium-surface, .premium-rail-card) {
   border-color: var(--surface-border);
-  border-radius: var(--radius);
+  border-radius: 1rem;
   background: var(--surface);
   box-shadow: var(--surface-shadow-soft);
 }
@@ -163,17 +162,20 @@ html[data-theme="clubhouse"]
 
 html[data-theme="clubhouse"]
   :where(.desktop-page-header, .premium-hero, .ios-large-title, .ios-page-header)
-  h1,
-html[data-theme="clubhouse"]
-  :where(.premium-card, .desktop-data-panel, .apple-panel, .apple-panel-strong)
-  [data-slot="card-title"] {
-  font-family: var(--font-editorial-source), Georgia, "Times New Roman", serif;
+  h1 {
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: -0.025em;
 }
 
+html[data-theme="clubhouse"] [data-slot="card-title"] {
+  font-family: var(--font-ui-source), sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
 html[data-theme="clubhouse"] :where(.font-score, .tabular-nums) {
-  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
@@ -261,7 +263,10 @@ html[data-theme="clubhouse"] :where(.premium-action, [data-slot="button"][data-v
   border-color: #09271b;
   border-radius: var(--radius);
   background: var(--primary);
-  box-shadow: none;
+  box-shadow:
+    0 1px 2px #1018280d,
+    inset 0 1px 0 #ffffff24,
+    inset 0 -2px 0 #00000012;
   color: var(--primary-foreground);
 }
 
@@ -275,7 +280,7 @@ html[data-theme="clubhouse"] [data-slot="button"][data-variant="outline"] {
   border-color: var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: none;
+  box-shadow: 0 1px 2px #1018280d;
   color: var(--foreground);
 }
 
@@ -607,30 +612,30 @@ html[data-theme="dark"] {
 
 html[data-theme="clubhouse"] {
   color-scheme: light;
-  --background: #f1ead9;
+  --background: #f5f6f3;
   --foreground: #18251e;
-  --card: #fbf7ec;
+  --card: #ffffff;
   --card-foreground: #18251e;
-  --popover: #fbf7ec;
+  --popover: #ffffff;
   --popover-foreground: #18251e;
   --primary: #123a29;
   --primary-foreground: #fbf7ec;
-  --secondary: #ede5d5;
+  --secondary: #edf1eb;
   --secondary-foreground: #123a29;
-  --muted: #ede5d5;
+  --muted: #eef1ec;
   --muted-foreground: #4f574f;
-  --accent: #e8deca;
+  --accent: #e6ede3;
   --accent-foreground: #75342e;
   --destructive: #b42318;
-  --border: #b9aa8c;
-  --input: #a99879;
+  --border: #d8dfd7;
+  --input: #a3afa3;
   --ring: #8f2b08;
   --chart-1: #123a29;
   --chart-2: #1555d6;
   --chart-3: #75342e;
   --chart-4: #ad8a48;
   --chart-5: #a12f00;
-  --radius: 0.3125rem;
+  --radius: 0.75rem;
   --lux-emerald-950: #09271b;
   --lux-emerald-900: #123a29;
   --lux-emerald-800: #194b37;
@@ -642,14 +647,14 @@ html[data-theme="clubhouse"] {
   --lux-champagne: #ad8a48;
   --lux-champagne-soft: #e3d4b5;
   --lux-sky: #1555d6;
-  --surface: #fbf7ec;
-  --surface-strong: #fbf7ec;
-  --surface-soft: #f1ead9;
-  --surface-glass: rgba(251, 247, 236, 0.96);
-  --surface-border: rgba(117, 83, 48, 0.34);
-  --surface-border-strong: rgba(117, 52, 46, 0.58);
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-soft: #f5f6f3;
+  --surface-glass: rgba(255, 255, 255, 0.96);
+  --surface-border: rgba(24, 52, 34, 0.14);
+  --surface-border-strong: rgba(24, 52, 34, 0.24);
   --surface-shadow: 0 2px 5px rgba(24, 37, 30, 0.06);
-  --surface-shadow-soft: 0 1px 2px rgba(24, 37, 30, 0.045);
+  --surface-shadow-soft: 0 1px 2px rgba(24, 37, 30, 0.04), 0 3px 8px rgba(24, 37, 30, 0.025);
   --surface-shadow-lift: 0 3px 8px rgba(24, 37, 30, 0.07);
   --mobile-bar-shadow: 0 -4px 12px rgba(9, 39, 27, 0.12);
   --sidebar: #09271b;
@@ -911,13 +916,13 @@ html[data-theme="range-night"] body {
 
 html[data-theme="range-night"] :where(.font-score, .tabular-nums),
 html[data-theme="tour-broadcast"] :where(.font-score, .tabular-nums) {
-  font-family: var(--font-display-source), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums lining-nums;
 }
 
 html[data-theme="tour-broadcast"]
   :where(h1, h2, h3, [data-slot="card-title"], [data-slot="sidebar-group-label"]) {
-  font-family: var(--font-display-source), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   letter-spacing: 0.035em;
   text-transform: uppercase;
 }
@@ -1217,7 +1222,7 @@ html[data-theme="clubhouse"] .data-table-scroll tbody tr:focus-within {
 
 html[data-theme="clubhouse"] .data-table-scroll td.text-right {
   color: var(--clubhouse-cobalt);
-  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-size: 1.02em;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1290,7 +1295,7 @@ html[data-theme="clubhouse"] [data-slot="chart"] .recharts-cartesian-grid line {
 
 html[data-theme="clubhouse"] [data-slot="chart"] .recharts-cartesian-axis-tick text {
   fill: var(--chart-axis);
-  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1304,7 +1309,7 @@ html[data-theme="clubhouse"] [data-slot="chart-tooltip"] {
 
 html[data-theme="clubhouse"] [data-slot="chart-tooltip"] .tabular-nums {
   color: var(--clubhouse-cobalt);
-  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-size: 1.05em;
 }
 
@@ -1348,7 +1353,7 @@ html[data-theme="clubhouse"] [data-target-tone="slate"] {
 }
 
 html[data-theme="clubhouse"] [data-operational-value] {
-  font-family: var(--font-display-source), var(--font-ui-source), sans-serif;
+  font-family: var(--font-ui-source), ui-sans-serif, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1811,8 +1816,7 @@ html[data-theme="clubhouse"] [data-current="true"] {
   }
 
   @media (pointer: coarse) {
-    select,
-    textarea {
+    select {
       min-height: 2.75rem;
     }
   }
@@ -2131,8 +2135,7 @@ html[data-theme="clubhouse"] [data-current="true"] {
     [role="button"],
     summary,
     input,
-    select,
-    textarea {
+    select {
       min-height: 44px;
     }
 

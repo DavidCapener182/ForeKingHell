@@ -1,9 +1,8 @@
 "use client";
 import { useState } from "react";
-import { useFormStatus } from "react-dom";
-import { saveSpeedTransferTestAction } from "./actions";
+import { SpeedForm } from "./speed-form";
+import { saveSpeedTransferTestWithStateAction } from "./actions";
 import type { SpeedSessionDetailPageData } from "@/lib/speed-training-data";
-import { Button } from "@/components/ui/button";
 
 type Candidate = SpeedSessionDetailPageData["transferCandidates"][number];
 export function MobileSpeedTransfer({
@@ -22,7 +21,6 @@ export function MobileSpeedTransfer({
       ? linkedSessionId
       : (candidates[0]?.sessionId ?? ""),
   );
-  const candidate = candidates.find((c) => c.sessionId === chosen);
   return (
     <details>
       <summary className="flex min-h-12 items-center text-primary">
@@ -53,14 +51,15 @@ export function MobileSpeedTransfer({
                 ))}
               </select>
             </label>
-            {candidate ? (
-              <ShotSelection
-                key={candidate.sessionId}
-                sessionId={sessionId}
-                candidate={candidate}
-                initialIds={candidate.sessionId === linkedSessionId ? linkedShotIds : []}
-              />
-            ) : null}
+            {candidates.map((candidate) => (
+              <div key={candidate.sessionId} hidden={candidate.sessionId !== chosen}>
+                <ShotSelection
+                  sessionId={sessionId}
+                  candidate={candidate}
+                  initialIds={candidate.sessionId === linkedSessionId ? linkedShotIds : []}
+                />
+              </div>
+            ))}
           </>
         ) : (
           <p className="mobile-type-callout text-muted-foreground">
@@ -69,15 +68,14 @@ export function MobileSpeedTransfer({
           </p>
         )}
         {linkedSessionId ? (
-          <form action={saveSpeedTransferTestAction} className="grid gap-2 border-t pt-3">
+          <SpeedForm action={saveSpeedTransferTestWithStateAction} label="Remove transfer link">
             <input type="hidden" name="speedSessionId" value={sessionId} />
             <input type="hidden" name="shotSessionId" value="" />
             <p className="mobile-type-footnote text-muted-foreground">
               Removing this link keeps your speeds and raw Driver shots. The transfer verdict will
               become unlinked.
             </p>
-            <Submit label="Remove transfer link" variant="outline" />
-          </form>
+          </SpeedForm>
         ) : null}
       </div>
     </details>
@@ -96,7 +94,11 @@ function ShotSelection({
     initialIds.filter((id) => candidate.shots.some((s) => s.id === id)),
   );
   return (
-    <form action={saveSpeedTransferTestAction} className="grid gap-3">
+    <SpeedForm
+      action={saveSpeedTransferTestWithStateAction}
+      label="Link selected five"
+      disabled={selected.length !== 5}
+    >
       <input type="hidden" name="speedSessionId" value={sessionId} />
       <input type="hidden" name="shotSessionId" value={candidate.sessionId} />
       <p role="status" aria-live="polite" className="mobile-type-callout tabular-nums">
@@ -132,23 +134,6 @@ function ShotSelection({
           </label>
         ))}
       </div>
-      <Submit label="Link selected five" disabled={selected.length !== 5} />
-    </form>
-  );
-}
-function Submit({
-  label,
-  disabled = false,
-  variant = "default",
-}: {
-  label: string;
-  disabled?: boolean;
-  variant?: "default" | "outline";
-}) {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" variant={variant} disabled={disabled || pending} className="min-h-12">
-      {pending ? "Saving…" : label}
-    </Button>
+    </SpeedForm>
   );
 }

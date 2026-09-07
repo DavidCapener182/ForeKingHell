@@ -21,6 +21,7 @@ export async function POST(request: Request) {
 
   const response = NextResponse.redirect(new URL("/login", request.url), { status: 303 });
   response.cookies.delete(SELECTED_COURSE_COOKIE);
+  response.cookies.delete("fkh_rapsodo_token");
   response.headers.set("Clear-Site-Data", '"cache"');
   response.headers.set("Cache-Control", "no-store");
   return response;

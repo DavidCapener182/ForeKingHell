@@ -76,7 +76,7 @@ describe("QuickRangeSession mobile task flow", () => {
     expect(html).not.toContain("data-quick-range-desktop");
   });
 
-  it("loads one surface graph and keeps shadcn controls in both clients", () => {
+  it("shares the same range state machine and note controls across surfaces", () => {
     const companion = readFileSync(
       join(process.cwd(), "src/app/practice/quick-range/quick-range-session.tsx"),
       "utf8",
@@ -94,28 +94,29 @@ describe("QuickRangeSession mobile task flow", () => {
     expect(route).toContain("await import(");
     expect(route).not.toMatch(/^import .*quick-range-(?:workbench-)?session/m);
     expect(companion).toContain('import { Textarea } from "@/components/ui/textarea"');
-    expect(workbench).toContain('import { Textarea } from "@/components/ui/textarea"');
+    expect(workbench).toContain("<QuickRangeCompanionSession");
+    expect(workbench).toContain("accountId={accountId}");
+    expect(workbench).toContain("initialClubType={initialClubType}");
     expect(companion.match(/<Textarea\b/g)).toHaveLength(2);
-    expect(workbench.match(/<Textarea\b/g)).toHaveLength(1);
     expect(companion).not.toContain("data-quick-range-desktop");
     expect(workbench).not.toContain("data-quick-range-mobile");
     expect(companion).not.toMatch(/<textarea\b/);
     expect(workbench).not.toMatch(/<textarea\b/);
   });
 
-  it("uses a theme-safe shadcn success alert for the completion handoff", () => {
+  it("keeps completion evidence honest and links to measured import", () => {
     const source = readFileSync(
-      join(process.cwd(), "src/app/practice/quick-range/quick-range-workbench-session.tsx"),
+      join(process.cwd(), "src/app/practice/quick-range/quick-range-session.tsx"),
       "utf8",
     );
 
-    expect(source).toContain("<Alert");
-    expect(source).toContain("<AlertTitle>The planned blocks are complete</AlertTitle>");
-    expect(source).toContain("var(--status-success-surface)");
+    expect(source).toContain('href="/import"');
+    expect(source).toContain("Logging activity does not prove improvement.");
+    expect(source).toContain("text-muted-foreground");
     expect(source).not.toContain("bg-emerald-50");
   });
 
-  it("keeps the mobile theme stable and releases immersive resources", () => {
+  it("restores the theme after opt-in outdoor mode and releases immersive resources", () => {
     const companion = readFileSync(
       join(process.cwd(), "src/app/practice/quick-range/quick-range-session.tsx"),
       "utf8",
@@ -124,7 +125,10 @@ describe("QuickRangeSession mobile task flow", () => {
       join(process.cwd(), "src/components/app/use-mobile-activity.ts"),
       "utf8",
     );
-    expect(companion).not.toContain("root.dataset.theme");
+    expect(companion).toContain("if (!outdoor) return;");
+    expect(companion).toContain("if (previous) root.dataset.theme = previous;");
+    expect(companion).toContain("else delete root.dataset.theme;");
+    expect(companion).toContain("aria-pressed={outdoor}");
     expect(companion).toContain("useMobileActivity");
     expect(companion).toContain("fkh:quick-range:${accountId}");
     expect(activity).toContain("lock?.release()");

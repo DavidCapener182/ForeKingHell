@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useClientReady } from "@/hooks/use-client-ready";
+import { useRoundUrlFilter } from "./round-url-filter";
+import { comparableScoringRounds, roundHistoryScore } from "@/lib/round-history-evidence";
+import { LabEvidenceList } from "@/app/simulator-lab/lab-evidence";
+import { useMemo } from "react";
 import { ChevronRight, Search } from "lucide-react";
 
 import type { RoundsWorkspaceRound } from "@/app/rounds/rounds-workspace";
@@ -12,23 +16,51 @@ import { cn } from "@/lib/utils";
 const integerFormatter = new Intl.NumberFormat("en-GB");
 
 export function RoundsScoringIndex({ rounds }: { rounds: RoundsWorkspaceRound[] }) {
-  const [query, setQuery] = useState("");
+  const ready = useClientReady();
+  const [query, setQuery] = useRoundUrlFilter("q", "" as string);
+  const [roundType, setRoundType] = useRoundUrlFilter("roundType", "all" as string);
+  const scopedRounds = rounds.filter((round) =>
+    roundType === "real"
+      ? round.type === "real_round"
+      : roundType === "simulator"
+        ? round.type !== "real_round"
+        : roundType === "scorecard-only"
+          ? round.shotCount === 0
+          : roundType === "shot-linked"
+            ? round.shotCount > 0
+            : true,
+  );
   const visibleRounds = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return rounds;
+    if (!normalized) return scopedRounds;
 
-    return rounds.filter((round) =>
+    return scopedRounds.filter((round) =>
       [round.courseName, round.fileName, round.teeName, round.dateLabel]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .includes(normalized),
     );
-  }, [query, rounds]);
+  }, [query, scopedRounds]);
 
   return (
     <section className="grid min-w-0 gap-4" data-rounds-scoring-index>
-      <ScoringTrend rounds={rounds} />
+      <ScoringTrend rounds={visibleRounds} />
+      <label className="grid gap-1 text-sm">
+        Round type
+        <select
+          className="min-h-11 rounded-lg border bg-background px-3"
+          disabled={!ready}
+          value={roundType}
+          onChange={(event) => setRoundType(event.target.value)}
+        >
+          <option value="all">All rounds</option>
+          <option value="real">Real</option>
+          <option value="simulator">Simulator</option>
+          <option value="scorecard-only">Scorecard only</option>
+          <option value="shot-linked">Shot-linked</option>
+        </select>
+      </label>
 
       <section
         className="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm"
@@ -51,6 +83,7 @@ export function RoundsScoringIndex({ rounds }: { rounds: RoundsWorkspaceRound[] 
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
+              disabled={!ready}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search course, tee or date"
@@ -88,10 +121,13 @@ export function RoundsScoringIndex({ rounds }: { rounds: RoundsWorkspaceRound[] 
                   <td className="max-w-64 px-4 py-3.5 font-semibold">
                     <Link
                       href={`/rounds/${round.id}`}
-                      className="focus-aaa block truncate rounded-sm outline-none group-hover:text-primary"
+                      className="focus-aaa block whitespace-normal break-words rounded-sm outline-none group-hover:text-primary"
                     >
                       {roundTitle(round)}
                     </Link>
+                    <span className="text-xs text-muted-foreground">
+                      {round.typeLabel} · {round.dataLabel}
+                    </span>
                   </td>
                   <td className="px-4 py-3.5 text-muted-foreground">{round.teeName ?? "--"}</td>
                   <td className="px-4 py-3.5 text-right text-base font-semibold tabular-nums">
@@ -131,9 +167,11 @@ export function RoundsScoringIndex({ rounds }: { rounds: RoundsWorkspaceRound[] 
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-muted-foreground">
-                    {round.dateLabel} · {round.teeName ?? "Tee not set"}
+                    {round.dateLabel} · {round.typeLabel} · {round.teeName ?? "Tee not set"}
                   </p>
-                  <h3 className="mt-1 truncate text-[17px] font-semibold">{roundTitle(round)}</h3>
+                  <h3 className="mt-1 break-words text-[17px] font-semibold">
+                    {roundTitle(round)}
+                  </h3>
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-2xl font-semibold leading-none tabular-nums">
@@ -166,10 +204,18 @@ export function RoundsScoringIndex({ rounds }: { rounds: RoundsWorkspaceRound[] 
 }
 
 function ScoringTrend({ rounds }: { rounds: RoundsWorkspaceRound[] }) {
-  const points = rounds
-    .filter((round) => typeof round.toPar === "number")
-    .slice(0, 8)
-    .reverse();
+  const anchor = rounds.find(
+    (round) =>
+      [9, 18].includes(round.scorecardHoles.length) &&
+      roundHistoryScore(round.scorecardHoles, round.roundStatus).complete,
+  );
+  const points = anchor
+    ? comparableScoringRounds(
+        rounds,
+        anchor.type === "real_round" ? "course" : "simulator",
+        anchor.scorecardHoles.length,
+      )
+    : [];
   const values = points.map((round) => round.toPar as number);
   const minimum = values.length > 0 ? Math.min(...values) : 0;
   const maximum = values.length > 0 ? Math.max(...values) : 0;
@@ -180,7 +226,7 @@ function ScoringTrend({ rounds }: { rounds: RoundsWorkspaceRound[] }) {
 
   return (
     <section
-      className="grid gap-3 rounded-xl border bg-card px-4 py-4 shadow-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+      className="grid min-w-0 gap-4 rounded-xl border bg-card p-4 shadow-sm"
       aria-labelledby="scoring-trend-title"
       data-scoring-trend
     >
@@ -228,11 +274,28 @@ function ScoringTrend({ rounds }: { rounds: RoundsWorkspaceRound[] }) {
           )}
         </div>
       </div>
-      <p className="text-xs leading-5 text-muted-foreground sm:max-w-44 sm:text-right">
+      <p className="text-sm leading-6 text-muted-foreground">
         {points.length > 0
-          ? `Score to par across the latest ${points.length} completed ${points.length === 1 ? "round" : "rounds"}. Lower bars are better.`
+          ? `Score to par across the latest ${points.length} completed ${anchor?.scorecardHoles.length}-hole ${anchor?.type === "real_round" ? "course" : "simulator"} ${points.length === 1 ? "round" : "rounds"}. Lower bars are better.`
           : "Scores appear here once par and a completed total are available."}
       </p>
+      <LabEvidenceList
+        title="Comparable scoring points"
+        rows={points.map((round) => ({
+          id: round.id,
+          title: roundTitle(round),
+          summary: `${round.dateLabel} · ${round.typeLabel} · ${round.scorecardHoles.length} holes · ${round.toParLabel}`,
+          href: `/rounds/${round.id}`,
+          fields: [
+            { label: "Score", value: String(round.totalScore) },
+            { label: "To par", value: round.toParLabel },
+            { label: "Date", value: round.dateLabel },
+            { label: "Source type", value: round.typeLabel },
+            { label: "Tee", value: round.teeName ?? "Not recorded" },
+            { label: "Evidence", value: round.dataLabel },
+          ],
+        }))}
+      />
     </section>
   );
 }

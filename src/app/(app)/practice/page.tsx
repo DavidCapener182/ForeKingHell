@@ -10,6 +10,11 @@ type PracticeSearchParams = Promise<{
   energy?: string;
   session?: string;
   balls?: string;
+  goalId?: string;
+  sourceSessionId?: string;
+  club?: string;
+  editor?: string;
+  mode?: string;
 }>;
 
 export default async function PracticePage({
@@ -19,7 +24,8 @@ export default async function PracticePage({
 }) {
   const surface = await getRequestAppSurface();
 
-  if (surface === "companion") {
+  const params = await searchParams;
+  if (params?.mode === "guided" || (surface === "companion" && params?.editor !== "full")) {
     const { default: PracticeCompanionPage } = await import("./practice-companion-page");
     return <PracticeCompanionPage searchParams={searchParams} />;
   }

@@ -29,9 +29,10 @@ describe("practice planner desktop workflow", () => {
     expect(routeSource).toContain('surface === "companion"');
     expect(routeSource).toContain('await import("./practice-companion-page")');
     expect(routeSource).toContain('await import("./practice-workbench-page")');
-    expect(companionSource).toContain("Start practice");
+    expect(companionSource).toContain("practiceActivityPresentation");
     expect(companionSource).toContain("data-active-range-mode");
-    expect(companionSource).toContain("MobileLargeTitle");
+    expect(companionSource).toContain('title="Practice"');
+    expect(companionSource).toContain("<PageHeader");
     expect(companionSource).toContain("<Progress");
     expect(companionSource).toContain("<Drawer");
     expect(companionSource).toContain("<AlertDialog");
@@ -57,7 +58,7 @@ describe("practice planner desktop workflow", () => {
     expect(companionSource).toContain("detail={decision.actual}");
     expect(companionSource).toContain("<IOSInlineStatus");
     expect(companionSource).toContain("Every eligible launch-monitor shot from the practice day");
-    expect(companionSource).toContain("Today's uploads");
+    expect(companionSource).toContain("Practice-day uploads");
     expect(companionSource).toContain("Build next practice");
     expect(companionSource).toContain("data-practice-finished");
     expect(companionSource).toContain("<FieldGroup");
@@ -142,7 +143,10 @@ describe("practice planner desktop workflow", () => {
     expect(source).toContain(
       'const explicitSpeedRequest = params?.intent === "speed" && params?.session === "speed"',
     );
-    expect(source).toContain("const initialSavedPlan = explicitSpeedRequest");
+    expect(source).toContain("requestedPlan ??");
+    expect(source).toContain(
+      "explicitSpeedRequest || requestedOptions.focusClub || requestedOptions.sourceSessionId",
+    );
     expect(companionPageSource).toContain(
       'const explicitSpeedRequest = params?.intent === "speed" && params?.session === "speed"',
     );

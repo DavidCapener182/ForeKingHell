@@ -1,15 +1,14 @@
+import { SettingsWorkspace } from "@/app/settings/settings-workspace";
+import accessStyles from "@/app/course-records/course-record-board.module.css";
+import { getBillingPageData } from "@/lib/billing";
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import {
-  Bell,
   CreditCard,
   Database,
   Download,
-  HardDrive,
   Link2,
-  Palette,
   ShieldCheck,
-  SlidersHorizontal,
   Trash2,
   UserPlus,
   X,
@@ -19,19 +18,17 @@ import { desc, eq, inArray } from "drizzle-orm";
 import {
   deleteAccountDataAction,
   resetGolfDataAction,
-  updateUserSettingsAction,
+  updateUserSettingsFormAction,
 } from "@/app/settings/actions";
 import {
   SettingsAccessRowAction,
   SettingsInvitationDialog,
 } from "@/app/settings/settings-access-actions";
 import { SettingsDirtyForm } from "@/app/settings/settings-dirty-form";
-import { saveNotificationPreferencesAction } from "@/app/settings/notifications/actions";
+import { saveNotificationPreferencesFormAction } from "@/app/settings/notifications/actions";
 import { OfflineStoragePanel } from "@/app/settings/offline-storage-panel";
-import { SettingsStatusToast } from "@/app/settings/settings-status-toast";
 import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
-import { MobileGroupedList, MobileListRow } from "@/components/app/mobile-primitives";
-import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
+import { MobileGroupedList } from "@/components/app/mobile-primitives";
 import { settingsSections, isSettingsSection, type SettingsSection } from "@/lib/settings-sections";
 import {
   DataHealthFeaturePanel,
@@ -204,16 +201,13 @@ const notificationDeliveryLabels: Record<NotificationDelivery, string> = {
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const params = await searchParams;
   const activeSection = parseSettingsSection(params?.section);
-  const hasSelectedMobileSection = isSettingsSection(params?.section);
+
   const [settingsData, surface] = await Promise.all([getSettingsData(), getRequestAppSurface()]);
   const { profile, ownedInvitations, ownedMemberships, receivedMemberships, relatedUsersById } =
     settingsData;
   const privacy = normalizePrivacy(profile.privacySettingsJson);
-  const featureData = activeSection === "data" ? await getFeatureIdeasData() : null;
-  const notificationPreferences =
-    activeSection === "notifications"
-      ? (await getProductPreferences(profile.id)).notifications
-      : null;
+  const featureData = await getFeatureIdeasData();
+  const notificationPreferences = (await getProductPreferences(profile.id)).notifications;
   const inviteUrl = params?.invite
     ? `${getSiteOrigin()}/settings/invitations/${encodeURIComponent(params.invite)}`
     : null;
@@ -227,231 +221,38 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   return (
     <PageShell contentClassName="gap-0 sm:gap-0 lg:gap-0">
       {params?.inviteAccepted ? <PlausibleEventOnMount eventName="Invite Accepted" /> : null}
-      <SettingsStatusToast saved={Boolean(params?.saved)} />
 
-      <SettingsSurfaceLayout surface={surface}>
-        {surface === "companion" && !hasSelectedMobileSection ? (
-          <MobileSettingsIndex
-            profile={profile}
-            privacy={privacy}
-            sharedAccessCount={accessRows.length}
-          />
-        ) : (
-          <div className="min-w-0">
-            <SettingsPageHeading surface={surface} activeSection={activeSection} />
-
-            <div className="mt-5 grid min-w-0 gap-8 lg:mt-7 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start xl:grid-cols-[16rem_minmax(0,1fr)]">
-              <SettingsSectionNavigation activeSection={activeSection} />
-
-              <section className="min-w-0" aria-label={settingsSection(activeSection).label}>
-                <SettingsSectionHeading section={activeSection} surface={surface} />
-                <SettingsAlerts params={params} inviteUrl={inviteUrl} />
-                <div className="mt-5">
-                  <SettingsSectionContent
-                    activeSection={activeSection}
-                    companion={surface === "companion"}
-                    profile={profile}
-                    privacy={privacy}
-                    accessRows={accessRows}
-                    featureData={featureData}
-                    notificationPreferences={notificationPreferences}
-                    ownedMembershipCount={ownedMemberships.length}
-                    receivedMembershipCount={receivedMemberships.length}
-                  />
-                </div>
-              </section>
-            </div>
-          </div>
-        )}
-      </SettingsSurfaceLayout>
-    </PageShell>
-  );
-}
-
-function MobileSettingsIndex({
-  profile,
-  privacy,
-  sharedAccessCount,
-}: {
-  profile: SettingsProfile;
-  privacy: PrivacySettings;
-  sharedAccessCount: number;
-}) {
-  return (
-    <div className="grid gap-6 pb-3">
-      <MobileLargeTitle title="Settings" eyebrow="Your account" />
-
-      <MobileSection title="Preferences">
-        <MobileGroupedList label="Preferences">
-          <MobileListRow
-            label="General"
-            value={titleCase(profile.preferredUnits)}
-            detail="Name and measurement units"
-            href="/settings?section=general"
-            icon={SlidersHorizontal}
-          />
-          <MobileListRow
-            label="Appearance"
-            value={titleCase(profile.theme)}
-            detail="Device appearance and desktop preferences"
-            href="/settings?section=appearance"
-            icon={Palette}
-          />
-          <MobileListRow
-            label="Privacy"
-            value={privacy.publicProfile ? "Public" : "Private"}
-            detail="Profile and coach visibility"
-            href="/settings?section=privacy"
-            icon={ShieldCheck}
-          />
-          <MobileListRow
-            label="Notifications"
-            detail="Delivery and in-app updates"
-            href="/settings?section=notifications"
-            icon={Bell}
-          />
-        </MobileGroupedList>
-      </MobileSection>
-
-      <MobileSection title="Account and data">
-        <MobileGroupedList label="Account and data">
-          <MobileListRow
-            label="Sharing"
-            value={sharedAccessCount > 0 ? sharedAccessCount : "None"}
-            detail="Collaborators and invitations"
-            href="/settings?section=sharing"
-            icon={UserPlus}
-          />
-          <MobileListRow
-            label="Connected Data"
-            detail="Providers, imports and exports"
-            href="/settings?section=data"
-            icon={Database}
-          />
-          <MobileListRow
-            label="Offline"
-            detail="Storage and retry queue"
-            href="/settings?section=offline"
-            icon={HardDrive}
-          />
-          <MobileListRow
-            label="Billing"
-            detail="Plan, subscription and invoices"
-            href="/settings?section=billing"
-            icon={CreditCard}
-          />
-        </MobileGroupedList>
-      </MobileSection>
-
-      <MobileSection title="Danger zone">
-        <MobileGroupedList label="Danger zone">
-          <MobileListRow
-            label="Danger Zone"
-            detail="Reset golf history or delete this account"
-            href="/settings?section=danger"
-            icon={Trash2}
-            destructive
-          />
-        </MobileGroupedList>
-      </MobileSection>
-    </div>
-  );
-}
-
-function SettingsPageHeading({
-  surface,
-}: {
-  surface: "companion" | "workbench";
-  activeSection: SettingsSection;
-}) {
-  if (surface === "companion") return null;
-
-  return (
-    <header className="border-b border-border pb-5">
-      <p className="text-sm font-semibold text-primary">Account</p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-[-0.025em]">Settings</h1>
-      <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-        Manage account preferences, access and data without losing your place.
-      </p>
-    </header>
-  );
-}
-
-function SettingsSectionHeading({
-  section,
-  surface,
-}: {
-  section: SettingsSection;
-  surface: "companion" | "workbench";
-}) {
-  const item = settingsSection(section);
-  if (surface === "companion") return <MobileLargeTitle title={item.label} />;
-
-  return (
-    <header className="border-b border-border pb-5">
-      <h1 id="settings-section-title" className="text-2xl font-semibold tracking-[-0.02em]">
-        {item.label}
-      </h1>
-      <p className="mt-1.5 max-w-3xl text-sm leading-6 text-muted-foreground">{item.description}</p>
-    </header>
-  );
-}
-
-function SettingsSectionNavigation({ activeSection }: { activeSection: SettingsSection }) {
-  const regularSections = settingsSections.filter((section) => section.value !== "danger");
-  const dangerSection = settingsSection("danger");
-
-  return (
-    <nav className="sticky top-24 hidden min-w-0 lg:block" aria-label="Settings sections">
-      <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        Settings
-      </p>
-      <div className="grid gap-0.5" data-settings-section-navigation>
-        {regularSections.map((section) => (
-          <SettingsNavigationLink
-            key={section.value}
-            section={section}
-            active={section.value === activeSection}
-          />
-        ))}
-      </div>
-      <div className="mt-4 border-t border-border pt-4">
-        <SettingsNavigationLink
-          section={dangerSection}
-          active={activeSection === "danger"}
-          destructive
+      <div className="grid min-w-0 gap-5 pb-28">
+        <header>
+          <h1 className="text-3xl font-semibold">Settings</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Manage your account, sharing and data. Drafts stay here when you move between sections.
+          </p>
+        </header>
+        <SettingsAlerts params={params} inviteUrl={inviteUrl} />
+        <SettingsWorkspace
+          initialSection={isSettingsSection(params?.section) ? activeSection : null}
+          items={settingsSections.map((section) => ({
+            id: section.value,
+            label: section.label,
+            description: section.description,
+            content: (
+              <SettingsSectionContent
+                activeSection={section.value}
+                companion={surface === "companion"}
+                profile={profile}
+                privacy={privacy}
+                accessRows={accessRows}
+                featureData={featureData}
+                notificationPreferences={notificationPreferences}
+                ownedMembershipCount={ownedMemberships.length}
+                receivedMembershipCount={receivedMemberships.length}
+              />
+            ),
+          }))}
         />
       </div>
-    </nav>
-  );
-}
-
-function SettingsNavigationLink({
-  section,
-  active,
-  destructive = false,
-}: {
-  section: (typeof settingsSections)[number];
-  active: boolean;
-  destructive?: boolean;
-}) {
-  return (
-    <Link
-      href={`/settings?section=${section.value}`}
-      prefetch={false}
-      aria-current={active ? "page" : undefined}
-      className={`focus-aaa flex min-h-10 items-center rounded-lg px-3 text-sm font-medium outline-none transition-colors duration-100 motion-reduce:transition-none ${
-        active
-          ? destructive
-            ? "bg-destructive/10 text-destructive"
-            : "bg-primary/10 text-primary"
-          : destructive
-            ? "text-destructive hover:bg-destructive/10"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      }`}
-    >
-      {section.label}
-    </Link>
+    </PageShell>
   );
 }
 
@@ -601,7 +402,7 @@ function SettingsSectionContent({
 
 function GeneralSettings({ profile, companion }: { profile: SettingsProfile; companion: boolean }) {
   return (
-    <SettingsDirtyForm action={updateUserSettingsAction} className="grid gap-6">
+    <SettingsDirtyForm action={updateUserSettingsFormAction} className="grid gap-6">
       <input type="hidden" name="settingsSection" value="general" />
       <SettingsGroup
         title="Account details"
@@ -650,7 +451,7 @@ function AppearanceSettings({
   companion: boolean;
 }) {
   return (
-    <SettingsDirtyForm action={updateUserSettingsAction} className="grid gap-6">
+    <SettingsDirtyForm action={updateUserSettingsFormAction} className="grid gap-6">
       <input type="hidden" name="settingsSection" value="appearance" />
       {companion ? (
         <div className="grid gap-2">
@@ -697,7 +498,7 @@ function PrivacySettingsSection({
   receivedMembershipCount: number;
 }) {
   return (
-    <SettingsDirtyForm action={updateUserSettingsAction} className="grid gap-6">
+    <SettingsDirtyForm action={updateUserSettingsFormAction} className="grid gap-6">
       <input type="hidden" name="settingsSection" value="privacy" />
       <SettingsGroup
         title="Visibility defaults"
@@ -706,7 +507,7 @@ function PrivacySettingsSection({
         <SettingsToggleRow
           name="allowCoachAccess"
           label="Invited coach access"
-          detail="Allow invited coaches to read your golf data within their assigned role."
+          detail="Saved coach-access preference. Current access is granted and revoked through Account access below; this toggle does not remove a membership."
           defaultChecked={privacy.allowCoachAccess}
         />
         <SettingsToggleRow
@@ -718,7 +519,7 @@ function PrivacySettingsSection({
         <SettingsToggleRow
           name="publicProfile"
           label="Public profile"
-          detail="Allow a public profile if you choose to share it later."
+          detail="Saved account preference. Actual public profile visibility is managed in Your profile; this does not grant account access."
           defaultChecked={privacy.publicProfile}
         />
       </SettingsGroup>
@@ -738,8 +539,8 @@ function PrivacySettingsSection({
         />
         <SettingsValueRow
           label="Public visitors"
-          value={privacy.publicProfile ? "Profile visible" : "Hidden"}
-          detail="Public visitors never receive account-level access."
+          value="No account access"
+          detail="Public profile visibility and account memberships are separate. Review the exact profile scopes in Your profile."
         />
       </SettingsGroup>
     </SettingsDirtyForm>
@@ -760,7 +561,7 @@ function SharingSettings({ accessRows }: { accessRows: SettingsAccessRow[] }) {
 
 function NotificationSettings({ preferences }: { preferences: NotificationPreferences }) {
   return (
-    <SettingsDirtyForm action={saveNotificationPreferencesAction} className="grid gap-6">
+    <SettingsDirtyForm action={saveNotificationPreferencesFormAction} className="grid gap-6">
       <input type="hidden" name="settingsReturnTo" value="section" />
       <SettingsGroup
         title="Delivery by category"
@@ -837,12 +638,23 @@ function ConnectedDataSettings({
   );
 }
 
-function BillingSettings() {
+async function BillingSettings() {
+  const billing = await getBillingPageData();
+  const plan = billing.plans.find((plan) => plan.key === billing.activePlanKey);
   return (
     <SettingsGroup
       title="Membership and billing"
       description="Billing is managed in a dedicated secure workspace."
     >
+      <SettingsValueRow
+        label="Current plan"
+        value={plan?.name ?? billing.activePlanKey}
+        detail={
+          billing.latestSubscription
+            ? `Subscription: ${billing.latestSubscription.status}`
+            : "Current account entitlement; no subscription record."
+        }
+      />
       <SettingsLinkRow
         href="/billing"
         icon={<CreditCard className="size-4" aria-hidden />}
@@ -873,6 +685,9 @@ function DangerZoneSettings({ profile }: { profile: SettingsProfile }) {
       </div>
 
       <div className="grid gap-6 px-4 py-5 sm:px-5">
+        <Button asChild variant="outline">
+          <a href="/api/settings/export">Export account data before continuing</a>
+        </Button>
         <Alert variant="destructive">
           <Trash2 className="size-4" />
           <AlertTitle>These actions cannot be undone</AlertTitle>
@@ -897,12 +712,13 @@ function DangerZoneSettings({ profile }: { profile: SettingsProfile }) {
               label="Type RESET to confirm"
               name="confirmation"
               autoComplete="off"
+              required
             />
             <ConfirmSubmitButton
               type="submit"
               variant="outline"
               className="w-full sm:w-fit"
-              confirmTitle="Reset all golf data?"
+              confirmTitle={`Reset golf data for ${profile.email ?? profile.name ?? "this account"}?`}
               confirmMessage="This removes sessions, shots, bag history, plans, achievements and authored social activity after the typed confirmation is checked."
               confirmActionLabel="Reset golf data"
             >
@@ -930,12 +746,13 @@ function DangerZoneSettings({ profile }: { profile: SettingsProfile }) {
               label={`Type ${profile.email ?? profile.id} to confirm`}
               name="confirmation"
               autoComplete="off"
+              required
             />
             <ConfirmSubmitButton
               type="submit"
               variant="destructive"
               className="w-full sm:w-fit"
-              confirmTitle="Delete this account permanently?"
+              confirmTitle={`Delete ${profile.email ?? profile.name ?? "this account"} permanently?`}
               confirmMessage="This revokes active sessions, removes application data and deletes the authentication identity after the typed confirmation is checked."
               confirmActionLabel="Delete account permanently"
             >
@@ -959,7 +776,7 @@ function DesktopSettingsDisclosure({
   if (!companion) return children;
   return (
     <details className="mobile-settings-desktop">
-      <summary>Desktop preferences</summary>
+      <summary className="min-h-11 cursor-pointer py-3 font-medium">Desktop preferences</summary>
       <div className="grid gap-6">{children}</div>
     </details>
   );
@@ -978,7 +795,7 @@ function SettingsGroup({
 }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-border bg-card">
-      <header className="flex min-w-0 items-start justify-between gap-4 border-b border-border px-4 py-4 sm:px-5">
+      <header className="flex min-w-0 flex-wrap items-start justify-between gap-4 border-b border-border px-4 py-4 sm:px-5">
         <div className="min-w-0">
           <h2 className="font-semibold">{title}</h2>
           <p className="mt-1 text-sm leading-5 text-muted-foreground">{description}</p>
@@ -1130,20 +947,33 @@ function AccessManagementTable({ rows }: { rows: SettingsAccessRow[] }) {
 
   return (
     <>
-      <div className="lg:hidden">
+      <div className={accessStyles.mobile}>
         <MobileGroupedList label="Account access" className="rounded-none border-0 shadow-none">
           {rows.map((row) => (
-            <MobileListRow
-              key={row.id}
-              label={row.party}
-              value={row.role}
-              detail={`${row.scope} · ${row.status} · ${row.detail}`}
-              trailing={row.action}
-            />
+            <details key={row.id} className="m-3 rounded-xl border p-3">
+              <summary className="min-h-11 cursor-pointer break-words font-medium">
+                {row.party} · {row.role}
+              </summary>
+              <dl className="grid gap-3 py-3">
+                {Object.entries({
+                  Direction: row.scope,
+                  Status: row.status,
+                  Detail: row.detail,
+                }).map(([label, value]) => (
+                  <div key={label}>
+                    <dt className="text-sm text-muted-foreground">{label}</dt>
+                    <dd className="break-words">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              {row.action ?? (
+                <p className="text-sm">Only the account owner can change this access.</p>
+              )}
+            </details>
           ))}
         </MobileGroupedList>
       </div>
-      <div className="hidden overflow-x-auto lg:block">
+      <div className={accessStyles.desktop}>
         <Table>
           <TableCaption className="sr-only">Collaborators and shared accounts.</TableCaption>
           <TableHeader>
@@ -1190,7 +1020,7 @@ function FormField({
   return (
     <div className="grid gap-2 text-sm">
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} name={name} className="h-10 bg-background" {...props} />
+      <Input id={id} name={name} className="min-h-11 bg-background" {...props} />
     </div>
   );
 }
@@ -1222,7 +1052,7 @@ function SelectField<T extends string>({
     <div className="grid gap-2 text-sm">
       <Label htmlFor={id}>{label}</Label>
       <Select name={name} defaultValue={defaultValue}>
-        <SelectTrigger id={id} className="h-10 w-full bg-background">
+        <SelectTrigger id={id} className="min-h-11 w-full bg-background">
           <SelectValue placeholder={`Choose ${label.toLowerCase()}`} />
         </SelectTrigger>
         <SelectContent>
@@ -1235,21 +1065,6 @@ function SelectField<T extends string>({
       </Select>
     </div>
   );
-}
-
-async function SettingsSurfaceLayout({
-  surface,
-  children,
-}: {
-  surface: "companion" | "workbench";
-  children: ReactNode;
-}) {
-  if (surface === "companion") {
-    return <div className="min-w-0 mobile-settings-screen">{children}</div>;
-  }
-
-  const { DesktopWorkbenchLayout } = await import("@/components/app/desktop-workbench");
-  return <DesktopWorkbenchLayout scope="settings">{children}</DesktopWorkbenchLayout>;
 }
 
 type SettingsProfile = Awaited<ReturnType<typeof getSettingsData>>["profile"];
@@ -1361,10 +1176,6 @@ function buildAccessRows({
 
 function parseSettingsSection(value: string | undefined): SettingsSection {
   return isSettingsSection(value) ? value : "general";
-}
-
-function settingsSection(value: SettingsSection) {
-  return settingsSections.find((section) => section.value === value) ?? settingsSections[0];
 }
 
 function normalizePrivacy(value: unknown): PrivacySettings {

@@ -15,7 +15,11 @@ export function AppErrorState({
   className?: string;
 }) {
   return (
-    <Alert variant="destructive" className={cn("p-4", className)} data-app-error-state>
+    <Alert
+      variant="destructive"
+      className={cn("min-w-0 break-words p-4 [&_button]:min-h-11 [&_a]:min-h-11", className)}
+      data-app-error-state
+    >
       <AlertCircle className="size-4" aria-hidden />
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>

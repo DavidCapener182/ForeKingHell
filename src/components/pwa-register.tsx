@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { Download, RefreshCw, WifiOff, X } from "lucide-react";
 
@@ -17,6 +17,12 @@ import { setOfflineLastSyncAt } from "@/lib/offline-storage-preferences";
 import { Button } from "@/components/ui/button";
 import { BRAND_NAME } from "@/lib/brand";
 import { purgeCompanionDataForOtherAccounts } from "@/lib/service-worker-cache";
+import {
+  canApplyAppUpdate,
+  dismissInstallNotice,
+  installNoticeDismissed,
+  isActiveEntryRoute,
+} from "@/lib/pwa-notice-policy";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -32,24 +38,59 @@ export function PwaRegister({ activeUserId }: { activeUserId: string | null }) {
     getOnlineStatusSnapshot,
     getServerOnlineStatusSnapshot,
   );
-  const [pendingOfflineActions, setPendingOfflineActions] = useState(0);
+  const [queueChecked, setQueueChecked] = useState(false);
+  const [pendingOfflineActions, setPendingOfflineActions] = useState<number | null>(null);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [syncWarning, setSyncWarning] = useState<{ owner: string; message: string } | null>(null);
+  const visibleSyncWarning = syncWarning?.owner === activeUserId ? syncWarning.message : null;
   const [dismissed, setDismissed] = useState(false);
+  const [dismissedMessage, setDismissedMessage] = useState<string | null>(null);
+  const editedForms = useRef(new Set<HTMLFormElement>());
+
+  useEffect(() => {
+    const rememberEdit = (event: Event) => {
+      const target = event.target;
+      if (
+        (target instanceof HTMLInputElement ||
+          target instanceof HTMLTextAreaElement ||
+          target instanceof HTMLSelectElement) &&
+        target.form
+      )
+        editedForms.current.add(target.form);
+    };
+    document.addEventListener("input", rememberEdit, true);
+    document.addEventListener("change", rememberEdit, true);
+    return () => {
+      document.removeEventListener("input", rememberEdit, true);
+      document.removeEventListener("change", rememberEdit, true);
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setDismissed(installNoticeDismissed(window.localStorage)),
+      0,
+    );
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const refreshOfflineCount = useCallback(() => {
     if (!("indexedDB" in window)) {
-      setPendingOfflineActions(0);
+      setPendingOfflineActions(null);
+      setQueueChecked(true);
       return;
     }
 
     if (!activeUserId) {
       setPendingOfflineActions(0);
+      setQueueChecked(true);
       return;
     }
 
     countOfflineActions(activeUserId)
       .then(setPendingOfflineActions)
-      .catch(() => setPendingOfflineActions(0));
+      .catch(() => setPendingOfflineActions(null))
+      .finally(() => setQueueChecked(true));
   }, [activeUserId]);
 
   const replayOfflineActions = useCallback(async () => {
@@ -59,7 +100,15 @@ export function PwaRegister({ activeUserId }: { activeUserId: string | null }) {
 
     await withOfflineReplayLock(async () => {
       await purgeOfflineActionsForOtherAccounts(activeUserId).catch(() => 0);
-      const actions = await listOfflineActions(activeUserId).catch(() => []);
+      const actions = await listOfflineActions(activeUserId).catch(() => null);
+      if (actions === null) {
+        setPendingOfflineActions(null);
+        setQueueChecked(true);
+        setSyncMessage(
+          "Saved actions could not be read. Open Settings to review local storage; no queued action was discarded.",
+        );
+        return;
+      }
       const syncableActions = actions.filter(
         (action) =>
           (action.kind === "import-csv" || action.kind === "round-edit") &&
@@ -78,6 +127,7 @@ export function PwaRegister({ activeUserId }: { activeUserId: string | null }) {
       let synced = 0;
       let retained = 0;
       let needsReview = 0;
+      const warnings = new Set<string>();
 
       for (const action of syncableActions) {
         try {
@@ -95,6 +145,11 @@ export function PwaRegister({ activeUserId }: { activeUserId: string | null }) {
           );
 
           if (response.ok) {
+            if (action.kind === "round-edit") {
+              const result = await response.json().catch(() => null);
+              if (typeof result?.warning === "string" && result.warning.trim())
+                warnings.add(result.warning);
+            }
             await removeOfflineAction(action.id);
             synced += 1;
             continue;
@@ -114,6 +169,11 @@ export function PwaRegister({ activeUserId }: { activeUserId: string | null }) {
         }
       }
 
+      if (warnings.size)
+        setSyncWarning({
+          owner: activeUserId,
+          message: `Changes saved. ${[...warnings].join(" ")}`,
+        });
       if (synced > 0) setOfflineLastSyncAt();
       refreshOfflineCount();
       setSyncMessage(
@@ -261,27 +321,49 @@ export function PwaRegister({ activeUserId }: { activeUserId: string | null }) {
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/share/") ||
     pathname.startsWith("/privacy") ||
-    pathname.startsWith("/today") ||
+    (pathname.startsWith("/today") && !visibleSyncWarning) ||
     pathname.startsWith("/play/") ||
-    dismissed ||
-    (!installPrompt && !updateReady && isOnline && pendingOfflineActions === 0 && !syncMessage)
+    isActiveEntryRoute(pathname) ||
+    (dismissed &&
+      !updateReady &&
+      isOnline &&
+      pendingOfflineActions === 0 &&
+      !syncMessage &&
+      !visibleSyncWarning) ||
+    (!installPrompt &&
+      !updateReady &&
+      isOnline &&
+      pendingOfflineActions === 0 &&
+      !syncMessage &&
+      !visibleSyncWarning)
   ) {
     return null;
   }
 
-  const canInstall = isOnline && pendingOfflineActions === 0 && !updateReady && installPrompt;
-  const message = syncMessage
-    ? syncMessage
-    : pendingOfflineActions > 0
-      ? `${pendingOfflineActions} pending offline action${pendingOfflineActions === 1 ? "" : "s"} will sync when available.`
-      : !isOnline
-        ? "Private analysis needs a connection. Queued imports and round edits stay on this device until sync succeeds."
-        : updateReady
-          ? `A ${BRAND_NAME} update is ready.`
-          : `Install ${BRAND_NAME} for faster access on this device.`;
+  const canInstall =
+    !dismissed && isOnline && pendingOfflineActions === 0 && !updateReady && installPrompt;
+  const message =
+    visibleSyncWarning ??
+    (syncMessage
+      ? syncMessage
+      : pendingOfflineActions === null
+        ? "Saved actions could not yet be checked. Review local storage in Settings before updating."
+        : pendingOfflineActions > 0
+          ? `${pendingOfflineActions} pending offline action${pendingOfflineActions === 1 ? "" : "s"} will sync when available.`
+          : !isOnline
+            ? "Private analysis needs a connection. Queued imports and round edits stay on this device until sync succeeds."
+            : updateReady
+              ? `A ${BRAND_NAME} update is ready.`
+              : `Install ${BRAND_NAME} for faster access on this device.`);
+
+  if (
+    (!queueChecked && pendingOfflineActions === null && !syncMessage && !updateReady && isOnline) ||
+    dismissedMessage === message
+  )
+    return null;
 
   return (
-    <div className="fixed inset-x-3 bottom-20 z-50 sm:bottom-4 sm:left-auto sm:right-4 sm:w-[360px]">
+    <div className="mx-4 my-3 pb-[env(safe-area-inset-bottom)]" data-pwa-notice>
       <div className="surface-toast rounded-2xl p-3">
         <div className="flex items-start gap-3">
           <div className="grid size-9 shrink-0 place-items-center rounded-full bg-[#111827] text-white">
@@ -314,17 +396,37 @@ export function PwaRegister({ activeUserId }: { activeUserId: string | null }) {
                   Install
                 </Button>
               ) : null}
-              {updateReady ? (
+              {updateReady && pendingOfflineActions === 0 ? (
                 <Button
                   type="button"
                   size="sm"
                   onClick={() => {
+                    const hasDraft =
+                      [...editedForms.current].some((form) => form.isConnected) ||
+                      Boolean(
+                        document.querySelector('[data-dirty-form-bar], form[aria-busy="true"]'),
+                      );
+                    if (!canApplyAppUpdate({ pathname, queued: pendingOfflineActions, hasDraft })) {
+                      setSyncMessage(
+                        "Save your changes, leave the form and finish syncing before applying this update.",
+                      );
+                      return;
+                    }
+                    navigator.serviceWorker.addEventListener(
+                      "controllerchange",
+                      () => window.location.reload(),
+                      { once: true },
+                    );
                     updateReady.waiting?.postMessage({ type: "SKIP_WAITING" });
-                    window.location.reload();
                   }}
                 >
-                  Reload
+                  Apply update
                 </Button>
+              ) : null}
+              {pendingOfflineActions !== 0 ? (
+                <a href="/settings" className="inline-flex min-h-11 items-center text-sm underline">
+                  Review saved actions
+                </a>
               ) : null}
             </div>
           </div>
@@ -332,8 +434,13 @@ export function PwaRegister({ activeUserId }: { activeUserId: string | null }) {
             type="button"
             variant="ghost"
             size="icon"
-            className="size-8"
-            onClick={() => setDismissed(true)}
+            className="size-11 shrink-0"
+            onClick={() => {
+              dismissInstallNotice(window.localStorage);
+              setDismissed(true);
+              setDismissedMessage(message);
+              setInstallPrompt(null);
+            }}
           >
             <X className="size-4" />
             <span className="sr-only">Dismiss PWA notice</span>

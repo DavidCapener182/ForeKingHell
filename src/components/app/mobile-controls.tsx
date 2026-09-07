@@ -176,6 +176,7 @@ export function MobileFilterChipGroup({
 export type MobilePageTab = MobileControlOption & {
   href?: string;
   content: ReactNode;
+  keepMounted?: boolean;
 };
 
 export type MobilePageTabsMode = "local" | "navigable";
@@ -355,7 +356,7 @@ export function MobilePageTabs({
           hidden={tab.value !== selected.value}
           className="min-w-0 outline-none"
         >
-          {tab.value === selected.value ? tab.content : null}
+          {tab.value === selected.value || tab.keepMounted ? tab.content : null}
         </div>
       ))}
       <span className="sr-only" aria-live="polite">

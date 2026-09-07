@@ -6,56 +6,80 @@ const source = readFileSync(
   join(process.cwd(), "src/app/(admin)/admin/moderation/page.tsx"),
   "utf8",
 );
-const bulkSubmitSource = readFileSync(
-  join(process.cwd(), "src/app/admin/admin-bulk-action-submit.tsx"),
-  "utf8",
-);
+const queue = readFileSync(join(process.cwd(), "src/app/admin/moderation-queue.tsx"), "utf8");
 
 describe("admin moderation desktop console source", () => {
   it("uses a shared admin moderation workbench without adding a contextual AI rail", () => {
-    expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="admin-moderation">');
+    expect(source).toContain("<PageShell>");
+    expect(source).toContain("<PageHeader");
+    expect(source).toContain('<AdminNav active="/admin/moderation" />');
+    expect(source).toContain("getAdminModerationData()");
+    expect(source.match(/<PageShell>/g)).toHaveLength(1);
+    expect(source).not.toMatch(/max-w-(?:6xl|7xl|\[1500px\])/);
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
   });
 
   it("keeps reports and events as separate exportable queue workbenches", () => {
-    for (const scope of ["admin-moderation-reports", "admin-moderation-events"]) {
-      expect(source).toContain(`data-workbench-scope="${scope}"`);
-      expect(source).toContain(`viewKey="${scope}"`);
-      expect(source).toContain(`scope="${scope}"`);
-      expect(source).toContain(`exportTableId="${scope}"`);
-      expect(source).toContain(`data-workbench-export-table="${scope}"`);
+    expect(queue).toContain(
+      'kind === "report" ? "admin-moderation-reports" : "admin-moderation-events"',
+    );
+    for (const attribute of [
+      "viewKey",
+      "scope",
+      "data-workbench-scope",
+      "data-workbench-export-table",
+    ]) {
+      expect(queue).toContain(`${attribute}={scope}`);
     }
-
-    expect(source).toContain("DataTableFrame");
-    expect(source).toContain('mainTableLabel="User reports table"');
-    expect(source).toContain('label="Moderation events table"');
-    expect(source).toContain("stickyFirstColumn");
-    expect(source).toContain("<TableCaption");
-    expect(source).toContain("tabIndex={0}");
-    expect(source.match(/<a\n      href={adminModerationSortHref/g)).toHaveLength(2);
-    expect(source).not.toContain('from "next/link"');
+    expect(queue).toContain("<DesktopWorkbenchControls");
+    expect(queue).toContain("exportFileName={`${scope}-filtered.csv`}");
+    expect(queue).toContain("localView={{");
+    expect(queue).toContain("shown.map((row) => (");
+    expect(queue).toContain("data-column={column.id}");
+    expect(queue).toContain("tabIndex={0}");
+    expect(queue).toContain("<caption");
+    for (const column of [
+      "id",
+      "label",
+      "status",
+      "targetType",
+      "targetId",
+      "reason",
+      "details",
+      "actor",
+      "reportedUser",
+      "severity",
+      "created",
+      "resolved",
+      "metadata",
+    ]) {
+      expect(queue).toContain(`id: "${column}"`);
+    }
+    expect(queue).toContain("url.searchParams.set(`${kind}Q`, next.query)");
   });
 
   it("keeps moderation bulk and row actions confirmable", () => {
-    expect(source).toContain("bulkResolveSocialReportsAction");
-    expect(source).toContain("bulkResolveModerationEventsAction");
-    expect(source).toContain("AdminBulkActionSubmit");
-    expect(source).toContain("writes an admin audit entry");
+    expect(source).toContain("<ModerationQueue");
+    expect(queue).toContain('kind === "report" ? "bulk-resolve-reports" : "bulk-resolve-events"');
+    expect(queue).toContain("setReview(chosen)");
+    expect(queue).toContain("review?.map((row)");
+    expect(queue).toContain('data.append(kind === "report" ? "reportId" : "eventId", row.id)');
+    expect(queue).toContain("Confirm selected resolution");
+    expect(queue).toContain("if (lock.current || !review) return");
+    expect(queue).toContain("if (!pending && !open)");
+    expect(source).toContain("Moderation audit history");
   });
 
   it("announces selected bulk rows and blocks empty bulk submits", () => {
-    expect(source).toContain('formId="admin-report-bulk-form"');
-    expect(source).toContain('fieldName="reportId"');
-    expect(source).toContain('formId="admin-event-bulk-form"');
-    expect(source).toContain('fieldName="eventId"');
-
-    expect(bulkSubmitSource).toContain("document.querySelectorAll<HTMLInputElement>");
-    expect(bulkSubmitSource).toContain('data-admin-bulk-selected-count="true"');
-    expect(bulkSubmitSource).toContain('aria-live="polite"');
-    expect(bulkSubmitSource).toContain("disabled={selectedCount === 0}");
-    expect(bulkSubmitSource).toContain("Resolve ${selectedCount} selected");
+    expect(queue).toContain(
+      'shown.filter((row) => row.status === "open" && selected.includes(row.id))',
+    );
+    expect(queue).toContain('<p role="status"');
+    expect(queue).toContain("{chosen.length} selected");
+    expect(queue).toContain("disabled={!ready || !chosen.length}");
+    expect(queue).toContain("Select visible open records");
+    expect(queue).toContain("setSelected([])");
   });
 
   it("excludes companion moderation sheets from the desktop-only route", () => {

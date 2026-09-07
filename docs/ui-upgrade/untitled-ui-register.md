@@ -1,0 +1,229 @@
+# Untitled UI reference and availability register
+
+Checked 6 September 2026 against the live official references. This register distinguishes vendor components from local compositions. No Untitled UI vendor package is installed. React Aria1.21.1 is installed for explicit namespaced adapters; existing compatibility primitives retain Radix/shadcn. Never pass Radix `asChild`, `value` or `onValueChange` to a React Aria component without an explicit adapter.
+
+| IDs | Official reference                                                                                                                                                                               | Availability / exports checked                                                                                                                                                                             | Implementation decision                                                                                                                                |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| G01 | [Page headers](https://www.untitledui.com/react/components/page-headers) — Simple                                                                                                                | Documentation exposes previews and Get the code, not a public component export; paid access not established                                                                                                | Local semantic header composition in `src/components/untitled-ui/headers.tsx`, using supplied real actions and metrics; no paid code copied or claimed |
+| G01 | [Section headers](https://www.untitledui.com/react/components/section-headers) — buttons                                                                                                         | CLI name `section-headers`; example code gated by Get the code; paid access not established                                                                                                                | Local semantic section-header composition with naturally wrapping actions                                                                              |
+| G05 | [Avatars](https://www.untitledui.com/react/components/avatars), [Badges](https://www.untitledui.com/react/components/badges), [Dropdowns](https://www.untitledui.com/react/components/dropdowns) | All marked FREE; dropdown docs expose `Dropdown.Popover`, `Dropdown.Menu`, `Dropdown.Item`, `Dropdown.Section`, `Dropdown.Separator`, `Dropdown.SectionHeader`; API uses `isDisabled`, `onSelectionChange` | Implementation pending. Preserve existing real identity and Radix menus until explicitly mapped and tested; not installed                              |
+
+Static headers do not require client-side React Aria. They preserve the existing action elements, form names and handlers without changing event contracts. Interactive adapters will be introduced separately under the same namespace and must document their actual verified exports and event mappings before use.
+
+## G06 navigation reference
+
+[Sidebar navigations — Sections subheadings](https://www.untitledui.com/react/components/sidebar-navigations) is marked FREE; the current documented CLI component name is `sidebar-navigation-base`. The named example is a composition, not an assumed npm export. This batch preserves the existing Radix Sheet focus/selection contracts and follows the section/subheading reference, with a shared role-filtered directory and bounded mobile/wide drawer. No vendor sidebar implementation or paid featured-card example was installed. Destination mobile tasks remain independently tracked.
+
+## G02 / G03 / G10 update — 6 September, continuation
+
+- G02 follows the official free Sections subheadings composition with a local `NavigationSection`: semantic button, expanded state, controlled content, active-child label and all icon-mode destinations.
+- G03 [Actions stacked command menu](https://www.untitledui.com/react/components/command-menus) remains gated by Get the code; commercial access is not established. The accessible alternative is the existing cmdk/Radix palette, now shared by workbench and companion. It uses the same owner-authorised entity API, catalogue and saved-item persistence; no paid code was copied.
+- G10 [Buttons](https://www.untitledui.com/react/components/buttons) is FREE. Official public `Button` source exposes `isDisabled`, `isLoading`, `onPress` and native form props; repository licence was checked at https://raw.githubusercontent.com/untitleduico/react/main/LICENSE. Modal page retrieval exceeded the web parser limit, so paid modal source remains unavailable/unverified; local accessible Radix confirmation composition is the explicit alternative.
+- Installed **react-aria-components 1.21.1**, Apache-2.0. Checked actual installed exports `Button`, `TextField`, `Input`, `Label`, `Text`, `FieldError`, `Select`, `SelectValue`, `Popover`, `ListBox`, `ListBoxItem`. Current Select declarations deprecate `selectedKey`, `defaultSelectedKey` and `onSelectionChange`; use `value`, `defaultValue`, `onChange`.
+- New `untitled-ui/form-controls.tsx` intentionally maps native `required`/`disabled` to `isRequired`/`isDisabled`; string `onValueChange` to current value callbacks. No fabricated ChangeEvent or blind Radix `asChild` substitution. Existing native `ui/Input` and Radix `ui/Select` remain compatibility boundaries for callers using those contracts. `UntitledSubmitButton` uses native name/value/formAction and React Aria onPress/isPending, and is consumed by DirtyFormBar.
+- Fixture browser passes native submitter data, required validation, confirmed onClick, failed-save retention, drawer focus/field clearance, and new Aria TextField/Select/Button values across all six specified sizes (`forms-browser.log`, 1 passed11.2s). Full real caller and software-keyboard matrix remains outstanding.
+
+## Progress references — 6 September continuation
+
+P01-C02: official [Tabs — Underline](https://www.untitledui.com/react/components/tabs) is FREE, built on React Aria. Installed Tabs, TabList, Tab and TabPanel exports compile; controlled selectedKey/onSelectionChange is valid for Tabs (distinct from Select). Namespaced `src/components/untitled-ui/tabs.tsx` carries the controlled UI; the local Progress wrapper implements URL state and wrapping/scrollable strip; no assumed vendor export. P01-C04 [Line & bar charts](https://www.untitledui.com/react/components/line-bar-charts) is FREE. No historical composite observations exist, so the permitted snapshot/baseline-needed alternative replaces the invented chart. Measured club history uses a tap-selectable dated list and semantic table. Existing training renderer remains intact. P01-C03 uses explicit Aria Select/TextField adapters and existing accessible Radix Sheet/native date inputs as the local filter/date-drawer composition; paid filter/date example access is not established.
+
+## P35 / P36 references, 7 September UI pass
+
+- [Radio groups — Icon card](https://www.untitledui.com/react/components/radio-groups): preview/CLI name `radio-groups` verified; code link remains gated/unavailable, entitlement not established. Accessible alternative implemented as `UntitledRadioCards` using installed React Aria `RadioGroup`, `Radio`, `Label` exports, native option values and explicit label/description associations. Separate full-width description and wrapping badge/title follow the named reference; no paid code claimed.
+- [Progress steps](https://www.untitledui.com/react/components/progress-steps): preview and CLI reference verified, advanced code access not established. Local semantic current-operation navigation with named stage, completed/current/pending/error text and native Back anchors is the accessible alternative.
+- [File uploaders — Progress bar](https://www.untitledui.com/react/components/file-uploaders) is labelled free. Existing file-reading/parser path retained under the reference layout, native picker/drop controls, real read progress, error/retry and removal. No fictional network progress.
+- Session/mapping controls reuse the checked Inputs/Select/Button adapter exports. Shot and matched-plan [Tables](https://www.untitledui.com/react/components/tables) / [Paginations](https://www.untitledui.com/react/components/paginations) use local semantic tables/disclosures/page controls; paid examples not installed. Existing Radix Sheet is the explicit accessible detail composition. Saved-result headers use the established local Simple header alternative; alerts stay inline.
+
+### Dashboard P03,7September2026
+
+Official metrics https://www.untitledui.com/react/components/metrics checked: Simple/actions previews and CLI name available, Get the code gated; no paid entitlement established. Accessible alternative: semantic connected dl using existing tokens. Official Select https://www.untitledui.com/react/components/select marked free; current installed React Aria1.21 value/onChange exports used via existing namespaced adapter. Phone searchable club sheet uses existing Radix Sheet focus containment plus visible44px Close and selected buttons. Charts reuse existing golf/SVG models and Progress measurement/table composition.
+
+### P06 Shots filter and evidence UI
+
+Checked official filter-bars and drawers references 7 September2026. Filter bars document FilterBar.Root/Content/Actions/FilterRow/FilterIconButton exports, but no corresponding local installed export or paid entitlement is established. Accessible local composition uses existing namespaced React Aria UntitledSelect/TextField, native date fields and existing focus-managed Sheet; all query keys retained. Table and pagination retain semantic existing adapters, explicitly label page-only export and server-wide sort. No paid component installation claimed.
+
+## P07–P12 reused references,7September
+
+Headers/section headers, metrics, tables/pagination, drawers/section footers reuse the explicitly documented local accessible alternatives above; paid example entitlement remains unavailable. Select/TextField use actual installed namespaced form-controls exports (UntitledSelect/UntitledTextField); line/bar references retain specialist golf/SVG coordinates and accessible numeric evidence. P11 preserves the existing carousel and native control behavior; it does not claim vendor code installation. New exact-shot sheet uses the existing Radix focus-managed composition.
+
+## P13–P21 UI continuation
+
+Equipment, experiments, practice, quick range, Coach, diagnosis, reports, workspace and Data Chat reuse the official references specified per component: [page headers](https://www.untitledui.com/react/components/page-headers), [section headers](https://www.untitledui.com/react/components/section-headers), [tables](https://www.untitledui.com/react/components/tables), [drawers](https://www.untitledui.com/react/components/drawers), [modals](https://www.untitledui.com/react/components/modals), [inputs](https://www.untitledui.com/react/components/inputs), [select](https://www.untitledui.com/react/components/select), [buttons](https://www.untitledui.com/react/components/buttons) and [metrics](https://www.untitledui.com/react/components/metrics). Header/metric/table/drawer/modal paid example code remains unavailable: entitlement and corresponding installed vendor exports have not been established. Explicit alternatives are the existing semantic PageHeader/section/list/table/dl compositions, native labelled form controls, and focus-managed Radix Sheet/AlertDialog with visible close and error feedback. No paid vendor source installation is claimed. Existing React Aria 1.21.1 namespaced adapters retain their previously verified exports. New report confirmation adds an optional overlayClassName on the local AlertDialogContent adapter to place nested confirmation above its parent Sheet; default callers are unchanged. Specialist golf renderers and domain calculations remain in place.
+
+## P22–P24 analysis continuation
+
+[Filter bars](https://www.untitledui.com/react/components/filter-bars), [date pickers](https://www.untitledui.com/react/components/date-pickers), [drawers](https://www.untitledui.com/react/components/drawers), [section footers](https://www.untitledui.com/react/components/section-footers), tables/paginations, metrics and the established page/section header references are implemented through local accessible compositions. Paid example entitlement and installed vendor exports remain unavailable, so no paid component is claimed: labelled native date/select controls and focus-managed existing Sheet/ResponsiveDetailPanel are the explicit alternatives. Comparison uses existing SVG coordinate/axis functions; baseline square markers and focus circles add non-colour identification. Exact plotted values use a semantic table. Conditions proof reuses the existing classification function without changing its calculation.
+
+## P25–P27 continuation
+
+The specified headers, metrics, filter bars, drawers, modals, tables and date-picker references reuse the registered accessible local compositions; paid example code/entitlement remains unavailable. P25 preserves specialist SVG trajectories and adds numeric inclusion evidence. P26 uses native labelled optional selects (empty means unlinked) and existing focus-managed Sheets/AlertDialogs. P27 uses verified React Aria UrlTabs exports, native search inputs with existing Sheet, semantic mobile dl pairs and desktop table; current state-action exports are checked by TypeScript. Free chart references retain existing calculations and numeric alternatives; zero/missing samples receive no fabricated minimum bar width. No paid vendor installation is claimed.
+
+## P28 Strokes gained
+
+Official filter bars/date pickers/drawers/metrics/table/chart references use established local alternatives because paid example exports/entitlement remain unavailable. Native GET select/date controls plus Radix Sheet retain actual filters. Existing category totals and expected-strokes functions remain; cumulative SVG display replaces independent zero-origin bars and exposes exact semantic values. Local CSS media queries preserve mobile task access even under explicit workbench.
+
+## P29 Performance Lab
+
+Official https://www.untitledui.com/react/components/sliders rechecked7September: FREE, React Aria-based, CLI name slider. Local existing Slider(value/onValueChange arrays) remains the explicit adapter alternative with native number input/bounds/reset; no vendor export assumed. Existing verified React Aria UrlTabs and Radix Sheet/Dialog support complete details and optional confirmation. Paid metrics/table/modal compositions still unavailable as above. Specialized flight coordinates remain; numeric/list alternatives and non-intercepting decorative marks improve input access. Existing snapshot() values now exposed directly, not recalculated in UI.
+
+### P38 Providers — 7 September
+
+Official Tabs and Progress steps references rechecked: https://www.untitledui.com/react/components/tabs and https://www.untitledui.com/react/components/progress-steps . Tabs is advertised free; existing React Aria namespaced UrlTabs adapter retained. Advanced step examples link to Get the code; no paid entitlement established. Accessible local OperationStepper uses only latest actual job status, never cumulative totals. Local responsive sheet, full-field evidence list and guarded disconnect use existing exports. No vendor paid installation claimed. Full operation stages/retry cannot be invented from current job DTO.
+
+### P46–P49 course workflows — 7 September
+
+Official filter bars/drawers, tabs, input/select/button, page/section-header and table/pagination references from the corresponding root prompts are applied through existing local adapters. No paid template entitlement or paid advanced filter/table/page-header exports are available in this checkout; accessible alternatives are explicit: staged local Drawer filters, existing React Aria UrlTabs with retained panels, labelled native inputs/selects, local Sheet forms, semantic history/coordinate tables and disclosure rows. Existing components resolve from repository imports; no nonexistent vendor exports or vendor licence ownership claimed. Course map and geometry renderers remain Leaflet/SVG with their original coordinate model and attribution. Full official-template parity and acceptance matrices are not claimed.
+
+P52 catalogue: official section headers, badges, buttons, empty states/loading/alerts references retained. No licensed paid domain-list template installed; accessible local Card/Badge/Button plus native disclosure composition is the explicit alternative. Existing exports used; real supplied preview URLs, no invented mapping quality or renderer replacement.
+
+P53/P54: official input/select/buttons, section headers, drawers and alerts references implemented through existing accessible adapters plus native staged view controls. Paid drawer/filter templates unavailable; local full task composition is the explicit alternative. Specialized golf maps and Three.js renderer retained. Full3D integration acceptance remains separate.
+
+P55–P57 record workflows: official headers/tables/pagination/tabs/input/select/file-upload/drawers references use existing React Aria/Radix adapters, semantic full mobile disclosure rows and native file input/progress. Paid table/page-header/drawer examples and vendor exports remain unavailable; local accessible compositions are the explicit alternative. No vendor paid installation claimed.
+
+P58 Challenges: official Underline tabs use the namespaced React Aria UntitledTabs adapter; paid domain-list/drawer examples remain unavailable. Explicit alternatives are semantic full-field rows, native progress, labelled native Select/Input/Textarea, and existing responsive Sheet/Drawer with review footer. Vendor paid exports are not installed or claimed; existing local exports checked by types.
+
+P59: paid messaging/table/header/modal/drawer examples unavailable; accessible alternatives are retained React Aria tabs, semantic desktop table/mobile proof disclosures, existing responsive confirmation/invite panels and labelled normal-flow composer with server-confirmed receipts. Full exact task access retained without vendor export assumptions.
+
+P60 Tournaments index: official tabs/table/pagination/metrics references use existing React Aria tabs, semantic table and full mobile disclosure alternatives. Paid table/metrics templates unavailable; current adapters and native course/search/order fields checked via types. No paid vendor export/entitlement assumed.
+
+## P61 Tournament detail
+
+Uses the previously checked official Page headers / Section headers, Progress steps / Progress indicators, Modals, Drawers, File uploaders, Tables and Paginations references specified in P61. Advanced paid example entitlement and installed vendor exports remain unavailable. Explicit accessible alternatives: local compact semantic header; native progress plus ordered round states; installed React Aria retained tabs; existing focus-managed Drawer/Sheet and ResponsiveDetailPanel; labelled native form fields with review and confirmed error states; semantic desktop table and complete mobile articles. Existing proof uploader is extended only with the API's optional numeric proofRoundNumber; no paid source or package installation claimed. Shared OperationStepper's current-step weighting is unchanged for other consumers: TournamentRoundProgress counts saved submissions only.
+
+## P62 Leaderboards
+
+Reuses checked official Filter bars, Drawers, Date pickers, Tables and Paginations references. Paid advanced examples remain unavailable; explicit local alternatives are labelled native period/scope/source/evidence/sort controls, focus-managed ResponsiveDetailPanel, existing semantic sortable desktop tables and complete mobile detail cards. Period controls expose supported all-time/current-month scopes, not invented arbitrary date ranges. Current installed adapter exports reused; no paid vendor source claimed.
+
+## P63 Achievements
+
+Official Calendars https://www.untitledui.com/react/components/calendars and Activity feeds https://www.untitledui.com/react/components/activity-feeds checked7September2026. Calendar month/week/day and activity-feed examples use Get the code; no advanced entitlement or local vendor Calendar/ActivityFeed export established. Explicit accessible alternatives: existing date buttons + real unlock event list, native phone date picker, local semantic evidence ledger, and focus-managed detail/share panels. Metrics, section headers, badges, filters and modals reuse previously checked references. Existing artwork and achievement calculations retained; no paid vendor installation claimed.
+
+## P64 Friends
+
+Specified official Tabs, Tables, Avatars, Dropdowns and Modals references use current installed React Aria tab adapter, semantic desktop list/full mobile rows, existing Avatar and focus-managed ResponsiveDetailPanel. Paid advanced examples remain unavailable; named local confirmation panels, native labelled invitation link and existing QR route are the explicit accessible alternatives. Types confirm current exports; no paid source copied.
+
+## P65 Groups directory
+
+Official Underline tabs, section headers/badges/buttons and inputs/select/textarea references reuse current React Aria tabs and existing input/button exports. Paid advanced domain-list and creation-sheet examples remain unavailable; explicit accessible alternatives are semantic full-width group rows, labelled native selects, retained draft review forms and existing focus-managed ResponsiveDetailPanel. No paid source or new vendor package claimed.
+
+## P66 Group clubhouse
+
+Official Underline tabs, domain list, Activity feeds/Dropdowns, forms, Tables/Paginations and Modals/Buttons references reuse installed adapters. Paid advanced templates remain unavailable: explicit alternatives are retained React Aria tabs, semantic dated articles, searchable desktop member table/full mobile detail rows, and focus-managed post/danger panels with native labelled fields. Existing server permission/scoring values retained; no paid source claimed.
+
+## P67 Clubhouse feed
+
+Specified official Filter bars/Drawers/Date pickers, Activity feeds/Dropdowns and form references reuse installed adapters. Paid advanced examples unavailable; explicit accessible alternatives are labelled native scope/date fields in focus-managed filterpanel, dated semantic activity rows, retained review composer, native audience selector, and named confirmation panels. Original local image processing and source data retained. Decorative pseudo-dispersion thumbnail replaced by a truthful source-session link; specialist renderers untouched.
+
+## P68 Recaps and safety
+
+Specified official forms/select/textarea, section headers, tables/paginations and drawers references reuse installed exports. Paid advanced templates remain unavailable; explicit alternatives are labelled native selectors, retained review forms in focus-managed responsive panels, semantic sortable safety table and complete mobile records. No paid source or entitlement claimed.
+
+## P69 Your Profile
+
+Specified Avatars/Badges, Underline tabs, Metrics, domain lists, Tables/Paginations, Inputs/Select/Textarea, File uploaders, Toggles and Modals references reuse checked current exports. Paid advanced examples remain unavailable; accessible alternatives are retained React Aria tabs, semantic full-field cards/table/mobile details, labelled native fields, persistent native dialog with focus return, actual local image preparation progress, and existing responsive share panel. No paid vendor implementation claimed.
+
+## P70 Public Profile
+
+Specified Avatars/Badges/Dropdowns, Modals/Buttons, Tables/Paginations and Activity feeds references reuse current accessible adapters. Paid advanced examples unavailable; explicit alternatives are existing named-person confirmation menu, semantic sortable permitted summary table, full native mobile disclosures and dated permitted feed/ledger. No raw shot expansion or new paid component claimed.
+
+## P71 Settings
+
+Specified sidebar navigation, forms/select/toggles, tables/pagination, domain lists, alerts and modals references reuse checked installed exports. Paid advanced settings/sidebar/table templates remain unavailable; explicit alternatives are retained local settings navigation, labelled preference rows and stateful forms, native full mobile disclosures, existing responsive confirmation panels and the shared typed-confirmation button. Native local payload progress/status is factual; no paid source or new vendor package claimed.
+
+## P72/P73
+
+Specified Forms/Select/Toggles, Page headers and Modals/Buttons references reuse checked installed adapters. Paid advanced examples unavailable; explicit alternatives are labelled native category selects, existing Switch and confirmed state form, semantic invitation definition list and focus-managed ResponsiveDetailPanel. No paid export assumed or installed.
+
+## P74 Shared account
+
+Specified Page/Section headers, Metrics/Tooltips and Tables/Paginations references reuse installed local exports. Paid advanced examples unavailable; semantic identity and fact rows, sortable scoped ledger and focus-managed complete mobile detail panel are the accessible alternatives. No paid source or new owner mutation access claimed.
+
+## P75 Billing
+
+Specified Metrics, Tables/Paginations, Radio groups/Buttons, Inputs/Select, Modals and Section headers/Content dividers reuse checked installed exports. Paid advanced billing examples unavailable; native labelled interval, semantic comparison with stacked plans and complete native phone disclosure, responsive reviewed handoff and full history detail panels are explicit accessible alternatives. No paid vendor source or invoice data invented.
+
+## P76 Operations
+
+Specified Sidebar navigations, Metrics/Tooltips, Tables/Paginations, Activity feeds/Dropdowns and domain-action references reuse current installed adapters. Paid advanced admin examples unavailable; searchable focus-managed section panel, factual semantic status rows, sortable queue table/full mobile detail panel and native chronological audit disclosures are the accessible alternatives. No paid source or broader admin permission implied.
+
+## P77 Account management
+
+Specified Filter bars/Drawers/Date pickers, Tables/Paginations, Modals/Buttons and Alerts/Notifications references reuse current installed exports. Paid advanced examples unavailable; native labelled query/filter controls, semantic directory/full responsive account detail, exact review forms and normal-flow confirmed feedback are explicit accessible alternatives. No paid source or broadened admin role implied.
+
+## P78 Moderation
+
+Specified Filter bars/Drawers/Date pickers, Tables/Paginations, Modals/Buttons and Activity feeds/Dropdowns reuse checked installed exports. Paid advanced templates unavailable; native filters and touch selection, semantic separate ledgers, complete responsive evidence/review panels and actual chronological audit disclosures are the accessible alternatives. Selection alone performs no mutation; no paid source claimed.
+
+## P79 Billing administration
+
+Specified official metrics, inputs/select, tables/paginations and activity feeds reuse previously checked references. Paid advanced examples remain unavailable. Accessible alternatives: semantic loaded-count strip, native labelled search/order fields, desktop table/full mobile detail panel, canonical account lookup and existing review form with pending/error recovery, actual audit definition lists. Current local exports pass TypeScript; no paid vendor installation claimed.
+
+## P80 Challenge administration
+
+Specified official metrics/tooltips, inputs/select/textarea/buttons, tables/pagination and modals reuse previously checked references. Paid advanced examples unavailable. Explicit alternatives: compact semantic metrics, native labelled fields and validated JSON settings, focus-managed full editor/review panels, sortable semantic desktop table and full mobile board details. Local exports typechecked; no paid source installed.
+
+## P81 System checks
+
+Previously checked official metrics/tooltips, tables/paginations, modals/buttons and activity feeds/dropdowns. Paid advanced examples unavailable. Accessible local alternatives: semantic evidence summaries and tables, native filter controls, full responsive diagnostic/review panel and native dated history disclosures. Current exports pass types; no vendor package/source installation.
+
+## P82 Partners
+
+Specified official metrics/tooltips, inputs/select/textarea/buttons, section headers/badges/domain lists and tables/pagination use previously checked references. Paid advanced examples unavailable. Accessible local alternatives: labelled native creation fields, focus-managed full review sheets, complete semantic offer articles and responsive searchable sponsor table/details. Local exports checked with types; no paid vendor source installed.
+
+## P83 Public home
+
+Specified official page/section headers/contentdividers, navigation, tables/radiogroups/buttons and input references reuse checked sources. Paid advanced examples unavailable. Local accessible alternatives preserve branded golf art: semantic fullplan lists, native FAQ disclosure, existing focus-managed searched Sheet and ResponsiveDetailPanel, genuine feature/full-image links. No new paid exports or installation claimed.
+
+## P84 Authentication
+
+Checked official headers/sections, inputs/select/textarea/buttons and alerts/notifications references reused. Advanced paid examples unavailable. Accessible alternatives preserve existing auth contracts: native autofill fields, stateful password visibility, inline field-described errors and real pending/confirmed receipts. Local exports typechecked; no new auth provider or paid package claimed.
+
+## P85 Onboarding
+
+Previously checked official headers, progress indicators, section headers and buttons. Paid advanced examples unavailable. Accessible local alternative: native progress with saved evidence count, semantic ordered checklist, actual current task links and native stateful skip form with inline recovery. Local exports typechecked; no paid installation claimed.
+
+## P86 Data notice
+
+Previously checked official page/section headers, content dividers, badges and buttons. Paid advanced examples unavailable. Accessible alternative: single semantic header, native anchor navigation and full text sections with labelled practical-control articles. Existing local exports pass TypeScript; no paid source installed.
+
+## P87 Offline saved golf
+
+Checked official alerts/notifications, progress, golf-visual toolbar, forms and navigation references reused. Paid advanced examples unavailable. Local accessible alternative: normal-flow saved-copy alert, semantic full-width resource groups, searchable focus-managed panel, five existing primary buttons and complete existing offline task renderers. No specialist visual replacement or paid installation.
+
+## P88 Shared round
+
+Checked official headers, tables/pagination and empty/loading/alerts reused. Paid advanced examples unavailable. Accessible alternatives: shared semantic pinned scorecard, recorded-evidence summary, native public navigation and dedicated route recovery boundaries. Existing export adapter retained; local exports typechecked.
+
+## P89 Shared Course Twin
+
+Previously checked official headers, select/tooltips and empty/loading/alerts. Paid advanced examples unavailable. Accessible local shell uses visible semantic public identity, scope and exit with scoped responsive layout around unchanged canonical3D/2D renderer; dedicated recovery boundaries. No geometry replacement or paid installation.
+
+## P90 Shared coach report
+
+Checked official form, section/divider and empty/loading/alert references reused. Paid advanced examples unavailable. Accessible local alternatives: labelled stateful native password form, full frozen evidence sections, keyboard-focusable table regions with pinned identity and explicit public recovery. Existing server permission/cookie contracts retained; no paid installation.
+
+## P91 Desktop handoff
+
+Checked official section/badge/button domain lists and empty/loading/alerts reused. Paid advanced examples unavailable. Accessible alternative: one semantic full-width header, native preserved-context disclosure and large native route/surface links. Unsupported underlying tasks are not marked complete.
+
+## P92 Companion summary
+
+Checked official section/badge/button domain-list references reused. Paid advanced examples unavailable. Accessible alternatives: native destination disclosure, semantic full current-evidence rows, explicit preserved-context surface navigation and optional route-specific driver disclosure. No deeper task acceptance inferred.
+
+## P93 Course record alias
+
+Official Underline tabs reference applies at the existing P57 destination; server alias preserves its canonical UI and query, with no duplicate page or invented tab. Existing local destination adapters retained; paid advanced examples remain unavailable.
+
+## P94 Course tournament alias
+
+Official Underline tabs reference remains at canonical P60 tournament index. Query/filter preserved with real selected course; no duplicate page or paid source installed.
+
+## P95–P98 tournament aliases
+
+Reuse the P61 accessible canonical tab composition and official Untitled UI tabs reference already registered there. Redirect routes introduce no separate paid component or duplicate page. Paid entitlement remains unavailable; existing local accessible composition is the recorded alternative.
+
+## Performance adapter verification — 7 September
+
+The namespaced tabs remain a local composition of the official free [Underline tabs](https://www.untitledui.com/react/components/tabs). They now use the installed public React Aria hooks (`useTabList`, `useTab`, `useTabPanel`, `useFocusRing`, `mergeProps`) and React Stately (`useTabListState`, `Item`), avoiding the heavier collection component layer. Direct dependencies declare the existing resolved versions `react-aria@3.52.1` and `react-stately@3.50.0`, both Apache-2.0. No paid vendor source was introduced.
+
+The Select adapter loads its existing React Aria menu at first use, with a labelled native required-field/loading-failure fallback. Form names, disabled options, controlled values and native validation remain supported. Six-viewport browser checks passed for keyboard activation, selection, nested-dialog Escape/focus restoration, disabled controls, chunk failure, required validation and pending-load focus cancellation. Tabs checks passed for arrow/Home/End navigation, selected panel associations, disabled state, horizontal reveal and retained drafts. Public form exports are preserved through separate client modules. Logs: `/tmp/fkh-form-adapter-split.log` and `/tmp/fkh-tabs-hooks-browser.log`. These are scoped regression checks, not full application acceptance.

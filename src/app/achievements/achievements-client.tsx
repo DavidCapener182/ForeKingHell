@@ -11,10 +11,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  EyeOff,
   Lock,
   RotateCcw,
-  Search,
   Trophy,
   Zap,
 } from "lucide-react";
@@ -40,10 +38,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Item } from "@/components/ui/item";
 import { Progress } from "@/components/ui/progress";
-import { MobileFilterSheet } from "@/components/premium";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { AchievementFilterControls } from "@/app/achievements/achievement-filter-controls";
+import boardStyles from "@/app/course-records/course-record-board.module.css";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { achievementDomId } from "@/lib/alert-links";
 import type { AchievementPageData, AchievementView } from "@/lib/achievements/service";
@@ -185,7 +182,7 @@ const calendarGridStyle = {
 
 const calendarCellStyle = {
   aspectRatio: "1 / 1",
-  minHeight: "2.5rem",
+  minHeight: "2.75rem",
   width: "100%",
 } as const;
 const defaultCatalogueLimit = 72;
@@ -373,18 +370,6 @@ export function AchievementsClient({ data, focusAchievementId, presentation }: P
     hideCompleted !== defaultHideCompleted ||
     Boolean(query.trim()) ||
     Boolean(focusedAchievementId);
-  const selectedTypeLabel =
-    typeFilter === "all"
-      ? "All types"
-      : (typeOptions.find((item) => item.id === typeFilter)?.label ?? "All types");
-  const selectedClubLabel =
-    clubFilter === "all"
-      ? "All clubs"
-      : (clubOptions.find((item) => item.id === clubFilter)?.label ?? "All clubs");
-  const selectedTierLabel =
-    tierFilter === "all"
-      ? "All tiers"
-      : (tierOptions.find((item) => item.id === tierFilter)?.label ?? "All tiers");
   const shownAchievements = focusedAchievementId
     ? filteredAchievements.slice(0, 1)
     : filteredAchievements.slice(0, catalogueLimit);
@@ -430,11 +415,6 @@ export function AchievementsClient({ data, focusAchievementId, presentation }: P
     setCatalogueLimit(defaultCatalogueLimit);
   }
 
-  function toggleHideCompleted() {
-    setHideCompleted((current) => !current);
-    setCatalogueLimit(defaultCatalogueLimit);
-  }
-
   function showUnlockedAchievements() {
     setHideCompleted(false);
     setStatusFilter("unlocked");
@@ -451,7 +431,7 @@ export function AchievementsClient({ data, focusAchievementId, presentation }: P
     <div className="space-y-5">
       {isCompanion ? <MobileAchievementTabs tab={mobileTab} onTabChange={setMobileTab} /> : null}
 
-      {isCompanion && mobileTab === "next" ? (
+      {!isCompanion || mobileTab === "next" ? (
         <section className="space-y-4">
           <NextUnlockCard
             achievement={nextUnlock}
@@ -512,9 +492,16 @@ export function AchievementsClient({ data, focusAchievementId, presentation }: P
               </div>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4">
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div
+                className="grid gap-3"
+                style={{ gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,12rem),1fr))" }}
+              >
                 <Metric label="Total XP" value={data.totalXp.toLocaleString("en-GB")} dark />
-                <Metric label="Unlocked" value={`${data.unlockedCount}/${data.totalCount}`} dark />
+                <Metric
+                  label="Unlocked"
+                  value={`${data.unlockedCount.toLocaleString("en-GB")} / ${data.totalCount.toLocaleString("en-GB")}`}
+                  dark
+                />
                 <Metric
                   label="Next level"
                   value={`${data.level.progressXp}/${data.level.neededXp}`}
@@ -637,111 +624,22 @@ export function AchievementsClient({ data, focusAchievementId, presentation }: P
                 </CardDescription>
               </div>
             </div>
-            {isCompanion ? (
-              <MobileFilterSheet label="Filter catalogue" activeCount={isFiltered ? 1 : 0}>
-                <div className="grid gap-3">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={query}
-                      onChange={(event) => updateQuery(event.target.value)}
-                      placeholder="Search achievements"
-                      className="pl-9"
-                    />
-                  </div>
-                  <AchievementSelect
-                    label="Achievement type"
-                    value={typeFilter}
-                    onValueChange={updateTypeFilter}
-                    options={typeOptions}
-                    allLabel="All types"
-                  />
-                  <AchievementSelect
-                    label="Club"
-                    value={clubFilter}
-                    onValueChange={updateClubFilter}
-                    options={clubOptions}
-                    allLabel="All clubs"
-                  />
-                  <AchievementSelect
-                    label="Tier"
-                    value={tierFilter}
-                    onValueChange={updateTierFilter}
-                    options={tierOptions}
-                    allLabel="All tiers"
-                  />
-                  <Button
-                    type="button"
-                    variant={hideCompleted ? "default" : "outline"}
-                    className="h-10 justify-center rounded-lg"
-                    onClick={toggleHideCompleted}
-                  >
-                    <EyeOff className="size-4" />
-                    Hide completed
-                  </Button>
-                </div>
-              </MobileFilterSheet>
-            ) : (
-              <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-[minmax(180px,1fr)_minmax(145px,190px)_minmax(145px,190px)_minmax(145px,190px)_auto]">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={query}
-                    onChange={(event) => updateQuery(event.target.value)}
-                    placeholder="Search achievements"
-                    className="pl-9"
-                  />
-                </div>
-                <Select value={typeFilter} onValueChange={updateTypeFilter}>
-                  <SelectTrigger className="h-10 w-full rounded-lg" aria-label="Achievement type">
-                    <span className="truncate">{selectedTypeLabel}</span>
-                  </SelectTrigger>
-                  <SelectContent position="popper" align="start" className="z-[80]">
-                    <SelectItem value="all">All types</SelectItem>
-                    {typeOptions.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.label} ({item.unlocked}/{item.total})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={clubFilter} onValueChange={updateClubFilter}>
-                  <SelectTrigger className="h-10 w-full rounded-lg" aria-label="Club">
-                    <span className="truncate">{selectedClubLabel}</span>
-                  </SelectTrigger>
-                  <SelectContent position="popper" align="start" className="z-[80]">
-                    <SelectItem value="all">All clubs</SelectItem>
-                    {clubOptions.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.label} ({item.unlocked}/{item.total})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={tierFilter} onValueChange={updateTierFilter}>
-                  <SelectTrigger className="h-10 w-full rounded-lg" aria-label="Tier">
-                    <span className="truncate">{selectedTierLabel}</span>
-                  </SelectTrigger>
-                  <SelectContent position="popper" align="start" className="z-[80]">
-                    <SelectItem value="all">All tiers</SelectItem>
-                    {tierOptions.map((item) => (
-                      <SelectItem key={item.id} value={item.id}>
-                        {item.label} ({item.unlocked}/{item.total})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  variant={hideCompleted ? "default" : "outline"}
-                  className="h-10 justify-center rounded-lg"
-                  onClick={toggleHideCompleted}
-                >
-                  <EyeOff className="size-4" />
-                  Hide completed
-                </Button>
-              </div>
-            )}
+            <AchievementFilterControls
+              query={query}
+              onQuery={updateQuery}
+              values={{ type: typeFilter, club: clubFilter, tier: tierFilter, hide: hideCompleted }}
+              options={{ type: typeOptions, club: clubOptions, tier: tierOptions }}
+              onReset={() => {
+                clearFilters();
+                setHideCompleted(false);
+              }}
+              onApply={(value) => {
+                updateTypeFilter(value.type);
+                updateClubFilter(value.club);
+                updateTierFilter(value.tier);
+                setHideCompleted(value.hide);
+              }}
+            />
             <div className="flex flex-wrap items-center gap-2">
               {focusedAchievement ? (
                 <Badge className="border-[var(--status-information-border)] bg-[var(--status-information-surface)] text-[var(--status-information-foreground)] hover:bg-[var(--status-information-surface)]">
@@ -881,9 +779,24 @@ export function AchievementUnlockCalendar({
         </div>
       </CardHeader>
       <CardContent>
+        <div className={boardStyles.mobile}>
+          <label className="mb-3 grid gap-2 text-sm font-medium">
+            Select unlock date
+            <Input
+              type="date"
+              value={selectedDay ?? ""}
+              onChange={(event) => {
+                if (event.target.value) {
+                  onSelectedDayChange(event.target.value);
+                  onMonthChange(event.target.value.slice(0, 7));
+                }
+              }}
+            />
+          </label>
+        </div>
         <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
           <section
-            className="rounded-xl border bg-muted/20 p-3"
+            className={`${boardStyles.desktop} rounded-xl border bg-muted/20 p-3`}
             aria-label="Achievement calendar month"
             data-achievement-calendar-month
           >
@@ -1161,40 +1074,6 @@ function NextUnlockCard({
   );
 }
 
-function AchievementSelect({
-  label,
-  value,
-  onValueChange,
-  options,
-  allLabel,
-}: {
-  label: string;
-  value: string;
-  onValueChange: (value: string) => void;
-  options: Array<{ id: string; label: string; total: number; unlocked: number }>;
-  allLabel: string;
-}) {
-  return (
-    <Select value={value} onValueChange={onValueChange}>
-      <SelectTrigger className="h-10 w-full rounded-lg" aria-label={label}>
-        <span className="truncate">
-          {value === "all"
-            ? allLabel
-            : (options.find((item) => item.id === value)?.label ?? allLabel)}
-        </span>
-      </SelectTrigger>
-      <SelectContent position="popper" align="start" className="z-[80]">
-        <SelectItem value="all">{allLabel}</SelectItem>
-        {options.map((item) => (
-          <SelectItem key={item.id} value={item.id}>
-            {item.label} ({item.unlocked}/{item.total})
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
 function CalendarUnlockItem({ achievement }: { achievement: AchievementView }) {
   return (
     <div className="apple-panel-strong p-3">
@@ -1354,20 +1233,18 @@ export function AchievementCard({
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Item
+        <button
+          type="button"
           id={achievementDomId(achievement.id)}
-          role="button"
-          tabIndex={0}
-          variant="outline"
           data-achievement-catalogue-item
           className={cn(
-            "min-h-40 cursor-pointer flex-col items-stretch justify-between bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-muted/20",
+            "min-h-40 w-full cursor-pointer flex flex-col border rounded-xl items-stretch justify-between bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-muted/20",
             achievement.unlocked ? "border-[var(--status-success-border)]" : "border-border",
             focused && "ring-2 ring-ring/40",
           )}
         >
           <AchievementCardBody achievement={achievement} />
-        </Item>
+        </button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -1375,6 +1252,15 @@ export function AchievementCard({
           <DialogDescription>{achievement.displayDescription}</DialogDescription>
         </DialogHeader>
         <AchievementCardBody achievement={achievement} />
+        <p className="text-sm">
+          Category: {categoryLabels[achievement.category] ?? achievement.category} ·{" "}
+          {achievement.unlocked
+            ? `Unlocked ${formatUnlockDate(achievement.unlockedAt)}`
+            : "Locked: target not yet reached"}
+        </p>
+        {achievement.unlocked ? (
+          <RecentUnlockEvidence achievement={achievement} source={achievement.source} />
+        ) : null}
       </DialogContent>
     </Dialog>
   );
@@ -1407,7 +1293,7 @@ function AchievementCardBody({ achievement }: { achievement: AchievementView }) 
         ) : achievement.progressPercent !== null ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{achievement.progressLabel ?? "Next unlock"}</span>
+              <span>Locked · {achievement.progressLabel ?? "Next unlock"}</span>
               <span>{achievement.progressPercent}%</span>
             </div>
             <Progress value={achievement.progressPercent} />
@@ -1509,7 +1395,7 @@ function Metric({ label, value, dark = false }: { label: string; value: string; 
     <div
       className={cn(
         "min-w-0 rounded-lg border p-2 sm:p-3",
-        dark ? "border-white/10 bg-white/5" : "bg-white/80",
+        dark ? "border-white/10 bg-white/5" : "bg-card",
       )}
     >
       <p
@@ -1522,7 +1408,7 @@ function Metric({ label, value, dark = false }: { label: string; value: string; 
       </p>
       <p className="mt-1 flex min-w-0 items-center gap-2 text-base font-semibold tracking-normal sm:text-2xl">
         {label === "Catalog" ? <Trophy className="size-5 text-amber-500" /> : null}
-        <span className="min-w-0 [overflow-wrap:anywhere]">{value}</span>
+        <span className="min-w-0 whitespace-nowrap">{value}</span>
       </p>
     </div>
   );

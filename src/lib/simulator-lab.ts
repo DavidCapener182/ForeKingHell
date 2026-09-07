@@ -60,7 +60,17 @@ export type GappingMatrixRow = {
   tone: SimulatorLabTone;
 };
 
+export type ComparisonEvidence = {
+  snapshot: MetricSnapshot;
+  sessionIds: string[];
+  firstShotAt: Date | null;
+  lastShotAt: Date | null;
+  window?: { start: Date; end: Date | null; endExclusive: true };
+};
+
 export type SessionDeltaRow = {
+  latestEvidence?: ComparisonEvidence;
+  baselineEvidence?: ComparisonEvidence;
   clubType: string;
   clubLabel: string;
   latestShotCount: number;
@@ -76,6 +86,8 @@ export type SessionDeltaRow = {
 };
 
 export type EquipmentChangeImpact = {
+  beforeEvidence?: ComparisonEvidence;
+  afterEvidence?: ComparisonEvidence;
   id: string;
   clubId: string;
   clubType: string;
@@ -141,7 +153,7 @@ export type EquipmentHistoryRow = {
   notes: string | null;
 };
 
-type MetricSnapshot = {
+export type MetricSnapshot = {
   shotCount: number;
   carryAverageYd: number | null;
   ballSpeedAverageMph: number | null;
@@ -238,7 +250,13 @@ export async function getSimulatorLabData(userId?: string): Promise<SimulatorLab
     clubs: activeClubs,
     shots: stockShotRows,
   });
-  const sessionDeltas = buildSessionDeltaRows(latestShotRows, baselineShotRows);
+  const sessionDeltas = buildSessionDeltaRows(
+    latestShotRows,
+    baselineShotRows,
+    latestSession && baselineStart
+      ? { start: baselineStart, end: latestSession.date, endExclusive: true }
+      : undefined,
+  );
   const equipmentImpacts = buildEquipmentChangeImpacts(historyRows, stockShotRows);
   const roastFacts = latestSession
     ? buildSessionRoastFacts(latestSession, latestShotRows, sessionDeltas)
@@ -357,6 +375,7 @@ export function buildGappingMatrixRows({
 export function buildSessionDeltaRows(
   latestShots: SimulatorLabShot[],
   baselineShots: SimulatorLabShot[],
+  baselineWindow?: ComparisonEvidence["window"],
 ): SessionDeltaRow[] {
   const baselineByClubType = groupBy(
     baselineShots.filter(
@@ -376,7 +395,8 @@ export function buildSessionDeltaRows(
     .sort(([left], [right]) => clubSortValue(left) - clubSortValue(right))
     .map(([clubType, shotsForClub]) => {
       const latest = snapshot(shotsForClub);
-      const baseline = snapshot(baselineByClubType.get(clubType) ?? []);
+      const baselineForClub = baselineByClubType.get(clubType) ?? [];
+      const baseline = snapshot(baselineForClub);
       const carryDeltaYd = nullableDelta(latest.carryAverageYd, baseline.carryAverageYd);
       const ballSpeedDeltaMph = nullableDelta(
         latest.ballSpeedAverageMph,
@@ -396,6 +416,8 @@ export function buildSessionDeltaRows(
       });
 
       return {
+        latestEvidence: comparisonEvidence(shotsForClub, latest),
+        baselineEvidence: comparisonEvidence(baselineForClub, baseline, baselineWindow),
         clubType,
         clubLabel: formatClubType(clubType),
         latestShotCount: latest.shotCount,
@@ -464,6 +486,16 @@ export function buildEquipmentChangeImpacts(
     });
 
     impacts.push({
+      beforeEvidence: comparisonEvidence(before, beforeSnapshot, {
+        start: beforeStart,
+        end: history.effectiveFrom,
+        endExclusive: true,
+      }),
+      afterEvidence: comparisonEvidence(after, afterSnapshot, {
+        start: history.effectiveFrom,
+        end: afterEnd,
+        endExclusive: true,
+      }),
       id: history.id,
       clubId: history.clubId,
       clubType: history.clubType,
@@ -817,6 +849,21 @@ function equipmentVerdict(input: {
   if (score >= 2) return "helped";
   if (score <= -2) return "hurt";
   return "mixed";
+}
+
+function comparisonEvidence(
+  rows: SimulatorLabShot[],
+  metricSnapshot: MetricSnapshot,
+  window?: ComparisonEvidence["window"],
+): ComparisonEvidence {
+  const times = rows.map((shot) => shot.shotAt.getTime()).filter(Number.isFinite);
+  return {
+    snapshot: metricSnapshot,
+    sessionIds: [...new Set(rows.map((shot) => shot.sessionId))].sort(),
+    firstShotAt: times.length ? new Date(Math.min(...times)) : null,
+    lastShotAt: times.length ? new Date(Math.max(...times)) : null,
+    ...(window ? { window } : {}),
+  };
 }
 
 function snapshot(inputShots: SimulatorLabShot[]): MetricSnapshot {

@@ -71,6 +71,12 @@ describe("Play companion selection", () => {
     expect(lazySetupSource).toContain('import("@/app/play/play-setup-experience")');
     expect(lazySetupSource).toContain("{open ? <PlaySetupExperience");
     expect(setupExperienceSource).toContain("<Drawer open={open}");
-    expect(setupExperienceSource).toContain("<PlaySelectionControls {...selection} />");
+    expect(setupExperienceSource).toMatch(
+      /<PlaySelectionControls\s[\s\S]*?\{\.\.\.selection\}[\s\S]*?stageChanges\s*\/>/,
+    );
+    expect(setupExperienceSource).toContain("Done / cancel unsaved setup");
+    expect(setupExperienceSource).toContain("onClick={() => onOpenChange(false)}");
+    expect(controlsSource).toContain("Apply setup");
+    expect(controlsSource).toContain("if (!staged)");
   });
 });

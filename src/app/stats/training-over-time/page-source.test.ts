@@ -13,13 +13,13 @@ describe("training load page source", () => {
     expect(source).toContain('scope="training-load"');
     expect(source).toContain("TrainingLoadRangeView");
     expect(source).toContain("SpeedReadinessPanel");
-    expect(source).toContain("A golf-specific view of fitness, freshness");
+    expect(source).toContain("Review logged golf workload and choose your next session.");
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("max-w-6xl");
     expect(source).not.toContain("max-w-7xl");
   });
 
-  it("keeps the desktop-only route free of an obsolete companion render tree", () => {
+  it("keeps one shared route free of the obsolete duplicate companion render tree", () => {
     expect(source).not.toContain("MobileTrainingLoadRangeView");
     expect(source).not.toContain("MobileAppShell");
     expect(source).not.toContain("MobileRouteHeader");
@@ -42,7 +42,7 @@ describe("training load page source", () => {
     expect(source).toContain('href="/speed"');
   });
 
-  it("puts one chart and recommendation ahead of desktop-only supporting evidence", () => {
+  it("puts readiness and recommendation ahead of complete supporting evidence", () => {
     const rangeSource = readFileSync(
       join(process.cwd(), "src/components/training/TrainingLoadRangeView.tsx"),
       "utf8",
@@ -57,10 +57,17 @@ describe("training load page source", () => {
     expect(desktopRange).toContain("<TrainingRhythmWorkbench");
     expect(desktopRange).toContain("<TrainingLoadBars");
     expect(desktopRange).toContain("<TrainingSessionLedger");
-    expect(desktopRange).toContain("DesktopTableWorkbenchControls");
+    const ledgerSource = readFileSync(
+      join(process.cwd(), "src/components/training/TrainingSessionLedger.tsx"),
+      "utf8",
+    );
+    expect(ledgerSource).toContain("DesktopTableWorkbenchControls");
+    expect(rangeSource).toContain('import("./TrainingSessionLedger")');
+    expect(desktopRange).toContain("{ledgerVisited ? (");
     expect(desktopRange).toContain("<TrainingStatusCard");
     expect(desktopRange).toContain("<EfficiencyCards");
-    expect(desktopRange).toContain("<ResponsiveDetailPanel");
+    expect(desktopRange).toContain('<details className="rounded-xl border" id="log-training">');
+    expect(desktopRange).toContain("Full training ledger and export");
     expect(desktopRange).toContain("<RecentTrainingSessions");
     expect(desktopRange).toContain("data-training-load-actions");
     expect(desktopRange).toContain("data-training-desktop-history");

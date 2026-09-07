@@ -1,0 +1,385 @@
+.board {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+}
+.record {
+  border-radius: 1.5rem;
+  background: #103d2d;
+  color: #fafcf5;
+  overflow: hidden;
+}
+.recordTop {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid #ffffff29;
+  font-size: 0.75rem;
+}
+.recordTop > span:first-child {
+  display: flex;
+  gap: 0.625rem;
+  align-items: center;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.recordTop > span:last-child {
+  color: #c6ddcb;
+}
+.recordMain {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.55fr);
+  gap: 2rem;
+  padding: 2rem;
+}
+.club {
+  font-size: clamp(1.625rem, 3vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+}
+.metricName {
+  margin-top: 0.75rem;
+  color: #c6ddcb;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.distance {
+  font-size: clamp(3rem, 7vw, 7rem);
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: -0.065em;
+  font-variant-numeric: tabular-nums;
+  margin-top: 0.375rem;
+}
+.definition {
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  color: #d5e7d8;
+  line-height: 1.5;
+}
+.recordProof {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.625rem;
+  border-left: 1px solid #ffffff29;
+  padding-left: 2rem;
+}
+.recordProof > svg {
+  margin-bottom: 0.75rem;
+  color: #c1dc87;
+}
+.recordProof > strong {
+  font-size: 1.25rem;
+}
+.recordProof > span {
+  color: #c6ddcb;
+  font-size: 0.875rem;
+}
+.recordProof > a,
+.recordFooter a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.recordFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  column-gap: 1rem;
+  padding: 0.75rem 2rem;
+  background: #082f22;
+  color: #d5e7d8;
+  font-size: 0.8125rem;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(18rem, 1fr);
+  gap: 1.5rem;
+}
+.clubBoard,
+.evidence {
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1.25rem;
+}
+.clubBoard {
+  padding: 1.5rem;
+}
+.sectionHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.sectionHeading h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.sectionHeading > span,
+.help {
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.help {
+  margin-top: 0.625rem;
+}
+.columnLabels,
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.5rem;
+}
+.columnLabels {
+  margin-top: 1.75rem;
+  padding-bottom: 0.625rem;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.columnLabels > span:not(:first-child) {
+  text-align: center;
+}
+.row {
+  border-top: 1px solid var(--border);
+  padding: 0.625rem 0;
+  align-items: center;
+}
+.clubName {
+  padding-right: 0.5rem;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+.distanceTrack {
+  margin-top: 0.75rem;
+  height: 3px;
+  max-width: 90%;
+  background: var(--muted);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.distanceTrack > span {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  border-radius: 4px;
+}
+.recordButton {
+  display: grid;
+  gap: 0.25rem;
+  min-height: 64px;
+  align-content: center;
+  text-align: center;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.recordButton strong {
+  font-size: clamp(0.9375rem, 1.65vw, 1.375rem);
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+.recordButton span {
+  font-size: 0.6875rem;
+  color: var(--muted-foreground);
+}
+.recordButton:hover {
+  background: var(--muted);
+}
+.recordButton[aria-pressed="true"] {
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+.recordButton[aria-pressed="true"] span {
+  color: inherit;
+}
+.recordButton:focus-visible,
+.board a:focus-visible,
+.source summary:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 3px;
+}
+.evidence {
+  padding: 1.5rem;
+  align-self: start;
+}
+.kicker {
+  font-size: 0.6875rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--primary);
+}
+.evidence h2 {
+  font-size: 1.5rem;
+  letter-spacing: -0.035em;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+.status {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  margin-top: 0.5rem;
+}
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  padding: 1.5rem 0;
+  border-block: 1px solid var(--border);
+  margin-top: 1.25rem;
+}
+.facts dt {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+.facts dd {
+  font-weight: 600;
+  font-size: 1.125rem;
+  margin-top: 0.25rem;
+}
+.notice {
+  padding: 1rem;
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.evidenceAction {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 48px;
+  color: var(--primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+.source {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+.source summary {
+  min-height: 44px;
+  padding-block: 0.875rem;
+  cursor: pointer;
+}
+.source p {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .record {
+    border-radius: 1.25rem;
+  }
+  .recordTop {
+    padding: 1rem 1.25rem;
+  }
+  .recordTop > span:last-child {
+    display: none;
+  }
+  .recordMain {
+    grid-template-columns: 1fr;
+    padding: 1.25rem;
+    gap: 1.25rem;
+  }
+  .distance {
+    font-size: clamp(3.5rem, 15vw, 5rem);
+  }
+  .recordProof {
+    border-left: 0;
+    border-top: 1px solid #ffffff29;
+    padding: 1rem 0 0;
+    gap: 0.375rem;
+  }
+  .recordProof > svg {
+    display: none;
+  }
+  .recordProof > strong {
+    font-size: 1rem;
+  }
+  .recordFooter {
+    padding: 0.75rem 1.25rem;
+    line-height: 1.5;
+  }
+  .clubBoard,
+  .evidence {
+    padding: 1rem;
+  }
+  .sectionHeading h2 {
+    font-size: 1.125rem;
+  }
+  .columnLabels {
+    letter-spacing: 0;
+    font-size: 0.625rem;
+  }
+  .clubName {
+    font-size: 0.8125rem;
+  }
+  .recordButton {
+    min-height: 64px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .recordButton {
+    transition: none;
+  }
+}
+.mobileControls {
+  display: none;
+}
+@media (max-width: 600px) {
+  .mobileControls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+  .mobileControls label {
+    display: grid;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+  }
+  .mobileControls select {
+    width: 100%;
+    min-width: 0;
+    height: 48px;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--foreground);
+    font-size: 0.875rem;
+    border-radius: 0.75rem;
+  }
+  .mobileControls select:focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+}

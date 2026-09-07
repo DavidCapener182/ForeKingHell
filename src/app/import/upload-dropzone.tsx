@@ -1,24 +1,14 @@
 "use client";
-
 import type { RefObject } from "react";
-import { FileText, Upload, UploadCloud, X } from "lucide-react";
-
+import { FileText, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { GolfLoader } from "@/components/visuals/golf-loader";
-import { PageArtwork } from "@/components/visuals/page-artwork";
+  MAX_IMPORT_CSV_BYTES,
+  MAX_IMPORT_FILES_PER_BATCH,
+  formatMegabytes,
+} from "@/lib/imports/import-limits";
 import { cn } from "@/lib/utils";
-
 type UploadDropzoneFile = {
   id: string;
   fileName: string;
@@ -26,16 +16,12 @@ type UploadDropzoneFile = {
     shotCount: number;
     exportedAtIso: string | null;
     detectedDistanceUnit: string;
+    warnings?: string[];
   };
 };
-
-type ReadProgress = {
-  fileName: string;
-  loaded: number;
-  total: number;
-} | null;
-
+type ReadProgress = { fileName: string; loaded: number; total: number } | null;
 export function UploadDropzone({
+  disabled = false,
   fileInputRef,
   isDragging,
   readProgress,
@@ -44,176 +30,173 @@ export function UploadDropzone({
   onFilesSelected,
   onClear,
   onRemoveFile,
+  errors = [],
+  onRetry,
+  onDismissError,
 }: {
+  disabled?: boolean;
   fileInputRef: RefObject<HTMLInputElement | null>;
   isDragging: boolean;
   readProgress: ReadProgress;
   files: UploadDropzoneFile[];
-  setIsDragging: (isDragging: boolean) => void;
+  setIsDragging: (value: boolean) => void;
   onFilesSelected: (files: FileList | File[]) => void | Promise<void>;
   onClear: () => void;
-  onRemoveFile: (fileId: string) => void;
+  onRemoveFile: (id: string) => void;
+  errors?: Array<{ id: string; file: File; message: string }>;
+  onRetry?: (file: File) => void | Promise<void>;
+  onDismissError?: (id: string) => void;
 }) {
+  const reading = disabled || Boolean(readProgress);
   return (
-    <>
+    <div className="grid min-w-0 gap-3" data-import-upload-table>
       <input
         ref={fileInputRef}
-        className="hidden"
         id="csv-file"
+        className="hidden"
         type="file"
+        disabled={reading}
         accept=".csv,text/csv"
         multiple
         onChange={(event) => {
-          const files = Array.from(event.currentTarget.files ?? []);
-          void onFilesSelected(files);
+          const selected = Array.from(event.currentTarget.files ?? []);
+          void onFilesSelected(selected);
           event.currentTarget.value = "";
         }}
       />
-
-      <Card
-        className={cn(
-          "flex cursor-pointer flex-col items-center justify-center gap-3 border-dashed px-4 py-8 text-center shadow-sm transition-colors",
-          isDragging ? "border-primary bg-primary/5" : "hover:border-primary/60 hover:bg-muted/20",
-        )}
-        onClick={() => fileInputRef.current?.click()}
+      <div
         onDragOver={(event) => {
           event.preventDefault();
-          setIsDragging(true);
+          if (!reading) setIsDragging(true);
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={(event) => {
           event.preventDefault();
           setIsDragging(false);
-          void onFilesSelected(event.dataTransfer.files);
+          if (!reading) void onFilesSelected(event.dataTransfer.files);
         }}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            fileInputRef.current?.click();
-          }
-        }}
+        className={cn(
+          "grid min-w-0 place-items-center gap-3 rounded-xl border border-dashed bg-card p-5 text-center",
+          isDragging && "border-primary bg-primary/5",
+        )}
       >
-        {files.length === 0 ? (
-          <PageArtwork
-            variant="import"
-            alt=""
-            className="mb-1 h-28 w-full rounded-xl"
-            sizes="(min-width: 768px) 520px, 0px"
-          />
-        ) : null}
-        <div className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
-          <UploadCloud className="size-6" />
-        </div>
-        <div className="space-y-1">
-          <p className="font-medium">Choose CSV files</p>
-          <p className="text-sm text-muted-foreground">Click here or drop multiple CSVs at once.</p>
-        </div>
-        <Badge variant="secondary" className="h-8 gap-1.5 px-3">
-          <Upload className="size-4" />
-          Browse files
-        </Badge>
-      </Card>
-
+        <UploadCloud className="size-8 text-primary" aria-hidden />
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-12"
+          disabled={reading}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          Choose CSV files
+        </Button>
+        <p className="text-sm text-muted-foreground">
+          Or drop files here. Up to {MAX_IMPORT_FILES_PER_BATCH} CSV files,{" "}
+          {formatMegabytes(MAX_IMPORT_CSV_BYTES)} each.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Use the scorecard image picker for photos when importing a simulated course.
+        </p>
+      </div>
       {readProgress ? (
-        <Card className="p-3 shadow-sm" aria-live="polite">
-          <div className="flex items-center justify-between gap-3 text-sm">
-            <span className="font-medium">Reading {readProgress.fileName}</span>
-            <span className="text-muted-foreground">
-              {formatPercent(readProgress.loaded, readProgress.total)}
-            </span>
-          </div>
-          <GolfLoader
-            label="Reading launch data"
-            className="mt-3 max-w-none border-0 bg-primary/5 p-3 shadow-none [&_[data-loader-art]]:h-20"
-          />
+        <div role="status" className="rounded-xl border border-border p-3">
+          <p className="break-words text-sm">
+            Reading {readProgress.fileName} · {percent(readProgress)}%
+          </p>
           <Progress
-            value={progressValue(readProgress.loaded, readProgress.total)}
+            aria-label={`Reading ${readProgress.fileName}`}
+            value={percent(readProgress)}
             className="mt-2 h-2"
           />
-        </Card>
-      ) : null}
-
-      {files.length > 0 ? (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-medium">Selected files</p>
-            <Button type="button" variant="ghost" size="sm" onClick={onClear}>
-              Clear
-            </Button>
-          </div>
-          <Card className="overflow-hidden py-0 shadow-none" data-import-upload-table>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>File</TableHead>
-                  <TableHead className="text-right">Shots</TableHead>
-                  <TableHead>Exported</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead className="w-12">
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {files.map((file) => (
-                  <TableRow key={file.id}>
-                    <TableCell className="font-medium">
-                      <span className="flex items-center gap-2">
-                        <FileText className="size-4 shrink-0 text-primary" />
-                        <span className="max-w-64 truncate">{file.fileName}</span>
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {file.parsed.shotCount}
-                    </TableCell>
-                    <TableCell>
-                      {file.parsed.exportedAtIso ? formatDate(file.parsed.exportedAtIso) : "—"}
-                    </TableCell>
-                    <TableCell>{file.parsed.detectedDistanceUnit}</TableCell>
-                    <TableCell>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onRemoveFile(file.id)}
-                        aria-label={`Remove ${file.fileName}`}
-                      >
-                        <X className="size-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
         </div>
       ) : null}
-    </>
+      {errors.map((error) => (
+        <div role="alert" key={error.id} className="rounded-xl border border-destructive/40 p-3">
+          <p className="break-words text-sm font-semibold">{error.file.name}</p>
+          <p className="mt-1 text-sm text-destructive">{error.message}</p>
+          <div className="mt-2 flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              disabled={reading}
+              onClick={() => void onRetry?.(error.file)}
+            >
+              Retry file
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-11"
+              onClick={() => onDismissError?.(error.id)}
+            >
+              Dismiss error
+            </Button>
+          </div>
+        </div>
+      ))}
+      {files.length ? (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold">Selected files · {files.length}</h3>
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-11"
+              disabled={reading}
+              onClick={onClear}
+            >
+              Clear batch
+            </Button>
+          </div>
+          <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+            {files.map((file) => (
+              <li key={file.id} className="min-w-0 p-3">
+                <div className="flex items-start gap-2">
+                  <FileText size={18} className="mt-1 shrink-0 text-primary" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words text-sm font-semibold">{file.fileName}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {file.parsed.shotCount} shots · {file.parsed.detectedDistanceUnit} ·{" "}
+                      {file.parsed.exportedAtIso
+                        ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(
+                            new Date(file.parsed.exportedAtIso),
+                          )
+                        : "Date not detected"}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="size-11 shrink-0"
+                    aria-label={`Remove ${file.fileName}`}
+                    onClick={() => onRemoveFile(file.id)}
+                  >
+                    <X size={16} />
+                  </Button>
+                </div>
+                {file.parsed.warnings?.length ? (
+                  <details className="mt-2">
+                    <summary className="min-h-11 cursor-pointer py-2 text-sm">
+                      {file.parsed.warnings.length} parse warnings
+                    </summary>
+                    <ul className="list-disc space-y-1 pl-5 text-xs">
+                      {file.parsed.warnings.map((warning, index) => (
+                        <li key={index}>{warning}</li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </div>
   );
 }
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
-function formatPercent(loaded: number, total: number) {
-  if (total <= 0) {
-    return "0%";
-  }
-
-  return `${progressValue(loaded, total)}%`;
-}
-
-function progressValue(loaded: number, total: number) {
-  if (total <= 0) {
-    return 0;
-  }
-
-  return Math.min(100, Math.max(0, Math.round((loaded / total) * 100)));
+function percent(progress: NonNullable<ReadProgress>) {
+  return progress.total > 0
+    ? Math.min(100, Math.max(0, Math.round((progress.loaded / progress.total) * 100)))
+    : 0;
 }

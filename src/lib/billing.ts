@@ -124,7 +124,27 @@ export async function getBillingPageData() {
     entitlements: entitlementRows,
     planLimits: withDefaultAiPlanLimits(limitRows),
     stripeConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
+    checkoutAvailability: getCheckoutAvailability(),
+    portalAvailable: Boolean(process.env.STRIPE_SECRET_KEY && billingCustomer?.stripeCustomerId),
   };
+}
+
+export function getCheckoutAvailability(): Record<PlanKey, Record<BillingInterval, boolean>> {
+  return Object.fromEntries(
+    billingPlans.map((plan) => {
+      const configured = (interval: BillingInterval) => {
+        const priceName = plan.priceEnv[interval];
+        return Boolean(
+          plan.key !== "free" &&
+          !plan.internal &&
+          process.env.STRIPE_SECRET_KEY &&
+          priceName &&
+          process.env[priceName],
+        );
+      };
+      return [plan.key, { monthly: configured("monthly"), yearly: configured("yearly") }];
+    }),
+  ) as Record<PlanKey, Record<BillingInterval, boolean>>;
 }
 
 function withDefaultAiPlanLimits(rows: Array<typeof planLimits.$inferSelect>) {
@@ -224,10 +244,10 @@ export async function createCheckoutSession(input: {
       "content-type": "application/x-www-form-urlencoded",
     },
     body: params,
-  });
-  const payload = (await response.json().catch(() => null)) as unknown;
+  }).catch(() => null);
+  const payload = (await response?.json().catch(() => null)) as unknown;
 
-  if (!response.ok || !isRecord(payload) || typeof payload.url !== "string") {
+  if (!response?.ok || !isRecord(payload) || typeof payload.url !== "string") {
     return {
       url: `/billing?checkout=error&plan=${plan.key}`,
       error: readStripeError(payload) ?? "Stripe Checkout could not be started.",
@@ -272,10 +292,10 @@ export async function createCustomerPortalSession(origin: string) {
       "content-type": "application/x-www-form-urlencoded",
     },
     body: params,
-  });
-  const payload = (await response.json().catch(() => null)) as unknown;
+  }).catch(() => null);
+  const payload = (await response?.json().catch(() => null)) as unknown;
 
-  if (!response.ok || !isRecord(payload) || typeof payload.url !== "string") {
+  if (!response?.ok || !isRecord(payload) || typeof payload.url !== "string") {
     return {
       url: "/billing?portal=error",
       error: readStripeError(payload) ?? "Stripe Billing Portal could not be opened.",

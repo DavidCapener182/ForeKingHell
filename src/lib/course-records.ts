@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -520,14 +521,26 @@ export async function getCourseRecordsHubData() {
               result: courseRecordResults,
               record: courseRecords,
               profile: userProfiles,
+              categoryName: courseRecordCategories.name,
+              proofStatus: courseRecordAttempts.proofStatus,
             })
             .from(courseRecordResults)
             .innerJoin(courseRecords, eq(courseRecordResults.recordId, courseRecords.id))
+            .innerJoin(
+              courseRecordCategories,
+              eq(courseRecords.categoryId, courseRecordCategories.id),
+            )
+            .leftJoin(
+              courseRecordAttempts,
+              eq(courseRecordResults.bestAttemptId, courseRecordAttempts.id),
+            )
             .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
             .where(
               and(
                 inArray(courseRecords.courseId, visibleCourseIds),
                 eq(courseRecordResults.rank, 1),
+                inArray(courseRecordResults.status, ["active", "verified"]),
+                eq(courseRecordResults.verificationStatus, "verified"),
                 eq(courseRecords.scope, "public"),
                 eq(courseRecords.status, "active"),
               ),
@@ -544,10 +557,28 @@ export async function getCourseRecordsHubData() {
   ).filter((record): record is (typeof recordRows)[number] => Boolean(record));
   const uniqueRecordRows = dedupeCourseRecords(visibleRecordRows);
   const recordsByCourse = countBy(uniqueRecordRows.map((record) => record.courseId));
+  const visibleRecordIds = new Set(uniqueRecordRows.map((record) => record.id));
+  const attemptRows = visibleRecordIds.size
+    ? await db
+        .select({ courseId: courseRecordAttempts.courseId, count: sql<number>`count(*)::int` })
+        .from(courseRecordAttempts)
+        .where(inArray(courseRecordAttempts.recordId, [...visibleRecordIds]))
+        .groupBy(courseRecordAttempts.courseId)
+    : [];
+  const attemptsByCourse = new Map(attemptRows.map((row) => [row.courseId, Number(row.count)]));
   const teeByCourse = countBy(teeRows.map((teeSet) => teeSet.courseId));
   const leaderByCourse = new Map<string, (typeof resultRows)[number]>();
 
-  for (const row of resultRows) {
+  const featuredRows = resultRows
+    .filter((row) => visibleRecordIds.has(row.record.id) && row.profile)
+    .sort(
+      (a, b) =>
+        Number(b.record.period === "all_time") - Number(a.record.period === "all_time") ||
+        a.record.recordType.localeCompare(b.record.recordType) ||
+        a.record.id.localeCompare(b.record.id) ||
+        a.result.id.localeCompare(b.result.id),
+    );
+  for (const row of featuredRows) {
     if (!leaderByCourse.has(row.record.courseId)) {
       leaderByCourse.set(row.record.courseId, row);
     }
@@ -561,20 +592,29 @@ export async function getCourseRecordsHubData() {
         ...course,
         recordCount: recordsByCourse.get(course.id) ?? 0,
         teeSetCount: teeByCourse.get(course.id) ?? 0,
-        liveAttemptCount: uniqueRecordRows.filter((record) => record.courseId === course.id).length,
+        attemptCount: attemptsByCourse.get(course.id) ?? 0,
+        liveAttemptCount: attemptsByCourse.get(course.id) ?? 0,
         champion: leader?.profile
           ? {
               displayName: leader.profile.displayName,
               username: leader.profile.username,
               scoreLabel: leader.result.scoreLabel,
               verificationTier: leader.result.verificationTier,
+              verificationStatus: leader.result.verificationStatus,
+              proofStatus: leader.proofStatus,
+              recordId: leader.record.id,
+              recordType: leader.record.recordType,
+              categoryId: leader.record.categoryId,
+              categoryName: leader.categoryName,
+              period: leader.record.period,
+              periodStart: leader.record.periodStart,
+              periodEnd: leader.record.periodEnd,
             }
           : null,
       };
     }),
     totalRecords: uniqueRecordRows.length,
-    verifiedChampions: resultRows.filter((row) => row.result.verificationStatus === "verified")
-      .length,
+    verifiedChampions: leaderByCourse.size,
   };
 }
 
@@ -612,7 +652,7 @@ export async function getCourseRecordCourseData(
     db
       .select()
       .from(courseRecords)
-      .where(eq(courseRecords.courseId, courseId))
+      .where(and(eq(courseRecords.courseId, courseId), eq(courseRecords.status, "active")))
       .orderBy(asc(courseRecords.createdAt)),
     db
       .select({
@@ -660,7 +700,13 @@ export async function getCourseRecordCourseData(
           .from(courseRecordResults)
           .innerJoin(courseRecords, eq(courseRecordResults.recordId, courseRecords.id))
           .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
-          .where(inArray(courseRecords.id, visibleRecordIds))
+          .where(
+            and(
+              inArray(courseRecords.id, visibleRecordIds),
+              inArray(courseRecordResults.status, ["active", "verified"]),
+              eq(courseRecordResults.verificationStatus, "verified"),
+            ),
+          )
           .orderBy(asc(courseRecordResults.rank))
       : [],
     db
@@ -699,7 +745,7 @@ export async function getCourseRecordCourseData(
     .map((record) => {
       const category = categoryById.get(record.categoryId);
       const leaders = resultRows.filter((row) => row.record.id === record.id);
-      const champion = leaders.find((row) => row.result.rank === 1) ?? leaders[0] ?? null;
+      const champion = leaders.find((row) => row.result.rank === 1) ?? null;
       const friendToBeat =
         leaders.find((row) => row.profile && friendIds.includes(row.profile.userId)) ?? null;
       const viewerBest = leaders.find((row) => row.result.userId === viewerUserId) ?? null;
@@ -716,10 +762,7 @@ export async function getCourseRecordCourseData(
     })
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
     .sort((left, right) => left.category.sortOrder - right.category.sortOrder);
-  const championCard =
-    recordCards.find((card) => card.champion?.result.verificationStatus === "verified") ??
-    recordCards.find((card) => card.champion) ??
-    null;
+  const championCard = recordCards.find((card) => card.champion) ?? null;
   const bestViewerAttempt = viewerAttemptRows[0] ?? null;
   const previousRounds = previousRoundRows
     .map((row) =>
@@ -818,6 +861,7 @@ export async function getCourseRecordDetailData(recordId: string) {
     .where(
       and(
         eq(courseRecords.id, recordId),
+        eq(courseRecords.status, "active"),
         or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, viewerUserId)),
       ),
     )
@@ -859,7 +903,13 @@ export async function getCourseRecordDetailData(recordId: string) {
       })
       .from(courseRecordResults)
       .leftJoin(userProfiles, eq(courseRecordResults.userId, userProfiles.userId))
-      .where(eq(courseRecordResults.recordId, recordId))
+      .where(
+        and(
+          eq(courseRecordResults.recordId, recordId),
+          inArray(courseRecordResults.status, ["active", "verified"]),
+          eq(courseRecordResults.verificationStatus, "verified"),
+        ),
+      )
       .orderBy(asc(courseRecordResults.rank)),
     db
       .select({
@@ -917,6 +967,7 @@ export async function getCourseRecordDetailData(recordId: string) {
 }
 
 export async function submitCourseRecordAttempt(input: {
+  requestId?: string | null;
   recordId: string;
   metricValue?: number | null;
   grossScore?: number | null;
@@ -945,7 +996,13 @@ export async function submitCourseRecordAttempt(input: {
     .from(courseRecords)
     .innerJoin(courseRecordCategories, eq(courseRecords.categoryId, courseRecordCategories.id))
     .innerJoin(courses, eq(courseRecords.courseId, courses.id))
-    .where(eq(courseRecords.id, input.recordId))
+    .where(
+      and(
+        eq(courseRecords.id, input.recordId),
+        eq(courseRecords.status, "active"),
+        or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)),
+      ),
+    )
     .limit(1);
 
   if (!recordRow || !(await canViewRecord(userId, recordRow.record))) {
@@ -966,30 +1023,23 @@ export async function submitCourseRecordAttempt(input: {
   const stablefordPoints = roundSubmission?.stablefordPoints ?? input.stablefordPoints ?? null;
   const csvHash = roundSubmission?.csvHash ?? null;
   const rapsodoSyncSessionId = roundSubmission?.rapsodoSyncSessionId ?? null;
-  const scorecardProof = await consumeScorecardProofToken(input.scorecardProofToken, userId, {
-    scopeType: "course_record",
-    scopeId: recordRow.record.id,
-  });
-  const extractedScorecardTotal =
-    scorecardProof?.totalScore ?? input.extractedScorecardTotal ?? null;
-  const hasScorecardProof =
-    Boolean(scorecardProof) &&
-    typeof scorecardProof?.totalScore === "number" &&
-    (input.extractedScorecardTotal === null ||
-      input.extractedScorecardTotal === undefined ||
-      input.extractedScorecardTotal === scorecardProof.totalScore);
-  const hasRapsodoDirect = Boolean(rapsodoSyncSessionId);
-  const manualEdit =
-    input.manualEdit || (roundSubmission ? roundSubmission.session.source !== "rapsodo" : false);
-  const courseMatches = roundSubmission?.courseMatches ?? input.courseMatches ?? true;
-  const teeMatches = roundSubmission?.teeMatches ?? input.teeMatches ?? true;
-  const dateMatches = input.dateMatches ?? true;
-
-  if (typeof metricValue !== "number" || !Number.isFinite(metricValue)) {
-    throw new Error("Choose a previous scored round for this record.");
-  }
-  const submittedMetricValue = metricValue;
-
+  const requestId = input.requestId?.trim() || null;
+  if (
+    requestId &&
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)
+  )
+    throw new Error("Invalid submission request ID.");
+  const fingerprint = createHash("sha256")
+    .update(
+      JSON.stringify(
+        Object.fromEntries(
+          Object.entries(input)
+            .filter(([key]) => key !== "requestId")
+            .sort(([a], [b]) => a.localeCompare(b)),
+        ),
+      ),
+    )
+    .digest("hex");
   const [previousLeader] = await db
     .select()
     .from(courseRecordResults)
@@ -1002,163 +1052,239 @@ export async function submitCourseRecordAttempt(input: {
       ? await areFriends(userId, previousLeader.userId)
       : false;
   const duplicateImport = csvHash ? await hasDuplicateRecordEvidence(userId, csvHash) : false;
-  const verification = evaluateVerification({
-    expectedScore: scoreExpectedForRecord(recordRow.record.recordType, {
-      metricValue: submittedMetricValue,
-      grossScore,
-      netScore,
-      stablefordPoints,
-    }),
-    extractedScorecardTotal,
-    hasRapsodoDirect,
-    hasCsvHash: Boolean(csvHash),
-    hasScorecardScreenshot: hasScorecardProof,
-    courseMatches,
-    dateMatches,
-    teeMatches,
-    duplicateImport,
-    manualEdit,
-    screenshotRequired: [
-      "best_gross_score",
-      "best_net_score",
-      "best_front_nine",
-      "best_back_nine",
-    ].includes(recordRow.record.recordType),
-    directRapsodoRequired: recordRow.record.verificationRequired === "gold",
-  });
-  const now = new Date();
-  const [attempt] = await db
-    .insert(courseRecordAttempts)
-    .values({
-      recordId: recordRow.record.id,
-      categoryId: recordRow.record.categoryId,
-      courseId: recordRow.record.courseId,
-      teeSetId: recordRow.record.teeSetId,
+  const attemptId = await db.transaction(async (tx) => {
+    if (requestId) {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${"course-record-request:" + userId + ":" + requestId}, 0))`,
+      );
+    }
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtextextended(${"course-record:" + input.recordId}, 0))`,
+    );
+    if (requestId) {
+      const [existing] = await tx
+        .select()
+        .from(courseRecordAttempts)
+        .where(
+          and(
+            eq(courseRecordAttempts.userId, userId),
+            sql`${courseRecordAttempts.metadataJson}->>'requestId' = ${requestId}`,
+          ),
+        )
+        .limit(1);
+      if (existing) {
+        if (
+          existing.recordId !== input.recordId ||
+          existing.metadataJson.requestFingerprint !== fingerprint
+        )
+          throw new Error("Request ID already belongs to a different submission.");
+        return existing.id;
+      }
+    }
+    const scorecardProof = await consumeScorecardProofToken(
+      input.scorecardProofToken,
       userId,
-      sessionId: roundSubmission?.session.id ?? input.sessionId ?? null,
-      roundId: roundSubmission?.session.id ?? input.sessionId ?? null,
-      score: grossScore,
-      netScore,
-      stablefordPoints,
-      metricValue,
-      metricLabel: metricLabelForCategory(recordRow.category),
-      verificationStatus: verification.status,
-      verificationTier: verification.tier,
-      proofStatus: verification.proofStatus,
-      sourceKind: hasRapsodoDirect ? "rapsodo_cloud" : csvHash ? "rapsodo_csv" : "manual_scorecard",
-      metadataJson: {
-        verificationReasons: verification.reasons,
-        manualEdit: Boolean(manualEdit),
-        derivedFromRound: Boolean(roundSubmission),
-        roundScore: roundSubmission?.summary.totalScore ?? null,
+      {
+        scopeType: "course_record",
+        scopeId: recordRow.record.id,
       },
-      submittedAt: now,
-      updatedAt: now,
-    })
-    .returning();
+      tx,
+    );
+    const extractedScorecardTotal =
+      scorecardProof?.totalScore ?? input.extractedScorecardTotal ?? null;
+    const hasScorecardProof =
+      Boolean(scorecardProof) &&
+      typeof scorecardProof?.totalScore === "number" &&
+      (input.extractedScorecardTotal === null ||
+        input.extractedScorecardTotal === undefined ||
+        input.extractedScorecardTotal === scorecardProof.totalScore);
+    const hasRapsodoDirect = Boolean(rapsodoSyncSessionId);
+    const manualEdit =
+      input.manualEdit || (roundSubmission ? roundSubmission.session.source !== "rapsodo" : false);
+    const courseMatches = roundSubmission?.courseMatches ?? input.courseMatches ?? true;
+    const teeMatches = roundSubmission?.teeMatches ?? input.teeMatches ?? true;
+    const dateMatches = input.dateMatches ?? true;
 
-  const evidenceRows = [
-    hasRapsodoDirect
-      ? {
-          attemptId: attempt.id,
-          evidenceType: "rapsodo_import",
-          rapsodoSyncSessionId,
-          metadataJson: { source: "rapsodo_cloud" },
-          reviewStatus: verification.status === "verified" ? "approved" : "pending",
-          updatedAt: now,
-        }
-      : null,
-    csvHash
-      ? {
-          attemptId: attempt.id,
-          evidenceType: "csv_hash",
-          csvHash,
-          metadataJson: { duplicateImport },
-          reviewStatus: verification.status === "verified" ? "approved" : "pending",
-          updatedAt: now,
-        }
-      : null,
-    scorecardProof && input.screenshotPath
-      ? {
-          attemptId: attempt.id,
-          evidenceType: "scorecard_screenshot",
-          storagePath: input.screenshotPath,
-          extractedScorecardTotal,
-          metadataJson: {
+    if (typeof metricValue !== "number" || !Number.isFinite(metricValue)) {
+      throw new Error("Choose a previous scored round for this record.");
+    }
+    const submittedMetricValue = metricValue;
+
+    const verification = evaluateVerification({
+      expectedScore: scoreExpectedForRecord(recordRow.record.recordType, {
+        metricValue: submittedMetricValue,
+        grossScore,
+        netScore,
+        stablefordPoints,
+      }),
+      extractedScorecardTotal,
+      hasRapsodoDirect,
+      hasCsvHash: Boolean(csvHash),
+      hasScorecardScreenshot: hasScorecardProof,
+      courseMatches,
+      dateMatches,
+      teeMatches,
+      duplicateImport,
+      manualEdit,
+      screenshotRequired: [
+        "best_gross_score",
+        "best_net_score",
+        "best_front_nine",
+        "best_back_nine",
+      ].includes(recordRow.record.recordType),
+      directRapsodoRequired: recordRow.record.verificationRequired === "gold",
+    });
+    const now = new Date();
+    const [attempt] = await tx
+      .insert(courseRecordAttempts)
+      .values({
+        recordId: recordRow.record.id,
+        categoryId: recordRow.record.categoryId,
+        courseId: recordRow.record.courseId,
+        teeSetId: recordRow.record.teeSetId,
+        userId,
+        sessionId: roundSubmission?.session.id ?? input.sessionId ?? null,
+        roundId: roundSubmission?.session.id ?? input.sessionId ?? null,
+        score: grossScore,
+        netScore,
+        stablefordPoints,
+        metricValue,
+        metricLabel: metricLabelForCategory(recordRow.category),
+        verificationStatus: verification.status,
+        verificationTier: verification.tier,
+        proofStatus: verification.proofStatus,
+        sourceKind: hasRapsodoDirect
+          ? "rapsodo_cloud"
+          : csvHash
+            ? "rapsodo_csv"
+            : "manual_scorecard",
+        metadataJson: {
+          requestId,
+          requestFingerprint: fingerprint,
+          verificationReasons: verification.reasons,
+          manualEdit: Boolean(manualEdit),
+          derivedFromRound: Boolean(roundSubmission),
+          roundScore: roundSubmission?.summary.totalScore ?? null,
+        },
+        submittedAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    const evidenceRows = [
+      hasRapsodoDirect
+        ? {
+            attemptId: attempt.id,
+            evidenceType: "rapsodo_import",
+            rapsodoSyncSessionId,
+            metadataJson: { source: "rapsodo_cloud" },
+            reviewStatus: verification.status === "verified" ? "approved" : "pending",
+            updatedAt: now,
+          }
+        : null,
+      csvHash
+        ? {
+            attemptId: attempt.id,
+            evidenceType: "csv_hash",
+            csvHash,
+            metadataJson: { duplicateImport },
+            reviewStatus: verification.status === "verified" ? "approved" : "pending",
+            updatedAt: now,
+          }
+        : null,
+      scorecardProof && input.screenshotPath
+        ? {
+            attemptId: attempt.id,
+            evidenceType: "scorecard_screenshot",
+            storagePath: input.screenshotPath,
             extractedScorecardTotal,
-            courseName: scorecardProof?.courseName ?? null,
-            teeName: scorecardProof?.teeName ?? null,
-            dateIso: scorecardProof?.dateIso ?? null,
-            proofToken: Boolean(scorecardProof),
-          },
-          reviewStatus: verification.status === "verified" ? "approved" : "pending",
-          updatedAt: now,
-        }
-      : null,
-  ].filter((row): row is NonNullable<typeof row> => Boolean(row));
+            metadataJson: {
+              extractedScorecardTotal,
+              courseName: scorecardProof?.courseName ?? null,
+              teeName: scorecardProof?.teeName ?? null,
+              dateIso: scorecardProof?.dateIso ?? null,
+              proofToken: Boolean(scorecardProof),
+            },
+            reviewStatus: verification.status === "verified" ? "approved" : "pending",
+            updatedAt: now,
+          }
+        : null,
+    ].filter((row): row is NonNullable<typeof row> => Boolean(row));
 
-  if (evidenceRows.length > 0) {
-    await db.insert(courseRecordEvidence).values(evidenceRows);
-  }
-
-  if (verification.status === "mismatch" || verification.status === "needs_review") {
-    await createRecordModerationEvent({
-      attemptId: attempt.id,
-      userId,
-      courseName: recordRow.course.name,
-      importedScore: grossScore ?? submittedMetricValue,
-      extractedScore: extractedScorecardTotal,
-      reasons: verification.reasons,
-    });
-  }
-
-  const results = await recalculateCourseRecordResults(recordRow.record.id);
-  const result = results.find((item) => item.userId === userId);
-
-  if (verification.status === "verified" && result?.rank === 1) {
-    const defendedOwnRecord = previousLeader?.userId === userId;
-    const beatenExistingRecord = Boolean(previousLeader && previousLeader.userId !== userId);
-    const itemType = defendedOwnRecord
-      ? "course_record_defended"
-      : beatenExistingRecord
-        ? "course_record_beaten"
-        : "course_record_set";
-    const headline = defendedOwnRecord
-      ? `${profile.displayName} defended Course Champion at ${recordRow.course.name}`
-      : beatenExistingRecord
-        ? `${profile.displayName} beat the Course Champion at ${recordRow.course.name}`
-        : `${profile.displayName} became Course Champion at ${recordRow.course.name}`;
-
-    await createFeedItem({
-      userId,
-      itemType,
-      headline,
-      metricLabel: recordRow.category.name,
-      metricValue: scoreLabel(submittedMetricValue, recordRow.category),
-      context: `${verificationTierLabel(verification.tier)} on the ${scopeLabel(recordRow.record.scope)} board`,
-      proofUrl: `/course-records/${recordRow.record.id}`,
-      sourceType: "course_record",
-      sourceId: recordRow.record.id,
-      visibility: parseVisibility(recordRow.record.scope, "friends"),
-      verificationLabel: verificationTierLabel(verification.tier),
-      dedupeKey: `course-record-${itemType}:${recordRow.record.id}:${userId}:${attempt.id}`,
-    });
-    await awardCourseRecordAchievement(userId, "course_champion", attempt.id, 250);
-    await awardCourseRecordAchievement(userId, "first_verified_record", attempt.id, 150);
-    if (defendedOwnRecord) {
-      await awardCourseRecordAchievement(userId, "defended_champion", attempt.id, 300);
+    if (evidenceRows.length > 0) {
+      await tx.insert(courseRecordEvidence).values(evidenceRows);
     }
-    if (previousLeaderWasFriend) {
-      await awardCourseRecordAchievement(userId, "beat_friend_record", attempt.id, 200);
-    }
-  }
 
+    if (verification.status === "mismatch" || verification.status === "needs_review") {
+      await createRecordModerationEvent(
+        {
+          attemptId: attempt.id,
+          userId,
+          courseName: recordRow.course.name,
+          importedScore: grossScore ?? submittedMetricValue,
+          extractedScore: extractedScorecardTotal,
+          reasons: verification.reasons,
+        },
+        tx,
+      );
+    }
+
+    const results = await recalculateCourseRecordResults(recordRow.record.id, tx);
+    const result = results.find((item) => item.userId === userId);
+
+    if (verification.status === "verified" && result?.rank === 1) {
+      const defendedOwnRecord = previousLeader?.userId === userId;
+      const beatenExistingRecord = Boolean(previousLeader && previousLeader.userId !== userId);
+      const itemType = defendedOwnRecord
+        ? "course_record_defended"
+        : beatenExistingRecord
+          ? "course_record_beaten"
+          : "course_record_set";
+      const headline = defendedOwnRecord
+        ? `${profile.displayName} defended Course Champion at ${recordRow.course.name}`
+        : beatenExistingRecord
+          ? `${profile.displayName} beat the Course Champion at ${recordRow.course.name}`
+          : `${profile.displayName} became Course Champion at ${recordRow.course.name}`;
+
+      await createFeedItem(
+        {
+          userId,
+          itemType,
+          headline,
+          metricLabel: recordRow.category.name,
+          metricValue: scoreLabel(submittedMetricValue, recordRow.category),
+          context: `${verificationTierLabel(verification.tier)} on the ${scopeLabel(recordRow.record.scope)} board`,
+          proofUrl: `/course-records/${recordRow.record.id}`,
+          sourceType: "course_record",
+          sourceId: recordRow.record.id,
+          visibility: parseVisibility(recordRow.record.scope, "friends"),
+          verificationLabel: verificationTierLabel(verification.tier),
+          dedupeKey: `course-record-${itemType}:${recordRow.record.id}:${userId}:${attempt.id}`,
+        },
+        tx,
+      );
+      await awardCourseRecordAchievement(userId, "course_champion", attempt.id, 250, tx);
+      await awardCourseRecordAchievement(userId, "first_verified_record", attempt.id, 150, tx);
+      if (defendedOwnRecord) {
+        await awardCourseRecordAchievement(userId, "defended_champion", attempt.id, 300, tx);
+      }
+      if (previousLeaderWasFriend) {
+        await awardCourseRecordAchievement(userId, "beat_friend_record", attempt.id, 200, tx);
+      }
+    }
+
+    return attempt.id;
+  });
   revalidateCourseRecordPaths(recordRow.record.courseId, recordRow.record.id);
-  return attempt.id;
+  return attemptId;
 }
 
-export async function recalculateCourseRecordResults(recordId: string) {
-  const db = getDb();
+type RecordWriteDb = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+
+export async function recalculateCourseRecordResults(
+  recordId: string,
+  db: RecordWriteDb | ReturnType<typeof getDb> = getDb(),
+) {
   const [recordRow] = await db
     .select({
       record: courseRecords,
@@ -1454,31 +1580,32 @@ async function hasDuplicateRecordEvidence(userId: string, csvHash: string) {
   return (row?.value ?? 0) > 0;
 }
 
-async function createRecordModerationEvent(input: {
-  attemptId: string;
-  userId: string;
-  courseName: string;
-  importedScore: number;
-  extractedScore: number | null;
-  reasons: string[];
-}) {
-  await getDb()
-    .insert(moderationEvents)
-    .values({
-      targetType: "course_record_attempt",
-      targetId: input.attemptId,
-      actorUserId: input.userId,
-      eventType: "record_score_mismatch",
-      severity: "medium",
-      status: "open",
-      reason: input.reasons.join("; ").slice(0, 1000),
-      metadataJson: {
-        course: input.courseName,
-        imported: input.importedScore,
-        screenshot: input.extractedScore,
-        reasons: input.reasons,
-      },
-    });
+async function createRecordModerationEvent(
+  input: {
+    attemptId: string;
+    userId: string;
+    courseName: string;
+    importedScore: number;
+    extractedScore: number | null;
+    reasons: string[];
+  },
+  db: RecordWriteDb | ReturnType<typeof getDb> = getDb(),
+) {
+  await db.insert(moderationEvents).values({
+    targetType: "course_record_attempt",
+    targetId: input.attemptId,
+    actorUserId: input.userId,
+    eventType: "record_score_mismatch",
+    severity: "medium",
+    status: "open",
+    reason: input.reasons.join("; ").slice(0, 1000),
+    metadataJson: {
+      course: input.courseName,
+      imported: input.importedScore,
+      screenshot: input.extractedScore,
+      reasons: input.reasons,
+    },
+  });
 }
 
 async function awardCourseRecordAchievement(
@@ -1486,9 +1613,10 @@ async function awardCourseRecordAchievement(
   achievementId: string,
   sourceId: string,
   xp: number,
+  db: RecordWriteDb | ReturnType<typeof getDb> = getDb(),
 ) {
   const now = new Date();
-  await getDb()
+  await db
     .insert(userAchievements)
     .values({
       userId,
@@ -1512,7 +1640,7 @@ async function awardCourseRecordAchievement(
       },
     });
 
-  await getDb()
+  await db
     .insert(xpLedger)
     .values({
       userId,
@@ -1815,7 +1943,9 @@ async function syncVerifiedRoundRecordAttempts({
 
   const recordIds = [...recalculationRecordIds];
   for (let index = 0; index < recordIds.length; index += 8) {
-    await Promise.all(recordIds.slice(index, index + 8).map(recalculateCourseRecordResults));
+    await Promise.all(
+      recordIds.slice(index, index + 8).map((recordId) => recalculateCourseRecordResults(recordId)),
+    );
   }
 }
 

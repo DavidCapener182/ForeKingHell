@@ -1,4 +1,5 @@
 import Link from "next/link";
+import evidenceStyles from "@/app/courses/course-history.module.css";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ArrowLeft, MapPinned } from "lucide-react";
@@ -21,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PageArtwork } from "@/components/visuals/page-artwork";
+
 import { requireCurrentUserId } from "@/lib/current-user";
 import { isShotPatternFeatureEnabled } from "@/lib/shot-pattern-feature";
 import {
@@ -103,8 +104,8 @@ async function CourseShotPatternContent({ courseId }: { courseId: string }) {
   return (
     <PageShell
       size="full"
-      className="px-0 py-0 pb-0 lg:px-8 lg:pb-8 lg:pt-6"
-      contentClassName="gap-0 lg:gap-6"
+      className="pt-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] lg:pt-6 lg:pb-[calc(8.75rem+env(safe-area-inset-bottom))]"
+      contentClassName="gap-4 lg:gap-6"
     >
       <DesktopWorkbenchLayout scope="course-shot-pattern">
         <div className="flex items-center justify-between gap-4">
@@ -128,16 +129,6 @@ async function CourseShotPatternContent({ courseId }: { courseId: string }) {
           }
           title={`${setup.course.name} shot pattern`}
           description="Project your real club dispersion over the selected hole before choosing a line."
-          visual={
-            <PageArtwork
-              variant="fairway"
-              alt=""
-              crop="random"
-              cropKey={`${courseId}-shot-pattern`}
-              className="h-full min-h-44"
-              priority
-            />
-          }
           metrics={[
             {
               label: "Mapped holes",
@@ -164,7 +155,6 @@ async function CourseShotPatternContent({ courseId }: { courseId: string }) {
 
         {hasMappedHoles ? (
           <>
-            <ShotPatternSetupBoard courseId={courseId} setup={setup} />
             <ShotPatternMap
               courseId={courseId}
               courseName={setup.course.name}
@@ -175,6 +165,12 @@ async function CourseShotPatternContent({ courseId }: { courseId: string }) {
               initialData={initialPatternData}
               defaultControls={setup.defaultControls}
             />
+            <details className="rounded-xl border bg-card p-4">
+              <summary className="min-h-11 cursor-pointer font-medium">
+                Hole and club evidence
+              </summary>
+              <ShotPatternSetupBoard courseId={courseId} setup={setup} />
+            </details>
           </>
         ) : (
           <div className="apple-panel grid min-h-80 place-items-center p-6 text-center">
@@ -214,8 +210,8 @@ function ShotPatternSetupBoard({ courseId, setup }: { courseId: string; setup: S
         <div>
           <h2 className="text-xl font-semibold tracking-normal">Shot-pattern setup board</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Desktop review of mapped holes, tee sets and club-pattern samples before using the
-            interactive course overlay.
+            Review mapped holes, tee sets and club-pattern samples used by the interactive course
+            overlay.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -228,8 +224,51 @@ function ShotPatternSetupBoard({ courseId, setup }: { courseId: string; setup: S
         </div>
       </div>
 
-      <ShotPatternHoleTable courseId={courseId} setup={setup} holeRows={holeRows} />
-      <ShotPatternClubTable courseId={courseId} setup={setup} clubOptions={setup.clubOptions} />
+      <div className={evidenceStyles.rows}>
+        <h3 className="mb-3 font-semibold">Mapped holes</h3>
+        {holeRows.map((hole) => (
+          <details key={`${hole.teeSetId}:${hole.holeNumber}`} className="border-t py-3">
+            <summary className="min-h-11 cursor-pointer">
+              Hole {hole.holeNumber} · {hole.teeSetName}
+            </summary>
+            <p>
+              Par {hole.par} · {hole.yards} yd · Mapped
+            </p>
+            <Link
+              className="inline-flex min-h-11 items-center underline"
+              href={`/courses/${courseId}/holes?teeSetId=${hole.teeSetId}&tab=holes#desktop-hole-form-${hole.holeNumber}`}
+            >
+              Review geometry
+            </Link>
+          </details>
+        ))}
+        <h3 className="my-3 font-semibold">Club evidence</h3>
+        {setup.clubOptions.length === 0 ? (
+          <p>Import stock or full-shot data to build club patterns.</p>
+        ) : (
+          setup.clubOptions.map((club) => (
+            <details key={`${club.clubId ?? "type"}:${club.clubType}`} className="border-t py-3">
+              <summary className="min-h-11 cursor-pointer">
+                {club.label} · {club.sampleSize} shots
+              </summary>
+              <p>
+                {club.clubId ? "Specific club" : "Club type pattern"} · {club.clubType} · Play
+                number {formatPlayNumber(club.playNumberYd)}
+              </p>
+              <Link
+                className="inline-flex min-h-11 items-center underline"
+                href={club.clubId ? `/bag/${club.clubId}/analytics` : "/bag"}
+              >
+                Open club
+              </Link>
+            </details>
+          ))
+        )}
+      </div>
+      <div className={evidenceStyles.table}>
+        <ShotPatternHoleTable courseId={courseId} setup={setup} holeRows={holeRows} />
+        <ShotPatternClubTable courseId={courseId} setup={setup} clubOptions={setup.clubOptions} />
+      </div>
     </section>
   );
 }
@@ -318,7 +357,10 @@ function ShotPatternHoleTable({
                   <TableCell data-column="status">Mapped</TableCell>
                   <TableCell data-column="action" className="text-right">
                     <Button asChild variant="outline" size="sm">
-                      <Link href={`/courses/${courseId}/holes`} prefetch={false}>
+                      <Link
+                        href={`/courses/${courseId}/holes?teeSetId=${hole.teeSetId}&tab=holes#desktop-hole-form-${hole.holeNumber}`}
+                        prefetch={false}
+                      >
                         Edit geometry
                       </Link>
                     </Button>
@@ -460,8 +502,8 @@ function ShotPatternPageLoading() {
   return (
     <PageShell
       size="full"
-      className="px-0 py-0 pb-0 lg:px-8 lg:pb-8 lg:pt-6"
-      contentClassName="gap-0 lg:gap-6"
+      className="pt-4 pb-[calc(8.75rem+env(safe-area-inset-bottom))] lg:pt-6 lg:pb-[calc(8.75rem+env(safe-area-inset-bottom))]"
+      contentClassName="gap-4 lg:gap-6"
     >
       <div className="map-frame relative h-[100svh] min-h-[100svh] overflow-hidden bg-[#101827] lg:h-[72vh] lg:min-h-[620px]">
         <div className="absolute left-3 right-3 top-[calc(3.75rem+env(safe-area-inset-top))] z-20 h-14 animate-pulse rounded-lg bg-white/80 motion-reduce:animate-none lg:top-3" />

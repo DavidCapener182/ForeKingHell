@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { yardsToDisplay, distanceUnitLabel, type DistanceUnitPreference } from "@/lib/units";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Fragment, useMemo, useState } from "react";
@@ -323,11 +324,17 @@ function SummaryMetric({
 export function TargetDistanceSelector({
   rows,
   initialTargetYd = 150,
+  preferredUnits = "yards",
 }: {
   rows: TargetDistanceRow[];
   initialTargetYd?: number;
+  preferredUnits?: DistanceUnitPreference;
 }) {
   const [targetYd, setTargetYd] = useState(() => clampTarget(initialTargetYd));
+  const unit = distanceUnitLabel(preferredUnits);
+  const factor = yardsToDisplay(1, preferredUnits);
+  const display = (yards: number) => Number(yardsToDisplay(yards, preferredUnits).toFixed(1));
+  const [entry, setEntry] = useState(() => String(display(clampTarget(initialTargetYd))));
 
   const playableRows = useMemo(
     () =>
@@ -363,7 +370,9 @@ export function TargetDistanceSelector({
   const windowQuality = getWindowQuality(plan);
 
   function selectTarget(value: number) {
-    setTargetYd(clampTarget(value));
+    const next = clampTarget(value);
+    setTargetYd(next);
+    setEntry(String(display(next)));
   }
 
   return (
@@ -385,8 +394,8 @@ export function TargetDistanceSelector({
         </div>
       </div>
 
-      <div className="grid gap-6 px-6 pb-6 lg:grid-cols-[minmax(430px,0.95fr)_minmax(0,1.6fr)] lg:items-stretch xl:grid-cols-[minmax(560px,0.95fr)_minmax(0,1.8fr)]">
-        <div className="relative min-h-[560px] overflow-hidden rounded-2xl border border-border bg-muted shadow-sm">
+      <div className="grid gap-6 px-6 pb-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.6fr)] lg:items-stretch xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.8fr)]">
+        <div className="relative min-h-[340px] overflow-hidden rounded-2xl border border-border bg-muted shadow-sm">
           <Image
             src={TARGET_DISTANCE_IMAGE_SRC}
             alt=""
@@ -397,14 +406,14 @@ export function TargetDistanceSelector({
           />
           <div className="absolute inset-0 bg-gradient-to-b from-card/95 via-card/75 to-card/0" />
           <div className="absolute inset-x-0 top-0 h-[390px] bg-card/70 [mask-image:linear-gradient(to_bottom,black_0%,black_64%,transparent_100%)]" />
-          <div className="relative z-10 flex min-h-[560px] flex-col p-7">
+          <div className="relative z-10 flex min-h-[340px] flex-col p-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Hole / target
               </p>
               <p className="mt-2 text-6xl font-semibold tracking-normal text-foreground">
-                {targetYd}
-                <span className="ml-2 text-3xl text-muted-foreground">yd</span>
+                {display(targetYd)}
+                <span className="ml-2 text-3xl text-muted-foreground">{unit}</span>
               </p>
             </div>
 
@@ -422,21 +431,21 @@ export function TargetDistanceSelector({
                   className="h-11 rounded-full px-3 text-sm font-semibold shadow-sm"
                   onClick={() => selectTarget(distance)}
                 >
-                  {distance} yd
+                  {display(distance)} {unit}
                 </Button>
               ))}
             </div>
 
             <Field className="mt-8 max-w-sm">
-              <FieldLabel htmlFor="target-distance-yards">Type hole yards</FieldLabel>
+              <FieldLabel htmlFor="target-distance-yards">Target distance ({unit})</FieldLabel>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
                   className="size-12 rounded-full text-primary shadow-sm"
-                  aria-label="Reduce target distance by 5 yards"
-                  onClick={() => selectTarget(targetYd - STEP_YD)}
+                  aria-label={`Reduce target distance by 5 ${unit}`}
+                  onClick={() => selectTarget(targetYd - STEP_YD / factor)}
                 >
                   <Minus className="size-5" />
                 </Button>
@@ -446,17 +455,29 @@ export function TargetDistanceSelector({
                     name="targetDistanceYards"
                     type="number"
                     inputMode="numeric"
-                    min={MIN_TARGET_YD}
-                    max={MAX_TARGET_YD}
-                    step={STEP_YD}
-                    value={targetYd}
+                    min={display(MIN_TARGET_YD)}
+                    max={display(MAX_TARGET_YD)}
+                    step="any"
+                    value={entry}
                     suppressHydrationWarning
                     onFocus={(event) => event.currentTarget.select()}
-                    onChange={(event) => selectTarget(Number(event.target.value))}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setEntry(value);
+                      const yards = Number(value) / factor;
+                      if (
+                        value !== "" &&
+                        Number.isFinite(yards) &&
+                        yards >= MIN_TARGET_YD &&
+                        yards <= MAX_TARGET_YD
+                      )
+                        setTargetYd(yards);
+                    }}
+                    onBlur={() => setEntry(String(display(targetYd)))}
                     className="h-14 w-36 px-5 pr-12 text-xl font-semibold shadow-sm"
                   />
                   <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
-                    yd
+                    {unit}
                   </span>
                 </div>
                 <Button
@@ -464,18 +485,25 @@ export function TargetDistanceSelector({
                   variant="outline"
                   size="icon"
                   className="size-12 rounded-full text-primary shadow-sm"
-                  aria-label="Increase target distance by 5 yards"
-                  onClick={() => selectTarget(targetYd + STEP_YD)}
+                  aria-label={`Increase target distance by 5 ${unit}`}
+                  onClick={() => selectTarget(targetYd + STEP_YD / factor)}
                 >
                   <Plus className="size-5" />
                 </Button>
               </div>
             </Field>
-            <div className="mt-auto min-h-36" />
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-4 min-h-11"
+              onClick={() => selectTarget(initialTargetYd)}
+            >
+              Reset target
+            </Button>
           </div>
         </div>
 
-        <div className="flex min-h-[560px] flex-col gap-5">
+        <div className="flex min-h-[340px] flex-col gap-5">
           <div className="flex flex-1 flex-col rounded-2xl border border-border bg-muted/20 p-7">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>

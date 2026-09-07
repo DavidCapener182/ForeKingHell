@@ -1,3 +1,4 @@
+import styles from "@/app/shots/shot-explorer.module.css";
 import {
   assessFlightEvidence,
   directionIsUsable,
@@ -8,7 +9,7 @@ import { MobileShotExplorer } from "@/app/shots/mobile-shot-explorer";
 import { shotReviewStatuses } from "@/lib/shot-review";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Database, Rows3, ShieldCheck, TableProperties, Upload } from "lucide-react";
+import { Database, Upload } from "lucide-react";
 import {
   and,
   asc,
@@ -31,7 +32,6 @@ import {
   type DesktopSavedViewSuggestion,
   type DesktopWorkbenchColumn,
 } from "@/components/app/desktop-workbench";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -41,7 +41,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { PageShell } from "@/components/premium";
+import { PageHeader, PageShell } from "@/components/premium";
 import { ShotFilterToolbar } from "@/app/shots/shot-filter-toolbar";
 import {
   ShotsMasterDetailTable,
@@ -80,6 +80,7 @@ export const dynamic = "force-dynamic";
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 type ShotFilters = {
+  shotId: string;
   page: number;
   review: ShotReviewStatus | "";
   club: string;
@@ -210,9 +211,75 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
 
   return (
     <PageShell contentClassName="gap-4 lg:gap-4">
-      {surface === "companion" ? (
+      <PageHeader
+        title="Shots"
+        description="Search measured shots and inspect the evidence behind each number."
+        actions={
+          <Button asChild>
+            <Link href="/import">
+              <Upload className="size-4" aria-hidden />
+              Import
+            </Link>
+          </Button>
+        }
+        metrics={[
+          { label: "Saved shots", value: integerFormatter.format(stats.shotCount) },
+          { label: "Sessions", value: integerFormatter.format(stats.sessionCount) },
+          { label: "Clubs", value: integerFormatter.format(stats.clubCount) },
+        ]}
+      />
+      <ShotFilterToolbar
+        key={JSON.stringify(filters)}
+        initial={{
+          q: filters.q,
+          review: filters.review,
+          shotId: filters.shotId,
+          club: filters.club,
+          sessionId: filters.sessionId,
+          category: filters.category,
+          from: filters.from,
+          to: filters.to,
+          trust: filters.trust,
+          sort: filters.sort,
+          dir: filters.dir,
+          group: filters.group,
+        }}
+        clubs={clubsForFilter.map((club) => ({ value: club, label: formatClubType(club) }))}
+        sessions={sessionSummaries.map((session) => ({
+          value: session.id,
+          label: session.fileName ?? formatDate(session.date),
+        }))}
+        categories={categories.map((category) => ({
+          value: category,
+          label: formatSessionType(category),
+        }))}
+        sortOptions={shotSortMetrics.map((metric) => ({
+          value: metric,
+          label: shotSortLabels[metric],
+        }))}
+        resultLabel={`${integerFormatter.format(totalFilteredShots)} matching`}
+      />
+      {filters.shotId ? (
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4"
+          data-single-shot-evidence
+        >
+          <p className="text-sm font-medium">
+            {savedShots.length
+              ? "Showing the exact shot behind your record"
+              : "This shot is unavailable in your account"}
+          </p>
+          <Link
+            className="inline-flex min-h-11 items-center text-sm font-semibold text-primary underline"
+            href={shotsHref({ ...filters, shotId: "", page: 1 })}
+          >
+            Show all shots in this session
+          </Link>
+        </div>
+      ) : null}
+      <div className={surface === "workbench" ? styles.compactRows : undefined}>
         <MobileShotExplorer
-          key={JSON.stringify(filters)}
+          accountShotCount={stats.shotCount}
           correctionClubs={correctionClubs}
           shots={desktopShotRows}
           filters={filters}
@@ -228,37 +295,10 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
           }))}
           categories={categories.map((value) => ({ value, label: formatSessionType(value) }))}
         />
-      ) : null}
+      </div>
 
       {surface === "workbench" ? (
-        <div className="hidden min-w-0 gap-4 lg:grid" data-shots-desktop-workbench>
-          <header className="grid gap-4 border-b pb-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">Analytics workbench</Badge>
-              </div>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-balance xl:text-4xl">
-                Shot Explorer
-              </h1>
-              <p className="mt-1.5 max-w-3xl text-sm leading-6 text-muted-foreground">
-                Audit every measured shot, isolate trusted evidence, and inspect the source behind
-                the number without leaving the table.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <WorkbenchMetric icon={Rows3} label="Shots" value={stats.shotCount} />
-              <WorkbenchMetric icon={TableProperties} label="Sessions" value={stats.sessionCount} />
-              <WorkbenchMetric icon={ShieldCheck} label="Clubs" value={stats.clubCount} />
-              <Button asChild size="sm" variant="outline" className="h-10">
-                <Link href="/import">
-                  <Upload className="size-4" />
-                  Import
-                </Link>
-              </Button>
-            </div>
-          </header>
-
+        <div className={styles.workbench} data-shots-desktop-workbench>
           {stats.shotCount === 0 ? (
             <AppEmptyState
               className="min-h-[34rem]"
@@ -278,35 +318,6 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
             />
           ) : (
             <>
-              <ShotFilterToolbar
-                initial={{
-                  q: filters.q,
-                  club: filters.club,
-                  sessionId: filters.sessionId,
-                  category: filters.category,
-                  from: filters.from,
-                  to: filters.to,
-                  trust: filters.trust,
-                  sort: filters.sort,
-                  dir: filters.dir,
-                  group: filters.group,
-                }}
-                clubs={clubsForFilter.map((club) => ({ value: club, label: formatClubType(club) }))}
-                sessions={sessionSummaries.map((session) => ({
-                  value: session.id,
-                  label: session.fileName ?? formatDate(session.date),
-                }))}
-                categories={categories.map((category) => ({
-                  value: category,
-                  label: formatSessionType(category),
-                }))}
-                sortOptions={shotSortMetrics.map((metric) => ({
-                  value: metric,
-                  label: shotSortLabels[metric],
-                }))}
-                resultLabel={`${integerFormatter.format(totalFilteredShots)} matching`}
-              />
-
               <Card id="shots" className="min-w-0 overflow-hidden py-0 scroll-mt-40">
                 <CardHeader className="gap-3 border-b px-4 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -333,6 +344,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                 <CardContent className="grid min-w-0 gap-3 p-3">
                   <ShotsMasterDetailTable
                     shots={desktopShotRows}
+                    correctionClubs={correctionClubs}
                     sorts={desktopShotSorts}
                     groupBy={filters.group}
                     dispersionClubLabel={filters.club ? formatClubType(filters.club) : undefined}
@@ -340,7 +352,11 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
                   />
                   <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
                     <p className="text-xs text-muted-foreground">
-                      Showing up to {PAGE_SIZE} rows · use Up/Down to move and Enter to inspect
+                      Showing {totalFilteredShots ? (filters.page - 1) * PAGE_SIZE + 1 : 0}–
+                      {Math.min(filters.page * PAGE_SIZE, totalFilteredShots)} of{" "}
+                      {integerFormatter.format(totalFilteredShots)} matching shots. Export includes
+                      this page’s visible columns only. Sort applies to all matching shots. Use
+                      Up/Down to move and Enter to inspect.
                     </p>
                     <ShotPagination filters={filters} totalPages={totalPages} />
                   </div>
@@ -354,24 +370,6 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
   );
 }
 
-function WorkbenchMetric({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof Rows3;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="flex h-10 items-center gap-2 rounded-lg border bg-card px-3 shadow-sm">
-      <Icon className="size-4 text-primary" aria-hidden />
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="font-semibold tabular-nums">{integerFormatter.format(value)}</span>
-    </div>
-  );
-}
-
 function ShotPagination({ filters, totalPages }: { filters: ShotFilters; totalPages: number }) {
   return (
     <Pagination className="mx-0 w-auto justify-end">
@@ -380,6 +378,7 @@ function ShotPagination({ filters, totalPages }: { filters: ShotFilters; totalPa
           <PaginationPrevious
             href={pageHref(filters, Math.max(1, filters.page - 1))}
             aria-disabled={filters.page <= 1}
+            tabIndex={filters.page <= 1 ? -1 : undefined}
             className={filters.page <= 1 ? "pointer-events-none opacity-45" : undefined}
           />
         </PaginationItem>
@@ -392,6 +391,7 @@ function ShotPagination({ filters, totalPages }: { filters: ShotFilters; totalPa
           <PaginationNext
             href={pageHref(filters, Math.min(totalPages, filters.page + 1))}
             aria-disabled={filters.page >= totalPages}
+            tabIndex={filters.page >= totalPages ? -1 : undefined}
             className={filters.page >= totalPages ? "pointer-events-none opacity-45" : undefined}
           />
         </PaginationItem>
@@ -688,6 +688,7 @@ function buildShotWhere(filters: ShotFilters, userId: string) {
   if (filters.review) clauses.push(eq(shots.reviewStatus, filters.review));
   if (filters.club) clauses.push(eq(shots.clubType, filters.club));
   if (filters.sessionId) clauses.push(eq(shots.sessionId, filters.sessionId));
+  if (filters.shotId) clauses.push(eq(shots.id, filters.shotId));
   if (filters.category) clauses.push(eq(shots.shotCategory, filters.category));
   if (filters.q) {
     clauses.push(
@@ -781,6 +782,11 @@ function parseFilters(params: Awaited<SearchParams>): ShotFilters {
 
   return {
     page: Math.max(1, Number(first(params.page)) || 1),
+    shotId: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      first(params.shotId),
+    )
+      ? first(params.shotId)
+      : "",
     review: shotReviewStatuses.find((status) => status === first(params.review)) ?? "",
     club: allToEmpty(first(params.club)),
     sessionId: allToEmpty(first(params.sessionId)),
@@ -801,6 +807,7 @@ function shotsHref(filters: ShotFilters) {
   if (filters.page > 1) params.set("page", filters.page.toString());
   if (filters.club) params.set("club", filters.club);
   if (filters.sessionId) params.set("sessionId", filters.sessionId);
+  if (filters.shotId) params.set("shotId", filters.shotId);
   if (filters.category) params.set("category", filters.category);
   if (filters.q) params.set("q", filters.q);
   if (filters.from) params.set("from", filters.from);
@@ -960,6 +967,7 @@ function buildShotFilterSummary(
   sessionSummaries: Array<{ id: string; fileName: string | null; date: Date }>,
 ) {
   const summary: string[] = [];
+  if (filters.shotId) summary.push("Selected record shot");
   const session = sessionSummaries.find((item) => item.id === filters.sessionId);
   if (filters.q) summary.push(`Search ${filters.q}`);
   if (filters.club && clubsForFilter.includes(filters.club))

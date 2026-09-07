@@ -18,21 +18,25 @@ const capabilities = [
   {
     number: "01",
     title: "Import",
+    href: "/import",
     body: "Bring launch-monitor sessions into one traceable history.",
   },
   {
     number: "02",
     title: "Analyse",
+    href: "/analyse",
     body: "Read patterns, progress, gapping and strokes gained without hiding the sample.",
   },
   {
     number: "03",
     title: "Improve",
+    href: "/practice",
     body: "Turn the strongest signal into a focused practice prescription.",
   },
   {
     number: "04",
     title: "Plan",
+    href: "/play",
     body: "Carry trusted numbers into strategy, rounds and the Course Twin pilot.",
   },
 ] as const;
@@ -251,6 +255,17 @@ export function ProductScreensShowcase() {
                 <p>{screen.eyebrow}</p>
                 <h3>{screen.title}</h3>
                 <p>{screen.body}</p>
+                <a
+                  href={screen.image}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cinematic.textLink}
+                >
+                  Open full {screen.eyebrow} preview (new tab)
+                </a>
+                <p className={cinematic.previewNote}>
+                  Product preview; displayed figures are illustrative.
+                </p>
               </Reveal>
               <Reveal className={cinematic.productScreenshot} from="scale">
                 <Image
@@ -303,13 +318,19 @@ export function EditorialFeatureGrid() {
           <Reveal as="article" className={cinematic.capabilityManifest} from="up">
             <p className={cinematic.kicker}>The connected workspace</p>
             <div>
-              {capabilities.map(({ number, title, body }) => (
+              {capabilities.map(({ number, title, body, href }) => (
                 <section key={title}>
                   <span className={cinematic.capabilityNumber} aria-hidden>
                     {number}
                   </span>
                   <h3>{title}</h3>
                   <p>{body}</p>
+                  <Link
+                    href={`/login?next=${encodeURIComponent(href)}`}
+                    className={cinematic.textLink}
+                  >
+                    Explore {title.toLowerCase()}
+                  </Link>
                 </section>
               ))}
             </div>

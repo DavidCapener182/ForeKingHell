@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,7 @@ export type OperationalStatusItem = {
   value: string;
   detail: string;
   status: OperationalStatus;
+  href?: string;
 };
 
 export function OperationalStatusStrip({ items }: { items: OperationalStatusItem[] }) {
@@ -20,13 +22,22 @@ export function OperationalStatusStrip({ items }: { items: OperationalStatusItem
           key={item.label}
           className="min-w-0 border-b border-border px-3 py-3 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0"
         >
-          <p className="truncate text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="break-words text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {item.label}
           </p>
           <div className="mt-2">
             <OperationalBadge status={item.status}>{item.value}</OperationalBadge>
           </div>
           <p className="mt-2 text-xs leading-4 text-muted-foreground">{item.detail}</p>
+          {item.href ? (
+            <Link
+              href={item.href}
+              prefetch={false}
+              className="mt-2 inline-flex min-h-11 items-center text-sm underline"
+            >
+              Review {item.label.toLowerCase()}
+            </Link>
+          ) : null}
         </div>
       ))}
     </div>

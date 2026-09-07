@@ -165,7 +165,7 @@ function summariseGroup(label: string, shots: ConditionShot[]): ConditionGroup {
   };
 }
 
-function classifyCondition(shot: ConditionShot, dimension: ConditionDimension) {
+export function classifyCondition(shot: ConditionShot, dimension: ConditionDimension) {
   const raw = normalizedRaw(shot.sourceRaw);
   const combined = [
     shot.location,

@@ -1,3 +1,4 @@
+import { ProfileRecordList } from "@/app/profile/profile-records";
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import {
@@ -17,39 +18,27 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
-  Trophy,
   UserRound,
   Users,
 } from "lucide-react";
 import { and, desc, eq } from "drizzle-orm";
 
-import { updateSocialProfileAction } from "@/app/profile/actions";
 import { ProfileEditSheet } from "@/app/profile/profile-edit-sheet";
 import { ProfileMediaEditor } from "@/app/profile/profile-media-editor";
 import { ProfileSectionTabs } from "@/app/profile/profile-section-tabs";
 import { ProfileShareDialog } from "@/app/profile/profile-share-dialog";
-import { MobileAppShell } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { getDb } from "@/db/client";
 import { courseRecordCategories, courseRecordResults, courseRecords, courses } from "@/db/schema";
 import { getAchievementPageData, type AchievementView } from "@/lib/achievements/service";
-import { getRequestAppSurface } from "@/lib/app-surface-server";
 import { getProfileInitials } from "@/lib/profile-initials";
 import { buildProfileHonoursRecords } from "@/lib/profile-honours";
 import { getSiteOrigin } from "@/lib/site-origin";
@@ -75,19 +64,12 @@ const TOUR_COVER_COUNT = 10;
 const profileFormId = "profile-settings-form";
 
 export default async function ProfilePage({ searchParams }: ProfilePageProps) {
-  const [params, profile, surface] = await Promise.all([
-    searchParams,
-    ensureCurrentSocialProfile(),
-    getRequestAppSurface(),
-  ]);
+  const [, profile] = await Promise.all([searchParams, ensureCurrentSocialProfile()]);
   const [achievements, honours, publicData] = await Promise.all([
     getAchievementPageData(profile.userId),
     getProfileHonoursData(profile.userId),
     getProfilePageData(profile.username),
   ]);
-  const workbench =
-    surface === "workbench" ? await import("@/components/app/desktop-workbench") : null;
-  const DesktopWorkbenchLayout = workbench?.DesktopWorkbenchLayout;
   const origin = getSiteOrigin();
   const profileUrl = `${origin}/profile/${profile.username}`;
   const visibility = {
@@ -106,17 +88,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
   const featuredAchievements = selectProfileAchievements(achievements.achievements);
 
   const experience = (
-    <div className="grid min-w-0 gap-5 pb-6" data-profile-identity-page>
-      {params?.saved ? (
-        <Alert>
-          <ShieldCheck className="size-4" />
-          <AlertTitle>Profile saved</AlertTitle>
-          <AlertDescription>
-            Your golf identity and sharing choices are up to date.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
+    <div className="grid min-w-0 gap-5 pb-28" data-profile-identity-page>
       <ProfileIdentityHero
         profile={profile}
         handicap={handicap}
@@ -162,15 +134,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
     </div>
   );
 
-  return (
-    <PageShell>
-      {surface === "companion" ? (
-        <MobileAppShell>{experience}</MobileAppShell>
-      ) : DesktopWorkbenchLayout ? (
-        <DesktopWorkbenchLayout scope="profile">{experience}</DesktopWorkbenchLayout>
-      ) : null}
-    </PageShell>
-  );
+  return <PageShell>{experience}</PageShell>;
 }
 
 type SocialProfile = Awaited<ReturnType<typeof ensureCurrentSocialProfile>>;
@@ -197,7 +161,7 @@ function ProfileIdentityHero({
       aria-label="Golf identity"
     >
       <div
-        className="relative min-h-44 bg-cover bg-center sm:min-h-56 lg:min-h-64"
+        className="relative min-h-32 bg-cover bg-center sm:min-h-40"
         style={{
           backgroundImage: profileHeaderBackground(
             profileHeaderImageUrl(profile.headerImageUrl, profile.username),
@@ -226,7 +190,7 @@ function ProfileIdentityHero({
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 pb-1">
-            <h1 className="truncate text-[1.85rem] font-bold leading-none tracking-[-0.035em] sm:text-[2.35rem]">
+            <h1 className="break-words text-[1.85rem] font-bold leading-none tracking-[-0.035em] sm:text-[2.35rem]">
               {profile.displayName}
             </h1>
             <p className="mt-1 text-sm font-medium text-muted-foreground sm:text-base">
@@ -322,7 +286,7 @@ function ProfileOverview({
           </CardContent>
         </Card>
 
-        <RecentMeaningfulActivity items={recentFeed.slice(0, 4)} />
+        <RecentMeaningfulActivity items={recentFeed} />
       </div>
 
       <aside className="grid content-start gap-3" aria-label="Current golf identity details">
@@ -345,8 +309,8 @@ function ProfileOverview({
         <OverviewFact
           icon={<Radio className="size-5" />}
           label="Launch monitor"
-          value={profile.primaryLaunchMonitor ?? "Not connected"}
-          detail="Your primary measured-data source"
+          value={profile.primaryLaunchMonitor ?? "Not set"}
+          detail="Your saved launch-monitor preference; connection status is not checked here"
         />
       </aside>
     </div>
@@ -372,7 +336,7 @@ function OverviewFact({
         </div>
         <div className="min-w-0">
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <p className="mt-1 truncate text-base font-semibold">{value}</p>
+          <p className="mt-1 break-words text-base font-semibold">{value}</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p>
         </div>
       </CardContent>
@@ -401,8 +365,8 @@ function RecentMeaningfulActivity({ items }: { items: FeedItemView[] }) {
                 <Target className="size-4" />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{item.headline}</span>
-                <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                <span className="block break-words font-medium">{item.headline}</span>
+                <span className="mt-0.5 block break-words text-xs text-muted-foreground">
                   {item.metricValue ? `${item.metricValue} · ` : ""}
                   {item.verificationLabel} · {dateFormatter.format(item.createdAt)}
                 </span>
@@ -446,7 +410,7 @@ function ProfileAchievements({
             {unlockedCount} unlocked <span className="text-muted-foreground">of {totalCount}</span>
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {totalXp.toLocaleString("en-GB")} XP earned from measured golf.
+            {totalXp.toLocaleString("en-GB")} XP recorded in the achievement ledger.
           </p>
         </div>
         <Button asChild variant="outline">
@@ -457,7 +421,7 @@ function ProfileAchievements({
       </section>
 
       <div
-        className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4"
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
         aria-label="Achievement grid"
       >
         {achievements.map((achievement) => (
@@ -498,10 +462,55 @@ function AchievementIdentityCard({ achievement }: { achievement: AchievementView
         </div>
         <div className="mt-5 flex-1">
           <p className="font-semibold leading-5 text-foreground">{achievement.displayName}</p>
-          <p className="mt-1 line-clamp-3 text-xs leading-5 text-muted-foreground">
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
             {achievement.displayDescription}
           </p>
         </div>
+        <details className="mt-4 rounded-lg border p-3">
+          <summary className="min-h-11 cursor-pointer font-medium">Unlock details</summary>
+          <div className="grid gap-2 pt-3 text-sm">
+            <p>
+              {achievement.unlockedAt
+                ? `Unlocked ${dateFormatter.format(new Date(achievement.unlockedAt))}`
+                : "Not unlocked"}
+            </p>
+            {achievement.source ? (
+              <>
+                <p>{achievement.source.title}</p>
+                <p>{achievement.source.detail}</p>
+                {achievement.source.occurredAt ? (
+                  <p>{dateFormatter.format(new Date(achievement.source.occurredAt))}</p>
+                ) : null}
+                {achievement.source.stats.map((stat, index) => (
+                  <p key={index}>
+                    {stat.label}: {stat.value}
+                  </p>
+                ))}
+                {achievement.source.href ? (
+                  <Link
+                    className="min-h-11 underline"
+                    href={achievement.source.href}
+                    prefetch={false}
+                  >
+                    Open unlock source
+                  </Link>
+                ) : (
+                  <p>Source link unavailable.</p>
+                )}
+              </>
+            ) : (
+              <p>No unlock evidence recorded.</p>
+            )}
+          </div>
+        </details>
+        <Button asChild variant="outline" className="mt-4">
+          <Link
+            href={`/achievements?achievement=${encodeURIComponent(achievement.id)}`}
+            prefetch={false}
+          >
+            View requirements and evidence
+          </Link>
+        </Button>
         {achievement.unlocked ? (
           <div className="mt-4 flex items-center justify-between text-xs font-medium text-[var(--status-success-foreground)]">
             <span className="inline-flex items-center gap-1">
@@ -534,34 +543,10 @@ function ProfileRecords({
 }) {
   return (
     <div className="grid gap-5 xl:grid-cols-2">
-      <RecordCollection
-        icon={<Flag className="size-5" />}
-        eyebrow="On course"
-        title="Personal course records"
-        empty="No personal course records yet. Completed record attempts will appear here."
-      >
-        {records.map((record) => (
-          <Link
-            key={record.id}
-            href={`/course-records/${record.recordId}`}
-            prefetch={false}
-            className="group flex items-center gap-3 rounded-xl border bg-background p-3 transition-colors hover:border-primary/35 hover:bg-muted/28"
-          >
-            <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-amber-500/12 text-amber-700 dark:text-amber-300">
-              {record.rank === 1 ? <Trophy className="size-5" /> : <Award className="size-5" />}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold">{record.courseName}</p>
-              <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                {record.categoryName} ·{" "}
-                {record.rank === 1 ? "Course champion" : `Rank #${record.rank ?? "--"}`}
-              </p>
-            </div>
-            <span className="shrink-0 text-sm font-semibold">{record.scoreLabel}</span>
-            <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-          </Link>
-        ))}
-      </RecordCollection>
+      <section className="min-w-0">
+        <h2 className="mb-3 text-lg font-semibold">Personal course records</h2>
+        <ProfileRecordList records={records} />
+      </section>
 
       <RecordCollection
         icon={<Radio className="size-5" />}
@@ -581,8 +566,8 @@ function ProfileRecords({
                 <Target className="size-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{display.title}</p>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">{display.detail}</p>
+                <p className="break-words font-semibold">{display.title}</p>
+                <p className="mt-0.5 break-words text-xs text-muted-foreground">{display.detail}</p>
               </div>
               {display.value ? (
                 <span className="shrink-0 text-sm font-semibold">{display.value}</span>
@@ -663,6 +648,33 @@ function ProfileSharing({
             </p>
           </CardHeader>
           <CardContent className="grid gap-3">
+            {Object.entries(visibility)
+              .filter(([key]) =>
+                [
+                  "rounds",
+                  "pbs",
+                  "bag",
+                  "achievements",
+                  "handicap",
+                  "practice",
+                  "exactShots",
+                ].includes(key),
+              )
+              .map(([key, value]) => (
+                <SharingScope
+                  key={key}
+                  icon={<ShieldCheck className="size-5" />}
+                  label={titleCase(key.replace(/([A-Z])/g, " $1"))}
+                  value={titleCase(String(value))}
+                  detail="Saved scope. Change this with Edit profile; unsaved choices do not change what visitors see."
+                />
+              ))}
+            <SharingScope
+              icon={<Users className="size-5" />}
+              label="Comparisons"
+              value={visibility.allowCompare ? "Allowed" : "Disabled"}
+              detail="Saved permission for eligible shared-analysis comparisons."
+            />
             <SharingScope
               icon={<CircleUserRound className="size-5" />}
               label="Profile visibility"
@@ -763,12 +775,7 @@ function ProfileEditForm({
   visibility: ProfileVisibility;
 }) {
   return (
-    <form
-      id={profileFormId}
-      action={updateSocialProfileAction}
-      aria-label="Edit profile and privacy"
-      className="grid gap-5 pt-4"
-    >
+    <div className="grid gap-5">
       <ProfileMediaEditor
         displayName={profile.displayName}
         username={profile.username}
@@ -873,7 +880,7 @@ function ProfileEditForm({
       <Button type="submit" className="w-full sm:w-fit">
         <ShieldCheck className="size-4" /> Save profile
       </Button>
-    </form>
+    </div>
   );
 }
 
@@ -888,7 +895,7 @@ function FormField({
   return (
     <label className="grid gap-2 text-sm font-medium">
       <span>{label}</span>
-      <Input name={name} className="h-10 rounded-xl bg-background" {...props} />
+      <Input name={name} className="min-h-11 rounded-xl bg-background" {...props} />
     </label>
   );
 }
@@ -903,7 +910,7 @@ function CheckboxField({
   defaultChecked: boolean;
 }) {
   return (
-    <label className="flex items-center justify-between gap-3 rounded-xl border bg-background px-3 py-2 text-sm">
+    <label className="flex items-center justify-between gap-3 rounded-xl border bg-background min-h-11 px-3 py-2 text-sm">
       <span>{label}</span>
       <Switch name={name} defaultChecked={defaultChecked} aria-label={label} />
     </label>
@@ -922,18 +929,17 @@ function SelectField({
   return (
     <label className="grid gap-2 text-sm font-medium">
       <span>{label}</span>
-      <Select name={name} defaultValue={defaultValue}>
-        <SelectTrigger className="w-full bg-background">
-          <SelectValue placeholder="Choose visibility" />
-        </SelectTrigger>
-        <SelectContent>
-          {socialVisibilityOptions.map((option) => (
-            <SelectItem key={option} value={option}>
-              {titleCase(option)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <select
+        name={name}
+        defaultValue={defaultValue}
+        className="min-h-11 w-full rounded-lg border bg-background px-3"
+      >
+        {socialVisibilityOptions.map((option) => (
+          <option key={option} value={option}>
+            {titleCase(option)}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }
@@ -941,14 +947,11 @@ function SelectField({
 function selectProfileAchievements(achievements: AchievementView[]) {
   const unlocked = achievements
     .filter((achievement) => achievement.unlocked)
-    .sort((left, right) => dateValue(right.unlockedAt) - dateValue(left.unlockedAt))
-    .slice(0, 8);
+    .sort((left, right) => dateValue(right.unlockedAt) - dateValue(left.unlockedAt));
   const locked = achievements
     .filter((achievement) => !achievement.unlocked)
-    .sort((left, right) => (right.progressPercent ?? -1) - (left.progressPercent ?? -1))
-    .slice(0, Math.max(4, 12 - unlocked.length));
-
-  return [...unlocked, ...locked].slice(0, 12);
+    .sort((left, right) => (right.progressPercent ?? -1) - (left.progressPercent ?? -1));
+  return [...unlocked, ...locked];
 }
 
 function buildRecentHighlight(
@@ -981,7 +984,7 @@ function buildRecentHighlight(
   if (record) {
     return {
       title: `${record.courseName} · ${record.scoreLabel}`,
-      detail: `${record.categoryName} · ${record.rank === 1 ? "Course champion" : `Rank #${record.rank ?? "--"}`}`,
+      detail: `${record.categoryName} · ${`Rank #${record.rank ?? "--"}`}`,
       href: `/course-records/${record.recordId}`,
     };
   }
@@ -1000,7 +1003,7 @@ function launchRecordDisplay(record: Record<string, unknown>) {
     stringValue(record.metric) ??
     stringValue(record.metricLabel) ??
     stringValue(record.source) ??
-    "Verified personal best";
+    "Source and verification not recorded";
 
   return { title, value, detail };
 }
@@ -1059,7 +1062,18 @@ async function getProfileHonoursData(userId: string) {
     .orderBy(desc(courseRecordResults.calculatedAt))
     .limit(24);
 
-  return { records: buildProfileHonoursRecords(rows).slice(0, 12) };
+  return {
+    records: buildProfileHonoursRecords(rows).map((item) => {
+      const source = rows.find((row) => row.result.id === item.id)!.result;
+      return {
+        ...item,
+        calculatedAt: source.calculatedAt.toISOString(),
+        verificationStatus: source.verificationStatus,
+        verificationTier: source.verificationTier,
+        status: source.status,
+      };
+    }),
+  };
 }
 
 function titleCase(value: string) {

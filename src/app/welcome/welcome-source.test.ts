@@ -18,12 +18,15 @@ const progressCard = readFileSync(
   "utf8",
 );
 
+const journeySource = readFileSync(join(root, "src/app/welcome/welcome-journey.tsx"), "utf8");
+const skipSource = readFileSync(join(root, "src/app/welcome/welcome-skip.tsx"), "utf8");
 describe("first-use journey", () => {
   it("uses real account state, supports resume, and never imports demo data", () => {
     expect(welcome).toContain("getActivationJourney(userId)");
     expect(welcome).toContain('resume !== "1"');
-    expect(companion).toContain("dismissWelcomeAction");
-    expect(workbench).toContain("dismissWelcomeAction");
+    expect(journeySource).toContain("<WelcomeSkip");
+    expect(skipSource).toContain("dismissWelcomeStateAction");
+    expect(skipSource).toContain('role="alert"');
     expect(progressCard).toContain('href="/welcome?resume=1"');
     expect(activation).toContain("providerAccounts");
     expect(activation).toContain("practicePlans");
@@ -49,31 +52,26 @@ describe("first-use journey", () => {
     expect(welcome).not.toMatch(/className=["'][^"']*\bhidden\b/);
   });
 
-  it("keeps the native companion checklist out of the workbench module graph", () => {
-    expect(companion).toContain("<MobileAppShell>");
-    expect(companion).toContain("IOSGroupedList");
-    expect(companion).toContain("IOSInlineStatus");
-    expect(companion).toContain('next?.href ?? "/today"');
-    expect(companion).toContain("var(--status-success-foreground)");
-    expect(companion).not.toContain("welcome-workbench-page");
-    expect(companion).not.toContain("data-welcome-workbench");
-    expect(companion).not.toContain("Get to the first insight you can trust.");
-    expect(companion).not.toContain("text-emerald-");
-
-    expect(workbench).toContain("data-welcome-workbench");
-    expect(workbench).toContain("Get to the first insight you can trust.");
-    expect(workbench).not.toContain("welcome-companion-page");
-    expect(workbench).not.toContain("MobileAppShell");
-    expect(workbench).not.toContain("MobileWelcomeJourney");
-    expect(workbench).not.toContain("IOSGroupedList");
+  it("shares an evidence-backed checklist across both selected entry points", () => {
+    for (const entry of [companion, workbench]) {
+      expect(entry).toContain("<WelcomeJourney journey={journey} />");
+    }
+    expect(journeySource).toContain('aria-label="Setup checklist"');
+    expect(journeySource).toContain('aria-current={step.id === next?.id ? "step" : undefined}');
+    expect(journeySource).toContain('next?.href ?? "/today"');
+    expect(journeySource).toContain("No completed steps are inferred.");
+    expect(journeySource).toContain("Opening a step does not mark it complete.");
+    expect(journeySource).toContain("journey.steps.filter((step) => step.complete).length");
+    expect(journeySource).toContain("Skipping does not delete data or disable golf features.");
   });
 
-  it("does not use viewport-hidden composition gates for either requested surface", () => {
-    for (const source of [companion, workbench]) {
+  it("renders a single responsive checklist without viewport-hidden duplicate trees", () => {
+    for (const source of [companion, workbench, journeySource]) {
       expect(source).not.toMatch(/className=["'][^"']*\bhidden\b/);
       expect(source).not.toMatch(/\blg:(?:block|flex|grid|hidden)\b/);
     }
-    expect(workbench).toContain("sm:grid-cols-[auto_minmax(0,1fr)_auto]");
-    expect(workbench).toContain("sm:flex-row");
+    expect(journeySource).toContain("md:grid-cols-[minmax(0,1fr)_auto]");
+    expect(journeySource).toContain("<progress");
+    expect(journeySource).toContain('aria-label="Setup evidence progress"');
   });
 });

@@ -8,13 +8,63 @@ const number = (value: number | null, digits = 1) => (value === null ? "—" : v
 export async function DriverDevelopmentPanel({
   date,
   compact = false,
+  variant = "full",
 }: {
   date?: string;
   compact?: boolean;
+  variant?: "full" | "signal" | "practice";
 }) {
   const snapshot = await getDriverDevelopmentSnapshot(undefined, date);
   if (!snapshot) return null;
+  if (variant !== "full")
+    return <DriverDevelopmentSignal snapshot={snapshot} practice={variant === "practice"} />;
   return <DriverDevelopmentCard snapshot={snapshot} compact={compact} />;
+}
+
+/** Context pages get the useful signal; detailed confidence controls remain in Speed. */
+export function DriverDevelopmentSignal({
+  snapshot,
+  practice = false,
+}: {
+  snapshot: DriverDevelopmentSnapshot;
+  practice?: boolean;
+}) {
+  const carry = snapshot.metrics.carry;
+  return (
+    <section
+      className="grid min-w-0 gap-2 border-y border-border py-4"
+      aria-label="Driver development signal"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-base font-semibold">
+          {practice ? "For your Driver practice" : "Driver development"}
+        </h2>
+        <span className="text-xs text-muted-foreground">
+          {snapshot.date} · {carry.sampleSize} carry readings
+        </span>
+      </div>
+      <p className="text-sm leading-6">{practice ? snapshot.nextAction : snapshot.conclusion}</p>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm">
+        <p>
+          {carry.value === null
+            ? "Carry evidence unavailable"
+            : `${number(carry.value)} yd average carry`}{" "}
+          · {carry.confidence}
+        </p>
+        <Link
+          href="/speed"
+          className="inline-flex min-h-11 items-center font-medium text-primary underline underline-offset-4"
+        >
+          Review Driver evidence
+        </Link>
+      </div>
+      {snapshot.directionOmittedCount > 0 || snapshot.directionReviewCount > 0 ? (
+        <p className="text-xs leading-5 text-muted-foreground">
+          Direction needs review. Carry and speed retain their separate checks.
+        </p>
+      ) : null}
+    </section>
+  );
 }
 export function DriverDevelopmentCard({
   snapshot: s,

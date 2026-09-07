@@ -1,15 +1,24 @@
 "use client";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { AutomaticReviewRow } from "@/lib/automatic-shot-review-data";
 import { keepAutomaticShotReviewAction } from "@/app/(app)/shots/actions";
-import { MobileLargeTitle, MobileSection } from "@/components/app/mobile-screen";
+import { MobileSection } from "@/components/app/mobile-screen";
 import { MobileGroupedList, MobileStatus } from "@/components/app/mobile-primitives";
 import { Button } from "@/components/ui/button";
 import { ShotReviewButton, ShotBulkReviewButton } from "./shot-review-controls";
 import { visibleShotSelection } from "./mobile-shot-evidence";
-import { ClubCorrection } from "./mobile-shot-explorer";
+import { ShotEvidenceSheet } from "./shot-evidence-sheet";
+import { PageHeader } from "@/components/premium";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+} from "@/components/ui/alert-dialog";
 
 export function MobileAutomaticReview({
   rows,
@@ -25,15 +34,22 @@ export function MobileAutomaticReview({
   hasNext: boolean;
 }) {
   const router = useRouter();
+  const submitting = useRef(false);
+  const [confirmIds, setConfirmIds] = useState<string[]>([]);
+  const [error, setError] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [undoIds, setUndoIds] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
   const visibleSelection = visibleShotSelection(selected, rows);
   async function keep(ids: string[], undo = false) {
+    if (submitting.current) return;
+    submitting.current = true;
     startTransition(async () => {
+      setError("");
       try {
         await keepAutomaticShotReviewAction(ids, undo);
+        setConfirmIds([]);
         setUndoIds(undo ? [] : ids);
         setSelected([]);
         setMessage(
@@ -41,20 +57,65 @@ export function MobileAutomaticReview({
         );
         router.refresh();
       } catch (error) {
-        setMessage(
+        setError(
           error instanceof Error && !/load failed|failed to fetch|networkerror/i.test(error.message)
             ? error.message
             : "Could not save the review. Your selection is kept. Check your connection and try again.",
         );
+      } finally {
+        submitting.current = false;
       }
     });
   }
   return (
     <div className="grid gap-5" data-mobile-automatic-review>
-      <MobileLargeTitle
+      <PageHeader
         title="Review shots"
-        detail="Check the evidence. Keep what represents your game."
+        description="Check the evidence. Keep what represents your game."
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/shots">All shots</Link>
+          </Button>
+        }
+        metrics={[
+          { label: "Suggestions in this batch", value: rows.length },
+          { label: "Shots scanned", value: scanned },
+          { label: "Batch", value: page },
+        ]}
       />
+      <AlertDialog
+        open={confirmIds.length > 0}
+        onOpenChange={(value) => {
+          if (!value && !pending) setConfirmIds([]);
+        }}
+      >
+        <AlertDialogContent className="max-h-[88dvh] overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Keep{" "}
+              {confirmIds.length === 1
+                ? rows.find((r) => r.id === confirmIds[0])?.clubLabel + " shot"
+                : `${confirmIds.length} selected shots`}
+              ?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Dismisses the selected suggestions. Other evidence checks still apply to club
+              summaries and analysis. Raw measurements and review history remain available; you can
+              undo this decision.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {error && <p role="alert">{error}</p>}
+          <AlertDialogFooter>
+            <Button variant="outline" disabled={pending} onClick={() => setConfirmIds([])}>
+              Cancel
+            </Button>
+            <Button disabled={pending} onClick={() => void keep(confirmIds)}>
+              {pending ? "Saving…" : "Confirm keep"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {!confirmIds.length && error ? <p role="alert">{error}</p> : null}
       <details>
         <summary className="flex min-h-11 cursor-pointer items-center text-primary">
           How suggestions work
@@ -83,7 +144,13 @@ export function MobileAutomaticReview({
       ) : null}
       {visibleSelection.length ? (
         <div className="grid grid-cols-2 gap-2">
-          <Button disabled={pending} onClick={() => void keep(visibleSelection)}>
+          <Button
+            disabled={pending}
+            onClick={() => {
+              setError("");
+              setConfirmIds(visibleSelection);
+            }}
+          >
             Keep {visibleSelection.length}
           </Button>
           <ShotBulkReviewButton
@@ -101,12 +168,15 @@ export function MobileAutomaticReview({
       >
         <MobileGroupedList>
           {rows.map((row) => (
-            <article key={row.id} className="border-b border-border p-4 last:border-0">
+            <article
+              key={row.id}
+              className="grid min-w-0 gap-3 border-b border-border p-4 last:border-0"
+            >
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-semibold">
+                <div className="min-w-0">
+                  <h3 className="font-semibold">
                     {row.clubLabel} · Shot {row.shotNumber ?? "—"}
-                  </p>
+                  </h3>
                   <p className="text-xs text-muted-foreground">
                     {new Date(row.shotAt).toLocaleDateString("en-GB")} ·{" "}
                     {row.sessionSource.replaceAll("_", " ")}
@@ -132,17 +202,14 @@ export function MobileAutomaticReview({
                   />
                 </label>
               </div>
+              <p className="break-words text-sm text-muted-foreground">
+                {row.fileName ?? "Source file name not recorded"}
+              </p>
               <MobileStatus
                 label={`${row.suggestion.classification} · ${row.suggestion.confidence} confidence`}
                 tone="attention"
               />
-              <p className="my-3 line-clamp-2 text-sm leading-6">{row.suggestion.reason}</p>
-              <details className="mb-3">
-                <summary className="flex min-h-11 cursor-pointer items-center text-sm text-primary">
-                  Full evidence
-                </summary>
-                <p className="text-sm leading-6">{row.suggestion.reason}</p>
-              </details>
+              <p className="text-sm leading-6">{row.suggestion.reason}</p>
               <dl className="grid grid-cols-3 gap-3 tabular-nums">
                 {(
                   [
@@ -163,7 +230,14 @@ export function MobileAutomaticReview({
                   ))}
               </dl>
               <div className="mt-4 grid grid-cols-2 gap-2">
-                <Button variant="outline" disabled={pending} onClick={() => void keep([row.id])}>
+                <Button
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => {
+                    setError("");
+                    setConfirmIds([row.id]);
+                  }}
+                >
                   Keep
                 </Button>
                 <ShotReviewButton
@@ -171,21 +245,21 @@ export function MobileAutomaticReview({
                   shotId={row.id}
                   reviewStatus={row.reviewStatus}
                   intent="exclude"
+                  onComplete={() => router.refresh()}
                 />
               </div>
-              <details className="mt-2">
-                <summary className="flex min-h-11 cursor-pointer items-center text-primary">
-                  Change club or see details
-                </summary>
-                <div className="grid gap-3">
-                  <ClubCorrection shotId={row.id} clubs={clubs} />
-                  <Button asChild variant="ghost">
-                    <Link href={`/shots?sessionId=${row.sessionId}&club=${row.clubType}`}>
-                      View measured shots
-                    </Link>
-                  </Button>
-                </div>
-              </details>
+              <ShotEvidenceSheet
+                shotId={row.id}
+                title={`${row.clubLabel} · Shot ${row.shotNumber ?? "—"}`}
+                clubs={clubs}
+                onComplete={() => router.refresh()}
+              />
+              <Link
+                className="flex min-h-11 items-center text-sm text-primary underline"
+                href={`/shots?shotId=${row.id}&sessionId=${row.sessionId}`}
+              >
+                Open exact shot in explorer
+              </Link>
             </article>
           ))}
         </MobileGroupedList>
@@ -201,6 +275,11 @@ export function MobileAutomaticReview({
         Scanned {scanned} shots in batch {page}. Profiles use up to 4,000 recent measured shots;
         sparse evidence produces no club suggestion. Previously reviewed decisions are respected.
       </p>
+      {!scanned && page === 1 ? (
+        <Button asChild>
+          <Link href="/import">Import measured shots</Link>
+        </Button>
+      ) : null}
       <nav aria-label="Review batches" className="flex justify-between gap-3">
         {page > 1 ? (
           <Button asChild variant="outline">

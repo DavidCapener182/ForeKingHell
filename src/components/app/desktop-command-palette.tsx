@@ -27,6 +27,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import styles from "@/components/untitled-ui/command.module.css";
 
 export function DesktopCommandPalette({
   open,
@@ -46,6 +47,9 @@ export function DesktopCommandPalette({
   onPreview,
   onNavigate,
   onOpenShortcuts,
+  loading = false,
+  loadError = false,
+  onRetry,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -64,6 +68,9 @@ export function DesktopCommandPalette({
   onPreview: (index: number) => void;
   onNavigate: (href: string) => void;
   onOpenShortcuts: () => void;
+  loading?: boolean;
+  loadError?: boolean;
+  onRetry?: () => void;
 }) {
   const pinnedHrefs = new Set(pinnedLinks.map((link) => link.href));
   const groups = [...new Set(commands.map((command) => command.group ?? "Navigation"))];
@@ -74,8 +81,8 @@ export function DesktopCommandPalette({
       onOpenChange={onOpenChange}
       title="Command palette"
       description="Search LM World Tour pages, clubs, rounds and actions."
-      className="sm:max-w-4xl"
-      showCloseButton={false}
+      className={cn("sm:max-w-4xl", styles.dialog)}
+      showCloseButton
     >
       <Command shouldFilter={false} loop>
         <CommandInput
@@ -86,7 +93,20 @@ export function DesktopCommandPalette({
           placeholder="Search driver, latest round, 7 iron, friends, courses..."
           aria-label="Search command palette"
         />
-        <div className="grid min-h-0 gap-0 md:grid-cols-[minmax(0,1fr)_18rem]">
+        {loading ? (
+          <p role="status" className={styles.status}>
+            Loading your clubs, rounds, sessions and people…
+          </p>
+        ) : null}
+        {loadError ? (
+          <div role="alert" className={styles.status}>
+            Your saved items could not be loaded. Page navigation is still available.
+            <button type="button" onClick={onRetry}>
+              Retry search
+            </button>
+          </div>
+        ) : null}
+        <div className={cn("grid min-h-0 gap-0 md:grid-cols-[minmax(0,1fr)_18rem]", styles.body)}>
           <CommandList
             id="command-palette-results"
             className="max-h-[29rem] p-2"

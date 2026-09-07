@@ -143,15 +143,49 @@ export async function createInvitationAction(formData: FormData) {
 }
 
 export async function acceptInvitationAction(formData: FormData) {
+  const result = await acceptInvitationResult(formData);
+  if (result === "signed-out") {
+    const token = nullableString(formData, "token") ?? "";
+    redirect(`/login?next=/settings/invitations/${encodeURIComponent(token)}`);
+  }
+  if (result === "accepted") redirect("/settings?section=sharing&inviteAccepted=1");
+  redirect(`/settings?section=sharing&inviteError=${result}`);
+}
+
+export async function acceptInvitationFormAction(
+  _previous: { ok: boolean; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const result = await acceptInvitationResult(formData);
+    if (result === "accepted") return { ok: true };
+    return {
+      ok: false,
+      error:
+        result === "signed-out"
+          ? "Sign in with the invited email address to accept."
+          : result === "email"
+            ? "This invitation is for a different email address."
+            : "This invitation is invalid, expired or no longer available.",
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not accept invitation. Try again.",
+    };
+  }
+}
+
+async function acceptInvitationResult(formData: FormData) {
   const currentUser = await getCurrentUser();
   const token = nullableString(formData, "token");
 
   if (!token) {
-    redirect("/settings?section=sharing&inviteError=invalid");
+    return "invalid" as const;
   }
 
   if (!currentUser) {
-    redirect(`/login?next=/settings/invitations/${encodeURIComponent(token)}`);
+    return "signed-out" as const;
   }
 
   const db = getDb();
@@ -170,11 +204,11 @@ export async function acceptInvitationAction(formData: FormData) {
     .limit(1);
 
   if (!invitation) {
-    redirect("/settings?section=sharing&inviteError=invalid");
+    return "invalid" as const;
   }
 
   if (currentUser.email?.toLowerCase() !== invitation.invitedEmail.toLowerCase()) {
-    redirect("/settings?section=sharing&inviteError=email");
+    return "email" as const;
   }
 
   const invitationAccepted = await db.transaction(async (tx) => {
@@ -221,11 +255,11 @@ export async function acceptInvitationAction(formData: FormData) {
   });
 
   if (!invitationAccepted) {
-    redirect("/settings?section=sharing&inviteError=invalid");
+    return "invalid" as const;
   }
 
   revalidatePath("/settings");
-  redirect("/settings?section=sharing&inviteAccepted=1");
+  return "accepted" as const;
 }
 
 export async function cancelInvitationAction(formData: FormData) {
@@ -266,6 +300,96 @@ export async function removeMembershipAction(formData: FormData) {
 }
 
 export async function updateUserSettingsAction(formData: FormData) {
+  const section = await saveUserSettings(formData);
+  redirect(`/settings?section=${section}&saved=1`);
+}
+
+export async function updateUserSettingsFormAction(
+  _previous: { ok: boolean; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await saveUserSettings(formData, true);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not save settings. Try again.",
+    };
+  }
+}
+
+export async function settingsAccessFormAction(
+  _previous: { ok: boolean; error?: string; inviteToken?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string; inviteToken?: string }> {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("Sign in to manage account access.");
+    const operation = nullableString(formData, "operation");
+    if (operation === "invite") {
+      const invitedEmail = normalizeInvitationEmail(formData.get("invitedEmail"));
+      if (currentUser.email?.toLowerCase() === invitedEmail)
+        throw new Error("You cannot invite yourself.");
+      const token = createInvitationToken();
+      const now = new Date();
+      await getDb()
+        .insert(accountInvitations)
+        .values({
+          ownerUserId: currentUser.id,
+          invitedEmail,
+          role: parseCollaborationRole(formData.get("role")),
+          tokenHash: hashInvitationToken(token),
+          status: "pending",
+          expiresAt: getInvitationExpiry(now),
+          updatedAt: now,
+        });
+      revalidatePath("/settings");
+      return { ok: true, inviteToken: token };
+    }
+    if (operation === "cancel") {
+      const invitationId = nullableString(formData, "invitationId");
+      if (!invitationId) throw new Error("Invitation is required.");
+      const changed = await getDb()
+        .update(accountInvitations)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(
+          and(
+            eq(accountInvitations.id, invitationId),
+            eq(accountInvitations.ownerUserId, currentUser.id),
+            eq(accountInvitations.status, "pending"),
+          ),
+        )
+        .returning({ id: accountInvitations.id });
+      if (!changed.length)
+        throw new Error("Pending invitation was not found or is no longer available.");
+    } else if (operation === "remove") {
+      const membershipId = nullableString(formData, "membershipId");
+      if (!membershipId) throw new Error("Membership is required.");
+      const changed = await getDb()
+        .delete(accountMemberships)
+        .where(
+          and(
+            eq(accountMemberships.id, membershipId),
+            eq(accountMemberships.ownerUserId, currentUser.id),
+          ),
+        )
+        .returning({ id: accountMemberships.id });
+      if (!changed.length) throw new Error("Account access was not found or is already removed.");
+    } else {
+      throw new Error("Unknown account access operation.");
+    }
+    revalidatePath("/settings");
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not update access. Try again.",
+    };
+  }
+}
+
+async function saveUserSettings(formData: FormData, requireUpdatedRow = false) {
   const userId = await requireCurrentUserId();
   const db = getDb();
   const section = settingsFormSection(formData.get("settingsSection"));
@@ -288,11 +412,16 @@ export async function updateUserSettingsAction(formData: FormData) {
             updatedAt: new Date(),
           };
 
-  await db.update(users).set(patch).where(eq(users.id, userId));
+  const changed = await db
+    .update(users)
+    .set(patch)
+    .where(eq(users.id, userId))
+    .returning({ id: users.id });
+  if (requireUpdatedRow && !changed.length) throw new Error("Account settings were not found.");
 
   revalidatePath("/settings");
   revalidatePath("/dashboard");
-  redirect(`/settings?section=${section}&saved=1`);
+  return section;
 }
 
 export async function deleteAccountDataAction(formData: FormData) {

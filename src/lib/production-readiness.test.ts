@@ -93,7 +93,8 @@ describe("production readiness gate", () => {
 
     expect(source).toContain("Visibility defaults");
     expect(source).toContain("New sharing stays private unless you explicitly enable it.");
-    expect(source).toContain("Public visitors never receive account-level access.");
+    expect(source).toContain('label="Public visitors"');
+    expect(source).toContain('value="No account access"');
     expect(source).toContain("Export account data");
     expect(source).toContain("Delete account permanently");
   });
@@ -101,10 +102,12 @@ describe("production readiness gate", () => {
   it("keeps the dashboard first-run Rapsodo path gated to no-data users", () => {
     const source = readFileSync(join(root, "src/app/(app)/dashboard/page.tsx"), "utf8");
 
-    expect(source).toContain("DashboardFirstRunOnboarding");
-    expect(source).toContain("data.stats.shotCount === 0");
-    expect(source).toContain("First-run Rapsodo path");
-    expect(source).toContain("Turn Rapsodo data into stock yardages");
+    expect(source).toContain("!hasEvidence ? (");
+    expect(source).toContain("const hasEvidence = data.stats.shotCount > 0;");
+    expect(source).toContain('title="Start with a session"');
+    expect(source).toContain(
+      "Upload a CSV or connect Rapsodo, confirm clubs and review data quality.",
+    );
   });
 
   it("keeps the documented PB feed asset wired into fixed-ratio feed cards", () => {
@@ -160,7 +163,7 @@ describe("production readiness gate", () => {
 
     for (const expected of [
       "Provider import health",
-      "Last sync",
+      "Last recorded activity",
       "Import failures",
       "live/current",
       "beta adapter",
@@ -382,7 +385,7 @@ describe("production readiness gate", () => {
       "utf8",
     );
 
-    expect(bagSource).toContain("<TabsList");
+    expect(bagSource).toContain("<UrlTabs");
     expect(bagSource).toContain("<TargetDistanceSelector");
     expect(bagSource).toContain("<ClubIntelligencePanel");
     expect(bagSource).toContain("<Alert");
@@ -393,16 +396,19 @@ describe("production readiness gate", () => {
     expect(shotsTableSource).toContain("data-shot-group={groupBy}");
     expect(shotsTableSource).toContain("shotGroupLabel");
     expect(shotsSource).not.toMatch(/MobileAppShell|MobileFilterSheet|IOS[A-Z]/);
-    expect(challengesSource).toContain("MobileActiveView");
-    expect(challengesSource).toContain("ActiveChallengeCard");
-    expect(challengesSource).toContain("/assets/challenge-longest-drive.webp");
-    expect(challengesSource).toContain("challengeImageSrc");
-    expect(practiceSource).toContain("<MobileLargeTitle");
+    expect(challengesSource).toContain("<ChallengeWorkspace");
+    expect(practiceSource).toContain("<PageHeader");
     expect(practiceSource).toContain("<Carousel");
     expect(practiceSource).toContain("<Textarea");
-    expect(importSource).toContain("Choose CSV from Files");
-    expect(importSource).toContain("Rapsodo R-Cloud");
-    expect(importWorkbenchSource).toContain("Review and import");
+    expect(importSource).toContain("<ImportSourceChooser");
+    const sourceChooser = readFileSync(
+      join(root, "src/app/import/import-source-chooser.tsx"),
+      "utf8",
+    );
+    expect(sourceChooser).toContain("Choose CSV files");
+    expect(sourceChooser).toContain("Rapsodo R-Cloud");
+    expect(importWorkbenchSource).toContain("<ImportForm");
+    expect(importWorkbenchSource).toContain("<ImportSourceChooser");
     expect(rapsodoSource).toContain("Map clubs");
     expect(rapsodoSource).toContain("Review trust");
     expect(rapsodoSource).not.toMatch(/MobileAppShell|IOS[A-Z]|setMobileStep/);

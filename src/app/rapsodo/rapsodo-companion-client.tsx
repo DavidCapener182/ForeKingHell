@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Cloud, MoreHorizontal } from "lucide-react";
 
 import {
@@ -54,6 +54,17 @@ type ConnectionStatus = {
   profile: Record<string, unknown> | null;
 };
 
+const RapsodoSyncClient = dynamic(
+  () => import("./rapsodo-sync-client").then((module) => module.RapsodoSyncClient),
+  {
+    loading: () => (
+      <p role="status" className="p-4">
+        Loading session import…
+      </p>
+    ),
+  },
+);
+
 const RapsodoCompanionPreview = dynamic(
   () =>
     import("@/app/rapsodo/rapsodo-companion-preview").then(
@@ -77,7 +88,25 @@ export function RapsodoCompanionClient({
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState<"sessions" | "preview" | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [pending, startReactTransition] = useTransition();
+  const busy = useRef(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const startTransition = useCallback((work: () => Promise<void>) => {
+    if (busy.current) return;
+    busy.current = true;
+    startReactTransition(async () => {
+      try {
+        await work();
+      } catch {
+        setMessage(
+          "R-Cloud could not complete this operation. Your current choices are retained; try again.",
+        );
+      } finally {
+        busy.current = false;
+        setLoading(null);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setHydrated(true), 0);
@@ -97,7 +126,7 @@ export function RapsodoCompanionClient({
       }
       setSessions(companionRapsodoInbox(result.data));
     });
-  }, [status.connected]);
+  }, [status.connected, startTransition]);
 
   useEffect(() => {
     const timer = window.setTimeout(loadSessions, 0);
@@ -119,6 +148,13 @@ export function RapsodoCompanionClient({
   }
 
   function openPreview(session: RapsodoSessionListItem) {
+    if (
+      preview?.session.providerSessionId === session.providerSessionId &&
+      preview.session.providerKind === session.providerKind
+    ) {
+      setPreviewOpen(true);
+      return;
+    }
     setLoading("preview");
     setMessage(null);
     startTransition(async () => {
@@ -129,6 +165,7 @@ export function RapsodoCompanionClient({
         return;
       }
       setPreview(result.data);
+      setPreviewOpen(true);
     });
   }
 
@@ -164,7 +201,13 @@ export function RapsodoCompanionClient({
           </CardAction>
         </CardHeader>
         <CardContent>
-          <form action={connect} className="grid gap-3">
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              connect(new FormData(event.currentTarget));
+            }}
+            className="grid gap-3"
+          >
             <div className="grid gap-1.5">
               <Label htmlFor="rapsodo-email">Email</Label>
               <Input
@@ -187,7 +230,7 @@ export function RapsodoCompanionClient({
                 className="min-h-11"
               />
             </div>
-            <Button type="submit" className="min-h-12 rounded-xl" disabled={pending}>
+            <Button type="submit" className="min-h-12 rounded-xl" disabled={pending || !hydrated}>
               Connect R-Cloud
             </Button>
           </form>
@@ -207,149 +250,176 @@ export function RapsodoCompanionClient({
     );
   }
 
-  if (preview) {
+  if (preview && preview.sessionType !== "range") {
     return (
-      <RapsodoCompanionPreview
-        preview={preview}
+      <RapsodoSyncClient
+        key={`${preview.session.providerKind}-${preview.session.providerSessionId}`}
+        initialStatus={status}
+        initialPreview={preview}
         practicePlanId={practicePlanId}
-        hydrated={hydrated}
-        message={message}
-        onMessageChange={setMessage}
-        onClose={() => setPreview(null)}
+        embedded
       />
     );
   }
 
   return (
-    <div
-      className="grid gap-4"
-      data-rapsodo-companion-inbox
-      data-hydrated={hydrated ? "true" : "false"}
-    >
-      <Card size="sm" data-rapsodo-connection-card>
-        <CardHeader>
-          <div>
-            <CardTitle>R-Cloud connected</CardTitle>
-            <p className="mt-1 text-xs text-muted-foreground">Recent unimported sessions</p>
-          </div>
-          <CardAction>
-            <div className="flex items-center gap-2">
-              <Badge>Connected</Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="outline" size="icon" aria-label="R-Cloud options">
-                    <MoreHorizontal className="size-4" aria-hidden />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={loadSessions}>Refresh sessions</DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/import?source=csv">Import a CSV instead</Link>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+    <>
+      {preview && (
+        <RapsodoCompanionPreview
+          key={`${preview.session.providerKind}-${preview.session.providerSessionId}`}
+          preview={preview}
+          open={previewOpen}
+          practicePlanId={practicePlanId}
+          hydrated={hydrated}
+          message={message}
+          onMessageChange={setMessage}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
+      <div
+        className="grid gap-4"
+        data-rapsodo-companion-inbox
+        data-hydrated={hydrated ? "true" : "false"}
+      >
+        <Card size="sm" data-rapsodo-connection-card>
+          <CardHeader>
+            <div>
+              <CardTitle>R-Cloud connected</CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">Recent unimported sessions</p>
             </div>
-          </CardAction>
-        </CardHeader>
-      </Card>
-      <section className="grid gap-2.5">
-        <div className="px-1">
-          <h2 className="text-sm font-semibold">Session inbox</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {sessions.length ? "Newest unimported session first" : "No unimported sessions found"}
-          </p>
-        </div>
-        <ScrollArea className="max-h-[28rem] rounded-xl border bg-card">
-          <div className="grid gap-1 p-2" aria-label="R-Cloud session inbox">
-            {sessions.map((session, index) => (
-              <Button
-                key={`${session.providerKind}-${session.providerSessionId}`}
-                type="button"
-                variant="ghost"
-                className="focus-aaa h-auto w-full justify-start rounded-xl p-0 text-left outline-none"
-                onClick={() => openPreview(session)}
-              >
-                <Item variant="muted" size="sm" className="w-full text-left">
-                  <ItemMedia>
-                    <Cloud className="size-4 text-primary" aria-hidden />
-                  </ItemMedia>
-                  <ItemContent>
-                    <ItemTitle>{session.title}</ItemTitle>
-                    <ItemDescription>
-                      {formatDate(session.dateIso)} · {session.shotCount ?? "—"} shots
-                    </ItemDescription>
-                  </ItemContent>
-                  {index === 0 ? (
-                    <ItemActions>
-                      <Badge variant="secondary">Newest</Badge>
-                    </ItemActions>
-                  ) : null}
-                </Item>
-              </Button>
-            ))}
-            {loading === "sessions" ? <Skeleton className="h-16 rounded-xl" /> : null}
-          </div>
-        </ScrollArea>
-        {!loading && sessions.length === 0 ? (
-          <AppEmptyState
-            title="You are up to date"
-            description="Refresh after your next Rapsodo session."
-            primaryAction={
-              <Button type="button" size="sm" variant="outline" onClick={loadSessions}>
-                Refresh sessions
-              </Button>
-            }
-            className="mt-3"
-          />
-        ) : null}
-      </section>
-      {message ? (
-        <Alert variant="destructive">
-          <AlertTitle>R-Cloud unavailable</AlertTitle>
-          <AlertDescription className="grid gap-2">
-            <span>{message}</span>
-            <Button asChild size="sm" variant="outline" className="w-fit">
-              <Link href="/import?source=csv">Use a CSV instead</Link>
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            className="min-h-11 text-muted-foreground"
-            disabled={!hydrated || pending}
-          >
-            Disconnect R-Cloud
+            <CardAction>
+              <div className="flex items-center gap-2">
+                <Badge>Connected</Badge>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      aria-label="R-Cloud options"
+                    >
+                      <MoreHorizontal className="size-4" aria-hidden />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={loadSessions}>Refresh sessions</DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/import?source=csv">Import a CSV instead</Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </CardAction>
+          </CardHeader>
+        </Card>
+        {preview && (
+          <Button variant="outline" className="min-h-11" onClick={() => setPreviewOpen(true)}>
+            Resume saved preview
           </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Disconnect R-Cloud?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Future Rapsodo sessions will stop appearing until the provider is connected again.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep connected</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() =>
-                startTransition(async () => {
-                  await disconnectRapsodoAction();
-                  setStatus({ connected: false, expiresAt: null, profile: null });
-                  setSessions([]);
-                })
+        )}
+        <section className="grid gap-2.5">
+          <div className="px-1">
+            <h2 className="text-sm font-semibold">Session inbox</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {sessions.length
+                ? "Latest 16 remote sessions checked; newest unimported first"
+                : "No unimported sessions found"}
+            </p>
+          </div>
+          <ScrollArea className="max-h-[28rem] rounded-xl border bg-card">
+            <div className="grid gap-1 p-2" aria-label="R-Cloud session inbox">
+              {sessions.map((session, index) => (
+                <Button
+                  key={`${session.providerKind}-${session.providerSessionId}`}
+                  type="button"
+                  variant="ghost"
+                  className="focus-aaa h-auto w-full justify-start rounded-xl p-0 text-left outline-none"
+                  onClick={() => openPreview(session)}
+                >
+                  <Item variant="muted" size="sm" className="w-full text-left">
+                    <ItemMedia>
+                      <Cloud className="size-4 text-primary" aria-hidden />
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle className="whitespace-normal break-words">
+                        {session.title}
+                      </ItemTitle>
+                      <ItemDescription>
+                        {formatDate(session.dateIso)} · {session.shotCount ?? "—"} shots
+                      </ItemDescription>
+                    </ItemContent>
+                    {index === 0 ? (
+                      <ItemActions>
+                        <Badge variant="secondary">Newest</Badge>
+                      </ItemActions>
+                    ) : null}
+                  </Item>
+                </Button>
+              ))}
+              {loading === "sessions" ? <Skeleton className="h-16 rounded-xl" /> : null}
+            </div>
+          </ScrollArea>
+          {!loading && sessions.length === 0 ? (
+            <AppEmptyState
+              title="You are up to date"
+              description="Refresh after your next Rapsodo session."
+              primaryAction={
+                <Button type="button" size="sm" variant="outline" onClick={loadSessions}>
+                  Refresh sessions
+                </Button>
               }
+              className="mt-3"
+            />
+          ) : null}
+        </section>
+        {message ? (
+          <Alert variant="destructive">
+            <AlertTitle>R-Cloud unavailable</AlertTitle>
+            <AlertDescription className="grid gap-2">
+              <span>{message}</span>
+              <Button asChild size="sm" variant="outline" className="w-fit">
+                <Link href="/import?source=csv">Use a CSV instead</Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-11 text-muted-foreground"
+              disabled={!hydrated || pending}
             >
-              Disconnect
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+              Disconnect R-Cloud
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Disconnect R-Cloud?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Future Rapsodo sessions will stop appearing until the provider is connected again.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep connected</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                onClick={() =>
+                  startTransition(async () => {
+                    await disconnectRapsodoAction();
+                    setStatus({ connected: false, expiresAt: null, profile: null });
+                    setSessions([]);
+                  })
+                }
+              >
+                Disconnect
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </>
   );
 }
 

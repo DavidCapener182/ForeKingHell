@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
+import { reportServerFailure } from "@/lib/server-observability";
 import { and, eq } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
@@ -9,11 +10,15 @@ import { accountMemberships, coachPlayerInteractions, practicePlans, sessions } 
 import { parseCoachInteractionType, visibilityForInteraction } from "@/lib/coach-workspace";
 import { requireCurrentUserId } from "@/lib/current-user";
 
-export async function createCoachInteractionAction(formData: FormData) {
+async function persistCoachInteraction(formData: FormData) {
   const coachUserId = await requireCurrentUserId();
   const playerUserId = requiredText(formData, "playerUserId", 80);
   const interactionType = parseCoachInteractionType(formData.get("interactionType"));
-  if (!interactionType) redirect(`/coach/workspace?playerId=${playerUserId}&error=type`);
+  if (!interactionType)
+    throw new InteractionInputError(
+      "Choose an interaction type.",
+      `/coach/workspace?playerId=${playerUserId}&error=type`,
+    );
 
   const db = getDb();
   await requireCoachMembership(coachUserId, playerUserId);
@@ -25,7 +30,11 @@ export async function createCoachInteractionAction(formData: FormData) {
       .from(sessions)
       .where(and(eq(sessions.id, sessionId), eq(sessions.userId, playerUserId)))
       .limit(1);
-    if (!session) redirect(`/coach/workspace?playerId=${playerUserId}&error=session`);
+    if (!session)
+      throw new InteractionInputError(
+        "Choose a session belonging to this player.",
+        `/coach/workspace?playerId=${playerUserId}&error=session`,
+      );
   }
   if (practicePlanId) {
     const [plan] = await db
@@ -33,7 +42,11 @@ export async function createCoachInteractionAction(formData: FormData) {
       .from(practicePlans)
       .where(and(eq(practicePlans.id, practicePlanId), eq(practicePlans.userId, playerUserId)))
       .limit(1);
-    if (!plan) redirect(`/coach/workspace?playerId=${playerUserId}&error=plan`);
+    if (!plan)
+      throw new InteractionInputError(
+        "Choose a practice plan belonging to this player.",
+        `/coach/workspace?playerId=${playerUserId}&error=plan`,
+      );
   }
 
   const now = new Date();
@@ -56,10 +69,10 @@ export async function createCoachInteractionAction(formData: FormData) {
   });
 
   revalidatePath("/coach/workspace");
-  redirect(`/coach/workspace?playerId=${encodeURIComponent(playerUserId)}&saved=1`);
+  return playerUserId;
 }
 
-export async function updateCoachInteractionStatusAction(formData: FormData) {
+async function persistCoachInteractionStatus(formData: FormData) {
   const coachUserId = await requireCurrentUserId();
   const playerUserId = requiredText(formData, "playerUserId", 80);
   const interactionId = requiredText(formData, "interactionId", 80);
@@ -69,7 +82,7 @@ export async function updateCoachInteractionStatusAction(formData: FormData) {
   await requireCoachMembership(coachUserId, playerUserId);
   const now = new Date();
 
-  await getDb()
+  const [updated] = await getDb()
     .update(coachPlayerInteractions)
     .set({
       status,
@@ -82,17 +95,23 @@ export async function updateCoachInteractionStatusAction(formData: FormData) {
         eq(coachPlayerInteractions.coachUserId, coachUserId),
         eq(coachPlayerInteractions.playerUserId, playerUserId),
       ),
+    )
+    .returning({ id: coachPlayerInteractions.id });
+  if (!updated)
+    throw new InteractionInputError(
+      "Interaction unavailable or already closed.",
+      "/coach/workspace?error=invalid",
     );
 
   revalidatePath("/coach/workspace");
 }
 
-export async function completePlayerInteractionAction(formData: FormData) {
+async function persistPlayerInteractionCompletion(formData: FormData) {
   const playerUserId = await requireCurrentUserId();
   const interactionId = requiredText(formData, "interactionId", 80);
   const now = new Date();
 
-  await getDb()
+  const [updated] = await getDb()
     .update(coachPlayerInteractions)
     .set({ status: "completed", completedAt: now, updatedAt: now })
     .where(
@@ -102,6 +121,12 @@ export async function completePlayerInteractionAction(formData: FormData) {
         eq(coachPlayerInteractions.visibility, "player_visible"),
         eq(coachPlayerInteractions.status, "open"),
       ),
+    )
+    .returning({ id: coachPlayerInteractions.id });
+  if (!updated)
+    throw new InteractionInputError(
+      "Interaction unavailable or already closed.",
+      "/coach/workspace?error=invalid",
     );
 
   revalidatePath("/coach/workspace");
@@ -119,12 +144,20 @@ async function requireCoachMembership(coachUserId: string, playerUserId: string)
       ),
     )
     .limit(1);
-  if (!membership) redirect("/coach/workspace?error=access");
+  if (!membership)
+    throw new InteractionInputError(
+      "Coach access to this player is unavailable.",
+      "/coach/workspace?error=access",
+    );
 }
 
 function requiredText(formData: FormData, name: string, maxLength: number) {
   const value = String(formData.get(name) ?? "").trim();
-  if (!value || value.length > maxLength) redirect("/coach/workspace?error=invalid");
+  if (!value || value.length > maxLength)
+    throw new InteractionInputError(
+      `Enter a valid ${name} (up to ${maxLength} characters).`,
+      "/coach/workspace?error=invalid",
+    );
   return value;
 }
 
@@ -137,4 +170,55 @@ function parseDate(value: FormDataEntryValue | null) {
   if (typeof value !== "string" || !value) return null;
   const date = new Date(`${value}T12:00:00.000Z`);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+class InteractionInputError extends Error {
+  constructor(
+    message: string,
+    public readonly redirectUrl: string,
+  ) {
+    super(message);
+  }
+}
+export type CoachInteractionFormResult = { ok: true } | { ok: false; error: string };
+async function legacy<T>(operation: () => Promise<T>) {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof InteractionInputError) redirect(error.redirectUrl);
+    throw error;
+  }
+}
+async function state(operation: () => Promise<unknown>): Promise<CoachInteractionFormResult> {
+  try {
+    await operation();
+    return { ok: true };
+  } catch (error) {
+    unstable_rethrow(error);
+    if (error instanceof InteractionInputError) return { ok: false, error: error.message };
+    reportServerFailure("coach_interaction_save_failed", error);
+    return {
+      ok: false,
+      error: "The change could not be saved. Your draft is still here; try again.",
+    };
+  }
+}
+export async function createCoachInteractionAction(formData: FormData) {
+  const playerUserId = await legacy(() => persistCoachInteraction(formData));
+  redirect(`/coach/workspace?playerId=${encodeURIComponent(playerUserId)}&saved=1`);
+}
+export async function updateCoachInteractionStatusAction(formData: FormData) {
+  await legacy(() => persistCoachInteractionStatus(formData));
+}
+export async function completePlayerInteractionAction(formData: FormData) {
+  await legacy(() => persistPlayerInteractionCompletion(formData));
+}
+export async function createCoachInteractionWithStateAction(formData: FormData) {
+  return state(() => persistCoachInteraction(formData));
+}
+export async function updateCoachInteractionStatusWithStateAction(formData: FormData) {
+  return state(() => persistCoachInteractionStatus(formData));
+}
+export async function completePlayerInteractionWithStateAction(formData: FormData) {
+  return state(() => persistPlayerInteractionCompletion(formData));
 }

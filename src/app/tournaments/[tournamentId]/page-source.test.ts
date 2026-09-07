@@ -8,29 +8,26 @@ const source = readFileSync(
 );
 
 describe("active tournament event product", () => {
-  it("selects one request surface before loading the desktop workbench", () => {
-    const staticWorkbenchImport =
-      source.match(
-        /import(?: type)? \{[^}]*\} from "@\/components\/app\/desktop-workbench";/,
-      )?.[0] ?? "";
-
-    expect(source).toContain("getRequestAppSurface()");
-    expect(source).toContain(
-      'surface === "workbench" ? await import("@/components/app/desktop-workbench") : null',
+  it("preserves tournament section drafts and browser history on both surfaces", () => {
+    const sections = readFileSync(
+      join(process.cwd(), "src/app/tournaments/tournament-detail-sections.tsx"),
+      "utf8",
     );
-    expect(source).toContain('surface === "companion" ? (');
-    expect(source).toContain('surface === "workbench" && DesktopWorkbenchLayout ? (');
-    expect(staticWorkbenchImport).not.toContain("DesktopWorkbenchLayout");
+    expect(source).toContain("<TournamentDetailSections");
+    expect(sections).toContain("keepMounted");
+    expect(sections).toContain('window.addEventListener("popstate", onPop)');
+    expect(sections).toContain('url.searchParams.set("tab", key)');
+    expect(sections).toContain('tab === "rounds" ? "submit"');
+    expect(source).toContain("getTournamentDetailData(tournamentId)");
   });
 
   it("builds the desktop detail around the requested event hierarchy", () => {
-    expect(source).toContain('className="premium-hero overflow-hidden p-0"');
-    expect(source).toContain("Round progress");
-    expect(source).toContain("Leaderboard");
+    expect(source).toContain("<TournamentRoundProgress steps={buildProgressSteps(data)} />");
     expect(source).toContain("Your current result");
-    expect(source).toContain("Submission status");
-    expect(source).toContain("TournamentRulesSheet");
-    expect(source.match(/<OperationStepper/g)).toHaveLength(2);
+    expect(source).toContain("submissionStatusDetail(data, latestSubmission)");
+    expect(source).toContain("<TournamentRulesSheet data={data} />");
+    expect(source).toContain("Accepted scores only");
+    expect(source).toContain("Submission is not a guarantee of acceptance into the standings.");
   });
 
   it("uses a proper event leaderboard table", () => {
@@ -43,11 +40,19 @@ describe("active tournament event product", () => {
     expect(source).toContain('<Badge variant="secondary">You</Badge>');
   });
 
-  it("puts rules in a Sheet and round submission in a Dialog", () => {
+  it("keeps rules reachable and submissions reviewed with stable retry identity", () => {
     expect(source).toMatch(/<SheetTrigger\s+type="button"[\s\S]*?buttonVariants\(\{/);
-    expect(source).toMatch(/<DialogTrigger\s+type="button"[\s\S]*?buttonVariants\(\{/);
-    expect(source).toContain("<DialogTitle>Submit round {data.nextRoundNumber}</DialogTitle>");
     expect(source).toContain("<SheetTitle>{data.tournament.title} rules</SheetTitle>");
+    expect(source).toContain("<TournamentSubmissionForm");
+    const form = readFileSync(
+      join(process.cwd(), "src/app/tournaments/tournament-submission-form.tsx"),
+      "utf8",
+    );
+    expect(form).toContain("if (busy.current || uploading || disabled || receipt) return");
+    expect(form).toContain("if (!review)");
+    expect(form).toContain("const signature = JSON.stringify([...data.entries()])");
+    expect(form).toContain('data.set("requestId", request.current.id)');
+    expect(form).toContain("Your draft is retained");
   });
 
   it("does not offer entry or submission actions once an event is completed", () => {
@@ -58,14 +63,17 @@ describe("active tournament event product", () => {
     expect(source).toContain('eventCompleted\n          ? ("upcoming" as const)');
   });
 
-  it("delivers the mobile event, position, next round, action and leaderboard preview", () => {
-    expect(source).toContain('<MobileTopBar\n            title="Tournament"'.replace("\\n", "\n"));
-    expect(source).toContain('label="Your position"');
-    expect(source).toContain('<NativeListSection title="Next round">');
+  it("keeps the current result, full standings and eligible next action available", () => {
     expect(source).toContain("<TournamentPrimaryAction");
-    expect(source).toContain('<NativeListSection title="Leaderboard preview">');
-    expect(source).toContain("visibleStandings.slice(0, 5)");
-    expect(source).toContain("LeaderboardSheet");
+    expect(source).toContain("viewerStanding");
+    expect(source).toContain("<TournamentStandingsTable");
+    expect(source).toContain("rows={visibleStandings}");
+    expect(source).toContain(
+      "hasCurrentTournamentEntryTermsMetadata(data.viewerEntry.metadataJson)",
+    );
+    expect(source).toContain("data.viewerEntered &&");
+    expect(source).toContain("viewerTermsCurrent &&");
+    expect(source).toContain("!!data.nextRoundNumber &&");
   });
 
   it("keeps semantic surfaces and the full-width layout contract", () => {

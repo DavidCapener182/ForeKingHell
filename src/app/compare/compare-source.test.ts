@@ -15,18 +15,12 @@ describe("compare structural acceptance", () => {
     expect(pageSource).toContain("DesktopInsightRail");
     expect(pageSource).toContain('scope="compare"');
     expect(pageSource).toContain("data-compare-desktop-workbench");
-    expect(pageSource).toContain("data-compare-active-view");
-    expect(pageSource).toContain("<ButtonGroup");
-    expect(pageSource).toContain('aria-label="Comparison view"');
-    expect(pageSource).toContain("href={`/compare?view=${view}`}");
-    expect(pageSource).toContain('aria-current={active ? "page" : undefined}');
-    expect(pageSource).toContain('variant={active ? "secondary" : "outline"}');
-    expect(pageSource).not.toContain("TabsTrigger");
-    expect(pageSource).not.toContain("TabsList");
-    expect(pageSource).not.toContain("TabsContent");
-    expect(pageSource).not.toContain('from "@/components/ui/tabs"');
-    expect(pageSource).toContain('activeView === "progress"');
-    expect(pageSource).toContain('activeView === "clubs"');
+    expect(pageSource).toContain("<UrlTabs");
+    expect(pageSource).toContain('label="Comparison view"');
+    expect(pageSource).toContain('queryKey="view"');
+    expect(pageSource).toContain("defaultTabKey={activeView}");
+    for (const view of ["progress", "clubs", "players"])
+      expect(pageSource).toContain(`id: "${view}"`);
     expect(pageSource.match(/<ProgressCompareClient/g)).toHaveLength(1);
     expect(pageSource.match(/<ClubCompareClient/g)).toHaveLength(1);
     expect(pageSource.match(/<PlayerCompareClient/g)).toHaveLength(1);
@@ -47,7 +41,7 @@ describe("compare structural acceptance", () => {
 
   it("uses one connected shadcn comparison composition for all three clients", () => {
     expect(workspaceSource.match(/<DataToolbar\b/g)).toHaveLength(1);
-    expect(workspaceSource.match(/<EntityCombobox\b/g)).toHaveLength(2);
+    expect(workspaceSource.match(/<ComparisonSearchSheet\b/g)).toHaveLength(2);
     expect(workspaceSource.match(/<ButtonGroup\b/g)).toHaveLength(1);
     expect(workspaceSource.match(/<DesktopTableWorkbenchControls\b/g)).toHaveLength(1);
     expect(workspaceSource.match(/<DataTableFrame\b/g)).toHaveLength(1);
@@ -61,11 +55,11 @@ describe("compare structural acceptance", () => {
     }
     expect(workspaceSource).toContain("<Alert");
     expect(workspaceSource).toContain("<ResponsiveDetailPanel");
-    expect(workspaceSource).toContain("<Dialog>");
+    expect(workspaceSource).toContain("<Dialog\n");
     expect(workspaceSource).toContain("<StatusTimeline");
-    expect(workspaceSource).toContain("<AlertDialog>");
-    expect(workspaceSource).toContain("saveWorkspaceComparisonAction");
-    expect(workspaceSource).toContain("deleteWorkspaceComparisonAction");
+    expect(workspaceSource).toContain("<AlertDialog\n");
+    expect(workspaceSource).toContain("saveWorkspaceComparisonWithStateAction");
+    expect(workspaceSource).toContain("deleteWorkspaceComparisonWithStateAction");
 
     for (const [view, source] of [
       ["progress", progressClientSource],

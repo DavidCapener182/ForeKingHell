@@ -82,14 +82,20 @@ describe("simulator lab desktop workbench", () => {
 
     expect(timelineBlock).toContain("const chartWidth = 1100");
     expect(timelineBlock).toContain("const chartHeight = 220");
-    expect(timelineBlock).toContain('className="block h-auto min-w-[48rem] w-full"');
+    expect(timelineBlock).toContain('className="block h-auto w-full"');
+    expect(timelineBlock).toContain('aria-label="Monthly confidence values"');
+    expect(timelineBlock).toContain('"No supported estimate"');
   });
 
   it("puts selected-club context above the full gapping matrix", () => {
     expect(gappingSource).toContain('<div className="grid gap-4">');
     expect(gappingSource).toContain(
-      "xl:grid-cols-[minmax(12rem,0.65fr)_minmax(28rem,1.25fr)_minmax(16rem,0.8fr)]",
+      "2xl:grid-cols-[minmax(0,0.65fr)_minmax(0,1.25fr)_minmax(0,0.8fr)]",
     );
+    expect(gappingSource.indexOf("<aside")).toBeLessThan(
+      gappingSource.indexOf("{rows.map((row) => {"),
+    );
+    expect(gappingSource).toContain("rows={gappingMatrixRows(rows)}");
     expect(gappingSource).not.toContain("xl:grid-cols-[minmax(0,1fr)_320px]");
     expect(gappingSource).not.toContain('className="xl:col-span-2"');
   });

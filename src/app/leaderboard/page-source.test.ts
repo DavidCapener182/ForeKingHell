@@ -8,44 +8,35 @@ const controls = readFileSync(
   "utf8",
 );
 const mobile = readFileSync(
-  join(process.cwd(), "src/app/leaderboard/mobile-leaderboard.tsx"),
+  join(process.cwd(), "src/app/leaderboard/leaderboard-detail-cards.tsx"),
   "utf8",
 );
 
 describe("leaderboard desktop workspace source", () => {
   it("keeps board audience and period independent from compete destinations", () => {
-    expect(controls).not.toContain("<Tabs");
-    expect(source).not.toContain("LeaderboardTypeTabs");
-    expect(source).toContain("<MobileLeaderboard");
-    expect(mobile).toContain('href: "/leaderboard?tab=friends"');
-    expect(mobile).toContain('href: "/leaderboard?tab=public"');
-  });
-
-  it("keeps period and friends/global scope as independent toggle groups", () => {
-    expect(controls).toContain('aria-label="Leaderboard period"');
-    expect(controls).toContain('aria-label="Leaderboard scope"');
-    expect(controls).toContain('<ToggleGroupItem value="monthly">This month</ToggleGroupItem>');
-    expect(controls).toContain('<ToggleGroupItem value="friends">Friends</ToggleGroupItem>');
-    expect(controls).toContain('<ToggleGroupItem value="global">Global</ToggleGroupItem>');
+    expect(source).toContain("<LeaderboardPlayerControls");
+    expect(controls).toContain('["friends", "Friends"]');
+    expect(controls).toContain('["public", "Global"]');
+    expect(controls).toContain('"period"');
+    expect(source).toContain('requestedTab === "monthly" ? "friends" : requestedTab');
     expect(source).toContain("parseLeaderboardPeriod(params?.period, requestedTab)");
   });
 
-  it("selects one request surface before loading the desktop workbench", () => {
-    const staticWorkbenchImport =
-      source.match(
-        /import(?: type)? \{[^}]*\} from "@\/components\/app\/desktop-workbench";/,
-      )?.[0] ?? "";
+  it("keeps period and audience as independently labelled fields", () => {
+    expect(controls).toContain("aria-label={`Leaderboard ${label.toLowerCase()}`}");
+    expect(controls).toContain('["all-time", "All time"]');
+    expect(controls).toContain('["monthly", monthLabel]');
+    expect(controls).toContain("value={draft[key]}");
+    expect(controls).toContain("Object.entries(next)");
+    expect(controls).toContain("new URLSearchParams(window.location.search)");
+  });
 
-    expect(source).toContain("getRequestAppSurface()");
-    expect(source).toContain(
-      'surface === "workbench" ? await import("@/components/app/desktop-workbench") : null',
-    );
-    expect(source).toContain('surface === "companion" ? (');
-    expect(source).toContain('surface === "workbench" && DesktopWorkbenchLayout ? (');
-    expect(staticWorkbenchImport).not.toContain("DesktopWorkbenchLayout");
-    expect(staticWorkbenchImport).not.toContain("DesktopTableWorkbenchControls");
-    expect(source).not.toContain('className="hidden lg:contents"');
-    expect(source).not.toContain('<DesktopWorkbenchLayout scope="leaderboard" className="hidden');
+  it("shares the ranked population between responsive list and table", () => {
+    expect(source).toContain("className={boardStyles.mobile}");
+    expect(source).toContain("className={boardStyles.desktop}");
+    expect(source).toContain("rows={tablePlayers.map((player) => ({");
+    expect(source).not.toContain("<MobileLeaderboard");
+    expect(source).toContain("<LeaderboardDetailCards");
   });
 
   it("uses semantic theme tokens for ordinary leaderboard surfaces", () => {
@@ -58,11 +49,11 @@ describe("leaderboard desktop workspace source", () => {
   });
 
   it("keeps leaderboards in the desktop workbench without a persistent AI rail", () => {
-    expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('scope="leaderboard"');
+    expect(source).toContain("<PageShell>");
     expect(source).toContain("LeaderboardCompetitionHeader");
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
+    expect(source).not.toMatch(/max-w-(?:6xl|7xl|\[1500px\])/);
   });
 
   it("keeps player leaderboards as controlled exportable tables", () => {
@@ -140,29 +131,24 @@ describe("leaderboard desktop workspace source", () => {
 });
 
 describe("leaderboard mobile state", () => {
-  it("keeps mobile to one monthly audience selector and top-five board", () => {
-    expect(controls).toContain('<ToggleGroupItem value="monthly">This month</ToggleGroupItem>');
-    expect(source).toContain('surface === "companion" ? "monthly"');
-    expect(mobile).toContain("players.slice(0, 5)");
-    expect(mobile).toContain("View all ${players.length} golfers");
-    expect(mobile).toContain("!expanded && currentRank > 5");
-    expect(mobile).toContain("<MobilePageTabs");
-    expect(mobile).not.toContain("router.push");
-    expect(source).not.toContain("MobileRouteTabs");
-    expect(source).not.toContain('<option value="mixed">Mixed</option>');
+  it("keeps mobile filters and rank evidence aligned with desktop", () => {
+    expect(controls).toContain('title="Leaderboard filters"');
+    expect(controls).toContain("<ResponsiveDetailPanel");
+    expect(controls).toContain("<div className={styles.desktop}>{fields}</div>");
+    expect(controls).toContain("{fields}");
+    expect(controls).toContain("original ranks");
+    expect(source).toContain("rankByUserId.get(player.userId)");
+    expect(source).toContain("scoreForPeriod(player, period)");
   });
 
-  it("uses one compact mobile row list instead of golfer cards", () => {
-    expect(source).toContain("MobileLeaderboard");
-    expect(mobile).toContain("Rank");
-    expect(mobile).toContain("Golfer");
-    expect(mobile).toContain(">XP<");
-    expect(mobile).toContain("Move");
-    expect(mobile).toContain("currentRank > 5");
-    expect(mobile).toContain('aria-label="Your position"');
-    expect(source).not.toContain('viewAllHref="#full-leaderboard"');
-    expect(source).not.toContain("LeaderboardPodiumCard");
-    expect(source).not.toContain('className="hidden lg:contents"');
-    expect(source).not.toContain('className="hidden sm:contents"');
+  it("keeps mobile standing identity and detailed evidence reachable", () => {
+    expect(mobile).toContain("rows.map((item) => (");
+    expect(mobile).toContain('item.personal ? " · You" : ""');
+    expect(mobile).toContain("onClick={() => setSelected(item.id)}");
+    expect(mobile).toContain("rows.find((item) => item.id === selected)");
+    expect(mobile).toContain("<ResponsiveDetailPanel");
+    expect(mobile).toContain("row.fields.map(([label, value])");
+    expect(mobile).toContain("<Link href={row.href}>Open full record</Link>");
+    expect(source).toContain('"Unavailable: no prior ranking snapshot"');
   });
 });

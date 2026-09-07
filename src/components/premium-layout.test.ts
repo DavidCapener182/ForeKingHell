@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 describe("PageShell layout contract", () => {
   it("keeps app content shells full width", () => {
-    const source = readFileSync(join(process.cwd(), "src/components/premium.tsx"), "utf8");
+    const source = readFileSync(join(process.cwd(), "src/components/app/page-shell.tsx"), "utf8");
     const shellWidthsBlock = source.match(/const shellWidths = \{[\s\S]*?\};/)?.[0] ?? "";
 
     expect(shellWidthsBlock).toContain('"6xl": "max-w-none"');
@@ -24,8 +24,9 @@ describe("PageShell layout contract", () => {
     const metricBlock =
       premiumSource.match(/export function MetricCard[\s\S]*?export function DataPanel/)?.[0] ?? "";
     const panelBlock =
-      premiumSource.match(/export function DataPanel[\s\S]*?export function SectionHeader/)?.[0] ??
-      "";
+      premiumSource.match(
+        /export function DataPanel[\s\S]*?export \{ UntitledSectionHeader/,
+      )?.[0] ?? "";
 
     expect(metricBlock).toContain("stretch = true,");
     expect(panelBlock).toContain("stretch = false,");
@@ -45,16 +46,19 @@ describe("PageShell layout contract", () => {
     expect(summaryBlock).not.toContain('className="max-w-36 truncate text-right');
   });
 
-  it("keeps desktop header metric values readable on light tiles", () => {
-    const source = readFileSync(join(process.cwd(), "src/components/premium.tsx"), "utf8");
-    const pageHeaderBlock =
-      source.match(
-        /export function PageHeader[\s\S]*?export function MobileCompactPageHeader/,
-      )?.[0] ?? "";
-
-    expect(pageHeaderBlock).toContain(
-      'className="mt-1 truncate text-2xl font-semibold tracking-normal text-foreground sm:text-[1.5rem]"',
+  it("keeps header metric values on semantic surfaces with natural wrapping", () => {
+    const adapter = readFileSync(
+      join(process.cwd(), "src/components/untitled-ui/headers.tsx"),
+      "utf8",
     );
+    const styles = readFileSync(
+      join(process.cwd(), "src/components/untitled-ui/headers.module.css"),
+      "utf8",
+    );
+    expect(adapter).toContain("data-operational-value");
+    expect(adapter).not.toContain("truncate");
+    expect(styles).toContain("color: var(--foreground)");
+    expect(styles).toContain("font-variant-numeric: tabular-nums");
   });
 
   it("lets desktop table frames expose labelled regions", () => {

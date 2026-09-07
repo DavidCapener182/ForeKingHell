@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { useEffect, useState, type ComponentType } from "react";
 
 import { trackPlausibleEvent } from "@/lib/analytics";
@@ -26,6 +28,8 @@ const initialCapability: RuntimeCapability = {
 
 export function CourseTwinShowcase() {
   const { ref, isVisible } = useInViewOnce<HTMLElement>("280px 0px");
+  const [requested, setRequested] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [Runtime, setRuntime] = useState<ComponentType | null>(null);
   const [capability, setCapability] = useState(initialCapability);
 
@@ -64,7 +68,7 @@ export function CourseTwinShowcase() {
   }, []);
 
   useEffect(() => {
-    if (!isVisible || !capability.canLoad || Runtime) return;
+    if (!requested || !isVisible || !capability.canLoad || Runtime) return;
     let mounted = true;
     void import("./course-twin-demo-runtime")
       .then((module) => {
@@ -76,10 +80,10 @@ export function CourseTwinShowcase() {
     return () => {
       mounted = false;
     };
-  }, [Runtime, capability.canLoad, isVisible]);
+  }, [Runtime, capability.canLoad, isVisible, requested]);
 
   const fallbackMode: CourseTwinFallbackMode =
-    isVisible && capability.canLoad ? "loading" : capability.fallbackMode;
+    requested && isVisible && capability.canLoad ? "loading" : capability.fallbackMode;
 
   return (
     <section
@@ -89,6 +93,27 @@ export function CourseTwinShowcase() {
       aria-labelledby="course-twin-title"
       data-scroll-pause="course-twin"
     >
+      <div className="relative z-10 flex flex-wrap gap-3 px-5 py-4">
+        <Button variant="outline" onClick={() => setDetailsOpen(true)}>
+          Explore the example plan
+        </Button>
+        {capability.canLoad && !Runtime ? (
+          <Button disabled={requested} onClick={() => setRequested(true)}>
+            {requested ? "Loading interactive example…" : "Launch interactive example"}
+          </Button>
+        ) : null}
+        <p className="w-full text-sm">
+          Illustrative modelled shot plan and reconstructed terrain; not your measured course data.
+        </p>
+      </div>
+      <ResponsiveDetailPanel
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+        title="Course Twin example plan"
+        description="A modelled 3 Wood plan with a readable target, common miss and expected carry. No gesture or animation is required."
+      >
+        <CourseTwinStaticFallback mode="data-saving" />
+      </ResponsiveDetailPanel>
       <div className={styles.courseTwinStage}>
         <Reveal className={styles.courseTwinCopy} from="left">
           <p className={styles.kicker}>Course Twin · Pilot</p>

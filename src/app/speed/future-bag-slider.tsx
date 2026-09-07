@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -118,6 +120,43 @@ export function FutureBagSlider({ rows, targetSpeedMph, selectedClubId }: Future
         </div>
         {selectedRow && selectedSpeedModel && selectedClubSpeed !== null ? (
           <>
+            <div className="mt-3 flex flex-wrap items-end gap-2">
+              <label className="grid min-w-0 flex-1 gap-1 text-sm">
+                Target {shortClubLabel(selectedRow)} speed (mph)
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min={selectedSpeedModel.minSpeed}
+                  max={selectedSpeedModel.maxSpeed}
+                  step={0.1}
+                  value={selectedClubSpeed}
+                  onChange={(event) =>
+                    setSelectedSpeedsByClub((current) => ({
+                      ...current,
+                      [selectedRow.clubId]: clampSliderSpeed(
+                        Number(event.target.value),
+                        selectedSpeedModel,
+                      ),
+                    }))
+                  }
+                />
+              </label>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  setSelectedSpeedsByClub((current) => ({
+                    ...current,
+                    [selectedRow.clubId]: selectedSpeedModel.defaultSpeed,
+                  }))
+                }
+              >
+                Reset projection
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Read-only projection; saved stock carry and speed goals are unchanged. Adjustments use
+              this club’s existing carry-per-mph assumption.
+            </p>
             <Slider
               aria-label={`Target ${shortClubLabel(selectedRow)} speed`}
               min={selectedSpeedModel.minSpeed}
@@ -156,7 +195,7 @@ export function FutureBagSlider({ rows, targetSpeedMph, selectedClubId }: Future
           aria-label="Future bag club filter"
           className="min-w-max"
         >
-          <ToggleGroupItem value="all" className="h-8 px-2.5 text-xs">
+          <ToggleGroupItem value="all" className="min-h-11 px-2.5 text-sm">
             All clubs
           </ToggleGroupItem>
           {rows.map((row) => (
@@ -164,7 +203,7 @@ export function FutureBagSlider({ rows, targetSpeedMph, selectedClubId }: Future
               key={row.clubId}
               value={row.clubId}
               aria-label={`Show ${shortClubLabel(row)} future bag projection`}
-              className="h-8 max-w-[180px] justify-start overflow-hidden px-2.5 text-xs"
+              className="min-h-11 max-w-[180px] justify-start px-2.5 text-sm"
             >
               <span className="truncate">{shortClubLabel(row)}</span>
             </ToggleGroupItem>

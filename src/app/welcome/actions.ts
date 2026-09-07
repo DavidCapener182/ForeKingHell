@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 
 import { getDb } from "@/db/client";
 import { users } from "@/db/schema";
@@ -16,4 +16,19 @@ export async function dismissWelcomeAction() {
       .where(eq(users.id, userId));
   }
   redirect("/today");
+}
+
+export async function dismissWelcomeStateAction(
+  _previous: { error?: string },
+  _data: FormData,
+): Promise<{ error?: string }> {
+  void _previous;
+  void _data;
+  try {
+    await dismissWelcomeAction();
+    return {};
+  } catch (error) {
+    unstable_rethrow(error);
+    return { error: "Your choice could not be saved. Try again." };
+  }
 }

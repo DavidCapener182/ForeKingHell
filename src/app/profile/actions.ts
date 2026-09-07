@@ -9,7 +9,28 @@ import {
 } from "@/lib/social";
 
 export async function updateSocialProfileAction(formData: FormData) {
-  await updateCurrentSocialProfile({
+  await updateCurrentSocialProfile(profileInput(formData));
+
+  redirect("/profile?saved=1");
+}
+
+export async function updateSocialProfileFormAction(
+  _previous: { ok: boolean; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await updateCurrentSocialProfile(profileInput(formData));
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not save profile. Try again.",
+    };
+  }
+}
+
+function profileInput(formData: FormData) {
+  return {
     username: formString(formData, "username") ?? "",
     displayName: formString(formData, "displayName") ?? "",
     avatarUrl: formMediaString(formData, "avatarUrl"),
@@ -32,9 +53,7 @@ export async function updateSocialProfileAction(formData: FormData) {
       exactShots: parseVisibility(formData.get("exactShotsVisibility"), "private"),
       allowCompare: formData.get("allowCompare") === "on",
     },
-  });
-
-  redirect("/profile?saved=1");
+  };
 }
 
 function formString(formData: FormData, key: string) {

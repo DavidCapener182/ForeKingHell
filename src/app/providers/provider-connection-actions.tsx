@@ -8,7 +8,6 @@ import { MoreHorizontal, PlugZap, RefreshCw, Unplug } from "lucide-react";
 import { disconnectRapsodoAction } from "@/app/rapsodo/actions";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -36,6 +35,7 @@ export function ProviderConnectionActions({
   live: boolean;
 }) {
   const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [pending, startTransition] = useTransition();
   const isRapsodo = providerKind.toLowerCase().includes("rapsodo");
@@ -45,7 +45,7 @@ export function ProviderConnectionActions({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon-sm" aria-label="Provider connection actions">
+          <Button variant="outline" size="icon" aria-label={`${providerKind} connection actions`}>
             <MoreHorizontal className="size-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -77,7 +77,15 @@ export function ProviderConnectionActions({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={confirmDisconnect} onOpenChange={setConfirmDisconnect}>
+      <AlertDialog
+        open={confirmDisconnect}
+        onOpenChange={(open) => {
+          if (!pending) {
+            setConfirmDisconnect(open);
+            if (!open) setError(null);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Disconnect R-Cloud?</AlertDialogTitle>
@@ -86,21 +94,37 @@ export function ProviderConnectionActions({
               syncing until you reconnect.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={pending}>Keep connected</AlertDialogCancel>
-            <AlertDialogAction
+            <Button
               variant="destructive"
               disabled={pending}
               onClick={() => {
                 startTransition(async () => {
-                  await disconnectRapsodoAction();
-                  setConfirmDisconnect(false);
-                  router.refresh();
+                  setError(null);
+                  try {
+                    const result = await disconnectRapsodoAction();
+                    if (!result.ok) {
+                      setError(result.message);
+                      return;
+                    }
+                    setConfirmDisconnect(false);
+                    router.refresh();
+                  } catch {
+                    setError(
+                      "The connection could not be removed. Your imported sessions are unchanged. Try again.",
+                    );
+                  }
                 });
               }}
             >
               {pending ? "Disconnecting…" : "Disconnect"}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

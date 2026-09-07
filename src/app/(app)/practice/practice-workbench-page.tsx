@@ -3,10 +3,14 @@ import { PracticePlannerClient } from "@/app/practice/practice-planner-client";
 import { PageShell } from "@/components/premium";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { reportServerFailure } from "@/lib/server-observability";
+import { notFound } from "next/navigation";
+import { practiceSourceSessionId } from "@/lib/practice-handoff";
 import {
   generatePracticePlan,
   getLatestPracticeSessionReview,
   getPracticePlannerPageData,
+  getSavedPracticePlan,
+  getPracticeSourceSession,
   savedPracticePlanToPracticePlan,
   selectPracticePlannerInitialSavedPlan,
   type GeneratePracticePlanOptions,
@@ -24,18 +28,35 @@ type PracticePlannerPageProps = {
     energy?: string;
     session?: string;
     balls?: string;
+    goalId?: string;
+    planId?: string;
+    club?: string;
+    sourceSessionId?: string;
   }>;
 };
 export default async function PracticePlannerPage({ searchParams }: PracticePlannerPageProps) {
   const userId = await requireCurrentUserId();
   const params = await searchParams;
-  const data = await getPracticePlannerPageData(userId);
   const requestedOptions = practiceOptionsFromSearchParams(params);
+  if (
+    requestedOptions.sourceSessionId &&
+    !(await getPracticeSourceSession(userId, requestedOptions.sourceSessionId))
+  )
+    notFound();
+  const requestedPlan = params?.planId ? await getSavedPracticePlan(userId, params.planId) : null;
+  if (params?.planId && !requestedPlan) notFound();
+  const data = await getPracticePlannerPageData(userId, {
+    sourceSessionId: requestedOptions.sourceSessionId,
+  });
+  if (requestedPlan && !data.savedPlans.some((plan) => plan.id === requestedPlan.id))
+    data.savedPlans.unshift(requestedPlan);
   const generatedPlan = generatePracticePlan(data.context, requestedOptions);
   const explicitSpeedRequest = params?.intent === "speed" && params?.session === "speed";
-  const initialSavedPlan = explicitSpeedRequest
-    ? null
-    : selectPracticePlannerInitialSavedPlan(data.savedPlans, data.importOptions[0]?.id ?? null);
+  const initialSavedPlan =
+    requestedPlan ??
+    (explicitSpeedRequest || requestedOptions.focusClub || requestedOptions.sourceSessionId
+      ? null
+      : selectPracticePlannerInitialSavedPlan(data.savedPlans, data.importOptions[0]?.id ?? null));
   const initialSavedPracticePlan = initialSavedPlan
     ? savedPracticePlanToPracticePlan(initialSavedPlan, data.context)
     : null;
@@ -49,6 +70,13 @@ export default async function PracticePlannerPage({ searchParams }: PracticePlan
   return (
     <PageShell size="full" contentClassName="pb-5">
       <PracticePlannerClient
+        key={
+          initialSavedPlan?.id ??
+          `recommended:${requestedOptions.sourceSessionId ?? "latest"}:${requestedOptions.focusClub ?? "auto"}`
+        }
+        goalId={
+          params?.goalId && /^[0-9a-f-]{36}$/i.test(params.goalId) ? params.goalId : undefined
+        }
         context={data.context}
         initialPlan={initialPlan}
         savedPlans={data.savedPlans}
@@ -66,6 +94,10 @@ function practiceOptionsFromSearchParams(
   params: Awaited<PracticePlannerPageProps["searchParams"]>,
 ): GeneratePracticePlanOptions {
   return {
+    sourceSessionId: practiceSourceSessionId(params),
+    focusClub: /^[a-z0-9]{1,12}$/i.test(params?.club ?? "")
+      ? params?.club?.toLowerCase()
+      : undefined,
     sessionType: parseSessionType(params?.session),
     ballCount: parseBallCount(params?.balls),
     timeMinutes: parsePracticeTime(params?.time),
@@ -87,6 +119,7 @@ function practicePlanOptionsFromPlan(
 ): GeneratePracticePlanOptions {
   return {
     ...fallback,
+    sourceSessionId: plan.sourceContext.latestPractice.sessionId ?? fallback.sourceSessionId,
     sessionType: plan.sessionType,
     ballCount: plan.totalBalls ?? fallback.ballCount,
     timeMinutes: plan.estimatedTimeMinutes,

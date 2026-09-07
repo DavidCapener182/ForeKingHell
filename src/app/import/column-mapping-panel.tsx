@@ -6,14 +6,8 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { FieldDescription } from "@/components/ui/field";
+import { UntitledSelect } from "@/components/untitled-ui/form-controls";
 import {
   RAPSODO_COLUMN_FIELD_LABELS,
   analyzeRapsodoCsvColumns,
@@ -53,8 +47,10 @@ export function ColumnMappingPanel({
   files,
   columnMapping,
   onColumnMappingChange,
+  samples = {},
 }: {
   files: ColumnMappingFile[];
+  samples?: Record<string, string[]>;
   columnMapping: RapsodoColumnMapping;
   onColumnMappingChange: (mapping: RapsodoColumnMapping) => void;
 }) {
@@ -71,9 +67,11 @@ export function ColumnMappingPanel({
     () => Array.from(new Set(primaryAnalysis?.headers ?? [])).filter(Boolean),
     [primaryAnalysis?.headers],
   );
-  const suggestedMapping = primaryAnalysis?.suggestedMapping ?? {};
+  const suggestedMapping: RapsodoColumnMapping = primaryAnalysis?.suggestedMapping ?? {};
   const needsMapping = analyses.some(({ analysis }) => analysis.needsManualMapping);
   const hasSuggestions = Object.values(suggestedMapping).some(Boolean);
+  const chosen = Object.values(columnMapping).filter(Boolean);
+  const duplicates = chosen.filter((value, index) => chosen.indexOf(value) !== index);
   const hasMapping = Object.values(columnMapping).some((value) => Boolean(value?.trim()));
 
   if (files.length === 0 || headers.length === 0) {
@@ -96,7 +94,7 @@ export function ColumnMappingPanel({
     <Card className="shadow-sm" data-import-column-mapping>
       <CardHeader className="sm:grid-cols-[minmax(0,1fr)_auto]">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <SlidersHorizontal className="size-4 text-primary" />
             <CardTitle>Manual column mapping</CardTitle>
             <Badge variant={needsMapping ? "default" : "outline"}>
@@ -108,12 +106,13 @@ export function ColumnMappingPanel({
             previewing and saving.
           </CardDescription>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex flex-wrap gap-2">
           {hasSuggestions ? (
             <Button
               type="button"
               variant="secondary"
               size="sm"
+              className="min-h-11"
               onClick={() => onColumnMappingChange({ ...columnMapping, ...suggestedMapping })}
             >
               Apply suggestions
@@ -124,6 +123,7 @@ export function ColumnMappingPanel({
               type="button"
               variant="ghost"
               size="sm"
+              className="min-h-11"
               onClick={() => onColumnMappingChange({})}
             >
               Clear
@@ -131,37 +131,63 @@ export function ColumnMappingPanel({
           ) : null}
         </div>
       </CardHeader>
-      <CardContent className="grid gap-3">
-        <div className="grid gap-3 sm:grid-cols-2">
-          {MAPPABLE_FIELDS.map((field) => (
-            <Field key={field} className="gap-1.5">
-              <FieldLabel className="text-xs" htmlFor={`column-map-${field}`}>
-                {RAPSODO_COLUMN_FIELD_LABELS[field]}
-              </FieldLabel>
-              <Select
+      <details open={needsMapping || hasMapping}>
+        <summary className="mx-4 min-h-11 cursor-pointer py-3 text-sm font-medium">
+          {needsMapping ? "Review required mappings" : "Inspect column mappings and source samples"}
+        </summary>
+        <CardContent className="grid gap-3">
+          {needsMapping ? (
+            <p role="alert" className="text-sm text-destructive">
+              A club column and at least one recognised measurement are required. Review the
+              mappings below.
+            </p>
+          ) : null}
+          {analyses.map(({ fileName, analysis }) =>
+            analysis.warnings.length ? (
+              <p key={fileName} className="break-words text-sm text-destructive">
+                {fileName}: {analysis.warnings.join(" ")}
+              </p>
+            ) : null,
+          )}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {MAPPABLE_FIELDS.map((field) => (
+              <UntitledSelect
+                key={field}
+                label={RAPSODO_COLUMN_FIELD_LABELS[field]}
+                name={`column-map-${field}`}
                 value={columnMapping[field] ?? AUTO_VALUE}
                 onValueChange={(value) => setField(field, value)}
-              >
-                <SelectTrigger id={`column-map-${field}`} className="h-9 w-full text-xs">
-                  <SelectValue placeholder="Auto detect" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={AUTO_VALUE}>Auto detect</SelectItem>
-                  {headers.map((header) => (
-                    <SelectItem key={`${field}-${header}`} value={header}>
-                      {header}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          ))}
-        </div>
-        <FieldDescription>
-          Header row: {primaryAnalysis?.headerRowNumber ?? "--"}. Mapping applies to this batch and
-          is saved with queued offline imports.
-        </FieldDescription>
-      </CardContent>
+                options={[
+                  { value: AUTO_VALUE, label: "Auto detect" },
+                  ...headers.map((header) => ({
+                    value: header,
+                    label: header,
+                    disabled: Object.entries(columnMapping).some(
+                      ([key, value]) => key !== field && value === header,
+                    ),
+                  })),
+                ]}
+                error={
+                  columnMapping[field] && duplicates.includes(columnMapping[field])
+                    ? "This source column is mapped more than once."
+                    : undefined
+                }
+                description={
+                  columnMapping[field]
+                    ? `Source: ${columnMapping[field]}. Sample: ${(samples[columnMapping[field]] ?? []).slice(0, 3).join(" · ") || "No sample values"}`
+                    : suggestedMapping[field]
+                      ? `Suggested source: ${suggestedMapping[field]}`
+                      : "Uses the parser's detected source column."
+                }
+              />
+            ))}
+          </div>
+          <FieldDescription>
+            Header row: {primaryAnalysis?.headerRowNumber ?? "--"}. Mapping applies to this batch
+            and is saved with queued offline imports.
+          </FieldDescription>
+        </CardContent>
+      </details>
     </Card>
   );
 }

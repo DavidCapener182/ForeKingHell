@@ -29,6 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { BRAND_NAME } from "@/lib/brand";
+import { roundCompletionIssue } from "@/lib/round-context";
 import { formatHandicapValue } from "@/lib/round-handicap";
 
 const sharedScorecardColumns = [
@@ -42,13 +43,21 @@ const sharedScorecardColumns = [
   { id: "gir", label: "GIR" },
 ] satisfies DesktopWorkbenchColumn[];
 
-export function SharedRoundWorkbench({ round, token }: { round: SharedRoundData; token: string }) {
+export function SharedRoundWorkbench({ round, token }: { round: SharedRoundData; token?: string }) {
+  const scoredHoles = round.holes.filter(
+    (h) => typeof h.score === "number" && Number.isFinite(h.score),
+  ).length;
+  const completeScore = roundCompletionIssue(round.holes) === null;
+  const canShowDifferential = completeScore && [9, 18].includes(round.holes.length);
+  const recordedPutts = round.holes.filter(
+    (h) => typeof h.putts === "number" && Number.isFinite(h.putts),
+  ).length;
   return (
     <PageShell className="ios-public-auth pb-[max(2rem,env(safe-area-inset-bottom))] lg:pb-8">
       <div className="grid gap-6" data-desktop-shared-round>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Button asChild variant="ghost" className="px-0">
-            <Link href="/login">
+            <Link href="/">
               <ArrowLeft className="size-4" />
               {BRAND_NAME}
             </Link>
@@ -64,20 +73,36 @@ export function SharedRoundWorkbench({ round, token }: { round: SharedRoundData;
           title={round.session.courseName ?? round.link.title ?? "Shared scorecard"}
           description={`${formatDate(round.session.date)} by ${round.ownerName ?? `${BRAND_NAME} player`}`}
           metrics={[
-            { label: "Score", value: formatNullableInteger(round.totalScore) },
+            {
+              label: completeScore ? "Recorded score" : "Partial recorded score",
+              value: formatNullableInteger(round.totalScore),
+            },
             { label: "Par", value: formatNullableInteger(round.totalPar) },
-            { label: "Putts", value: formatNullableInteger(round.totalPutts) },
-            { label: "Diff", value: formatHandicapValue(round.handicapDifferential) },
+            { label: "Recorded putts", value: formatNullableInteger(round.totalPutts) },
+            {
+              label: "Estimated differential",
+              value: canShowDifferential
+                ? formatHandicapValue(round.handicapDifferential)
+                : "Needs complete scorecard",
+            },
           ]}
         />
 
-        <section className="grid gap-4 lg:grid-cols-[0.7fr_0.3fr]">
-          <Card className="premium-card">
+        <p className="rounded-xl border p-4 text-sm leading-6" role="status">
+          Current saved scorecard for this round only. {scoredHoles} of {round.holes.length} holes
+          have a recorded score; {recordedPutts} have recorded putts. Missing values are not zero.{" "}
+          {completeScore
+            ? ""
+            : "The partial score is not a final round result; a differential needs a complete scorecard."}
+        </p>
+        <section className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
+          <Card className="premium-card min-w-0">
             <CardHeader>
               <CardTitle>Scorecard</CardTitle>
               <CardDescription>
                 Hole-by-hole scoring from the shared round. Shot data and private account details
-                are not exposed.
+                are not exposed. Scroll the labelled table to see every field. FIR means fairway
+                hit; GIR means green in regulation.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -87,11 +112,16 @@ export function SharedRoundWorkbench({ round, token }: { round: SharedRoundData;
                 currentViewLabel="Shared scorecard"
                 resultLabel={`${round.holes.length} holes`}
                 columns={sharedScorecardColumns}
-                suggestedViews={sharedScorecardSuggestedViews(token)}
+                suggestedViews={token ? sharedScorecardSuggestedViews(token) : []}
                 exportTableId="shared-scorecard"
                 exportFileName="forekinghell-shared-scorecard.csv"
                 className="mb-3"
               />
+              {round.holes.length === 0 ? (
+                <p role="status" className="rounded-xl border p-4">
+                  No scorecard rows are saved for this shared round.
+                </p>
+              ) : null}
               <DataTableFrame mainTable mainTableLabel="Shared scorecard table" stickyFirstColumn>
                 <Table
                   id="shared-scorecard"
@@ -142,12 +172,13 @@ export function SharedRoundWorkbench({ round, token }: { round: SharedRoundData;
                         tabIndex={0}
                         className="focus-aaa outline-none"
                       >
-                        <TableCell
+                        <TableHead
+                          scope="row"
                           data-column="hole"
                           className="sticky left-0 z-10 min-w-28 bg-card font-medium shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
                         >
                           Hole {hole.holeNumber}
-                        </TableCell>
+                        </TableHead>
                         <TableCell data-column="par" className="text-right">
                           {integerFormatter.format(hole.par)}
                         </TableCell>
@@ -159,6 +190,7 @@ export function SharedRoundWorkbench({ round, token }: { round: SharedRoundData;
                         </TableCell>
                         <TableCell data-column="putts" className="text-right">
                           {formatNullableInteger(hole.putts)}
+                          {hole.puttsSource === "manual" ? " · manual" : ""}
                         </TableCell>
                         <TableCell data-column="penalties" className="text-right">
                           {formatNullableInteger(hole.penalties)}
@@ -172,12 +204,32 @@ export function SharedRoundWorkbench({ round, token }: { round: SharedRoundData;
                       </TableRow>
                     ))}
                   </TableBody>
+                  <tfoot>
+                    <TableRow>
+                      <TableHead scope="row" className="sticky left-0 bg-card">
+                        Recorded totals
+                      </TableHead>
+                      <TableCell className="text-right">
+                        {formatNullableInteger(round.totalPar)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {integerFormatter.format(round.holes.reduce((n, h) => n + h.yards, 0))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatNullableInteger(round.totalScore)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatNullableInteger(round.totalPutts)}
+                      </TableCell>
+                      <TableCell colSpan={3}>Missing entries excluded</TableCell>
+                    </TableRow>
+                  </tfoot>
                 </Table>
               </DataTableFrame>
             </CardContent>
           </Card>
 
-          <Card className="premium-card">
+          <Card className="premium-card min-w-0">
             <CardHeader>
               <CardTitle>Round details</CardTitle>
               <CardDescription>This link can be revoked by the owner at any time.</CardDescription>
@@ -190,7 +242,13 @@ export function SharedRoundWorkbench({ round, token }: { round: SharedRoundData;
               />
               <SharedMetric
                 label="Status"
-                value={round.session.roundStatus === "in_progress" ? "In progress" : "Complete"}
+                value={
+                  round.session.roundStatus === "in_progress"
+                    ? "In progress"
+                    : round.session.roundStatus === "complete"
+                      ? "Marked completed"
+                      : (round.session.roundStatus ?? "Not recorded")
+                }
               />
               <SharedMetric label="Conditions" value={round.weather.conditions ?? "--"} />
               <SharedMetric label="Wind" value={round.weather.wind ?? "--"} />

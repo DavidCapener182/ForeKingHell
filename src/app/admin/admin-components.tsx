@@ -1,12 +1,10 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Activity, Cable, CreditCard, Flag, ShieldCheck, Users } from "lucide-react";
+import { AdminNavigation } from "@/app/admin/admin-navigation";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
+
 import {
   Card,
   CardAction,
@@ -16,35 +14,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { StatusPill, type Tone } from "@/components/premium";
-const adminLinks = [
-  { href: "/admin", label: "Overview", icon: Activity },
-  { href: "/admin/system-checks", label: "System checks", icon: Cable },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/billing", label: "Billing", icon: CreditCard },
-  { href: "/admin/moderation", label: "Moderation", icon: ShieldCheck },
-  { href: "/admin/challenges", label: "Challenges", icon: Flag },
-];
-
 export function AdminNav({ active }: { active: string }) {
-  return (
-    <nav aria-label="Admin sections" className="hidden lg:block">
-      <ButtonGroup className="flex-wrap">
-        {adminLinks.map((item) => {
-          const Icon = item.icon;
-          const current = item.href === active;
-
-          return (
-            <Button key={item.href} asChild variant={current ? "default" : "outline"} size="sm">
-              <Link href={item.href} aria-current={current ? "page" : undefined}>
-                <Icon className="size-4" />
-                {item.label}
-              </Link>
-            </Button>
-          );
-        })}
-      </ButtonGroup>
-    </nav>
-  );
+  return <AdminNavigation active={active} />;
 }
 
 export function AdminNotice({ status, error }: { status?: string; error?: string }) {

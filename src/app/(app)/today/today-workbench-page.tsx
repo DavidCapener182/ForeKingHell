@@ -1,3 +1,10 @@
+import { PageShell } from "@/components/app/page-shell";
+import { HighlightCarousel } from "@/components/app/highlight-carousel";
+import { TodayHighlightCard } from "@/components/app/today-highlight-card";
+import { buildTodayHighlights } from "@/lib/today-highlights";
+import { DecisionPanel } from "@/components/app/decision-panel";
+import { BestShotsEntry } from "@/components/app/best-shots-entry";
+import { todayReviewTakeaway } from "@/lib/mobile-today-briefing";
 import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -16,7 +23,6 @@ import {
   Gauge,
   Route,
   ShieldCheck,
-  Sparkles,
   Target,
   Trophy,
 } from "lucide-react";
@@ -26,7 +32,6 @@ import {
   DataPanel,
   DataTableFrame,
   PageHeader,
-  PageShell,
   SectionHeader,
   StatusPill,
 } from "@/components/premium";
@@ -38,13 +43,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Input } from "@/components/ui/input";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { Progress } from "@/components/ui/progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { UntitledSelect } from "@/components/untitled-ui/form-controls";
 import { ConnectedMetricBar } from "@/components/app/connected-metric-bar";
 import { DataToolbar } from "@/components/app/data-toolbar";
 import {
@@ -64,7 +63,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TodayWorkspaceTabs } from "@/app/today/today-workspace-tabs";
+import { TodayDataQuality } from "@/app/today/today-data-quality";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   TodayShotCharts,
@@ -78,7 +78,7 @@ import { formatClubType } from "@/lib/club-format";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getDb } from "@/db/client";
-import { courses, feedItems, sessions } from "@/db/schema";
+import { clubs, courses, feedItems, sessions } from "@/db/schema";
 import { getUserHandicapProfile } from "@/lib/handicap-data";
 import {
   getCurrentPracticePlanSummary,
@@ -104,7 +104,6 @@ import {
 import {
   buildTodayRecommendation,
   resolveTodayPrimaryState,
-  todayConfidencePercent,
   todayHeroEvidence,
   type TodayRecommendation,
 } from "@/lib/today-primary-state";
@@ -312,10 +311,17 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const reviewMode = parsePracticeReviewMode(first(params.evidence));
   const selectedReviewComparisons = reviewComparisons(data, reviewMode);
   const selectedReviewShots = reviewShots(data, reviewMode);
-  const chartShotDetails = await getTodayShotDetailRows({
-    userId,
-    shotIds: selectedReviewShots.map((shot) => shot.id),
-  });
+  const [chartShotDetails, ownedClubs] = await Promise.all([
+    getTodayShotDetailRows({ userId, shotIds: selectedReviewShots.map((shot) => shot.id) }),
+    getDb()
+      .select({ value: clubs.id, type: clubs.type, brand: clubs.brand, model: clubs.model })
+      .from(clubs)
+      .where(eq(clubs.userId, userId)),
+  ]);
+  const correctionClubs = ownedClubs.map((club) => ({
+    value: club.value,
+    label: [formatClubType(club.type), club.brand, club.model].filter(Boolean).join(" "),
+  }));
   const shotDatabaseHref = shotDatabaseLink(data);
   const chartShots = toChartShots(selectedReviewShots, chartShotDetails);
   const chartClubStatuses = toChartClubStatuses(selectedReviewComparisons);
@@ -324,18 +330,19 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const sortedClubComparisons = sortClubComparisons(selectedReviewComparisons, clubSort);
   const activeFilterChips = buildTodayFilterChips(data);
   const recommendation = buildTodayRecommendation(plannerContext);
+  const takeaway = todayReviewTakeaway(data);
   const primaryState = resolveTodayPrimaryState({
     currentPlan,
     activeRound,
     recommendation,
-    latestData: data,
+    latestData: takeaway ? { ...data, overall: { ...data.overall, ...takeaway } } : data,
   });
 
   return (
     <PageShell size="full" className="today-review-page" contentClassName="pb-4 sm:pb-5">
       <TodayHoverStyles comparisons={data.clubComparisons} />
-      <DriverDevelopmentPanel date={data.dateKey} compact />
       <TodayDesktopDashboard
+        correctionClubs={correctionClubs}
         data={data}
         socialContext={socialContext}
         shotDatabaseHref={shotDatabaseHref}
@@ -355,6 +362,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         goal={preferences.goals[0] ?? null}
         seasonOutcome={preferences.seasonPlan.outcome}
         handicapValue={handicapProfile?.displayValue ?? null}
+        handicapSource={handicapProfile?.sourceLabel ?? "No eligible score differentials"}
         recentActivity={recentActivity}
       />
     </PageShell>
@@ -362,6 +370,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
 }
 
 function TodayDesktopDashboard({
+  correctionClubs,
   data,
   socialContext,
   shotDatabaseHref,
@@ -381,8 +390,10 @@ function TodayDesktopDashboard({
   goal,
   seasonOutcome,
   handicapValue,
+  handicapSource,
   recentActivity,
 }: {
+  correctionClubs: Array<{ value: string; label: string }>;
   data: TodayPracticeData;
   socialContext: TodaySocialContext;
   shotDatabaseHref: string;
@@ -402,17 +413,19 @@ function TodayDesktopDashboard({
   goal: SeasonGoal | null;
   seasonOutcome: string;
   handicapValue: number | null;
+  handicapSource: string;
   recentActivity: TodayHomeActivity[];
 }) {
   const hasShots = data.shots.length > 0;
 
   return (
     <div
-      className="grid w-dvw min-w-0 max-w-full grid-cols-[minmax(0,1fr)] gap-10 overflow-x-clip pb-4"
+      className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-5 pb-4"
       data-desktop-today-workspace
     >
       <TodayHomeUtilityBar shotDatabaseHref={shotDatabaseHref} />
       <TodayDecisionHero state={primaryState} recommendation={recommendation} data={data} />
+      <BestShotsEntry />
 
       <section className="grid gap-4" aria-labelledby="latest-performance-heading">
         <EditorialSectionHeading
@@ -433,8 +446,10 @@ function TodayDesktopDashboard({
             ) : null
           }
         />
+        <TodayDataQuality shots={data.rawShots} compact />
         {hasShots ? (
           <TodayShotCharts
+            correctionClubs={correctionClubs}
             shots={chartShots}
             clubStatuses={chartClubStatuses}
             patternInsight={chartPatternInsight}
@@ -452,6 +467,15 @@ function TodayDesktopDashboard({
         )}
       </section>
 
+      {data.rawShots.some((shot) => shot.clubType === "driver") ? (
+        <details className="rounded-xl border border-border bg-card p-3">
+          <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">
+            Driver development · {data.dateLabel}
+          </summary>
+          <DriverDevelopmentPanel date={data.dateKey} variant="signal" />
+        </details>
+      ) : null}
+
       <section className="grid gap-4" aria-labelledby="today-context-heading">
         <EditorialSectionHeading
           eyebrow="Today’s context"
@@ -461,7 +485,12 @@ function TodayDesktopDashboard({
         <ConnectedMetricBar
           label="Today’s connected golf context"
           className="ring-0 shadow-none"
-          metrics={todayHomeContextMetrics(plannerContext, recommendation, handicapValue)}
+          metrics={todayHomeContextMetrics(
+            plannerContext,
+            recommendation,
+            handicapValue,
+            handicapSource,
+          )}
         />
       </section>
 
@@ -475,7 +504,11 @@ function TodayDesktopDashboard({
         <TodayActivityTimeline items={recentActivity} />
       </div>
 
-      <Collapsible className="group border-t border-border/70 pt-2" data-full-session-analysis>
+      <Collapsible
+        defaultOpen
+        className="group border-t border-border/70 pt-2"
+        data-full-session-analysis
+      >
         <CollapsibleTrigger
           type="button"
           data-variant="ghost"
@@ -499,113 +532,122 @@ function TodayDesktopDashboard({
           <ChevronDown className="size-5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent className="pt-2">
-          <Tabs defaultValue="overview" className="min-w-0 gap-5" data-desktop-today-tabs>
-            <TabsList variant="line" aria-label="Latest practice workspace" className="flex-wrap">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="practice">Practice</TabsTrigger>
-              <TabsTrigger value="evidence">Evidence</TabsTrigger>
-              <TabsTrigger value="data-quality">Data quality</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="grid min-w-0 gap-5">
-              <TodayVerdictHero data={data} linkedPracticePlan={linkedPracticePlan} />
-              <div className="grid min-w-0 items-start gap-5 xl:grid-cols-2">
-                <WhatChangedCard items={whatChangedItems(data)} />
-                <DriverHealthCard summary={driverHealthSummary(data)} />
-              </div>
-              <DesktopInsightRail
-                title="AI latest-practice rail"
-                description="Explain the latest practice, compare it with baseline and turn visible evidence into the next drill."
-                metrics={todayInsightMetrics(data, linkedPracticePlan)}
-                evidence={todayInsightEvidence(data, linkedPracticePlan)}
-                prompts={commonAiPrompts("latest practice review")}
-                actions={[
-                  {
-                    label: "Open shot rows",
-                    href: shotDatabaseHref,
-                    detail: "Filter, compare and export the underlying launch-monitor rows.",
-                    icon: Database,
-                  },
-                  {
-                    label: "Open planner",
-                    href: "/practice",
-                    detail: "Turn the latest practice readout into the next range block.",
-                    icon: Dumbbell,
-                  },
-                ]}
-              />
-            </TabsContent>
-
-            <TabsContent value="practice" className="grid min-w-0 gap-5">
-              <div className="@container/today-practice">
-                <div
-                  data-equal-height-row="today-practice"
-                  className={`today-practice-grid grid items-stretch gap-4 lg:gap-5 ${
-                    hasShots
-                      ? "today-practice-grid-has-prescription"
-                      : "today-practice-grid-no-prescription"
-                  }`}
-                >
-                  {hasShots ? (
-                    <div className="today-practice-prescription min-w-0">
-                      <TodayPracticePrescription data={data} />
-                    </div>
-                  ) : null}
-                  <div className="today-practice-mode min-w-0">
-                    <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
+          <TodayWorkspaceTabs
+            panels={{
+              overview: (
+                <div className="grid min-w-0 gap-5">
+                  <TodayVerdictHero data={data} linkedPracticePlan={linkedPracticePlan} />
+                  <div className="grid min-w-0 items-start gap-5 xl:grid-cols-2">
+                    <WhatChangedCard items={whatChangedItems(data)} />
+                    <DriverHealthCard summary={driverHealthSummary(data)} />
                   </div>
-                  <div className="today-practice-plan min-w-0">
-                    <PracticePlanFollowedCard plan={linkedPracticePlan} data={data} />
+                  <DesktopInsightRail
+                    title="AI latest-practice rail"
+                    description="Explain the latest practice, compare it with baseline and turn visible evidence into the next drill."
+                    metrics={todayInsightMetrics(data, linkedPracticePlan)}
+                    evidence={todayInsightEvidence(data, linkedPracticePlan)}
+                    prompts={commonAiPrompts("latest practice review")}
+                    actions={[
+                      {
+                        label: "Open shot rows",
+                        href: shotDatabaseHref,
+                        detail: "Filter, compare and export the underlying launch-monitor rows.",
+                        icon: Database,
+                      },
+                      {
+                        label: "Open planner",
+                        href: "/practice",
+                        detail: "Turn the latest practice readout into the next range block.",
+                        icon: Dumbbell,
+                      },
+                    ]}
+                  />
+                </div>
+              ),
+              practice: (
+                <div className="grid min-w-0 gap-5">
+                  <div className="@container/today-practice">
+                    <div
+                      data-equal-height-row="today-practice"
+                      className={`today-practice-grid grid items-stretch gap-4 lg:gap-5 ${
+                        hasShots
+                          ? "today-practice-grid-has-prescription"
+                          : "today-practice-grid-no-prescription"
+                      }`}
+                    >
+                      {hasShots ? (
+                        <div className="today-practice-prescription min-w-0">
+                          <TodayPracticePrescription data={data} />
+                        </div>
+                      ) : null}
+                      <div className="today-practice-mode min-w-0">
+                        <TodayPracticeModePanel data={data} shotDatabaseHref={shotDatabaseHref} />
+                      </div>
+                      <div className="today-practice-plan min-w-0">
+                        <PracticePlanFollowedCard plan={linkedPracticePlan} data={data} />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="evidence" className="grid min-w-0 gap-5">
-              <TodayDesktopFilterBar
-                data={data}
-                activeFilterChips={activeFilterChips}
-                reviewMode={reviewMode}
-                clubSort={clubSort}
-              />
-              {hasShots ? (
-                <>
-                  <SessionSignalStrip data={data} />
-                  <ClubPerformancePanel data={data} comparisons={comparisons} sort={clubSort} />
-                  <div className="grid items-start gap-5 xl:grid-cols-2">
-                    <TodaySocialLine
+              ),
+              evidence: (
+                <div className="grid min-w-0 gap-5">
+                  <TodayDesktopFilterBar
+                    data={data}
+                    activeFilterChips={activeFilterChips}
+                    reviewMode={reviewMode}
+                    clubSort={clubSort}
+                  />
+                  {hasShots ? (
+                    <>
+                      <SessionSignalStrip data={data} />
+                      <ClubPerformancePanel data={data} comparisons={comparisons} sort={clubSort} />
+                      <div className="grid items-start gap-5 xl:grid-cols-2">
+                        <TodaySocialLine
+                          data={data}
+                          socialContext={socialContext}
+                          loadHref={todaySocialHref(data, clubSort)}
+                        />
+                        <TodayRawShotListPanel data={data} shotDatabaseHref={shotDatabaseHref} />
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              ),
+              "data-quality": (
+                <div className="grid min-w-0 gap-5">
+                  <TodayDataQuality shots={data.rawShots} />
+                  {data.dataCleaning.excludedShotCount > 0 ? (
+                    <TodayDataCleaningImpactCard
                       data={data}
-                      socialContext={socialContext}
-                      loadHref={todaySocialHref(data, clubSort)}
+                      linkedPracticePlan={linkedPracticePlan}
                     />
-                    <TodayRawShotListPanel data={data} shotDatabaseHref={shotDatabaseHref} />
-                  </div>
-                </>
-              ) : null}
-            </TabsContent>
-
-            <TabsContent value="data-quality" className="grid min-w-0 gap-5">
-              {data.dataCleaning.excludedShotCount > 0 ? (
-                <TodayDataCleaningImpactCard data={data} linkedPracticePlan={linkedPracticePlan} />
-              ) : (
-                <section className="rounded-xl border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-5">
-                  <div className="flex items-center gap-2 text-[var(--status-success-foreground)]">
-                    <ShieldCheck className="size-5" />
-                    <h2 className="font-semibold">All imported rows are in the trusted sample</h2>
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-[var(--status-success-foreground)]">
-                    No shot rows were held out of today&apos;s scoring, comparisons or highlights.
-                  </p>
-                </section>
-              )}
-              <TodayDesktopFilterBar
-                data={data}
-                activeFilterChips={activeFilterChips}
-                reviewMode={reviewMode}
-                clubSort={clubSort}
-              />
-            </TabsContent>
-          </Tabs>
+                  ) : (
+                    <section className="rounded-xl border border-[var(--status-success-border)] bg-[var(--status-success-surface)] p-5">
+                      <div className="flex items-center gap-2 text-[var(--status-success-foreground)]">
+                        <ShieldCheck className="size-5" />
+                        <h2 className="font-semibold">
+                          {data.rawShots.length
+                            ? "No whole-shot exclusions recorded"
+                            : "No saved shot evidence yet"}
+                        </h2>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-[var(--status-success-foreground)]">
+                        No shot rows were held out of today&apos;s scoring, comparisons or
+                        highlights.
+                      </p>
+                    </section>
+                  )}
+                  <TodayDesktopFilterBar
+                    data={data}
+                    activeFilterChips={activeFilterChips}
+                    reviewMode={reviewMode}
+                    clubSort={clubSort}
+                  />
+                </div>
+              ),
+            }}
+          />
         </CollapsibleContent>
       </Collapsible>
     </div>
@@ -614,28 +656,20 @@ function TodayDesktopDashboard({
 
 function TodayHomeUtilityBar({ shotDatabaseHref }: { shotDatabaseHref: string }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-          ForeKingHell / Today
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your live golf decision surface, updated from measured evidence.
-        </p>
-      </div>
-      <ButtonGroup aria-label="Today utility links">
-        <Button asChild variant="outline" size="sm">
-          <Link href={shotDatabaseHref} prefetch={false}>
-            Shot rows
-          </Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/practice" prefetch={false}>
-            Planner
-          </Link>
-        </Button>
-      </ButtonGroup>
-    </div>
+    <PageHeader
+      title="Today"
+      description="Your latest result, current activity and next useful action."
+      actions={
+        <ButtonGroup aria-label="Today utility links">
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={shotDatabaseHref}>Shot rows</Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href="/practice">Planner</Link>
+          </Button>
+        </ButtonGroup>
+      }
+    />
   );
 }
 
@@ -648,122 +682,66 @@ function TodayDecisionHero({
   recommendation: TodayRecommendation;
   data: TodayPracticeData;
 }) {
-  const heroEvidence = todayHeroEvidence({ state, recommendation, latestData: data });
-  const confidence = todayConfidencePercent(heroEvidence.confidence);
-
+  const evidence = todayHeroEvidence({ state, recommendation, latestData: data });
   return (
-    <Card
-      className="relative isolate min-h-[29rem] justify-end overflow-hidden border-0 bg-[#052f22] py-0 text-white shadow-[0_28px_80px_-36px_rgba(3,32,23,0.75)] ring-0"
-      data-today-decision-hero
-    >
-      <div
-        className="pointer-events-none absolute inset-0 -z-30 bg-[url('/assets/generated/lmwt-range-hero.png')] bg-cover bg-[70%_center] opacity-70"
-        aria-hidden
+    <div data-today-decision-hero>
+      <HighlightCarousel
+        label="Your session highlights"
+        autoPlay={state.status === "Review ready"}
+        slides={[
+          {
+            id: "next-action",
+            label: state.eyebrow,
+            content: (
+              <DecisionPanel
+                headingLevel={2}
+                compact
+                variant="default"
+                eyebrow={state.eyebrow}
+                title={state.title}
+                description={state.reason}
+                action={{ label: state.action, href: state.href }}
+                secondaryActions={[
+                  { label: "Sessions", href: "/sessions" },
+                  ...(state.href === "/import" ? [] : [{ label: "Import", href: "/import" }]),
+                ]}
+                evidence={
+                  <div className="grid gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        {evidence.heading}
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold">{evidence.confidence}</p>
+                    </div>
+                    <dl className="grid gap-3 border-t border-border pt-4 text-sm">
+                      <div>
+                        <dt className="text-muted-foreground">Evidence</dt>
+                        <dd className="mt-1 font-medium">{evidence.evidenceLabel}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">{evidence.contextLabel}</dt>
+                        <dd className="mt-1 font-medium">{evidence.contextValue}</dd>
+                      </div>
+                    </dl>
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      {state.status === "Review ready"
+                        ? "Ready to inspect. An upload alone does not prove improvement."
+                        : evidence.heading === "Activity status"
+                          ? "Activity tracking and measured performance are separate steps."
+                          : "Confidence describes the available sample, not the probability of success."}
+                    </p>
+                  </div>
+                }
+              />
+            ),
+          },
+          ...buildTodayHighlights(data).map((highlight) => ({
+            id: highlight.id,
+            label: highlight.label,
+            content: <TodayHighlightCard highlight={highlight} />,
+          })),
+        ]}
       />
-      <div
-        className="pointer-events-none absolute inset-0 -z-20 bg-[linear-gradient(90deg,rgba(3,35,25,0.98)_0%,rgba(3,35,25,0.92)_47%,rgba(3,35,25,0.28)_100%)]"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-44 bg-[linear-gradient(0deg,rgba(3,35,25,0.95),transparent)]"
-        aria-hidden
-      />
-
-      <CardContent className="grid min-w-0 gap-8 px-7 py-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] lg:px-10 lg:py-10">
-        <div className="flex min-w-0 flex-col justify-end">
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge
-              variant="outline"
-              className="border-white/30 bg-black/30 text-white shadow-sm backdrop-blur-sm hover:bg-black/30 hover:text-white"
-            >
-              {state.status}
-            </Badge>
-            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
-              {state.eyebrow}
-            </span>
-          </div>
-          <h1 className="mt-5 max-w-5xl text-balance text-4xl font-semibold leading-[0.98] tracking-[-0.045em] text-white sm:text-5xl xl:text-7xl">
-            {state.title}
-          </h1>
-          <p className="mt-5 max-w-3xl text-pretty text-base font-medium leading-7 text-white/78 lg:text-lg">
-            {state.reason}
-          </p>
-          <ButtonGroup
-            className="mt-7 grid w-full grid-cols-2 sm:inline-flex sm:w-fit"
-            aria-label="Primary Today actions"
-          >
-            <Button
-              asChild
-              size="lg"
-              className="col-span-2 min-h-12 w-full bg-white px-6 !text-[#073527] hover:bg-white/90 hover:!text-[#073527] sm:col-span-1"
-            >
-              <Link href={state.href} prefetch={false}>
-                {state.action} <ArrowRight className="size-4" />
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="min-h-12 w-full border-white/25 bg-black/10 text-white hover:bg-white/12 hover:text-white"
-            >
-              <Link href="/sessions" prefetch={false}>
-                Sessions
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="outline"
-              className="min-h-12 w-full border-white/25 bg-black/10 text-white hover:bg-white/12 hover:text-white"
-            >
-              <Link href="/import" prefetch={false}>
-                Import
-              </Link>
-            </Button>
-          </ButtonGroup>
-        </div>
-
-        <div className="self-end rounded-xl border border-white/16 bg-black/20 p-5 backdrop-blur-md">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60">
-                {heroEvidence.heading}
-              </p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight text-white">
-                {heroEvidence.confidence}
-              </p>
-            </div>
-            <Sparkles className="size-5 text-[#a6f04a]" aria-hidden />
-          </div>
-          <Progress
-            value={confidence}
-            aria-label={`${heroEvidence.confidence} ${heroEvidence.heading.toLowerCase()}`}
-            className="mt-4 h-1.5 bg-white/15 [&_[data-slot=progress-indicator]]:bg-[#a6f04a]"
-          />
-          <div className="mt-5 grid gap-4 border-t border-white/14 pt-5">
-            <HeroEvidenceRow label="Evidence" value={heroEvidence.evidenceLabel} />
-            <HeroEvidenceRow label={heroEvidence.contextLabel} value={heroEvidence.contextValue} />
-            <HeroEvidenceRow
-              label="Latest pattern"
-              value={
-                data.shots.length > 0
-                  ? `${formatRate(data.overall.today.playableRate)} lateral window`
-                  : "Awaiting measured session"
-              }
-            />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function HeroEvidenceRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4">
-      <span className="text-sm text-white/58">{label}</span>
-      <span className="text-right text-sm font-semibold text-white">{value}</span>
     </div>
   );
 }
@@ -784,10 +762,7 @@ function EditorialSectionHeading({
     <div className="flex flex-wrap items-end justify-between gap-5">
       <div className="max-w-4xl">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">{eyebrow}</p>
-        <h2
-          id={id}
-          className="mt-2 text-balance text-3xl font-semibold tracking-[-0.03em] lg:text-4xl"
-        >
+        <h2 id={id} className="mt-2 text-balance text-xl font-semibold tracking-tight">
           {title}
         </h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>
@@ -801,6 +776,7 @@ function todayHomeContextMetrics(
   context: PracticePlannerContext,
   recommendation: TodayRecommendation,
   handicapValue: number | null,
+  handicapSource: string,
 ) {
   const bagClubs = context.bag.clubs.filter((club) => club.sampleSize > 0);
   const bagConfidence =
@@ -809,13 +785,16 @@ function todayHomeContextMetrics(
           bagClubs.reduce((total, club) => total + club.confidenceScore, 0) / bagClubs.length,
         )
       : null;
-  const form = context.trainingLoad.golfForm;
 
   return [
     {
       label: "Current practice load",
-      value: context.trainingLoad.statusLabel,
-      detail: `${context.trainingLoad.recentLoad} load · ${context.trainingLoad.recommendation}`,
+      value: context.trainingLoad.hasTrainingData
+        ? context.trainingLoad.statusLabel
+        : "Not established",
+      detail: context.trainingLoad.hasTrainingData
+        ? `${context.trainingLoad.recentLoad} load · ${context.trainingLoad.recommendation}`
+        : "Record practice or a round to build your load history",
     },
     {
       label: "Main club opportunity",
@@ -831,12 +810,9 @@ function todayHomeContextMetrics(
           : "Add stock shots to establish trust",
     },
     {
-      label: "Handicap / form",
-      value: handicapValue === null ? signedInteger(form) : numberFormatter.format(handicapValue),
-      detail:
-        handicapValue === null
-          ? `Form ${signedInteger(form)} · handicap not established`
-          : `Playing estimate · form ${signedInteger(form)}`,
+      label: "Handicap estimate",
+      value: handicapValue === null ? "Not established" : numberFormatter.format(handicapValue),
+      detail: handicapSource,
     },
   ];
 }
@@ -993,10 +969,6 @@ function goalProgressDetail(goal: SeasonGoal) {
 
 function practicePlanStatusLabel(status: string) {
   return status.replaceAll("_", " ").replace(/^./, (letter) => letter.toUpperCase());
-}
-
-function signedInteger(value: number) {
-  return `${value > 0 ? "+" : ""}${Math.round(value)}`;
 }
 
 async function getTodayInProgressRound(userId: string) {
@@ -2038,9 +2010,9 @@ function TodayVerdictHero({
               {data.dateLabel}
             </span>
           </div>
-          <h1 className="mt-3 max-w-4xl text-3xl font-semibold uppercase leading-[1.04] tracking-normal text-foreground @2xl/today-hero:text-4xl @5xl/today-hero:text-5xl">
+          <h2 className="mt-3 max-w-4xl text-2xl font-semibold uppercase leading-[1.04] tracking-normal text-foreground @2xl/today-hero:text-4xl @5xl/today-hero:text-5xl">
             {heroVerdictTitle(data)}
-          </h1>
+          </h2>
           {storyChips.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-2">
               {storyChips.map((chip) => (
@@ -3230,38 +3202,30 @@ function TodayScopeFields({ data }: { data: TodayPracticeData }) {
           className="h-9 w-full min-w-0 bg-card/90 text-sm"
         />
       </label>
-      <label className="grid min-w-0 gap-1 text-sm font-medium">
-        Session
-        <Select name="session" defaultValue={data.filters.sessionId || "all"}>
-          <SelectTrigger className="h-9 w-full min-w-0 bg-card/90">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All sessions for this practice date</SelectItem>
-            {data.sessions.map((session) => (
-              <SelectItem key={session.id} value={session.id}>
-                {session.label} ({session.shotCount})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </label>
-      <label className="grid min-w-0 gap-1 text-sm font-medium">
-        Club
-        <Select name="club" defaultValue={data.filters.club || "all"}>
-          <SelectTrigger className="h-9 w-full min-w-0 bg-card/90">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All clubs</SelectItem>
-            {data.clubs.map((club) => (
-              <SelectItem key={club.type} value={club.type}>
-                {club.label} ({formatClubOptionShotCount(club)})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </label>
+      <UntitledSelect
+        label="Session"
+        name="session"
+        defaultValue={data.filters.sessionId || "all"}
+        options={[
+          { value: "all", label: "All sessions for this practice date" },
+          ...data.sessions.map((session) => ({
+            value: session.id,
+            label: `${session.label} (${session.shotCount})`,
+          })),
+        ]}
+      />
+      <UntitledSelect
+        label="Club"
+        name="club"
+        defaultValue={data.filters.club || "all"}
+        options={[
+          { value: "all", label: "All clubs" },
+          ...data.clubs.map((club) => ({
+            value: club.type,
+            label: `${club.label} (${formatClubOptionShotCount(club)})`,
+          })),
+        ]}
+      />
     </>
   );
 }
@@ -3849,18 +3813,27 @@ function toChartClubStatuses(comparisons: ClubDayComparison[]): TodayChartClubSt
 }
 
 function shotPatternInsight(comparisons: ClubDayComparison[]) {
-  const best = bestClubComparison(comparisons);
-  const work = needsWorkComparison(comparisons);
-  const reliable = reliableClubComparison(comparisons);
+  const supported = comparisons.filter((comparison) => !isLowSampleComparison(comparison));
+  const best = bestClubComparison(supported);
+  const work = [...supported]
+    .filter((comparison) => comparison.offlineDeltaYd !== null && comparison.offlineDeltaYd >= 1)
+    .sort((left, right) => (right.offlineDeltaYd ?? 0) - (left.offlineDeltaYd ?? 0))[0];
+  const reliable = reliableClubComparison(supported);
 
   if (!best && !work && !reliable) {
-    return "Shot patterns will appear once this review has chartable club data.";
+    return "Build a comparable sample before judging a club pattern.";
   }
 
   const parts = [
-    work ? `${work.clubLabel} widened in this review` : null,
-    best ? `${best.clubLabel} was the strongest performer` : null,
-    reliable ? `${reliable.clubLabel} stayed most playable` : null,
+    work
+      ? `${work.clubLabel} average sideways miss increased by ${numberFormatter.format(work.offlineDeltaYd!)} yd`
+      : null,
+    best && best.clubType !== work?.clubType
+      ? `${best.clubLabel} was the strongest performer`
+      : null,
+    reliable && reliable.clubType !== best?.clubType
+      ? `${reliable.clubLabel} stayed most playable`
+      : null,
   ].filter(Boolean) as string[];
 
   return `${sentenceJoin(parts)}.`;

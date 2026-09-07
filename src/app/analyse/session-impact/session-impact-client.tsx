@@ -1,8 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { RotateCcw, ShieldCheck, Target } from "lucide-react";
 
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -38,11 +48,27 @@ const filterOptions: Array<{ label: string; filter: SessionImpactFilter }> = [
   { label: "Central 80%", filter: { kind: "best-percentile", keep: 0.8 } },
 ];
 
-export function SessionImpactClient({ shots }: { shots: ImpactShot[] }) {
+export function SessionImpactClient({
+  shots,
+  sessionId,
+}: {
+  shots: ImpactShot[];
+  sessionId?: string;
+}) {
+  const ready = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const [metric, setMetric] = useState<SessionImpactMetric>("carry");
   const [filterIndex, setFilterIndex] = useState(0);
   const [selectedShotId, setSelectedShotId] = useState(shots[0]?.id ?? "");
   const [excludeSelected, setExcludeSelected] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [draftMetric, setDraftMetric] = useState<SessionImpactMetric>("carry");
+  const [draftFilterIndex, setDraftFilterIndex] = useState(0);
+  const [draftShotId, setDraftShotId] = useState(shots[0]?.id ?? "");
+  const [draftExclude, setDraftExclude] = useState(false);
   const filter = excludeSelected
     ? ({ kind: "selected", shotId: selectedShotId } satisfies SessionImpactFilter)
     : (filterOptions[filterIndex]?.filter ?? filterOptions[0]!.filter);
@@ -61,13 +87,16 @@ export function SessionImpactClient({ shots }: { shots: ImpactShot[] }) {
     });
   }, [impact]);
 
-  if (shots.length === 0) {
+  if (shots.length === 0 || impact.before.averageYd === null) {
     return (
       <section className="rounded-2xl border border-dashed border-border bg-card p-6 text-center">
         <h2 className="text-lg font-semibold">No measured shots in this session</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           Choose another session or import launch-monitor data before running an impact comparison.
         </p>
+        <Button asChild className="mt-4">
+          <Link href="/import">Import measured evidence</Link>
+        </Button>
       </section>
     );
   }
@@ -132,78 +161,158 @@ export function SessionImpactClient({ shots }: { shots: ImpactShot[] }) {
           </StatusPill>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-[auto_minmax(0,1fr)]">
-          <SegmentedControl
-            label="Distance metric"
-            value={metric}
-            options={[
-              { value: "carry", label: "Carry" },
-              { value: "total", label: "Total" },
-            ]}
-            onChange={(value) => setMetric(value as SessionImpactMetric)}
-          />
-          <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Analysis filter
-            </p>
-            <ToggleGroup
-              type="single"
-              value={excludeSelected ? "" : filterIndex.toString()}
-              onValueChange={(value) => {
-                if (!value) return;
-                setExcludeSelected(false);
-                setFilterIndex(Number(value));
-              }}
-              variant="outline"
-              aria-label="Analysis filter"
-              className="flex w-full snap-x justify-start gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
-              {filterOptions.map((option, index) => (
-                <ToggleGroupItem
-                  key={option.label}
-                  value={index.toString()}
-                  className="focus-aaa min-h-11 shrink-0 rounded-xl px-3 text-sm font-medium"
-                >
-                  {option.label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-          </div>
-        </div>
-
-        <div className="grid gap-2 rounded-xl bg-secondary/55 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-          <label className="grid gap-1.5 text-sm font-medium">
-            Test one shot
-            <Select value={selectedShotId} onValueChange={setSelectedShotId}>
-              <SelectTrigger className="focus-aaa min-h-11 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {shots.map((shot, index) => (
-                  <SelectItem key={shot.id} value={shot.id}>
-                    Shot {shot.shotNumber ?? index + 1} · {shot.clubLabel} ·{" "}
-                    {formatValue(
-                      metric === "carry" ? shot.carryYd : (shot.totalYd ?? shot.carryYd),
-                      "yd",
-                    )}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </label>
-          <Button
-            type="button"
-            variant={excludeSelected ? "default" : "outline"}
-            className="min-h-11 rounded-xl"
-            onClick={() => setExcludeSelected((value) => !value)}
+        <p className="text-sm" role="status">
+          {impact.before.shotCount} original rows · {impact.after.shotCount} included ·{" "}
+          {impact.excludedShotIds.length} excluded ·{" "}
+          {metric === "carry" ? "Carry" : "Total (carry fallback when missing)"} ·{" "}
+          {excludeSelected ? "One selected shot excluded" : filterOptions[filterIndex]?.label}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Sheet
+            open={filterOpen}
+            onOpenChange={(value) => {
+              if (value) {
+                setDraftMetric(metric);
+                setDraftFilterIndex(filterIndex);
+                setDraftShotId(selectedShotId);
+                setDraftExclude(excludeSelected);
+              }
+              setFilterOpen(value);
+            }}
           >
-            {excludeSelected ? (
-              <RotateCcw className="size-4" aria-hidden />
-            ) : (
-              <Target className="size-4" aria-hidden />
-            )}
-            {excludeSelected ? "Restore shot" : "Exclude selected"}
+            <SheetTrigger asChild>
+              <Button variant="outline" disabled={!ready}>
+                Filter and select shots ({excludeSelected || filterIndex ? 1 : 0})
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-full sm:max-w-xl">
+              <SheetHeader>
+                <SheetTitle>Reversible shot filters</SheetTitle>
+                <SheetDescription>
+                  Preview a selection. Applying changes only this analysis; source records stay
+                  unchanged.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4">
+                <div className="grid gap-3 lg:grid-cols-[auto_minmax(0,1fr)]">
+                  <SegmentedControl
+                    label="Distance metric"
+                    value={draftMetric}
+                    options={[
+                      { value: "carry", label: "Carry" },
+                      { value: "total", label: "Total" },
+                    ]}
+                    onChange={(value) => setDraftMetric(value as SessionImpactMetric)}
+                  />
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Analysis filter
+                    </p>
+                    <ToggleGroup
+                      type="single"
+                      value={draftExclude ? "" : draftFilterIndex.toString()}
+                      onValueChange={(value) => {
+                        if (!value) return;
+                        setDraftExclude(false);
+                        setDraftFilterIndex(Number(value));
+                      }}
+                      variant="outline"
+                      aria-label="Analysis filter"
+                      className="flex w-full snap-x justify-start gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    >
+                      {filterOptions.map((option, index) => (
+                        <ToggleGroupItem
+                          key={option.label}
+                          value={index.toString()}
+                          className="focus-aaa min-h-11 shrink-0 rounded-xl px-3 text-sm font-medium"
+                        >
+                          {option.label}
+                        </ToggleGroupItem>
+                      ))}
+                    </ToggleGroup>
+                  </div>
+                </div>
+
+                <div className="grid gap-2 rounded-xl bg-secondary/55 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <label className="grid gap-1.5 text-sm font-medium">
+                    Test one shot
+                    <Select value={draftShotId} onValueChange={setDraftShotId}>
+                      <SelectTrigger className="focus-aaa min-h-11 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {shots.map((shot, index) => (
+                          <SelectItem key={shot.id} value={shot.id}>
+                            Shot {shot.shotNumber ?? index + 1} · {shot.clubLabel} ·{" "}
+                            {formatValue(
+                              draftMetric === "carry"
+                                ? shot.carryYd
+                                : (shot.totalYd ?? shot.carryYd),
+                              "yd",
+                            )}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  <Button
+                    type="button"
+                    variant={draftExclude ? "default" : "outline"}
+                    className="min-h-11 rounded-xl"
+                    onClick={() => setDraftExclude((value) => !value)}
+                  >
+                    {draftExclude ? (
+                      <RotateCcw className="size-4" aria-hidden />
+                    ) : (
+                      <Target className="size-4" aria-hidden />
+                    )}
+                    {draftExclude ? "Restore shot" : "Exclude selected"}
+                  </Button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                <Button
+                  onClick={() => {
+                    setMetric(draftMetric);
+                    setFilterIndex(draftFilterIndex);
+                    setSelectedShotId(draftShotId);
+                    setExcludeSelected(draftExclude);
+                    setFilterOpen(false);
+                  }}
+                >
+                  Apply preview
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDraftMetric("carry");
+                    setDraftFilterIndex(0);
+                    setDraftExclude(false);
+                  }}
+                >
+                  Reset filters
+                </Button>
+                <SheetClose asChild>
+                  <Button variant="outline">Cancel</Button>
+                </SheetClose>
+              </div>
+            </SheetContent>
+          </Sheet>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setMetric("carry");
+              setFilterIndex(0);
+              setExcludeSelected(false);
+            }}
+          >
+            Reset preview
           </Button>
+          {sessionId && (
+            <Button asChild variant="outline">
+              <Link href={`/sessions/${sessionId}`}>Open source session</Link>
+            </Button>
+          )}
         </div>
       </section>
 
@@ -240,7 +349,7 @@ export function SessionImpactClient({ shots }: { shots: ImpactShot[] }) {
             unit="yd"
           />
           <ComparisonMetric
-            label="Carry range"
+            label={metric === "carry" ? "Carry range" : "Total / fallback range"}
             before={impact.before.distanceRangeYd}
             after={impact.after.distanceRangeYd}
             unit="yd"
@@ -295,16 +404,26 @@ function ComparisonMetric({
 }) {
   return (
     <div className="border-b border-border p-4 last:border-b-0 sm:border-r xl:[&:nth-child(4n)]:border-r-0">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <div className="mt-2 flex items-baseline gap-2 tabular-nums">
-        <span className="text-sm text-muted-foreground line-through decoration-border">
+      <h3 className="text-sm font-medium">{label}</h3>
+      <div className="mt-2 flex flex-wrap items-baseline gap-2 tabular-nums">
+        <span className="text-sm text-muted-foreground">
+          <span className="block text-xs">Original</span>
           {formatValue(before, unit)}
         </span>
         <span aria-hidden className="text-muted-foreground">
           →
         </span>
-        <strong className="text-lg">{formatValue(after, unit)}</strong>
+        <strong className="text-lg">
+          <span className="block text-xs font-normal text-muted-foreground">Filtered</span>
+          {formatValue(after, unit)}
+        </strong>
       </div>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Delta:{" "}
+        {before === null || after === null
+          ? "Unavailable"
+          : `${after - before > 0 ? "+" : ""}${formatValue(after - before, unit)}`}
+      </p>
     </div>
   );
 }
@@ -326,7 +445,8 @@ function LandingPathMap({
       distance: metric === "carry" ? shot.carryYd : (shot.totalYd ?? shot.carryYd),
     }))
     .filter(
-      (row): row is typeof row & { distance: number } => row.distance !== null && row.distance > 0,
+      (row): row is typeof row & { distance: number } =>
+        row.distance !== null && row.distance > 0 && row.shot.sideYd !== null,
     );
   const maxDistance = Math.max(1, ...plotted.map((row) => row.distance));
   const maxSide = Math.max(20, ...plotted.map((row) => Math.abs(row.shot.sideYd ?? 0)));
@@ -384,6 +504,7 @@ function LandingPathMap({
                 fill="none"
                 stroke={colour}
                 strokeWidth="1.7"
+                strokeDasharray={excluded ? "5 4" : undefined}
                 strokeLinecap="round"
               />
               <circle cx={landing.x} cy={landing.y} r="3.2" fill={colour} />
@@ -392,13 +513,15 @@ function LandingPathMap({
         })}
         <circle cx="160" cy="340" r="5" className="fill-foreground" />
       </svg>
-      <p id="flight-path-summary" data-flight-path-summary className="sr-only">
+      <p id="flight-path-summary" data-flight-path-summary className="border-t px-4 py-3 text-sm">
         {includedPaths.length} included paths and {excludedPathCount} excluded paths. The included
         landing positions average {averageSideLabel}. Paths are estimated from landing endpoints.
       </p>
       <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
-        Green paths are included. Faded red paths are excluded from the current comparison.
-        Target-relative sign follows the stored offline value.
+        Green paths are included. Faded red paths are excluded from the current comparison. Excluded
+        paths are dashed. {shots.length - plotted.length} rows lack a compatible recorded endpoint
+        and are not plotted. Target-relative sign follows the stored offline value. Total uses carry
+        when total is absent.
       </p>
     </figure>
   );

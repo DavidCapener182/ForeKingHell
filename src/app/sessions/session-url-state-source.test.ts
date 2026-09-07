@@ -28,6 +28,10 @@ const filterSheetSource = readFileSync(
   "utf8",
 );
 
+const toolbarSource = readFileSync(
+  join(process.cwd(), "src/app/sessions/history-toolbar.tsx"),
+  "utf8",
+);
 describe("Sessions URL state boundaries", () => {
   it("awaits Next 16 searchParams in the server page before selecting a surface", () => {
     expect(pageSource).toContain("searchParams: Promise<SessionHistorySearchParamsInput>");
@@ -63,8 +67,10 @@ describe("Sessions URL state boundaries", () => {
     for (const source of [timelineSource, companionListSource]) {
       expect(source).toContain("deriveSessionHistoryView(sessions, filters)");
     }
-    expect(companionListSource).toContain('label="Focus"');
-    expect(companionListSource).toContain("Highlight one session without hiding the rest");
+    expect(companionListSource).toContain("<HistoryToolbar");
+    expect(toolbarSource).toContain('label="Focus"');
+    expect(toolbarSource).toContain("sessionMatchesHistoryFilters(session, value)");
+    expect(toolbarSource).toContain('sessionId === "latest" ? null : sessionId');
   });
 
   it("exposes each filter-sheet option's selected state to assistive technology", () => {

@@ -734,13 +734,21 @@ function buildSpeedTrainingSourceView(
   };
 }
 
+export function achievementSessionFallback(source: string): string {
+  return source === "rapsodo" ? "Rapsodo session" : "Source session";
+}
+
 function buildShotSourceView(
   shot: AchievementSourceShot,
   metadataStats: AchievementSourceStat[],
 ): AchievementSourceView {
   const clubLabel = formatClubType(shot.clubType);
   const shotLabel = shot.shotNumber ? `Shot ${shot.shotNumber}` : "Source shot";
-  const sourceName = shot.courseName ?? shot.fileName ?? shot.location ?? "Rapsodo session";
+  const sourceName =
+    shot.courseName ??
+    shot.fileName ??
+    shot.location ??
+    achievementSessionFallback(shot.sessionSource);
   const detailParts = [
     sourceName,
     formatSessionType(shot.sessionType),
@@ -777,7 +785,7 @@ function buildSessionSourceView(
     session.courseName ??
     session.fileName ??
     session.location ??
-    (isRound ? "Round scorecard" : "Rapsodo session");
+    (isRound ? "Round scorecard" : achievementSessionFallback(session.source));
   const roundStats = isRound ? statsFromScorecard(session.scorecardJson) : [];
   const holeNumber = numberFromMetadata(unlock.metadataJson, "holeNumber");
   const title = isRound && holeNumber ? `${sourceName} · Hole ${holeNumber}` : sourceName;
@@ -1053,6 +1061,7 @@ async function loadAchievementContext(userId: string) {
           type: sessions.type,
           date: sessions.date,
           scorecardJson: sessions.scorecardJson,
+          roundStatus: sessions.roundStatus,
         })
         .from(sessions)
         .where(eq(sessions.userId, userId))

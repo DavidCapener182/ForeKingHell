@@ -1,0 +1,62 @@
+.form[data-round-entry-layout="companion"] {
+  min-width: 0;
+}
+
+.form[data-round-entry-layout="companion"] [data-round-step-navigation],
+.form[data-round-entry-layout="companion"] [data-round-hole-tabs],
+.form[data-round-entry-layout="companion"] [data-hole-controls] {
+  display: flex;
+  position: static;
+}
+
+.form[data-round-entry-layout="companion"] [data-entry-section],
+.form[data-round-entry-layout="companion"] [data-entry-hole],
+.form[data-round-entry-layout="companion"] [data-round-grid-header],
+.form[data-round-entry-layout="companion"] [data-desktop-save] {
+  display: none;
+}
+
+.form[data-round-entry-layout="companion"] [data-round-setup] {
+  display: contents;
+}
+
+.form[data-round-entry-layout="companion"][data-round-entry-step="setup"]
+  [data-entry-section="setup"],
+.form[data-round-entry-layout="companion"][data-round-entry-step="stats"]
+  [data-entry-section="stats"],
+.form[data-round-entry-layout="companion"][data-round-entry-step="score"]
+  [data-entry-section="score"],
+.form[data-round-entry-layout="companion"][data-round-entry-step="review"]
+  [data-entry-section="review"] {
+  display: grid;
+  min-width: 0;
+}
+
+.form[data-round-entry-layout="companion"] [data-entry-hole][data-active="true"] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form[data-round-entry-layout="companion"] [data-entry-hole] > div:first-of-type {
+  grid-column: 1 / -1;
+}
+
+.form[data-round-entry-layout="companion"] .actions {
+  display: block;
+}
+
+.form[data-round-entry-layout="companion"] input,
+.form[data-round-entry-layout="companion"] [role="combobox"] {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+.scoreScroll {
+  min-width: 0;
+  overflow-x: auto;
+}
+@media (min-width: 640px) {
+  .form[data-round-entry-layout="workbench"] .scoreScroll > div {
+    min-width: 760px;
+  }
+}

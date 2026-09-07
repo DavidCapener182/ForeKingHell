@@ -47,12 +47,12 @@ describe("Clubhouse Manager theme contract", () => {
     expect(globals).toContain('html[data-theme="clubhouse"]');
 
     for (const token of [
-      "--background: #f1ead9",
-      "--card: #fbf7ec",
+      "--background: #f5f6f3",
+      "--card: #ffffff",
       "--primary: #123a29",
       "--foreground: #18251e",
       "--clubhouse-muted: #4f574f",
-      "--border: #b9aa8c",
+      "--border: #d8dfd7",
       "--clubhouse-oxblood: #75342e",
       "--clubhouse-gold: #ad8a48",
       "--clubhouse-live: #d6f356",
@@ -152,7 +152,9 @@ describe("Clubhouse Manager theme contract", () => {
   });
 
   it("keeps dark hero copy colours out of nested paper metric tiles", () => {
-    expect(premium).toContain("data-page-header-copy");
+    const header = readFileSync(join(root, "src/components/untitled-ui/headers.tsx"), "utf8");
+    expect(premium).toContain("UntitledPageHeader as PageHeader");
+    expect(header).not.toContain("desktop-page-header");
     expect(globals).toMatch(/\.desktop-page-header\s+\[data-page-header-copy\]/);
     expect(globals).toContain(':where(p, .text-muted-foreground):not([data-tone-role="surface"])');
     expect(globals).not.toContain(".desktop-page-header :where(p, .text-muted-foreground)");
@@ -167,8 +169,8 @@ describe("Clubhouse Manager theme contract", () => {
   });
 
   it("uses a restrained two-surface hierarchy and keeps oxblood off ordinary panels", () => {
-    expect(globals).toContain("--surface-strong: #fbf7ec");
-    expect(globals).toContain("--surface-soft: #f1ead9");
+    expect(globals).toContain("--surface-strong: #ffffff");
+    expect(globals).toContain("--surface-soft: #f5f6f3");
     expect(globals).not.toContain(":where(.premium-hero, .premium-command-surface)");
     expect(globals).toContain('html[data-theme="clubhouse"] .premium-command-surface');
     expect(globals).toContain('html[data-theme="clubhouse"] [data-slot="card-header"]');
@@ -186,7 +188,9 @@ describe("Clubhouse Manager theme contract", () => {
     expect(desktopWorkbench).toContain("<OperationStepper");
     expect(operationStepper).toContain("data-workflow-status={step.status}");
     expect(importForm).toContain("<SaveChecklistCard");
-    expect(importSaveChecklist).toContain('data-clubhouse-state={canSave ? "live" : "current"}');
+    expect(importSaveChecklist).toContain("disabled={!canSave || isPending}");
+    expect(importSaveChecklist).toContain("aria-busy={isPending}");
+    expect(importSaveChecklist).toContain('isOnline ? "Save import" : "Queue offline"');
     expect(globals).toContain('[data-tone="sky"]');
     expect(globals).toContain('[data-workflow-status="current"]');
     expect(currentWorkflowRule).not.toContain("box-shadow");

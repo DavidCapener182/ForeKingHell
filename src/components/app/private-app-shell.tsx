@@ -1,6 +1,6 @@
 import { AchievementNotificationProvider } from "@/components/achievement-notifications";
 import { PwaRegister } from "@/components/pwa-register";
-import { SocialFeedRail } from "@/components/social/social-feed-rail";
+import { SocialFeedRailLoader } from "@/components/social/social-feed-rail-loader";
 import { ThemeBootstrapScript } from "@/components/theme-bootstrap-script";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { AppShellData } from "@/lib/app-shell-data";
@@ -17,6 +17,7 @@ export async function PrivateAppShell({
 }) {
   const achievementContent = (
     <AchievementNotificationProvider initialNotifications={data.achievementNotifications}>
+      <PwaRegister activeUserId={data.userId} />
       {children}
     </AchievementNotificationProvider>
   );
@@ -35,9 +36,8 @@ export async function PrivateAppShell({
         scriptId="fkh-app-theme-bootstrap"
       />
       <TooltipProvider delayDuration={200}>
-        <PwaRegister activeUserId={data.userId} />
         {shellContent}
-        {surface === "workbench" ? <SocialFeedRail /> : null}
+        {surface === "workbench" ? <SocialFeedRailLoader /> : null}
       </TooltipProvider>
     </>
   );
@@ -47,7 +47,11 @@ async function renderCompanionShell(data: AppShellData, children: React.ReactNod
   const { CompanionAppShell } = await import("@/components/app/companion-app-shell");
 
   return (
-    <CompanionAppShell totalXp={data.totalXp} profile={data.mobileNavProfile}>
+    <CompanionAppShell
+      totalXp={data.totalXp}
+      profile={data.mobileNavProfile}
+      isAdmin={data.isAdmin}
+    >
       {children}
     </CompanionAppShell>
   );

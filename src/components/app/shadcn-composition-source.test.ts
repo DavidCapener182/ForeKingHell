@@ -73,8 +73,8 @@ describe("shared shadcn application compositions", () => {
     const appCommand = source("src/components/app/app-command-menu.tsx");
     const desktopCommand = source("src/components/app/desktop-command-palette.tsx");
 
-    expect(appCommand).toContain("CommandSeparator");
-    expect(appCommand).toContain("CommandShortcut");
+    expect(appCommand).toContain("SharedCommandCentre");
+    expect(appCommand).toContain("commandOnly");
     expect(desktopCommand).toContain("CommandSeparator");
     expect(desktopCommand).toContain("CommandShortcut");
     for (const hardCodedSurface of ["bg-white", "text-emerald", "border-emerald"]) {

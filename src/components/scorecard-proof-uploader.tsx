@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { AlertTriangle, ImageIcon, Loader2, ShieldCheck } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -27,19 +28,29 @@ type ScorecardExtractResponse = {
 export function ScorecardProofUploader({
   proofScopeId,
   proofScopeType,
+  proofRoundNumber,
   screenshotFieldName,
   extractedTotalFieldName,
   screenshotLabel = "Scorecard screenshot reference",
   extractedTotalLabel = "Extracted score total",
+  onPendingChange,
+  onProofChange,
 }: {
   proofScopeId: string;
+  proofRoundNumber?: number;
   proofScopeType: "course_record" | "tournament";
   screenshotFieldName: string;
   extractedTotalFieldName: string;
   screenshotLabel?: string;
   extractedTotalLabel?: string;
+  onPendingChange?: (pending: boolean) => void;
+  onProofChange?: () => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const requestVersion = useRef(0);
+  const controllerRef = useRef<AbortController | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState("");
   const [screenshotPath, setScreenshotPath] = useState("");
   const [extractedTotal, setExtractedTotal] = useState("");
   const [proofToken, setProofToken] = useState("");
@@ -48,63 +59,106 @@ export function ScorecardProofUploader({
     message: "Upload a scorecard image, then confirm the extracted total before submitting.",
   });
 
-  async function extractScorecard(file: File | null | undefined) {
-    if (!file) {
+  useEffect(() => {
+    onPendingChange?.(state.status === "loading");
+  }, [state.status, onPendingChange]);
+  useEffect(
+    () => () => {
+      requestVersion.current++;
+      controllerRef.current?.abort();
+    },
+    [],
+  );
+  function removeProof() {
+    onProofChange?.();
+    requestVersion.current++;
+    controllerRef.current?.abort();
+    setFile(null);
+    setPreview("");
+    setScreenshotPath("");
+    setExtractedTotal("");
+    setProofToken("");
+    setState({
+      status: "idle",
+      message: "No image selected. Choose a JPEG, PNG or WebP scorecard, up to 5 MB.",
+    });
+  }
+  async function extractScorecard(nextFile: File | null | undefined) {
+    if (!nextFile) return;
+    onProofChange?.();
+    const version = ++requestVersion.current;
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+    setProofToken("");
+    setExtractedTotal("");
+    setScreenshotPath("");
+    setPreview("");
+    setFile(null);
+    if (!["image/jpeg", "image/png", "image/webp"].includes(nextFile.type)) {
+      setState({ status: "error", message: "Choose a JPEG, PNG or WebP image." });
       return;
     }
-
-    if (!file.type.startsWith("image/")) {
-      setState({ status: "error", message: "Choose an image file for the scorecard." });
+    if (nextFile.size > 5 * 1024 * 1024) {
+      setState({ status: "error", message: "This image exceeds 5 MB. Choose a smaller image." });
       return;
     }
-
-    setScreenshotPath(`scorecard-upload:${file.name}`);
-    setState({ status: "loading", message: `Reading ${file.name}…` });
-
+    setFile(nextFile);
+    setScreenshotPath(`scorecard-upload:${nextFile.name}`);
+    setState({ status: "loading", message: `Reading ${nextFile.name}…` });
     try {
-      const imageDataUrl = await readFileAsDataUrl(file);
+      const imageDataUrl = await readFileAsDataUrl(nextFile);
+      if (version !== requestVersion.current) return;
+      setPreview(imageDataUrl);
       const response = await fetch("/api/scorecard/extract", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          imageDataUrl,
-          proofScopeId,
-          proofScopeType,
-        }),
+        signal: controller.signal,
+        body: JSON.stringify({ imageDataUrl, proofScopeId, proofScopeType, proofRoundNumber }),
       });
       const payload = (await response.json()) as ScorecardExtractResponse;
-
-      if (!response.ok || !payload.scorecard) {
+      if (version !== requestVersion.current) return;
+      if (!response.ok || !payload.scorecard)
         throw new Error(payload.message ?? "Scorecard extraction failed.");
-      }
-
-      if (typeof payload.scorecard.totalScore === "number") {
-        setExtractedTotal(String(payload.scorecard.totalScore));
-      }
+      setExtractedTotal(
+        typeof payload.scorecard.totalScore === "number" &&
+          Number.isFinite(payload.scorecard.totalScore)
+          ? String(payload.scorecard.totalScore)
+          : "",
+      );
       setProofToken(payload.proofToken ?? "");
-
       setState({
         status: "success",
-        message: proofSummary(file.name, payload.scorecard),
+        message: `${proofSummary(nextFile.name, payload.scorecard)}. Image read; the attempt is not verified until its board checks pass.`,
       });
     } catch (error) {
+      if (version !== requestVersion.current || controller.signal.aborted) return;
       setState({
         status: "error",
         message:
           error instanceof Error
-            ? `${error.message} You can still confirm the total manually.`
-            : "Scorecard extraction failed. You can still confirm the total manually.",
+            ? `${error.message} Retry this image or choose another. Manual totals do not establish verified proof.`
+            : "Image could not be read. Retry or choose another image.",
       });
     }
   }
 
   return (
-    <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3">
+    <div
+      className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3"
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        void extractScorecard(event.dataTransfer.files[0]);
+      }}
+      aria-busy={state.status === "loading"}
+    >
       <input type="hidden" name="scorecardProofToken" value={proofToken} />
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp"
+        aria-label="Choose scorecard image"
         className="hidden"
         onChange={(event) => {
           void extractScorecard(event.target.files?.[0]);
@@ -118,14 +172,15 @@ export function ScorecardProofUploader({
             Proof check
           </p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Upload a scorecard screenshot for OCR, then confirm the total against the imported
-            provider round.
+            Choose from Files or your photo library, or drop one JPEG, PNG or WebP image here.
+            Maximum 5 MB. Confirm the extracted total against the selected saved round.
           </p>
         </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
+          className="min-h-11"
           disabled={state.status === "loading"}
           onClick={() => fileInputRef.current?.click()}
         >
@@ -134,9 +189,49 @@ export function ScorecardProofUploader({
           ) : (
             <ImageIcon className="size-4" />
           )}
-          {state.status === "loading" ? "Reading…" : "Upload"}
+          {state.status === "loading" ? "Reading…" : "Choose scorecard image"}
         </Button>
       </div>
+      {file ? (
+        <div className="grid gap-2">
+          <p className="break-words text-sm">
+            {file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB
+          </p>
+          {preview ? (
+            <details>
+              <summary className="min-h-11 cursor-pointer content-center text-sm font-medium">
+                Preview scorecard image
+              </summary>
+              <Image
+                src={preview}
+                alt={`Scorecard preview: ${file.name}`}
+                width={1200}
+                height={1600}
+                unoptimized
+                className="h-auto w-full rounded border"
+              />
+            </details>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {state.status === "error" ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                onClick={() => void extractScorecard(file)}
+              >
+                Retry image
+              </Button>
+            ) : null}
+            <Button type="button" variant="outline" className="min-h-11" onClick={removeProof}>
+              Remove image
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      {state.status === "loading" ? (
+        <progress aria-label="Reading scorecard image" className="w-full" />
+      ) : null}
       <div className="grid gap-2 sm:grid-cols-2">
         <label className="grid gap-1 text-sm font-medium">
           {screenshotLabel}
@@ -144,7 +239,7 @@ export function ScorecardProofUploader({
             name={screenshotFieldName}
             value={screenshotPath}
             placeholder="/uploads/scorecards/round.png"
-            className="h-10 rounded-xl bg-background"
+            className="min-h-11 rounded-xl bg-background"
             readOnly
           />
         </label>
@@ -155,7 +250,10 @@ export function ScorecardProofUploader({
             value={extractedTotal}
             onChange={(event) => setExtractedTotal(event.target.value)}
             inputMode="numeric"
-            className="h-10 rounded-xl bg-background"
+            type="number"
+            min="1"
+            step="1"
+            className="min-h-11 rounded-xl bg-background"
           />
         </label>
       </div>
@@ -166,7 +264,7 @@ export function ScorecardProofUploader({
           <AlertDescription>{state.message}</AlertDescription>
         </Alert>
       ) : (
-        <p className="text-xs leading-5 text-muted-foreground" aria-live="polite">
+        <p className="break-words text-sm leading-5 text-muted-foreground" aria-live="polite">
           {state.message}
         </p>
       )}

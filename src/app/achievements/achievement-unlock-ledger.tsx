@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { LeaderboardDetailCards } from "@/app/leaderboard/leaderboard-detail-cards";
+import boardStyles from "@/app/course-records/course-record-board.module.css";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 
@@ -99,6 +101,9 @@ export function AchievementUnlockLedger({ achievements }: { achievements: Achiev
           </AccordionTrigger>
           <AccordionContent className="border-t border-border/70 px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
             <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                This ledger shows achievement XP. Total XP can also include other rewarded actions.
+              </p>
               <DesktopTableWorkbenchControls
                 viewKey="achievement-unlocks"
                 scope="achievements"
@@ -113,87 +118,123 @@ export function AchievementUnlockLedger({ achievements }: { achievements: Achiev
                   Import provider sessions or complete round scorecards to start the XP ledger.
                 </div>
               ) : (
-                <DataTableFrame
-                  mainTable
-                  mainTableLabel="Achievement unlock ledger table"
-                  stickyFirstColumn
-                >
-                  <Table
-                    className="min-w-[880px]"
-                    data-workbench-scope="achievements"
-                    data-workbench-export-table="achievement-unlocks"
-                    aria-describedby="achievement-unlock-ledger-summary"
-                  >
-                    <TableCaption id="achievement-unlock-ledger-summary" className="sr-only">
-                      Achievement unlock ledger with achievement name, unlock date, tier, XP
-                      awarded, category, source evidence and action.
-                    </TableCaption>
-                    <TableHeader className="sticky top-0 z-10 bg-card">
-                      <TableRow>
-                        <TableHead
-                          data-column="achievement"
-                          className="sticky left-0 z-20 bg-card shadow-[1px_0_0_hsl(var(--border))]"
-                        >
-                          Achievement
-                        </TableHead>
-                        <TableHead data-column="unlocked">Unlocked</TableHead>
-                        <TableHead data-column="tier">Tier</TableHead>
-                        <TableHead data-column="xp" className="text-right">
-                          XP
-                        </TableHead>
-                        <TableHead data-column="category">Category</TableHead>
-                        <TableHead data-column="source">Source</TableHead>
-                        <TableHead data-column="action" className="text-right">
-                          Action
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {visibleAchievements.map((achievement) => (
-                        <TableRow
-                          key={achievement.id}
-                          tabIndex={0}
-                          className="focus-aaa outline-none"
-                        >
-                          <TableCell
-                            data-column="achievement"
-                            className="sticky left-0 z-10 max-w-[18rem] bg-card font-medium text-foreground shadow-[1px_0_0_hsl(var(--border))]"
-                          >
-                            <span className="block truncate">{achievement.displayName}</span>
-                          </TableCell>
-                          <TableCell data-column="unlocked">
-                            {formatUnlockDate(achievement.unlockedAt)}
-                          </TableCell>
-                          <TableCell data-column="tier">{tierLabels[achievement.tier]}</TableCell>
-                          <TableCell data-column="xp" className="text-right tabular-nums">
-                            {achievement.xpAwarded.toLocaleString("en-GB")}
-                          </TableCell>
-                          <TableCell data-column="category">
-                            {categoryLabels[achievement.category] ?? achievement.category}
-                          </TableCell>
-                          <TableCell data-column="source">
-                            {achievement.source
+                <>
+                  <div className={boardStyles.mobile}>
+                    <LeaderboardDetailCards
+                      rows={visibleAchievements.map((achievement) => ({
+                        id: achievement.id,
+                        title: achievement.displayName,
+                        result: `${achievement.xpAwarded.toLocaleString("en-GB")} XP`,
+                        href: achievement.source?.href ?? `#${achievementDomId(achievement.id)}`,
+                        fields: [
+                          ["Unlocked", formatUnlockDate(achievement.unlockedAt)],
+                          ["Tier", tierLabels[achievement.tier]],
+                          [
+                            "Category",
+                            categoryLabels[achievement.category] ?? achievement.category,
+                          ],
+                          [
+                            "Source",
+                            achievement.source
                               ? sourceLabel(achievement.source.kind)
-                              : "Older unlock"}
-                          </TableCell>
-                          <TableCell data-column="action" className="text-right">
-                            <Button asChild variant="outline" size="sm">
-                              <Link
-                                href={
-                                  achievement.source?.href ?? `#${achievementDomId(achievement.id)}`
-                                }
-                                prefetch={false}
+                              : "Older unlock",
+                          ],
+                          ["Evidence", achievement.source?.detail ?? "No source detail stored"],
+                          ...(achievement.source?.stats.map(
+                            (stat) => [stat.label, stat.value] as [string, string],
+                          ) ?? []),
+                        ],
+                      }))}
+                      empty="No unlocks yet."
+                    />
+                  </div>
+                  <div className={boardStyles.desktop}>
+                    <DataTableFrame
+                      mainTable
+                      mainTableLabel="Achievement unlock ledger table"
+                      stickyFirstColumn
+                    >
+                      <Table
+                        className="min-w-[880px]"
+                        data-workbench-scope="achievements"
+                        data-workbench-export-table="achievement-unlocks"
+                        aria-describedby="achievement-unlock-ledger-summary"
+                      >
+                        <TableCaption id="achievement-unlock-ledger-summary" className="sr-only">
+                          Achievement unlock ledger with achievement name, unlock date, tier, XP
+                          awarded, category, source evidence and action.
+                        </TableCaption>
+                        <TableHeader className="sticky top-0 z-10 bg-card">
+                          <TableRow>
+                            <TableHead
+                              data-column="achievement"
+                              className="sticky left-0 z-20 bg-card shadow-[1px_0_0_hsl(var(--border))]"
+                            >
+                              Achievement
+                            </TableHead>
+                            <TableHead data-column="unlocked">Unlocked</TableHead>
+                            <TableHead data-column="tier">Tier</TableHead>
+                            <TableHead data-column="xp" className="text-right">
+                              XP
+                            </TableHead>
+                            <TableHead data-column="category">Category</TableHead>
+                            <TableHead data-column="source">Source</TableHead>
+                            <TableHead data-column="action" className="text-right">
+                              Action
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {visibleAchievements.map((achievement) => (
+                            <TableRow
+                              key={achievement.id}
+                              tabIndex={0}
+                              className="focus-aaa outline-none"
+                            >
+                              <TableCell
+                                data-column="achievement"
+                                className="sticky left-0 z-10 max-w-[18rem] bg-card font-medium text-foreground shadow-[1px_0_0_hsl(var(--border))]"
                               >
-                                {achievement.source?.href ? "Open source" : "Open badge"}
-                                <ExternalLink className="size-3.5" />
-                              </Link>
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </DataTableFrame>
+                                <span className="block break-words">{achievement.displayName}</span>
+                              </TableCell>
+                              <TableCell data-column="unlocked">
+                                {formatUnlockDate(achievement.unlockedAt)}
+                              </TableCell>
+                              <TableCell data-column="tier">
+                                {tierLabels[achievement.tier]}
+                              </TableCell>
+                              <TableCell data-column="xp" className="text-right tabular-nums">
+                                {achievement.xpAwarded.toLocaleString("en-GB")}
+                              </TableCell>
+                              <TableCell data-column="category">
+                                {categoryLabels[achievement.category] ?? achievement.category}
+                              </TableCell>
+                              <TableCell data-column="source">
+                                {achievement.source
+                                  ? sourceLabel(achievement.source.kind)
+                                  : "Older unlock"}
+                              </TableCell>
+                              <TableCell data-column="action" className="text-right">
+                                <Button asChild variant="outline" size="sm">
+                                  <Link
+                                    href={
+                                      achievement.source?.href ??
+                                      `#${achievementDomId(achievement.id)}`
+                                    }
+                                    prefetch={false}
+                                  >
+                                    {achievement.source?.href ? "Open source" : "Open badge"}
+                                    <ExternalLink className="size-3.5" />
+                                  </Link>
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </DataTableFrame>
+                  </div>
+                </>
               )}
               {remainingCount > 0 ? (
                 <div className="flex flex-col gap-2 rounded-xl border border-dashed bg-muted/30 p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">

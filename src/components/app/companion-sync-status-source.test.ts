@@ -11,7 +11,10 @@ describe("companion sync attention state", () => {
   it("presents a retryable alert without a misleading completion bar", () => {
     expect(source).toContain('role={state.needsAttention ? "alert" : "status"}');
     expect(source).toContain('aria-live={state.needsAttention ? "assertive" : "polite"}');
-    expect(source).toContain("!state.needsAttention ? (");
+    expect(source).toContain("sync status is unknown");
+    expect(source).not.toContain("<Progress");
+    expect(source).toContain("snapshot?.accountId === accountId");
+    expect(source).toContain("request.current === current");
     expect(source).not.toContain("state.needsAttention ? 100");
     expect(source).toContain("Retry queued upload sync");
   });

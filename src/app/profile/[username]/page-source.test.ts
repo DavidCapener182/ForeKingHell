@@ -7,26 +7,23 @@ const source = readFileSync(
   "utf8",
 );
 
+const bag = readFileSync(join(process.cwd(), "src/app/profile/public-profile-bag.tsx"), "utf8");
+
 describe("public profile desktop route", () => {
   it("keeps public profiles as privacy-aware desktop tables without an AI rail", () => {
     expect(source).toContain("<PageShell>");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="public-profile">');
-    expect(source).toContain("getRequestAppSurface");
-    expect(source).toContain('surface === "companion"');
     expect(source).toContain('await import("@/components/app/desktop-workbench")');
-    expect(source).toContain("ConfirmSubmitButton");
-    expect(source).toContain('aria-label="Public profile summary"');
+    expect(source).toContain("<PeopleActionMenu");
     expect(source).toContain('aria-label="Public profile stats rail"');
     expect(source).toContain('data-workbench-scope="profile-activity"');
     expect(source).toContain('data-workbench-export-table="profile-activity-ledger"');
     expect(source).toContain('mainTableLabel="Profile activity ledger table"');
     expect(source).toContain('mainTableLabel="Profile activity ledger table" stickyFirstColumn');
     expect(source).toContain('data-workbench-scope="profile-bag-comparison"');
-    expect(source).toContain('data-workbench-export-table="profile-bag-comparison"');
-    expect(source).toContain('label="Profile visible bag comparison table" stickyFirstColumn');
+    expect(bag).toContain('data-workbench-export-table="profile-bag-comparison"');
     expect(source).toContain("Privacy-filtered activity");
-    expect(source).toContain(
-      "Bag numbers are private or do not have enough trusted measured shots yet.",
+    expect(bag).toContain(
+      "No bag distances shared or available. This is not a zero-distance result.",
     );
     expect(source).toContain("tabIndex={0}");
     expect(source).not.toContain('<PageShell size="6xl">');
@@ -35,27 +32,22 @@ describe("public profile desktop route", () => {
     expect(source).not.toContain("rail={");
   });
 
-  it("uses genuine Card composition for the semantic public-profile summary", () => {
-    const articleStart = source.indexOf('<article aria-label="Public profile summary">');
-    const articleEnd = source.indexOf("</article>", articleStart);
-
-    expect(articleStart).toBeGreaterThan(0);
-    expect(articleEnd).toBeGreaterThan(articleStart);
-
-    const summaryArticle = source.slice(articleStart, articleEnd);
-    expect(summaryArticle).toContain('<Card className="gap-0 py-0">');
-    expect(summaryArticle).toContain("<CardContent");
-    expect(summaryArticle.match(/<Card(?:\s|>)/g)).toHaveLength(1);
-    expect(summaryArticle).not.toContain("premium-card");
+  it("labels unavailable statistics and the self-selected handicap band", () => {
+    expect(source).toContain("Only profile-approved summary data appears here");
+    expect(source).toContain("Not shared or unavailable");
+    expect(source).toContain('detail: "Self-selected"');
+    expect(source).toContain("data.stats.rounds");
+    expect(source).toContain("data.stats.handicapBand");
   });
 
-  it("uses a native mobile profile summary with activity first and bag detail disclosed", () => {
-    expect(source).toContain("<MobileAppShell>");
-    expect(source).toContain("MobilePublicProfileSummary");
-    expect(source).toContain("MobileProfileActivity");
-    expect(source).toContain("MobileProfileDetails");
-    expect(source).toContain("data.recentFeed.slice(0, mobileProfileActivityLimit)");
-    expect(source).toContain("IOSDisclosureGroup");
+  it("keeps permitted activity ahead of responsive bag evidence", () => {
+    expect(source.indexOf("data-profile-recent-feed")).toBeLessThan(
+      source.indexOf("<PublicProfileBagComparison"),
+    );
+    expect(source).toContain("<PublicProfileBag rows={rows}");
+    expect(bag).toContain("className={styles.mobile}");
+    expect(bag).toContain("className={styles.desktop}");
+    expect(bag).toContain("Permitted stock bag summaries only; no raw shots or session details");
   });
 
   it("keeps compact recent-feed cards out of an outer DataPanel card", () => {

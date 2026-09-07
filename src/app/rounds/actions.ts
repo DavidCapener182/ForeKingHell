@@ -1,12 +1,24 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { and, asc, desc, eq, isNotNull, ne } from "drizzle-orm";
+import { recordOfflineRoundCommit } from "@/lib/offline-operation-ledger";
 
 import {
-  clubs,
+  contextRoundStatus,
+  relinkRoundScorecard,
+  roundCompletionIssue,
+} from "@/lib/round-context";
+import {
+  assertOfflineRoundPrecondition,
+  nextRoundVersionTime,
+} from "@/lib/offline-round-precondition";
+import { manualRoundScorecard } from "@/lib/manual-round-scorecard";
+import { applyRoundHoleCorrection } from "@/lib/round-hole-correction";
+import { randomUUID } from "node:crypto";
+import { revalidatePath } from "next/cache";
+import { redirect, unstable_rethrow } from "next/navigation";
+import { and, asc, desc, eq, isNotNull, or } from "drizzle-orm";
+
+import {
   courses,
   holes,
   rapsodoSyncSessions,
@@ -14,22 +26,16 @@ import {
   shareLinks,
   shotReviewEvents,
   shots,
-  strokesGainedBaselines,
   strokesGainedShotEvents,
   teeSets,
   users,
 } from "@/db/schema";
+import { correctShotClub, updateClubIdentity } from "@/lib/shot-club-correction";
 import { getDb } from "@/db/client";
 import { setAchievementUnlockFlash } from "@/lib/achievements/notification-flash";
 import { evaluateRoundAchievementsForSession } from "@/lib/achievements/service";
-import {
-  inferCourseShots,
-  inferCourseShotsFromHoleShotCounts,
-  type CourseScorecardHole,
-} from "@/lib/course-scorecard";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { refreshPracticeEvidenceForReviewedSessions } from "@/lib/practice-planner";
-import { buildClubKey, normalizeClubType, type ParsedRapsodoShot } from "@/lib/rapsodo/parser";
 import {
   applyRoundShotDeletionToScorecard,
   isRoundCorrectionDeletionAllowed,
@@ -43,23 +49,42 @@ import { reportServerFailure } from "@/lib/server-observability";
 import { recordRoundCompletedFeedItem } from "@/lib/social";
 import { refreshStockYardagesForClubs } from "@/lib/stock-yardage-refresh";
 import {
-  DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
-  buildStrokesGainedEventsFromRoundAssignments,
-} from "@/lib/strokes-gained";
+  recalculateRoundAssignments,
+  rebuildRoundStrokesGainedEvents,
+} from "@/lib/round-assignments";
 
 type StoredScorecardHole = NonNullable<(typeof sessions.$inferSelect)["scorecardJson"]>[number];
-type RoundActionTransaction = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
-type RoundAssignmentDatabase = Pick<RoundActionTransaction, "select" | "update">;
+
+export type RoundCreationState = { error: string | null };
+
+export async function createManualRoundWithStateAction(
+  _previousState: RoundCreationState,
+  formData: FormData,
+): Promise<RoundCreationState> {
+  try {
+    await createManualRoundAction(formData);
+    return { error: null };
+  } catch (error) {
+    unstable_rethrow(error);
+    reportServerFailure("manual_round_creation_failed", error);
+    return { error: "The round could not be saved. Your entries are still here. Try again." };
+  }
+}
 
 export async function createManualRoundAction(formData: FormData) {
   const db = getDb();
   const userId = await requireCurrentUserId();
+  const creationId = nullableString(formData, "creationId") ?? randomUUID();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(creationId))
+    throw new Error("Invalid round request.");
   const teeSetId = requiredString(formData, "teeSetId");
   const notes = nullableString(formData, "notes");
   const equipmentNotes = nullableString(formData, "equipmentNotes");
   const roundStatus = parseRoundStatus(formData);
   const date = dateFromForm(formData, "date");
   const holeCount = numberFromForm(formData, "holeCount") ?? 18;
+  if (!Number.isInteger(holeCount) || holeCount < 1 || holeCount > 18)
+    throw new Error("Choose a scorecard with 1 to 18 holes.");
   const now = new Date();
 
   const [teeSet] = await db
@@ -71,36 +96,31 @@ export async function createManualRoundAction(formData: FormData) {
     })
     .from(teeSets)
     .innerJoin(courses, eq(teeSets.courseId, courses.id))
-    .where(eq(teeSets.id, teeSetId))
+    .where(
+      and(
+        eq(teeSets.id, teeSetId),
+        or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)),
+      ),
+    )
     .limit(1);
 
   if (!teeSet) {
     throw new Error("Tee set not found.");
   }
 
-  const scorecardJson = Array.from({ length: holeCount }, (_, index): StoredScorecardHole => {
-    const holeNumber = numberFromForm(formData, `holeNumber-${index}`) ?? index + 1;
+  const courseHoles = await db
+    .select({
+      holeNumber: holes.holeNumber,
+      par: holes.par,
+      yards: holes.yards,
+      strokeIndex: holes.strokeIndex,
+    })
+    .from(holes)
+    .where(eq(holes.teeSetId, teeSet.id))
+    .orderBy(asc(holes.holeNumber));
+  const scorecardJson = manualRoundScorecard(formData, courseHoles, roundStatus === "complete");
 
-    return {
-      holeNumber,
-      par: numberFromForm(formData, `par-${index}`) ?? 4,
-      yards: numberFromForm(formData, `yards-${index}`) ?? 0,
-      name: null,
-      strokeIndex: numberFromForm(formData, `strokeIndex-${index}`),
-      score: numberFromForm(formData, `score-${index}`),
-      putts: numberFromForm(formData, `putts-${index}`),
-      penalties: numberFromForm(formData, `penalties-${index}`),
-      chipShots: numberFromForm(formData, `chipShots-${index}`),
-      greensideSandShots: numberFromForm(formData, `greensideSandShots-${index}`),
-      fairwayHit: booleanFromForm(formData, `fairwayHit-${index}`),
-      gir: booleanFromForm(formData, `gir-${index}`),
-      csvShotCount: 0,
-      progressYd: 0,
-      distanceRemainingYd: numberFromForm(formData, `yards-${index}`) ?? 0,
-    };
-  });
-
-  const [session] = await db.transaction(async (tx) => {
+  const session = await db.transaction(async (tx) => {
     await tx
       .insert(users)
       .values({
@@ -115,9 +135,10 @@ export async function createManualRoundAction(formData: FormData) {
         },
       });
 
-    return tx
+    const [created] = await tx
       .insert(sessions)
       .values({
+        id: creationId,
         userId,
         source: "manual",
         type: "real_round",
@@ -131,27 +152,55 @@ export async function createManualRoundAction(formData: FormData) {
         scorecardJson,
         notes,
         equipmentNotes,
-        rawUploadId: `manual-round-${randomUUID()}`,
+        rawUploadId: `manual-round-${creationId}`,
         fileName: `${teeSet.courseName} ${date.toISOString().slice(0, 10)}.scorecard`,
         rawCsvText: "",
         createdAt: now,
       })
-      .returning({ id: sessions.id });
+      .onConflictDoNothing({ target: sessions.id })
+      .returning({
+        id: sessions.id,
+        roundStatus: sessions.roundStatus,
+        scorecardJson: sessions.scorecardJson,
+        courseName: sessions.courseName,
+      });
+    if (created) return { ...created, newlyCreated: true };
+    const [existing] = await tx
+      .select({
+        id: sessions.id,
+        roundStatus: sessions.roundStatus,
+        scorecardJson: sessions.scorecardJson,
+        courseName: sessions.courseName,
+      })
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.id, creationId),
+          eq(sessions.userId, userId),
+          eq(sessions.rawUploadId, `manual-round-${creationId}`),
+        ),
+      )
+      .limit(1);
+    if (!existing) throw new Error("Round request could not be restored.");
+    return { ...existing, newlyCreated: false };
   });
 
-  await evaluateRoundAchievementsForSessionWithFlash(session.id, userId);
-  await recordRoundCompletedFeedItem({
-    userId,
-    sessionId: session.id,
-    courseName: teeSet.courseName,
-    score: scorecardTotal(scorecardJson),
-    source: "manual",
-  });
-  recordProductWorkflowEvent("round_created", {
-    source: "manual",
-    roundStatus,
-    holeCount,
-  });
+  if (session.roundStatus === "complete") {
+    await evaluateRoundAchievementsForSessionWithFlash(session.id, userId);
+    await recordRoundCompletedFeedItem({
+      userId,
+      sessionId: session.id,
+      courseName: session.courseName,
+      score: scorecardTotal(session.scorecardJson ?? []),
+      source: "manual",
+    });
+  }
+  if (session.newlyCreated)
+    recordProductWorkflowEvent("round_created", {
+      source: "manual",
+      roundStatus,
+      holeCount,
+    });
   revalidateRound(session.id);
   redirect(`/rounds/${session.id}`);
 }
@@ -159,43 +208,90 @@ export async function createManualRoundAction(formData: FormData) {
 export async function completeLiveRoundAction(formData: FormData) {
   const userId = await requireCurrentUserId();
   const sessionId = requiredString(formData, "sessionId");
-  const db = getDb();
-  const [round] = await db
-    .select({ scorecard: sessions.scorecardJson })
-    .from(sessions)
-    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
-    .limit(1);
-  if (!round?.scorecard?.length || round.scorecard.some((hole) => hole.score == null))
-    throw new Error("Score every hole before finishing the round.");
-  await db
-    .update(sessions)
-    .set({ roundStatus: "complete" })
-    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
-  try {
-    await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
-  } catch (error) {
-    reportServerFailure("live_round_completion_achievements_failed", error);
-  }
+  const round = await getDb().transaction(async (tx) => {
+    const [current] = await tx
+      .select({
+        id: sessions.id,
+        updatedAt: sessions.updatedAt,
+        scorecardJson: sessions.scorecardJson,
+        courseName: sessions.courseName,
+        source: sessions.source,
+      })
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+      .limit(1)
+      .for("update");
+    if (!current) throw new Error("Round not found.");
+    assertOfflineRoundPrecondition({ ...current, userId });
+    const issue = roundCompletionIssue(current.scorecardJson);
+    if (issue) throw new Error(issue);
+    await tx
+      .update(sessions)
+      .set({ roundStatus: "complete", updatedAt: nextRoundVersionTime(current.updatedAt) })
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+    await recordOfflineRoundCommit(tx, userId, sessionId);
+    return current;
+  });
+  await publishRoundCompletion(round, userId);
   revalidateRound(sessionId);
-  revalidatePath("/play");
-  revalidatePath("/today");
+}
+
+async function publishRoundCompletion(
+  round: Pick<typeof sessions.$inferSelect, "id" | "scorecardJson" | "courseName" | "source">,
+  userId: string,
+) {
+  try {
+    await evaluateRoundAchievementsForSessionWithFlash(round.id, userId);
+  } catch (error) {
+    reportServerFailure("round_completion_achievements_failed", error);
+  }
+  await recordRoundCompletedFeedItem({
+    userId,
+    sessionId: round.id,
+    courseName: round.courseName,
+    score: scorecardTotal(round.scorecardJson ?? []),
+    source: round.source,
+  });
 }
 
 export async function updateRoundContextAction(formData: FormData) {
   const db = getDb();
   const userId = await requireCurrentUserId();
   const sessionId = requiredString(formData, "sessionId");
-
-  await db
-    .update(sessions)
-    .set({
-      roundStatus: parseRoundStatus(formData),
-      weatherJson: parseWeather(formData),
-      equipmentNotes: nullableString(formData, "equipmentNotes"),
-      notes: nullableString(formData, "notes"),
-    })
-    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
-
+  const roundStatus = contextRoundStatus(formData.get("roundStatus"));
+  const round = await db.transaction(async (tx) => {
+    const [current] = await tx
+      .select({
+        id: sessions.id,
+        updatedAt: sessions.updatedAt,
+        scorecardJson: sessions.scorecardJson,
+        courseName: sessions.courseName,
+        source: sessions.source,
+      })
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+      .limit(1)
+      .for("update");
+    if (!current) throw new Error("Round not found.");
+    assertOfflineRoundPrecondition({ ...current, userId });
+    if (roundStatus === "complete") {
+      const issue = roundCompletionIssue(current.scorecardJson);
+      if (issue) throw new Error(issue);
+    }
+    await tx
+      .update(sessions)
+      .set({
+        roundStatus,
+        weatherJson: parseWeather(formData),
+        equipmentNotes: nullableString(formData, "equipmentNotes"),
+        notes: nullableString(formData, "notes"),
+        updatedAt: nextRoundVersionTime(current.updatedAt),
+      })
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+    await recordOfflineRoundCommit(tx, userId, sessionId);
+    return current;
+  });
+  if (roundStatus === "complete") await publishRoundCompletion(round, userId);
   revalidateRound(sessionId);
 }
 
@@ -290,26 +386,28 @@ export async function updateRoundCourseLinkAction(formData: FormData) {
   const userId = await requireCurrentUserId();
   const sessionId = requiredString(formData, "sessionId");
   const teeSetId = requiredString(formData, "teeSetId");
-
-  const [session, teeSet, holeRows] = await Promise.all([
-    db
-      .select({ scorecardJson: sessions.scorecardJson })
+  await db.transaction(async (tx) => {
+    const [session] = await tx
+      .select({ updatedAt: sessions.updatedAt, scorecardJson: sessions.scorecardJson })
       .from(sessions)
       .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
       .limit(1)
-      .then((rows) => rows[0] ?? null),
-    db
-      .select({
-        id: teeSets.id,
-        courseId: teeSets.courseId,
-        courseName: courses.name,
-      })
+      .for("update");
+    if (!session) throw new Error("Round not found.");
+    assertOfflineRoundPrecondition({ id: sessionId, userId, updatedAt: session.updatedAt });
+    const [teeSet] = await tx
+      .select({ id: teeSets.id, courseId: teeSets.courseId, courseName: courses.name })
       .from(teeSets)
       .innerJoin(courses, eq(teeSets.courseId, courses.id))
-      .where(eq(teeSets.id, teeSetId))
-      .limit(1)
-      .then((rows) => rows[0] ?? null),
-    db
+      .where(
+        and(
+          eq(teeSets.id, teeSetId),
+          or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)),
+        ),
+      )
+      .limit(1);
+    if (!teeSet) throw new Error("Tee set not found.");
+    const holeRows = await tx
       .select({
         holeNumber: holes.holeNumber,
         par: holes.par,
@@ -317,62 +415,50 @@ export async function updateRoundCourseLinkAction(formData: FormData) {
         strokeIndex: holes.strokeIndex,
       })
       .from(holes)
-      .where(eq(holes.teeSetId, teeSetId))
-      .orderBy(asc(holes.holeNumber)),
-  ]);
-
-  if (!session || !teeSet) {
-    throw new Error("Round or tee set not found.");
-  }
-
-  await db
-    .update(sessions)
-    .set({
-      courseId: teeSet.courseId,
-      teeSetId: teeSet.id,
-      courseName: teeSet.courseName,
-      location: teeSet.courseName,
-      scorecardJson: mergeScorecardForTee(session.scorecardJson ?? [], holeRows),
-    })
-    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
-
-  await recalculateRoundAssignments(sessionId, userId);
+      .where(eq(holes.teeSetId, teeSet.id))
+      .orderBy(asc(holes.holeNumber));
+    await tx
+      .update(sessions)
+      .set({
+        courseId: teeSet.courseId,
+        teeSetId: teeSet.id,
+        courseName: teeSet.courseName,
+        location: teeSet.courseName,
+        scorecardJson: relinkRoundScorecard(session.scorecardJson ?? [], holeRows),
+        updatedAt: nextRoundVersionTime(session.updatedAt),
+      })
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+    const scorecard = await recalculateRoundAssignments(sessionId, userId, tx);
+    if (scorecard) await rebuildRoundStrokesGainedEvents(sessionId, userId, scorecard, tx);
+    await recordOfflineRoundCommit(tx, userId, sessionId);
+  });
   await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
 }
 
 export async function updateShotClubAction(formData: FormData) {
-  const db = getDb();
   const userId = await requireCurrentUserId();
   const sessionId = requiredString(formData, "sessionId");
-  const shotId = requiredString(formData, "shotId");
-  const clubId = requiredString(formData, "clubId");
-
-  const [club] = await db
-    .select({ id: clubs.id, type: clubs.type })
-    .from(clubs)
-    .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)))
-    .limit(1);
-
-  if (!club) {
-    throw new Error("Club not found.");
+  const changed = await correctShotClub({
+    userId,
+    expectedSessionId: sessionId,
+    shotId: requiredString(formData, "shotId"),
+    clubId: requiredString(formData, "clubId"),
+  });
+  let warning = changed.warning;
+  try {
+    await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
+  } catch (error) {
+    reportServerFailure("club_correction_awards_refresh_failed", error);
+    warning = [
+      warning,
+      "Club saved, but round achievements could not refresh. Save again to retry.",
+    ]
+      .filter(Boolean)
+      .join(" ");
   }
-
-  const [updatedShot] = await db
-    .update(shots)
-    .set({
-      clubId: club.id,
-      clubType: club.type,
-    })
-    .where(and(eq(shots.id, shotId), eq(shots.sessionId, sessionId), eq(shots.userId, userId)))
-    .returning({ id: shots.id });
-
-  if (!updatedShot) {
-    throw new Error("Shot not found.");
-  }
-
-  await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
+  return { previousClubId: changed.previousClubId, warning };
 }
 
 export async function deleteRoundShotAction(input: RoundShotDeleteActionInput) {
@@ -540,205 +626,155 @@ export async function deleteRoundShotAction(input: RoundShotDeleteActionInput) {
 }
 
 export async function updateClubAction(formData: FormData) {
-  const db = getDb();
   const userId = await requireCurrentUserId();
-  const sessionId = requiredString(formData, "sessionId");
-  const clubId = requiredString(formData, "clubId");
-  const clubType = normalizeClubType(requiredString(formData, "clubType"));
-  const brand = nullableString(formData, "brand");
-  const model = nullableString(formData, "model");
-  const normalizedClubKey = buildClubKey(clubType, brand, model);
-  const now = new Date();
-  const [session] = await db
-    .select({ id: sessions.id })
-    .from(sessions)
-    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
-    .limit(1);
-
-  if (!session) {
-    throw new Error("Round not found.");
+  const changed = await updateClubIdentity({
+    userId,
+    sessionId: requiredString(formData, "sessionId"),
+    clubId: requiredString(formData, "clubId"),
+    clubType: requiredString(formData, "clubType"),
+    brand: nullableString(formData, "brand"),
+    model: nullableString(formData, "model"),
+  });
+  for (const sessionId of changed.sessionIds) {
+    try {
+      await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
+    } catch (error) {
+      reportServerFailure("bulk_club_correction_awards_refresh_failed", error);
+      changed.warning = [
+        changed.warning,
+        "Club saved, but round achievements could not refresh. Save again to retry.",
+      ]
+        .filter(Boolean)
+        .join(" ");
+    }
+    revalidateRound(sessionId);
   }
-
-  const [currentClub] = await db
-    .select({ id: clubs.id, userId: clubs.userId })
-    .from(clubs)
-    .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)))
-    .limit(1);
-
-  if (!currentClub) {
-    throw new Error("Club not found.");
-  }
-
-  const [duplicateClub] = await db
-    .select({ id: clubs.id, type: clubs.type })
-    .from(clubs)
-    .where(
-      and(
-        eq(clubs.userId, currentClub.userId),
-        eq(clubs.normalizedClubKey, normalizedClubKey),
-        ne(clubs.id, clubId),
-      ),
-    )
-    .limit(1);
-
-  if (duplicateClub) {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(shots)
-        .set({ clubId: duplicateClub.id, clubType: duplicateClub.type })
-        .where(and(eq(shots.clubId, clubId), eq(shots.userId, userId)));
-      await tx
-        .update(clubs)
-        .set({ active: false, updatedAt: now })
-        .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)));
-    });
-  } else {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(clubs)
-        .set({
-          type: clubType,
-          brand,
-          model,
-          normalizedClubKey,
-          active: true,
-          updatedAt: now,
-        })
-        .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)));
-      await tx
-        .update(shots)
-        .set({ clubType })
-        .where(and(eq(shots.clubId, clubId), eq(shots.userId, userId)));
-    });
-  }
-
-  await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
-  revalidateRound(sessionId);
+  return { warning: changed.warning };
 }
 
 export async function updateRoundHoleAction(formData: FormData) {
   const db = getDb();
   const userId = await requireCurrentUserId();
   const sessionId = requiredString(formData, "sessionId");
-  const holeNumber = numberFromForm(formData, "holeNumber");
+  const holeNumber = Number(formData.get("holeNumber"));
+  if (!Number.isInteger(holeNumber) || holeNumber < 1 || holeNumber > 18)
+    throw new Error("Choose a valid scorecard hole.");
 
-  if (holeNumber === null) {
-    throw new Error("Hole number is required.");
-  }
-
-  const [session] = await db
-    .select({ scorecardJson: sessions.scorecardJson })
-    .from(sessions)
-    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
-    .limit(1);
-
-  if (!session?.scorecardJson) {
-    throw new Error("Round scorecard not found.");
-  }
-
-  const holes = session.scorecardJson.map<StoredScorecardHole>((hole) => {
-    if (hole.holeNumber !== holeNumber) {
-      return hole;
-    }
-
-    const score = numberFromForm(formData, "score");
-    const updatedHole: StoredScorecardHole = {
-      ...hole,
-      score,
-      putts: numberFromForm(formData, "putts"),
-      penalties: numberFromForm(formData, "penalties"),
-      fairwayHit: booleanFromForm(formData, "fairwayHit"),
-      gir: booleanFromForm(formData, "gir"),
-    };
-
-    if (formData.has("notes"))
-      updatedHole.notes = nullableString(formData, "notes")?.slice(0, 500) ?? null;
-
-    if (formData.has("chipShots")) {
-      updatedHole.chipShots = numberFromForm(formData, "chipShots");
-    }
-
-    if (formData.has("greensideSandShots")) {
-      updatedHole.greensideSandShots = numberFromForm(formData, "greensideSandShots");
-    }
-
-    if (
-      typeof hole.netScore === "number" &&
-      typeof hole.score === "number" &&
-      typeof score === "number"
-    ) {
-      updatedHole.netScore = Math.max(0, hole.netScore + score - hole.score);
-    }
-
-    return updatedHole;
+  await db.transaction(async (tx) => {
+    const [session] = await tx
+      .select({
+        updatedAt: sessions.updatedAt,
+        scorecardJson: sessions.scorecardJson,
+        roundStatus: sessions.roundStatus,
+      })
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+      .limit(1)
+      .for("update");
+    if (!session?.scorecardJson?.some((hole) => hole.holeNumber === holeNumber))
+      throw new Error("Round scorecard hole not found.");
+    assertOfflineRoundPrecondition({ id: sessionId, userId, updatedAt: session.updatedAt });
+    const scorecard = session.scorecardJson.map((hole) =>
+      hole.holeNumber === holeNumber
+        ? applyRoundHoleCorrection(hole, formData, session.roundStatus === "complete")
+        : hole,
+    );
+    await tx
+      .update(sessions)
+      .set({ scorecardJson: scorecard, updatedAt: nextRoundVersionTime(session.updatedAt) })
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+    const recalculated = await recalculateRoundAssignments(sessionId, userId, tx);
+    if (recalculated) await rebuildRoundStrokesGainedEvents(sessionId, userId, recalculated, tx);
+    await recordOfflineRoundCommit(tx, userId, sessionId);
   });
-
-  await db
-    .update(sessions)
-    .set({ scorecardJson: holes })
-    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
-  await recalculateRoundAssignments(sessionId, userId);
   await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
 }
 
 export async function resplitRoundAction(formData: FormData) {
-  const db = getDb();
   const userId = await requireCurrentUserId();
   const sessionId = requiredString(formData, "sessionId");
-  const [session] = await db
-    .select({ scorecardJson: sessions.scorecardJson })
-    .from(sessions)
-    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
-    .limit(1);
-
-  if (!session?.scorecardJson) {
-    throw new Error("Round scorecard not found.");
-  }
-
-  const loadedSessionShots = await db
-    .select({
-      id: shots.id,
-      shotNumber: shots.shotNumber,
-    })
-    .from(shots)
-    .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, userId)))
-    .orderBy(asc(shots.shotNumber), asc(shots.createdAt));
-  const sessionShots = physicalRoundShotsForAccounting(loadedSessionShots);
-  let cursor = 0;
-
-  for (const hole of session.scorecardJson.sort(
-    (left, right) => left.holeNumber - right.holeNumber,
-  )) {
-    const count = Math.min(12, numberFromForm(formData, `holeCount-${hole.holeNumber}`) ?? 0);
-    const holeShots = sessionShots.slice(cursor, cursor + count);
-
-    for (const shot of holeShots) {
+  await getDb().transaction(async (db) => {
+    const [session] = await db
+      .select({ updatedAt: sessions.updatedAt, scorecardJson: sessions.scorecardJson })
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+      .limit(1)
+      .for("update");
+    if (!session?.scorecardJson?.length) throw new Error("Round scorecard not found.");
+    assertOfflineRoundPrecondition({ id: sessionId, userId, updatedAt: session.updatedAt });
+    const scorecard = session.scorecardJson
+      .slice()
+      .sort((left, right) => left.holeNumber - right.holeNumber);
+    const counts = scorecard.map((hole) => {
+      const raw = formData.get(`holeCount-${hole.holeNumber}`);
+      const count = typeof raw === "string" && raw.trim() ? Number(raw) : NaN;
+      if (!Number.isInteger(count) || count < 0 || count > 12) {
+        throw new Error(`Hole ${hole.holeNumber}: enter a whole shot count from 0 to 12.`);
+      }
+      return count;
+    });
+    const loadedSessionShots = await db
+      .select({
+        id: shots.id,
+        shotNumber: shots.shotNumber,
+        clubId: shots.clubId,
+        playContext: shots.playContext,
+      })
+      .from(shots)
+      .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, userId)))
+      .orderBy(asc(shots.shotNumber), asc(shots.createdAt))
+      .for("update");
+    const sessionShots = physicalRoundShotsForAccounting(loadedSessionShots);
+    if (counts.reduce((sum, count) => sum + count, 0) > sessionShots.length) {
+      throw new Error(
+        "The hole counts exceed the number of recorded shots. Review the split and try again.",
+      );
+    }
+    let cursor = 0;
+    for (const [index, hole] of scorecard.entries()) {
+      const count = counts[index];
+      const holeShots = sessionShots.slice(cursor, cursor + count);
+      for (const shot of holeShots) {
+        await db
+          .update(shots)
+          .set({ courseHoleNumber: hole.holeNumber })
+          .where(
+            and(eq(shots.id, shot.id), eq(shots.sessionId, sessionId), eq(shots.userId, userId)),
+          );
+      }
+      cursor += count;
+    }
+    for (const shot of sessionShots.slice(cursor)) {
       await db
         .update(shots)
-        .set({ courseHoleNumber: hole.holeNumber })
+        .set({
+          courseHoleNumber: null,
+          courseHoleShotNumber: null,
+          courseHolePar: null,
+          courseHoleYards: null,
+          distanceRemainingYd: null,
+        })
         .where(
           and(eq(shots.id, shot.id), eq(shots.sessionId, sessionId), eq(shots.userId, userId)),
         );
     }
-
-    cursor += count;
-  }
-
-  for (const shot of sessionShots.slice(cursor)) {
     await db
-      .update(shots)
+      .update(sessions)
       .set({
-        courseHoleNumber: null,
-        courseHoleShotNumber: null,
-        courseHolePar: null,
-        courseHoleYards: null,
-        distanceRemainingYd: null,
+        scorecardJson: scorecard.map((hole) => ({
+          ...hole,
+          shotAssignmentSource: "manual" as const,
+        })),
+        updatedAt: nextRoundVersionTime(session.updatedAt),
       })
-      .where(and(eq(shots.id, shot.id), eq(shots.sessionId, sessionId), eq(shots.userId, userId)));
-  }
-
-  await recalculateRoundAssignments(sessionId, userId);
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)));
+    const recalculated = await recalculateRoundAssignments(sessionId, userId, db);
+    if (recalculated) await rebuildRoundStrokesGainedEvents(sessionId, userId, recalculated, db);
+    await refreshStockYardagesForClubs(db, { userId, clubContexts: sessionShots });
+    await recordOfflineRoundCommit(db, userId, sessionId);
+  });
+  await refreshPracticeEvidenceForReviewedSessions(userId, [sessionId]);
   await evaluateRoundAchievementsForSessionWithFlash(sessionId, userId);
   revalidateRound(sessionId);
 }
@@ -750,288 +786,6 @@ async function evaluateRoundAchievementsForSessionWithFlash(
   const result = await evaluateRoundAchievementsForSession(sessionId, actorUserId);
   await setAchievementUnlockFlash(result.unlockedAchievements);
   return result;
-}
-
-async function recalculateRoundAssignments(
-  sessionId: string,
-  actorUserId: string,
-  db: RoundAssignmentDatabase = getDb(),
-) {
-  const [session] = await db
-    .select({ scorecardJson: sessions.scorecardJson, userId: sessions.userId })
-    .from(sessions)
-    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, actorUserId)))
-    .limit(1);
-
-  if (!session?.scorecardJson) {
-    return;
-  }
-
-  const loadedSessionShots = await db
-    .select({
-      id: shots.id,
-      shotNumber: shots.shotNumber,
-      carryYd: shots.carryYd,
-      totalYd: shots.totalYd,
-      sideCarryYd: shots.sideCarryYd,
-      clubType: shots.clubType,
-      courseHoleNumber: shots.courseHoleNumber,
-    })
-    .from(shots)
-    .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, session.userId)))
-    .orderBy(asc(shots.shotNumber), asc(shots.createdAt));
-  const sessionShots = physicalRoundShotsForAccounting(loadedSessionShots);
-  const sortedScorecard = session.scorecardJson
-    .slice()
-    .sort((left, right) => left.holeNumber - right.holeNumber);
-  const inferredHoleByShotId =
-    sessionShots.length > 0 && sessionShots.every((shot) => !shot.courseHoleNumber)
-      ? inferUnmappedShotHoles(sortedScorecard, sessionShots)
-      : new Map<string, number>();
-  const shotsByHole = new Map<number, typeof sessionShots>();
-
-  for (const shot of sessionShots) {
-    const courseHoleNumber = shot.courseHoleNumber ?? inferredHoleByShotId.get(shot.id) ?? null;
-
-    if (!courseHoleNumber) {
-      continue;
-    }
-
-    const existing = shotsByHole.get(courseHoleNumber) ?? [];
-    existing.push({ ...shot, courseHoleNumber });
-    shotsByHole.set(courseHoleNumber, existing);
-  }
-
-  const nextScorecard = await Promise.all(
-    sortedScorecard.map(async (hole) => {
-      const holeShots = shotsByHole.get(hole.holeNumber) ?? [];
-      let progressYd = 0;
-
-      for (const [index, shot] of holeShots.entries()) {
-        progressYd += forwardDistanceYd(shot.totalYd ?? shot.carryYd, shot.sideCarryYd) ?? 0;
-
-        await db
-          .update(shots)
-          .set({
-            courseHoleNumber: hole.holeNumber,
-            courseHoleShotNumber: index + 1,
-            courseHolePar: hole.par,
-            courseHoleYards: hole.yards,
-            distanceRemainingYd: roundOne(Math.max(0, hole.yards - progressYd)),
-            shotCategory: classifyCourseShot(
-              shot.clubType,
-              shot.totalYd ?? shot.carryYd,
-              index + 1,
-            ),
-          })
-          .where(
-            and(
-              eq(shots.id, shot.id),
-              eq(shots.sessionId, sessionId),
-              eq(shots.userId, session.userId),
-            ),
-          );
-      }
-
-      const penalties = hole.penalties ?? 0;
-      const putts =
-        typeof hole.score === "number" && holeShots.length > 0
-          ? Math.max(0, hole.score - holeShots.length - penalties)
-          : (hole.putts ?? null);
-
-      return {
-        ...hole,
-        csvShotCount: holeShots.length,
-        progressYd: roundOne(progressYd),
-        distanceRemainingYd: roundOne(Math.max(0, hole.yards - progressYd)),
-        putts,
-        penalties,
-      };
-    }),
-  );
-
-  await db
-    .update(sessions)
-    .set({ scorecardJson: nextScorecard, updatedAt: new Date() })
-    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
-
-  return nextScorecard;
-}
-
-async function rebuildRoundStrokesGainedEvents(
-  sessionId: string,
-  actorUserId: string,
-  scorecard: StoredScorecardHole[],
-  tx: RoundActionTransaction,
-) {
-  const remainingShots = await tx
-    .select({
-      id: shots.id,
-      shotNumber: shots.shotNumber,
-      clubType: shots.clubType,
-      carryYd: shots.carryYd,
-      totalYd: shots.totalYd,
-      sideCarryYd: shots.sideCarryYd,
-      courseHoleNumber: shots.courseHoleNumber,
-      courseHoleShotNumber: shots.courseHoleShotNumber,
-      courseHolePar: shots.courseHolePar,
-      courseHoleYards: shots.courseHoleYards,
-      distanceRemainingYd: shots.distanceRemainingYd,
-      shotCategory: shots.shotCategory,
-    })
-    .from(shots)
-    .where(and(eq(shots.sessionId, sessionId), eq(shots.userId, actorUserId)))
-    .orderBy(
-      asc(shots.courseHoleNumber),
-      asc(shots.courseHoleShotNumber),
-      asc(shots.shotNumber),
-      asc(shots.createdAt),
-    );
-  const baselineRows = await tx
-    .select({
-      category: strokesGainedBaselines.category,
-      lie: strokesGainedBaselines.lie,
-      distanceStartYd: strokesGainedBaselines.distanceStartYd,
-      distanceEndYd: strokesGainedBaselines.distanceEndYd,
-      expectedStrokes: strokesGainedBaselines.expectedStrokes,
-    })
-    .from(strokesGainedBaselines);
-  const rebuiltEvents = buildStrokesGainedEventsFromRoundAssignments({
-    userId: actorUserId,
-    sessionId,
-    shots: remainingShots,
-    holeScoring: scorecard,
-    baselineBuckets:
-      baselineRows.length > 0 ? baselineRows : DEFAULT_STROKES_GAINED_BASELINE_BUCKETS,
-  });
-
-  if (rebuiltEvents.length > 0) {
-    await tx.insert(strokesGainedShotEvents).values(rebuiltEvents);
-  }
-}
-
-function inferUnmappedShotHoles(
-  scorecard: StoredScorecardHole[],
-  sessionShots: Array<{
-    id: string;
-    shotNumber: number | null;
-    carryYd: number | null;
-    totalYd: number | null;
-    sideCarryYd: number | null;
-    clubType: string;
-  }>,
-) {
-  const scorecardHoles = scorecard.map<CourseScorecardHole>((hole) => ({
-    holeNumber: hole.holeNumber,
-    par: hole.par,
-    yards: hole.yards,
-    name: hole.name,
-  }));
-  const parsedShots = sessionShots.map<ParsedRapsodoShot>((shot, index) => ({
-    rowNumber: index + 1,
-    shotNumber: shot.shotNumber,
-    clubTypeRaw: shot.clubType,
-    clubType: shot.clubType,
-    clubLabel: shot.clubType,
-    clubBrand: null,
-    clubModel: null,
-    clubKey: shot.clubType,
-    carryYd: shot.carryYd,
-    totalYd: shot.totalYd,
-    ballSpeedMph: null,
-    clubSpeedMph: null,
-    launchAngleDeg: null,
-    launchDirectionDeg: null,
-    apexFt: null,
-    sideCarryYd: shot.sideCarryYd,
-    attackAngleDeg: null,
-    clubPathDeg: null,
-    faceAngleDeg: null,
-    descentAngleDeg: null,
-    smashFactor: null,
-    spinRate: null,
-    spinAxis: null,
-    shotShape: null,
-    shotCategory: "full",
-    qualityTag: null,
-    clubDataEstType: null,
-    sourceRawJson: {},
-    warnings: [],
-  }));
-  const knownShotCounts = scorecardShotCountsFromStrokeAccounting(scorecard, sessionShots.length);
-  const inferred = knownShotCounts
-    ? inferCourseShotsFromHoleShotCounts(parsedShots, scorecardHoles, knownShotCounts)
-    : inferCourseShots(parsedShots, scorecardHoles);
-  const holeByShotId = new Map<string, number>();
-
-  for (const courseShot of inferred.shots) {
-    const shot = sessionShots[courseShot.absoluteShotNumber - 1];
-
-    if (shot) {
-      holeByShotId.set(shot.id, courseShot.holeNumber);
-    }
-  }
-
-  return holeByShotId;
-}
-
-function scorecardShotCountsFromStrokeAccounting(
-  scorecard: StoredScorecardHole[],
-  totalShotCount: number,
-) {
-  const shotCounts: Array<{ holeNumber: number; shotCount: number }> = [];
-  let accountedShots = 0;
-
-  for (const hole of scorecard) {
-    if (typeof hole.score !== "number" || typeof hole.putts !== "number") {
-      return null;
-    }
-
-    const penalties = hole.penalties ?? 0;
-    const shotCount = hole.score - hole.putts - penalties;
-
-    if (!Number.isFinite(shotCount) || shotCount < 0) {
-      return null;
-    }
-
-    const roundedShotCount = Math.floor(shotCount);
-    accountedShots += roundedShotCount;
-    shotCounts.push({ holeNumber: hole.holeNumber, shotCount: roundedShotCount });
-  }
-
-  return accountedShots === totalShotCount ? shotCounts : null;
-}
-
-function mergeScorecardForTee(
-  existingScorecard: StoredScorecardHole[],
-  holeRows: Array<{
-    holeNumber: number;
-    par: number;
-    yards: number;
-    strokeIndex: number | null;
-  }>,
-) {
-  if (holeRows.length === 0) {
-    return existingScorecard;
-  }
-
-  const existingByHole = new Map(existingScorecard.map((hole) => [hole.holeNumber, hole]));
-
-  return holeRows.map<StoredScorecardHole>((hole) => {
-    const existing = existingByHole.get(hole.holeNumber);
-
-    return {
-      ...existing,
-      holeNumber: hole.holeNumber,
-      par: hole.par,
-      yards: hole.yards,
-      strokeIndex: hole.strokeIndex,
-      name: existing?.name ?? null,
-      csvShotCount: existing?.csvShotCount ?? 0,
-      progressYd: existing?.progressYd ?? 0,
-      distanceRemainingYd: existing?.distanceRemainingYd ?? hole.yards,
-    };
-  });
 }
 
 function requiredString(formData: FormData, key: string) {
@@ -1048,7 +802,11 @@ function dateFromForm(formData: FormData, key: string) {
   const value = requiredString(formData, key);
   const parsed = new Date(`${value}T12:00:00.000Z`);
 
-  if (Number.isNaN(parsed.getTime())) {
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== value
+  ) {
     throw new Error(`${key} is not a valid date.`);
   }
 
@@ -1069,20 +827,6 @@ function numberFromForm(formData: FormData, key: string) {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.max(0, Math.floor(parsed)) : null;
-}
-
-function booleanFromForm(formData: FormData, key: string) {
-  const value = formData.get(key);
-
-  if (value === "true") {
-    return true;
-  }
-
-  if (value === "false") {
-    return false;
-  }
-
-  return null;
 }
 
 function parseRoundStatus(formData: FormData) {
@@ -1125,41 +869,4 @@ function revalidateRound(sessionId: string) {
   revalidatePath(`/rounds/${sessionId}`);
   revalidatePath("/achievements");
   revalidatePath("/", "layout");
-}
-
-function forwardDistanceYd(distanceYd: number | null, sideYd: number | null) {
-  if (distanceYd === null) {
-    return null;
-  }
-
-  const sideDistance = sideYd ?? 0;
-  const forwardSquared = distanceYd ** 2 - sideDistance ** 2;
-
-  if (forwardSquared <= 0) {
-    return Math.max(0, distanceYd);
-  }
-
-  return Math.sqrt(forwardSquared);
-}
-
-function classifyCourseShot(clubType: string, distanceYd: number | null, holeShotNumber: number) {
-  const distance = distanceYd ?? 0;
-
-  if (holeShotNumber === 1) {
-    return "tee";
-  }
-
-  if (distance <= 35) {
-    return "chip";
-  }
-
-  if (distance <= 95 && ["pw", "gw", "aw", "sw", "lw", "wedge"].includes(clubType)) {
-    return "pitch";
-  }
-
-  return "approach";
-}
-
-function roundOne(value: number) {
-  return Math.round(value * 10) / 10;
 }

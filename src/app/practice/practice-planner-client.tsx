@@ -1,8 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import { PageHeader } from "@/components/premium";
+import { usePracticeSaveContext } from "./use-practice-save-context";
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -65,6 +67,7 @@ import {
 import {
   Drawer,
   DrawerContent,
+  DrawerClose,
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
@@ -116,8 +119,10 @@ import {
   type PracticeBlockImportStatus,
 } from "@/lib/practice-planner-view";
 import { cn } from "@/lib/utils";
+import { PracticeSourceEvidence } from "@/components/app/practice-source-evidence";
 
 type PracticePlannerClientProps = {
+  goalId?: string;
   context: PracticePlannerContext;
   initialPlan: PracticePlan;
   savedPlans: SavedPracticePlan[];
@@ -232,6 +237,7 @@ function practiceDayEvidenceLabel(comparison: PracticeComparison | null, fallbac
 }
 
 export function PracticePlannerClient({
+  goalId,
   context,
   initialPlan,
   savedPlans,
@@ -240,6 +246,8 @@ export function PracticePlannerClient({
   latestSessionReview,
   initialOptions,
 }: PracticePlannerClientProps) {
+  const saveContext = usePracticeSaveContext(goalId);
+  const operation = useRef(false);
   const [options, setOptions] = useState<GeneratePracticePlanOptions>(() =>
     normalizeInitialOptions(initialOptions),
   );
@@ -297,6 +305,24 @@ export function PracticePlannerClient({
     [plan.blocks, selectedBlockId],
   );
 
+  function runMutation(work: () => Promise<void>) {
+    if (operation.current) return;
+    operation.current = true;
+    startTransition(async () => {
+      try {
+        await work();
+      } catch {
+        setOutcome(
+          errorOutcome(
+            "The change could not be saved. Your plan and edits remain here; retry when connected.",
+          ),
+        );
+      } finally {
+        operation.current = false;
+      }
+    });
+  }
+
   function updateOptions(patch: Partial<GeneratePracticePlanOptions>) {
     setOptions((current) => ({ ...current, ...patch }));
   }
@@ -310,14 +336,23 @@ export function PracticePlannerClient({
 
   function generatePlanWithOptions(nextOptions: GeneratePracticePlanOptions) {
     setOutcome(null);
-    startTransition(async () => {
-      const generated = await generatePracticePlanAction(nextOptions);
-      setPlan(generated);
-      setDrillOptionsByBlock(buildPracticeDrillOptionsByBlock(generated.blocks));
-      setSelectedBlockId(defaultSelectedPracticeBlockId(generated.blocks));
-      setSavedPlanId(null);
-      setComparison(null);
-      setPracticeScore(null);
+    runMutation(async () => {
+      try {
+        const generated = await generatePracticePlanAction(nextOptions);
+        setPlan(generated);
+        setOptions(nextOptions);
+        setDrillOptionsByBlock(buildPracticeDrillOptionsByBlock(generated.blocks));
+        setSelectedBlockId(defaultSelectedPracticeBlockId(generated.blocks));
+        setSavedPlanId(null);
+        setComparison(null);
+        setPracticeScore(null);
+      } catch {
+        setOutcome(
+          errorOutcome(
+            "Could not update the plan. Your previous plan and edits are still available. Retry or choose another source session.",
+          ),
+        );
+      }
     });
   }
 
@@ -347,6 +382,20 @@ export function PracticePlannerClient({
     setComparison(null);
     setPracticeScore(null);
     setOutcome(successOutcome(messageText));
+  }
+
+  function moveSelectedBlock(direction: -1 | 1) {
+    if (!selectedBlock || isPending) return;
+    const index = plan.blocks.findIndex((block) => block.id === selectedBlock.id);
+    const destination = index + direction;
+    if (index < 0 || destination < 0 || destination >= plan.blocks.length) return;
+    const blocks = [...plan.blocks];
+    [blocks[index], blocks[destination]] = [blocks[destination], blocks[index]];
+    setPlan(practicePlanWithEditedBlocks(plan, blocks));
+    setSavedPlanId(null);
+    setComparison(null);
+    setPracticeScore(null);
+    setOutcome(successOutcome("Block order updated. Save this revised plan before starting."));
   }
 
   function updateSelectedBlockBalls(ballCount: number) {
@@ -414,9 +463,16 @@ export function PracticePlannerClient({
   }
 
   function savePlan() {
+    if (savedPlanId) {
+      setOutcome(
+        successOutcome("This plan is already saved. Edit a block to create a revised plan."),
+      );
+      return;
+    }
     setOutcome(null);
-    startTransition(async () => {
-      const result = await savePracticePlanAction(plan);
+    runMutation(async () => {
+      const result = await savePracticePlanAction(plan, saveContext.forPlan(plan));
+      saveContext.saved();
       setSavedPlanId(result.planId);
       setPlan((current) => ({ ...current, id: result.planId, status: "planned" }));
       setComparison(null);
@@ -442,7 +498,7 @@ export function PracticePlannerClient({
     }
 
     setOutcome(null);
-    startTransition(async () => {
+    runMutation(async () => {
       const result = await linkPracticePlanSessionAction(savedPlanId, selectedImportId);
 
       if (!result.latestSessionReview) {
@@ -477,7 +533,7 @@ export function PracticePlannerClient({
     }
 
     setOutcome(null);
-    startTransition(async () => {
+    runMutation(async () => {
       await startPracticePlanAction(savedPlanId);
       setPlan((current) => ({ ...current, status: "awaiting_import" }));
       setOutcome(
@@ -490,8 +546,9 @@ export function PracticePlannerClient({
 
   function saveAndStartPractice() {
     setOutcome(null);
-    startTransition(async () => {
-      const result = await saveAndStartPracticePlanAction(plan);
+    runMutation(async () => {
+      const result = await saveAndStartPracticePlanAction(plan, saveContext.forPlan(plan));
+      saveContext.saved();
       setSavedPlanId(result.planId);
       setPlan((current) => ({
         ...current,
@@ -514,7 +571,7 @@ export function PracticePlannerClient({
     }
 
     setOutcome(null);
-    startTransition(async () => {
+    runMutation(async () => {
       await abandonPracticePlanAction(savedPlanId);
       setPlan((current) => ({ ...current, status: "abandoned" }));
       setOutcome(successOutcome("Plan abandoned. Generate a new plan when you are ready."));
@@ -523,6 +580,8 @@ export function PracticePlannerClient({
 
   function useTemplate(template: PracticeTemplateView) {
     const nextOptions: GeneratePracticePlanOptions = {
+      sourceSessionId: options.sourceSessionId,
+      focusClub: options.focusClub,
       sessionType: template.sessionType,
       ballCount: template.ballCount,
       timeMinutes: template.timeMinutes,
@@ -530,7 +589,6 @@ export function PracticePlannerClient({
       intent: template.intent,
       facility: options.facility,
     };
-    setOptions(nextOptions);
     generatePlanWithOptions(nextOptions);
   }
 
@@ -548,9 +606,22 @@ export function PracticePlannerClient({
       blocks: saved.blocks,
       generation: saved.generation,
       createdAt: saved.plannedAt,
+      sourceContext: {
+        ...context,
+        latestPractice: saved.sourcePractice ?? {
+          ...context.latestPractice,
+          sessionId: null,
+          clubs: [],
+        },
+      },
     };
 
     setPlan(loaded);
+    setOptions((current) => ({
+      ...current,
+      sourceSessionId: saved.sourcePractice?.sessionId ?? undefined,
+      focusClub: saved.focusClubs[0],
+    }));
     setDrillOptionsByBlock(buildPracticeDrillOptionsByBlock(loaded.blocks));
     setSelectedBlockId(defaultSelectedPracticeBlockId(loaded.blocks));
     setSavedPlanId(saved.id);
@@ -563,10 +634,21 @@ export function PracticePlannerClient({
       id="practice-plan"
       className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 scroll-mt-28 pb-20"
       data-practice-training-workspace
+      data-practice-plan-id={savedPlanId ?? undefined}
     >
       <PracticeWorkflow plan={plan} savedPlanId={savedPlanId} comparison={comparison} />
 
       <PracticeTodayCard plan={plan} focusSummary={focusSummary} outcome={outcome} />
+      <PracticeSourceEvidence source={plan.sourceContext.latestPractice} />
+      {savedPlanId ? (
+        <Button asChild variant="outline" className="min-h-11 w-fit">
+          <Link href={`/practice?mode=guided&planId=${savedPlanId}`}>Open guided session</Link>
+        </Button>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Save the plan to open the guided session with these exact blocks.
+        </p>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 border-y border-border/70 py-2.5">
         <PracticeLibrary
@@ -654,6 +736,9 @@ export function PracticePlannerClient({
         block={selectedBlock}
         comparison={comparison}
         drillOptions={selectedBlock ? (drillOptionsByBlock[selectedBlock.id] ?? []) : []}
+        onMove={moveSelectedBlock}
+        canMoveEarlier={Boolean(selectedBlock && plan.blocks[0]?.id !== selectedBlock.id)}
+        canMoveLater={Boolean(selectedBlock && plan.blocks.at(-1)?.id !== selectedBlock.id)}
         onBallCountChange={updateSelectedBlockBalls}
         onSwapDrill={swapSelectedBlockDrill}
         onSuggestDrill={suggestSelectedBlockDrill}
@@ -750,6 +835,13 @@ function PracticeEvidenceLedgerDrawer({
         </DrawerHeader>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <PracticeBlockLedger blocks={blocks} comparison={comparison} />
+        </div>
+        <div className="shrink-0 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <DrawerClose asChild>
+            <Button type="button" variant="outline" className="min-h-11 w-full">
+              Close panel
+            </Button>
+          </DrawerClose>
         </div>
       </DrawerContent>
     </Drawer>
@@ -1125,6 +1217,8 @@ function normalizeInitialOptions(
   options: GeneratePracticePlanOptions,
 ): GeneratePracticePlanOptions {
   return {
+    sourceSessionId: options.sourceSessionId,
+    focusClub: options.focusClub,
     sessionType: options.sessionType,
     ballCount: options.ballCount ?? 80,
     timeMinutes: options.timeMinutes,
@@ -1400,6 +1494,13 @@ function PracticeSessionImportBar({
             />
           )}
         </div>
+        <div className="shrink-0 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <DrawerClose asChild>
+            <Button type="button" variant="outline" className="min-h-11 w-full">
+              Close panel
+            </Button>
+          </DrawerClose>
+        </div>
       </DrawerContent>
     </Drawer>
   );
@@ -1418,27 +1519,16 @@ function PracticeTodayCard({
 
   return (
     <header className="grid gap-3 border-b border-border/70 pb-5" data-practice-answer-card>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-            Premium training workspace
-          </p>
-          <h1 className="mt-1 font-heading text-3xl font-semibold tracking-tight md:text-4xl">
-            Practice Planner
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-            Today&apos;s programme is led by{" "}
-            <span className="font-semibold text-foreground">{focusSummary.main}</span>. Build it,
-            work it, then let measured evidence decide what comes next.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge>{plan.blocks.length} blocks</Badge>
-          <Badge variant="outline">{plannedBalls}</Badge>
-          <Badge variant="outline">{plan.estimatedTimeMinutes} min</Badge>
-          <Badge variant="outline">{plan.trainingStatus}</Badge>
-        </div>
-      </div>
+      <PageHeader
+        title="Practice Planner"
+        description={`${plan.title} · ${focusSummary.main}`}
+        metrics={[
+          { label: "Plan state", value: (plan.status ?? "draft").replaceAll("_", " ") },
+          { label: "Blocks", value: String(plan.blocks.length) },
+          { label: "Volume", value: plannedBalls },
+          { label: "Duration", value: `${plan.estimatedTimeMinutes} min` },
+        ]}
+      />
 
       {outcome ? (
         <Alert
@@ -1493,7 +1583,7 @@ function PracticeAgenda({
   const supportingBlocks = blocks.filter((block) => !programmeBlockIds.has(block.id));
 
   return (
-    <main className="min-w-0" data-practice-agenda>
+    <section className="min-w-0" data-practice-agenda>
       <div className="mb-4 flex items-end justify-between gap-3 border-b border-border/70 pb-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
@@ -1591,7 +1681,7 @@ function PracticeAgenda({
           ) : null}
         </div>
       )}
-    </main>
+    </section>
   );
 }
 
@@ -1649,6 +1739,13 @@ function SupportingBlocksDrawer({
             </Card>
           ))}
         </div>
+        <div className="shrink-0 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <DrawerClose asChild>
+            <Button type="button" variant="outline" className="min-h-11 w-full">
+              Close panel
+            </Button>
+          </DrawerClose>
+        </div>
       </DrawerContent>
     </Drawer>
   );
@@ -1671,6 +1768,9 @@ function SelectedBlockDetail({
   block,
   comparison,
   drillOptions,
+  onMove,
+  canMoveEarlier,
+  canMoveLater,
   onBallCountChange,
   onSwapDrill,
   onSuggestDrill,
@@ -1681,6 +1781,9 @@ function SelectedBlockDetail({
   block: PracticeBlock | null;
   comparison: PracticeComparison | null;
   drillOptions: PracticeDrillSuggestion[];
+  onMove: (direction: -1 | 1) => void;
+  canMoveEarlier: boolean;
+  canMoveLater: boolean;
   onBallCountChange: (ballCount: number) => void;
   onSwapDrill: (suggestionId: string) => void;
   onSuggestDrill: () => void;
@@ -1729,6 +1832,24 @@ function SelectedBlockDetail({
             <DetailLine label="Scored from" value={scoredFromLabel(block)} />
           </div>
 
+          <div className="flex flex-wrap gap-2" aria-label="Block order">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending || !canMoveEarlier}
+              onClick={() => onMove(-1)}
+            >
+              Move block earlier
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending || !canMoveLater}
+              onClick={() => onMove(1)}
+            >
+              Move block later
+            </Button>
+          </div>
           <PracticeBlockEditControls
             block={block}
             options={options}
@@ -2177,6 +2298,13 @@ function PracticeLibrary({
         <div className="grid gap-4 overflow-y-auto px-4 pb-6 lg:grid-cols-2">
           <TemplatesPanel templates={templates} onUseTemplate={onUseTemplate} />
           <SavedPlansPanel plans={savedPlans} onLoad={onLoadSavedPlan} />
+        </div>
+        <div className="shrink-0 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <DrawerClose asChild>
+            <Button type="button" variant="outline" className="min-h-11 w-full">
+              Close panel
+            </Button>
+          </DrawerClose>
         </div>
       </DrawerContent>
     </Drawer>

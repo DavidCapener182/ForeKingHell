@@ -19,7 +19,9 @@ export function MobileQuickBag({
   legacy?: boolean;
 }) {
   const [mode, setMode] = useState("carry");
-  const [cacheState, setCacheState] = useState("Saving for offline use…");
+  const [cacheState, setCacheState] = useState(
+    accountId ? "Saving for offline use…" : "Snapshot only; reconnect to refresh.",
+  );
   useEffect(() => {
     if (!accountId) return;
     try {
@@ -27,7 +29,12 @@ export function MobileQuickBag({
         `fkh:quick-bag:${accountId}`,
         JSON.stringify({ version: 4, accountId, storedAt: new Date().toISOString(), clubs }),
       );
-      queueMicrotask(() => setCacheState("Saved for offline use."));
+      const capturedAt = new Date().toISOString();
+      queueMicrotask(() =>
+        setCacheState(
+          `Saved snapshot ${formatDate(capturedAt, true)}. Snapshot time is not a new measurement.`,
+        ),
+      );
     } catch {
       queueMicrotask(() => setCacheState("Storage unavailable. Keep this open."));
     }
@@ -44,6 +51,11 @@ export function MobileQuickBag({
           { value: "total", label: "Total" },
         ]}
       />
+      <p className="rounded-lg border bg-muted/40 p-3 text-sm" role="status">
+        {savedAt
+          ? `Offline snapshot saved ${formatDate(savedAt, true)}. Reconnect to refresh.`
+          : cacheState}
+      </p>
       {savedAt ? (
         <p className="mobile-type-footnote text-muted-foreground" role="status">
           Offline · saved {formatDate(savedAt, true)}. Reconnect to refresh.

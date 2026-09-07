@@ -1,0 +1,20 @@
+/* Layout visibility is CSS-driven; an explicit server-selected surface wins.
+ * This targets a named route boundary instead of overriding every lg utility.
+ */
+.companionScreen {
+  display: grid;
+}
+
+@media (min-width: 64rem) {
+  .companionScreen {
+    display: none;
+  }
+}
+
+:global([data-app-surface="companion"]) .companionScreen {
+  display: grid;
+}
+
+:global([data-app-surface="workbench"]) .companionScreen {
+  display: none;
+}

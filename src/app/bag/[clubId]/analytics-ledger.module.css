@@ -1,0 +1,10 @@
+.mobile {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+@media (min-width: 1024px) {
+  .mobile {
+    display: none;
+  }
+}

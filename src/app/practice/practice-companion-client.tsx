@@ -1,7 +1,9 @@
 "use client";
+import { PracticeSourceEvidence } from "@/components/app/practice-source-evidence";
 
 import { useMobileActivity } from "@/components/app/use-mobile-activity";
-import { MobileLargeTitle } from "@/components/app/mobile-screen";
+import { PageHeader } from "@/components/premium";
+import { usePracticeSaveContext } from "./use-practice-save-context";
 
 import Link from "next/link";
 import styles from "./practice-companion.module.css";
@@ -74,6 +76,7 @@ import type {
   SavedPracticePlan,
 } from "@/lib/practice-planner";
 import { formatClubType } from "@/lib/club-format";
+import { practiceActivityPresentation } from "@/lib/practice-planner-view";
 import { cn } from "@/lib/utils";
 
 const MeasuredPracticeResultCard = dynamic(() =>
@@ -83,6 +86,7 @@ const MeasuredPracticeResultCard = dynamic(() =>
 type MeasuredResult = SavedPracticePlan["result"];
 
 type Props = {
+  goalId?: string;
   accountId: string;
   context: PracticePlannerContext;
   initialPlan: PracticePlan;
@@ -114,15 +118,15 @@ const facilityOptions: Array<{ key: keyof PracticeFacilityOptions; label: string
 
 export function PracticeCompanionClient({
   accountId,
+  goalId,
   context,
   initialPlan,
   initialOptions,
   measuredResult,
 }: Props) {
+  const saveContext = usePracticeSaveContext(goalId);
   const [options, setOptions] = useState(initialOptions);
-  const [plan, setPlan] = useState(() =>
-    initialPlan.id ? initialPlan : compactCompanionPlan(initialPlan),
-  );
+  const [plan, setPlan] = useState(initialPlan);
   const [savedPlanId, setSavedPlanId] = useState(initialPlan.id ?? null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [completedBlockIds, setCompletedBlockIds] = useState<string[]>([]);
@@ -132,6 +136,8 @@ export function PracticeCompanionClient({
   const [paused, setPaused] = useState(false);
   const [activityStarted, setActivityStarted] = useState(false);
   const startRequired = useRef(false);
+  const saving = useRef(false);
+  const restoredActivity = useRef<string | null>(null);
   const [finished, setFinished] = useState(false);
   const [routeDirection, setRouteDirection] = useState<"forward" | "back" | null>(null);
   const [blockDirection, setBlockDirection] = useState<"forward" | "back" | null>(null);
@@ -142,6 +148,14 @@ export function PracticeCompanionClient({
   const selectedBlock = plan.blocks[selectedIndex] ?? plan.blocks[0] ?? null;
   const activeMeasuredResult =
     plan.id && plan.id === initialPlan.id && plan.status === "analysed" ? measuredResult : null;
+  const activityPresentation = practiceActivityPresentation({
+    savedPlanId,
+    status: plan.status,
+    started: activityStarted,
+    paused,
+    finished,
+    hasMeasuredResult: Boolean(activeMeasuredResult),
+  });
 
   useEffect(() => {
     if (!savedPlanId || initialPlan.status === "analysed") return;
@@ -155,7 +169,11 @@ export function PracticeCompanionClient({
   }, [savedPlanId, initialPlan.status]);
 
   useEffect(() => {
+    const identity = `${accountId}:${initialPlan.id ?? "draft"}`;
+    // Server refreshes replace arrays/objects; they must not reopen the initial restore over a live activity.
+    if (restoredActivity.current === identity) return;
     const timer = window.setTimeout(() => {
+      restoredActivity.current = identity;
       const cached = readActivePractice(accountId);
       if (initialPlan.status === "analysed") {
         if (cached?.planId === initialPlan.id) clearActivePractice(accountId);
@@ -304,7 +322,7 @@ export function PracticeCompanionClient({
       try {
         const generated = await generatePracticePlanAction(nextOptions);
         setOptions(nextOptions);
-        setPlan(compactCompanionPlan(generated));
+        setPlan(generated);
         setSavedPlanId(null);
         setActivityStarted(false);
         startRequired.current = false;
@@ -319,10 +337,13 @@ export function PracticeCompanionClient({
   }
 
   function saveAndStart() {
+    if (saving.current) return;
+    saving.current = true;
     setMessage(null);
     startTransition(async () => {
       try {
-        const { planId } = await saveAndStartPracticePlanAction(plan);
+        const { planId } = await saveAndStartPracticePlanAction(plan, saveContext.forPlan(plan));
+        saveContext.saved();
         setSavedPlanId(planId);
         setActivityStarted(true);
         startRequired.current = false;
@@ -349,7 +370,13 @@ export function PracticeCompanionClient({
         );
         setMessage(null);
       } catch {
-        setMessage("Connect to save this new plan, then try Start again.");
+        setMessage(
+          navigator.onLine
+            ? "Could not save practice. Your plan is still here; try Start again."
+            : "Connect to save this new plan, then try Start again.",
+        );
+      } finally {
+        saving.current = false;
       }
     });
   }
@@ -511,7 +538,10 @@ export function PracticeCompanionClient({
       className={cn("grid gap-4", routeDirection && "t-route-step")}
       data-direction={routeDirection ?? undefined}
     >
-      <MobileLargeTitle title="Practice" detail="Plan it. Practise it. See the result." />
+      <PageHeader
+        title="Practice"
+        description={`${plan.estimatedTimeMinutes} minutes · ${plan.blocks.length} blocks · ${activityPresentation.label}`}
+      />
       {activeMeasuredResult ? (
         <MeasuredPracticeResultCard result={activeMeasuredResult} blocks={plan.blocks} />
       ) : null}
@@ -544,11 +574,7 @@ export function PracticeCompanionClient({
         <div className={styles.summary}>
           <div className={styles.heading}>
             <p className="mobile-type-footnote font-semibold text-primary">
-              {activeMeasuredResult || finished
-                ? "Completed practice"
-                : savedPlanId
-                  ? "Your saved practice"
-                  : "Recommended for you"}
+              {activityPresentation.label}
             </p>
             <h2 className="mobile-type-title2">{plan.title}</h2>
             <p className="mobile-type-callout text-muted-foreground">
@@ -602,11 +628,20 @@ export function PracticeCompanionClient({
               disabled={isPending || !hydrated}
             >
               <Play className="size-4" aria-hidden />
-              {savedPlanId ? "Continue practice" : "Start practice"}
+              {activityPresentation.action}
             </Button>
           )}
         </div>
       </section>
+
+      <PracticeSourceEvidence source={plan.sourceContext.latestPractice} />
+      <Button asChild variant="outline" className="min-h-11">
+        <Link
+          href={`/practice?${new URLSearchParams({ editor: "full", ...(savedPlanId ? { planId: savedPlanId } : {}), ...(options.sourceSessionId ? { sourceSessionId: options.sourceSessionId } : {}), ...(options.focusClub ? { club: options.focusClub } : {}), ...(goalId ? { goalId } : {}), time: String(options.timeMinutes), intent: options.intent, energy: options.energy, session: options.sessionType, ...(options.ballCount ? { balls: String(options.ballCount) } : {}) }).toString()}`}
+        >
+          Edit blocks and conditions
+        </Link>
+      </Button>
 
       <div className="grid grid-cols-2 gap-2">
         <Button asChild variant="outline" className="min-h-12">
@@ -710,6 +745,7 @@ export function PracticeCompanionClient({
                 ))}
                 <IOSListRow
                   label="Training load"
+                  href="/training-load"
                   value={context.trainingLoad.statusLabel}
                   detail={context.trainingLoad.recommendation}
                 />

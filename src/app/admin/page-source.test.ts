@@ -25,14 +25,19 @@ describe("admin overview operations console", () => {
     expect(source).toContain("xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.65fr)]");
   });
 
-  it("uses tables for operational evidence and StatusTimeline for audit activity", () => {
-    expect(source).toContain("<Table>");
-    expect(source).toContain("<TableCaption");
-    expect(source).toContain("<TableHeader");
-    expect(source).toContain("<TableBody>");
-    expect(source).toContain("<StatusTimeline");
-    expect(source).toContain('label="Recent admin audit events"');
-    expect(source).toContain("tabIndex={0}");
+  it("uses tables for operational evidence and inspectable audit activity", () => {
+    const attention = readFileSync(
+      join(process.cwd(), "src/app/admin/admin-attention.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("<AdminAttention rows={attentionRows}");
+    for (const tag of ["<table", "<caption", "<thead>", "<tbody>"])
+      expect(attention).toContain(tag);
+    expect(source).toContain("data.recentAuditRows.map");
+    expect(source).toContain("<summary");
+    for (const label of ["Actor:", "Action:", "Target:", "Outcome:", "Source:"])
+      expect(source).toContain(label);
+    expect(source).toContain("audit record alone does not verify an external outcome");
   });
 
   it("reserves Alert for recorded failures and keeps missing evidence explicit", () => {
@@ -40,7 +45,7 @@ describe("admin overview operations console", () => {
     expect(source).toContain('<Alert variant="destructive">');
     expect(source).toContain("Unknown");
     expect(source).toContain("Unverified");
-    expect(source).toContain("not a live uptime check");
+    expect(source).toContain("No live CI, RLS or automated test result");
     expect(source).toContain("Missing verification is not treated as system health");
     expect(source).not.toContain('tone="green"');
   });
@@ -59,8 +64,8 @@ describe("admin overview operations console", () => {
       expect(source).not.toContain(obsolete);
     }
 
-    expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('scope="admin"');
+    expect(source).toContain("<PageShell>");
+    expect(source).toContain('<AdminNav active="/admin"');
   });
 
   it("counts both report and moderation-event queue evidence", () => {

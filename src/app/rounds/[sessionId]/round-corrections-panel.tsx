@@ -5,7 +5,6 @@ import { LoaderCircle, PencilLine, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { deleteRoundShotAction } from "@/app/rounds/actions";
-import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -26,25 +25,22 @@ export function RoundCorrectionsPanel({
   shotCount: number;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <ResponsiveDetailPanel
-      open={open}
-      onOpenChange={setOpen}
-      title="Round correction tools"
-      description={`${shotCount} linked shots. Change only the evidence that is wrong; the original import remains preserved.`}
-      trigger={
-        <Button type="button" className="w-fit">
-          <PencilLine className="size-4" aria-hidden="true" />
-          Open correction tools
-        </Button>
-      }
-      className="sm:max-w-[min(72rem,94vw)]"
-      contentClassName="grid gap-4"
-    >
+    <section aria-label="Round correction tools" className="grid min-w-0 gap-4">
+      <div className="flex items-start gap-3 rounded-xl border border-primary/15 bg-primary/5 p-4">
+        <span className="rounded-lg bg-card p-2 text-primary shadow-sm">
+          <PencilLine className="size-5" aria-hidden />
+        </span>
+        <div>
+          <h2 className="font-semibold">Review your shot labels</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {shotCount} linked shots. Correct the club on one shot below. Your original import stays
+            available.
+          </p>
+        </div>
+      </div>
       {children}
-    </ResponsiveDetailPanel>
+    </section>
   );
 }
 

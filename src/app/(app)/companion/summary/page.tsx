@@ -1,81 +1,102 @@
-import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-
+import { redirect } from "next/navigation";
+import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
 import { AppSurfaceLink } from "@/components/app/app-surface-link";
-import { IOSGroupedList, IOSListRow } from "@/components/app/ios-mobile";
-import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
-import { PageShell } from "@/components/premium";
+import { PageHeader, PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { getCompanionSummary } from "@/lib/companion-summary-data";
 import { requireCurrentUserId } from "@/lib/current-user";
-
+import { companionDestination, hasDirectCompanionRoute } from "@/lib/companion-destination";
+import { appSurfaceHref } from "@/lib/app-surface-navigation";
 export const dynamic = "force-dynamic";
-
 export default async function CompanionSummaryPage({
   searchParams,
 }: {
   searchParams: Promise<{ from?: string }>;
 }) {
   const userId = await requireCurrentUserId();
-  const from = safePath((await searchParams).from);
+  const from = companionDestination((await searchParams).from, "/coach");
+  if (hasDirectCompanionRoute(from)) redirect(from);
   const summary = await getCompanionSummary(userId, from);
-
+  const destination = new URL(from, "https://companion.invalid");
+  const showDriver =
+    destination.pathname.startsWith("/coach") &&
+    [destination.searchParams.get("club"), destination.searchParams.get("compareClub")].some(
+      (value) => value?.toLowerCase() === "driver",
+    );
+  const primary = summary.primary.href.startsWith("/surface/")
+    ? appSurfaceHref("workbench", from)
+    : summary.primary.href;
   return (
     <PageShell>
-      <MobileAppShell className="gap-5" data-companion-summary>
-        <MobileTopBar title={summary.eyebrow} />
-        <section className="ios-grouped-list grid gap-4 p-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-              {summary.eyebrow}
-            </p>
-            <h1 className="mt-1 text-2xl font-bold leading-7 tracking-tight">{summary.title}</h1>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{summary.description}</p>
-          </div>
-          <Button asChild className="min-h-12 rounded-xl">
-            <SummaryActionLink href={summary.primary.href}>
-              {summary.primary.label}
-              <ArrowRight className="ml-2 size-4" aria-hidden />
-            </SummaryActionLink>
-          </Button>
+      <div className="grid min-w-0 gap-5 pb-28" data-companion-summary>
+        <PageHeader
+          title={summary.title}
+          description={summary.description}
+          actions={
+            <Button asChild className="h-auto min-h-11 whitespace-normal">
+              {primary.startsWith("/surface/") ? (
+                <AppSurfaceLink href={primary as `/surface/${string}`}>
+                  {summary.primary.label}
+                </AppSurfaceLink>
+              ) : (
+                <Link href={primary}>{summary.primary.label}</Link>
+              )}
+            </Button>
+          }
+        />
+        <section className="grid gap-3 rounded-xl border p-5" aria-labelledby="summary-context">
+          <h2 id="summary-context" className="text-lg font-semibold">
+            {summary.eyebrow}
+          </h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            This is a summary of current account evidence. It does not replace the requested full
+            task.
+          </p>
+          <details>
+            <summary className="min-h-11 cursor-pointer py-3 text-sm">
+              Requested destination and filters
+            </summary>
+            <p className="break-all text-sm text-muted-foreground">{from}</p>
+          </details>
         </section>
-        <IOSGroupedList label={`${summary.eyebrow} details`}>
-          {summary.rows.length > 0 ? (
-            summary.rows.map((row) => (
-              <IOSListRow
-                key={`${row.label}-${row.value}`}
-                label={row.label}
-                value={row.value}
-                detail={row.detail}
-              />
+        <dl aria-label={`${summary.eyebrow} details`} className="grid gap-3 sm:grid-cols-2">
+          {summary.rows.length ? (
+            summary.rows.map((row, index) => (
+              <div key={`${row.label}-${index}`} className="grid gap-2 rounded-xl border p-5">
+                <dt className="text-sm text-muted-foreground">{row.label}</dt>
+                <dd className="font-semibold">{row.value}</dd>
+                {row.detail ? (
+                  <dd className="text-sm leading-6 text-muted-foreground">{row.detail}</dd>
+                ) : null}
+              </div>
             ))
           ) : (
-            <IOSListRow
-              label="Nothing current"
-              detail="New measured evidence will appear here when available."
-            />
+            <div className="rounded-xl border p-5">
+              <dt>No current evidence</dt>
+              <dd className="mt-2 text-sm text-muted-foreground">
+                No supporting rows are available for this summary yet.
+              </dd>
+            </div>
           )}
-        </IOSGroupedList>
-        {from.startsWith("/coach") && <DriverDevelopmentPanel compact />}
-        <Button asChild variant="outline" className="min-h-11 rounded-xl">
-          <AppSurfaceLink href={`/surface/workbench?next=${encodeURIComponent(from)}`}>
-            Open full desktop site
-          </AppSurfaceLink>
-        </Button>
-      </MobileAppShell>
+        </dl>
+        {showDriver ? (
+          <details className="rounded-xl border p-4">
+            <summary className="min-h-11 cursor-pointer py-3">Supporting driver context</summary>
+            <DriverDevelopmentPanel compact />
+          </details>
+        ) : null}
+        <div className="flex flex-wrap gap-3">
+          <Button asChild variant="outline" className="h-auto min-h-11 whitespace-normal">
+            <AppSurfaceLink href={appSurfaceHref("workbench", from)}>
+              Open full workspace
+            </AppSurfaceLink>
+          </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href="/today">Return to Today</Link>
+          </Button>
+        </div>
+      </div>
     </PageShell>
   );
-}
-
-function SummaryActionLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return href.startsWith("/surface/") ? (
-    <AppSurfaceLink href={href as `/surface/${string}`}>{children}</AppSurfaceLink>
-  ) : (
-    <Link href={href}>{children}</Link>
-  );
-}
-
-function safePath(value: string | undefined) {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/coach";
 }

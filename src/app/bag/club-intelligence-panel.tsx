@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 
@@ -70,8 +71,9 @@ export function ClubIntelligencePanel({
   clubs: ClubIntelligenceItem[];
   initialClubId?: string | null;
 }) {
-  const [selectedClubId, setSelectedClubId] = useState(initialClubId ?? clubs[0]?.id ?? null);
-  const [detailOpen, setDetailOpen] = useState(true);
+  const query = useSearchParams();
+  const selectedClubId = query.get("clubId") ?? initialClubId ?? clubs[0]?.id ?? null;
+  const [detailOpen, setDetailOpen] = useState(false);
   const selectedClub = useMemo(
     () => clubs.find((club) => club.id === selectedClubId) ?? clubs[0] ?? null,
     [clubs, selectedClubId],
@@ -95,7 +97,9 @@ export function ClubIntelligencePanel({
           <EntityCombobox
             value={selectedClub.id}
             onValueChange={(value) => {
-              setSelectedClubId(value);
+              const url = new URL(window.location.href);
+              url.searchParams.set("clubId", value);
+              window.history.pushState(null, "", `${url.pathname}${url.search}${url.hash}`);
               setDetailOpen(true);
             }}
             options={clubs.map((club) => ({

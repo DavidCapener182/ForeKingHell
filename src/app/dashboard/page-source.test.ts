@@ -17,75 +17,47 @@ const capabilitySource = readFileSync(
 );
 
 describe("dashboard desktop source", () => {
-  it("separates historical trust from the best course-scoring club", () => {
-    expect(source).toContain('title="Most trusted historically"');
-    expect(source).toContain('title="Best course scoring club"');
+  it("keeps aggregate practice context without assigning an unrelated latest session", () => {
+    expect(source).toContain('new URLSearchParams({ source: "dashboard", time: "15" })');
+    expect(source).toContain('if (clubType) practiceQuery.set("club", clubType)');
+    expect(source).toContain("`/practice?planId=${currentPlan.id}`");
+    expect(source).not.toContain('practiceQuery.set("sourceSessionId"');
+  });
+  it("labels measured bag trust separately from scoring evidence", () => {
+    expect(source).toContain("data.bagSummary.trustedClubCount");
+    expect(source).toContain('detail: "Trusted / mapped clubs"');
+    expect(source).toContain("formatHandicapValue(data.stats.combinedHandicap.value)");
+    expect(source).not.toContain("Best course scoring club");
   });
 
-  it("does not present a path moving away from neutral as an improvement", () => {
-    expect(source).toContain("if (changeTowardNeutral <= 0.05)");
+  it("passes measured delivery history to the selected-club chart without inventing improvement", () => {
+    expect(source).toContain("<FacePathClubSelector pathTrend={data.pathTrend} />");
+    expect(source).not.toContain("changeTowardNeutral");
     expect(source).not.toContain('return "Holding steady";');
   });
 
-  it("uses the consolidated answer, KPI, trend and activity hierarchy without an AI rail", () => {
-    const layoutBlock =
-      source.match(/<DesktopWorkbenchLayout[\s\S]*?<\/DesktopWorkbenchLayout>/)?.[0] ?? "";
-
-    expect(layoutBlock).toContain('scope="dashboard"');
-    expect(layoutBlock).not.toContain("DesktopInsightRail");
-    expect(layoutBlock).not.toContain("rail=");
-    expect(layoutBlock).not.toContain("railBreakpoint=");
-    expect(layoutBlock).toContain("<DashboardSummaryHero");
-    expect(layoutBlock).toContain("<ConnectedMetricBar");
-    expect(layoutBlock).toContain("<DriverStatusPanel");
-    expect(layoutBlock).toContain("<DashboardSpeedDevelopmentCard");
-    expect(layoutBlock.indexOf("<DashboardSpeedDevelopmentCard")).toBeGreaterThan(
-      layoutBlock.indexOf("<DriverStatusPanel"),
+  it("puts recommended practice before pinned metrics and deeper evidence", () => {
+    const layout = source.slice(source.indexOf("export default async function DashboardPage"));
+    expect(layout.match(/<PageShell/g)).toHaveLength(1);
+    expect(layout).toContain("data-dashboard-ui");
+    expect(layout).not.toContain("DesktopInsightRail");
+    expect(layout).toContain('aria-label="Recommended practice"');
+    expect(layout.indexOf('aria-label="Recommended practice"')).toBeLessThan(
+      layout.indexOf("metrics.map"),
     );
-    expect(layoutBlock).toContain("<StatusTimeline");
-    expect(layoutBlock).toContain('title="Current work"');
-    expect(source).not.toContain("function TodayCommandBrief");
-    expect(source).not.toContain("function QuickActions");
+    expect(layout).toContain("data.dashboardPins.includes");
+    expect(layout).toContain("<DashboardSpeedDevelopmentCard");
+    expect(layout).toContain("<StatusTimeline");
+    expect(layout).toContain("Current work</h2>");
   });
 
   it("keeps non-chart status surfaces on theme-aware semantic tokens", () => {
-    const heroInsightBlock =
-      source.match(/function HeroInsightCard[\s\S]*?type RoundReadiness/)?.[0] ?? "";
-    const practiceRecommendationBlock =
-      source.match(/function PracticeRecommendationCard[\s\S]*?function PracticePayoffPill/)?.[0] ??
-      "";
-    const readinessBlock =
-      source.match(/function RoundReadinessCard[\s\S]*?function ReadinessRow/)?.[0] ?? "";
-    const driverPathBlock =
-      source.match(/function DriverPathProgress[\s\S]*?function PracticeRecommendationCard/)?.[0] ??
-      "";
-    const sinceLastBlock =
-      source.match(/function SinceLastSessionCard[\s\S]*?function calculateRoundReadiness/)?.[0] ??
-      "";
-
-    for (const block of [
-      heroInsightBlock,
-      practiceRecommendationBlock,
-      readinessBlock,
-      driverPathBlock,
-      sinceLastBlock,
-    ]) {
-      expect(block).not.toMatch(/#[0-9a-f]{3,8}/i);
-      expect(block).not.toContain("rgba(");
-      expect(block).not.toContain("text-white");
-    }
-
     expect(source).not.toMatch(
       /(?:bg|text|border|ring)-(?:white|black|slate|emerald|green|amber|orange|yellow|red|rose|pink|sky|blue|indigo|violet|purple|cyan|teal)(?:-|\b)|(?:bg|text|border|ring)-\[#/,
     );
-
-    expect(heroInsightBlock).toContain("border-primary/25");
-    expect(heroInsightBlock).toContain("text-primary-foreground");
-    expect(practiceRecommendationBlock).toContain("border-border bg-muted");
-    expect(practiceRecommendationBlock).toContain("text-primary-foreground");
-    expect(readinessBlock).toContain("var(--primary)");
-    expect(driverPathBlock).toContain("var(--confidence-medium)");
-    expect(sinceLastBlock).toContain("hover:border-primary");
+    expect(source).toContain("bg-card");
+    expect(source).toContain("text-muted-foreground");
+    expect(source).toContain("focus-visible:outline-ring");
   });
 
   it("keeps the face-path target readout legible across semantic themes", () => {
@@ -98,14 +70,14 @@ describe("dashboard desktop source", () => {
     expect(targetReadout).not.toMatch(/text-\[#[0-9a-f]{3,8}\]/i);
   });
 
-  it("uses a semantic shadcn club selector around the specialist delivery chart", () => {
+  it("uses a labelled shared club selector around the specialist delivery chart", () => {
     expect(source).toContain(
       'import { FacePathClubSelector } from "@/app/dashboard/face-path-club-selector"',
     );
     expect(source).toContain("<FacePathClubSelector");
-    expect(facePathSelectorSource).toContain("<ToggleGroup");
-    expect(facePathSelectorSource).toContain("<ToggleGroupItem");
-    expect(facePathSelectorSource).toContain('type="single"');
+    expect(facePathSelectorSource).toContain("<UntitledSelect");
+    expect(facePathSelectorSource).toContain('label="Selected club"');
+    expect(facePathSelectorSource).toContain("onValueChange={setSelectedClubId}");
     expect(facePathSelectorSource).toContain("value={selected.clubId}");
     expect(facePathSelectorSource).toContain("bg-card");
     expect(facePathSelectorSource).toContain("bg-muted");
@@ -130,20 +102,13 @@ describe("dashboard desktop source", () => {
 });
 
 describe("dashboard workbench bundle boundary", () => {
-  it("keeps the desktop-only route to one visible workbench tree", () => {
-    expect(capabilitySource).toContain(
-      'dashboard: desktopOnly("Today", "/today", "The dashboard is a full analytical command centre.")',
-    );
-    expect(source).toContain('<DesktopWorkbenchLayout scope="dashboard">');
-    expect(source).toContain("<DashboardSummaryHero");
+  it("makes the single dashboard workspace available through companion navigation", () => {
+    expect(capabilitySource).toContain("dashboard: companionMore()");
+    expect(source).toContain("data-dashboard-ui");
     expect(source).not.toContain("DashboardMobileLayout");
-    expect(source).not.toContain("DashboardMobileHeader");
     expect(source).not.toContain("DashboardAiCaddieBriefCard");
-    expect(source).not.toContain("MobileCompanion");
-    expect(source).not.toContain("MobileBentoSummary");
-    expect(source).not.toContain("ios-mobile-screen");
-    expect(source).not.toContain("lg:hidden");
     expect(source).not.toContain("hidden lg:");
+    expect(source).not.toMatch(/max-w-(?:6xl|7xl|\[1500px\])/);
   });
 
   it("does not load companion-only dashboard models or social data", () => {

@@ -12,16 +12,23 @@ import { requireCurrentUserId } from "@/lib/current-user";
 import styles from "./mobile-speed.module.css";
 
 export default async function SpeedCompanionPage({
+  embedded = false,
+  initialData,
+  initialAccountId,
   error,
   saved,
   savedSessionId,
 }: {
+  embedded?: boolean;
+  initialData?: Awaited<ReturnType<typeof getSpeedCentrePageData>>;
+  initialAccountId?: string;
   error?: string | null;
   saved?: string | null;
   savedSessionId?: string | null;
 }) {
-  const accountId = await requireCurrentUserId();
-  const data = await getSpeedCentrePageData(accountId);
+  const accountId = initialAccountId ?? (await requireCurrentUserId());
+  const data = initialData ?? (await getSpeedCentrePageData(accountId));
+  const Container = embedded ? "section" : PageShell;
   const { summary, development } = data;
   const savedReceipt =
     saved === "1" ? resolveMobileSpeedSaveReceipt(data.sessions, savedSessionId) : null;
@@ -30,9 +37,9 @@ export default async function SpeedCompanionPage({
   const driver = data.clubOptions.find((club) => club.type === "driver");
   const speed = (value: number | null) => (value === null ? "—" : value.toFixed(1));
   return (
-    <PageShell>
+    <Container>
       <div className={styles.screen} data-mobile-speed>
-        <MobileLargeTitle title="Speed" />
+        {!embedded && <MobileLargeTitle title="Speed" />}
         {error ? (
           <p role="alert" className="text-sm text-destructive">
             {error}
@@ -177,7 +184,7 @@ export default async function SpeedCompanionPage({
           </Link>
         </MobileSection>
       </div>
-      <DriverDevelopmentPanel compact />
-    </PageShell>
+      {!embedded && <DriverDevelopmentPanel compact />}
+    </Container>
   );
 }

@@ -1,5 +1,10 @@
 "use client";
 
+import { UrlTabs } from "@/components/untitled-ui/url-tabs";
+import { ShotEvidenceSheet } from "@/app/shots/shot-evidence-sheet";
+import { ShotReviewButton } from "@/app/shots/shot-review-controls";
+import { useRouter, useSearchParams } from "next/navigation";
+import styles from "./club-evidence.module.css";
 import { type ReactNode, useMemo, useState } from "react";
 import {
   Activity,
@@ -112,16 +117,25 @@ export function ClubAnalysisTabs({
   clubTypeLabel,
   shots,
   afterDispersion,
+  correctionClubs = [],
 }: {
   clubType: string;
   clubModelName: string;
   clubTypeLabel: string;
   shots: AnalysisShot[];
   afterDispersion?: ReactNode;
+  correctionClubs?: Array<{ value: string; label: string }>;
 }) {
+  const router = useRouter();
   const accent = clubAccent(clubType);
   const [distanceView, setDistanceView] = useState<DistanceView>("carry");
-  const [selectedShotId, setSelectedShotId] = useState(shots[0]?.id ?? "");
+  const query = useSearchParams();
+  const selectedShotId = query.get("shotId") ?? shots[0]?.id ?? "";
+  const setSelectedShotId = (id: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("shotId", id);
+    window.history.pushState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  };
   const [openDateKeys, setOpenDateKeys] = useState<string[] | null>(null);
   const visibleSelectedShotId = shots.some((shot) => shot.id === selectedShotId)
     ? selectedShotId
@@ -172,104 +186,175 @@ export function ClubAnalysisTabs({
   };
 
   return (
-    <div className="space-y-5">
-      <section
-        id="club-dispersion"
-        className="premium-card scroll-mt-28 overflow-hidden p-3 sm:p-4"
-      >
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <div
-              className="grid size-11 shrink-0 place-items-center rounded-full text-primary-foreground"
-              style={{ background: accent }}
-            >
-              <Target className="size-5" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-2xl font-semibold tracking-normal">Dispersion Map</h2>
-              <p className="truncate text-sm text-muted-foreground">
-                {clubModelName} · {clubTypeLabel} · this is how the club behaves.
-              </p>
-            </div>
-          </div>
-          <ToggleGroup
-            type="single"
-            value={distanceView}
-            onValueChange={(value) => value && setDistanceView(value as DistanceView)}
-            variant="outline"
-            spacing={0}
-            aria-label="Distance view"
-            className="bg-card"
-          >
-            <ToggleGroupItem value="carry" className="min-h-11 px-4">
-              Carry
-            </ToggleGroupItem>
-            <ToggleGroupItem value="total" className="min-h-11 px-4">
-              Total
-            </ToggleGroupItem>
-          </ToggleGroup>
+    <div className="grid min-w-0 gap-4" data-club-analysis-ui>
+      {selectedShot ? (
+        <div
+          className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3"
+          aria-label="Selected club shot"
+        >
+          <p className="text-sm font-medium">
+            Shot {selectedShot.shotNumber ?? "—"} · {formatDate(selectedShot.shotAt)} ·{" "}
+            {formatMetric(selectedShot.carryYd, " yd carry")}
+          </p>
+          <ShotEvidenceSheet
+            key={selectedShot.id}
+            shotId={selectedShot.id}
+            title={`${clubTypeLabel} · Shot ${selectedShot.shotNumber ?? "—"}`}
+            clubs={correctionClubs}
+            onComplete={() => router.refresh()}
+          />
+          <ShotReviewButton
+            companion
+            shotId={selectedShot.id}
+            reviewStatus={selectedShot.reviewStatus ?? "included"}
+            onComplete={() => router.refresh()}
+          />
         </div>
-        <DispersionPanel
-          clubType={clubType}
-          shots={evidenceShots}
-          selectedShotId={selectedShot?.id ?? ""}
-          onSelect={selectShot}
-          distanceView={distanceView}
-          accent={accent}
-        />
-      </section>
-
-      <div className="space-y-5" data-desktop-club-analysis>
-        {afterDispersion ? <div className="space-y-5">{afterDispersion}</div> : null}
-
-        <ShotEvidenceWorkbench
-          shots={sortedShots}
-          selectedShotId={selectedShot?.id ?? ""}
-          clubModelName={clubModelName}
-          clubTypeLabel={clubTypeLabel}
-          onSelect={selectShot}
-        />
-
-        <Card className="gap-0 py-0">
-          <CardContent className="p-4">
-            <SectionTitle
-              icon={Activity}
-              title="Trajectory"
-              detail="Flight window and apex pattern for the selected club."
-              accent={accent}
-            />
-            <TrajectoryPanel
-              shots={evidenceShots}
-              selectedShotId={selectedShot?.id ?? ""}
-              accent={accent}
-            />
-          </CardContent>
-        </Card>
-
-        <Card className="gap-0 py-0">
-          <CardContent className="p-4">
-            <SectionTitle
-              icon={Gauge}
-              title="Club Metrics"
-              detail={`Selected shot #${selectedShot?.shotNumber ?? "-"} delivery and impact numbers.`}
-              accent={accent}
-            />
-            <ClubDataPanel clubType={clubType} selectedShot={selectedShot} accent={accent} />
-            <ShotMetricStrip shot={selectedShot} accent={accent} />
-          </CardContent>
-        </Card>
-
-        <ShotHistory
-          groups={shotDateGroups}
-          activeOpenDateKeys={activeOpenDateKeys}
-          selectedShotId={selectedShot?.id ?? ""}
-          clubModelName={clubModelName}
-          clubTypeLabel={clubTypeLabel}
-          accent={accent}
-          onToggleGroup={toggleDateGroup}
-          onSelect={selectShot}
-        />
-      </div>
+      ) : null}
+      <UrlTabs
+        label="Club analysis"
+        queryKey="clubView"
+        defaultTabKey="dispersion"
+        tabs={[
+          {
+            id: "dispersion",
+            label: "Dispersion",
+            content: (
+              <Card
+                id="club-dispersion"
+                role="region"
+                aria-labelledby="club-dispersion-title"
+                className="scroll-mt-28 gap-0 overflow-hidden p-3 sm:p-4"
+              >
+                <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div
+                      className="grid size-11 shrink-0 place-items-center rounded-full text-primary-foreground"
+                      style={{ background: accent }}
+                    >
+                      <Target className="size-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2
+                        id="club-dispersion-title"
+                        className="text-2xl font-semibold tracking-normal"
+                      >
+                        Dispersion Map
+                      </h2>
+                      <p className="break-words text-sm text-muted-foreground">
+                        {clubModelName} · {clubTypeLabel} · this is how the club behaves.
+                      </p>
+                    </div>
+                  </div>
+                  <ToggleGroup
+                    type="single"
+                    value={distanceView}
+                    onValueChange={(value) => value && setDistanceView(value as DistanceView)}
+                    variant="outline"
+                    spacing={0}
+                    aria-label="Distance view"
+                    className="bg-card"
+                  >
+                    <ToggleGroupItem value="carry" className="min-h-11 px-4">
+                      Carry
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="total" className="min-h-11 px-4">
+                      Total
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
+                <DispersionPanel
+                  clubType={clubType}
+                  shots={evidenceShots}
+                  selectedShotId={selectedShot?.id ?? ""}
+                  onSelect={selectShot}
+                  distanceView={distanceView}
+                  accent={accent}
+                />
+              </Card>
+            ),
+          },
+          {
+            id: "intelligence",
+            label: "Intelligence & trend",
+            content: (
+              <div className="grid min-w-0 gap-4">
+                {afterDispersion ?? (
+                  <p>Review the selected club’s source evidence before drawing a conclusion.</p>
+                )}
+              </div>
+            ),
+          },
+          {
+            id: "evidence",
+            label: "Shot evidence",
+            content: (
+              <ShotEvidenceWorkbench
+                shots={sortedShots}
+                selectedShotId={selectedShot?.id ?? ""}
+                clubModelName={clubModelName}
+                clubTypeLabel={clubTypeLabel}
+                onSelect={selectShot}
+              />
+            ),
+          },
+          {
+            id: "trajectory",
+            label: "Trajectory",
+            content: (
+              <Card>
+                <CardContent className="p-4">
+                  <SectionTitle
+                    icon={Activity}
+                    title="Trajectory"
+                    detail="Flight window and apex pattern for the selected club."
+                    accent={accent}
+                  />
+                  <TrajectoryPanel
+                    shots={evidenceShots}
+                    selectedShotId={selectedShot?.id ?? ""}
+                    accent={accent}
+                  />
+                </CardContent>
+              </Card>
+            ),
+          },
+          {
+            id: "delivery",
+            label: "Club metrics",
+            content: (
+              <Card>
+                <CardContent className="p-4">
+                  <SectionTitle
+                    icon={Gauge}
+                    title="Club metrics"
+                    detail={`Selected shot #${selectedShot?.shotNumber ?? "—"} delivery and impact numbers.`}
+                    accent={accent}
+                  />
+                  <ClubDataPanel clubType={clubType} selectedShot={selectedShot} accent={accent} />
+                  <ShotMetricStrip shot={selectedShot} accent={accent} />
+                </CardContent>
+              </Card>
+            ),
+          },
+          {
+            id: "history",
+            label: "Shot history",
+            content: (
+              <ShotHistory
+                groups={shotDateGroups}
+                activeOpenDateKeys={activeOpenDateKeys}
+                selectedShotId={selectedShot?.id ?? ""}
+                clubModelName={clubModelName}
+                clubTypeLabel={clubTypeLabel}
+                accent={accent}
+                onToggleGroup={toggleDateGroup}
+                onSelect={selectShot}
+              />
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }
@@ -287,6 +372,9 @@ function ShotEvidenceWorkbench({
   clubTypeLabel: string;
   onSelect: (id: string) => void;
 }) {
+  const [page, setPage] = useState(1);
+  const pages = Math.max(1, Math.ceil(shots.length / 20));
+  const current = Math.min(page, pages);
   return (
     <section
       id="club-shot-evidence-table"
@@ -297,8 +385,8 @@ function ShotEvidenceWorkbench({
         <div>
           <h2 className="text-xl font-semibold tracking-normal">Shot evidence table</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Desktop review of the shots feeding this club profile, matched to the selected date
-            range.
+            Every saved shot in the selected date range. Excluded shots stay inspectable; evidence
+            rules still determine the calculations.
           </p>
         </div>
         <Badge
@@ -320,124 +408,169 @@ function ShotEvidenceWorkbench({
         exportFileName={`forekinghell-${clubTypeLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-shot-evidence.csv`}
       />
 
-      <DataTableFrame mainTable mainTableLabel="Club shot evidence table" stickyFirstColumn>
-        <Table
-          className="min-w-[1180px]"
-          data-workbench-scope="club-shot-evidence"
-          data-workbench-export-table="club-shot-evidence"
-          aria-describedby="club-shot-evidence-summary"
+      <div className={styles.mobileRows} aria-label="Club shot rows">
+        {shots.slice((current - 1) * 20, current * 20).map((shot) => (
+          <button
+            key={shot.id}
+            type="button"
+            aria-pressed={shot.id === selectedShotId}
+            onClick={() => onSelect(shot.id)}
+            className="grid min-h-11 gap-1 rounded-lg border p-3 text-left"
+          >
+            <span className="font-semibold">
+              Shot {shot.shotNumber ?? "—"} · {formatDate(shot.shotAt)}
+            </span>
+            <span>
+              {formatMetric(shot.carryYd, " yd carry")} · {formatMetric(shot.ballSpeedMph, " mph")}
+            </span>
+            <span className="text-xs">
+              {shot.reviewStatus ?? "included"} ·{" "}
+              {shot.id === selectedShotId
+                ? "Selected; full evidence above"
+                : "Select to inspect full source evidence"}
+            </span>
+          </button>
+        ))}
+        <nav
+          aria-label="Club shot pages"
+          className="flex flex-wrap items-center justify-between gap-2"
         >
-          <TableCaption id="club-shot-evidence-summary" className="sr-only">
-            Club shot evidence table showing shot number, date, carry, total, offline distance, ball
-            speed, club speed, launch, path, face, quality and selected-shot action.
-          </TableCaption>
-          <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
-            <TableRow>
-              <TableHead
-                data-column="shot"
-                className="sticky left-0 z-20 min-w-28 bg-card shadow-[1px_0_0_hsl(var(--border))]"
-              >
-                Shot
-              </TableHead>
-              <TableHead data-column="date">Date</TableHead>
-              <TableHead data-column="carry" className="text-right">
-                Carry
-              </TableHead>
-              <TableHead data-column="total" className="text-right">
-                Total
-              </TableHead>
-              <TableHead data-column="offline" className="text-right">
-                Offline
-              </TableHead>
-              <TableHead data-column="ball-speed" className="text-right">
-                Ball speed
-              </TableHead>
-              <TableHead data-column="club-speed" className="text-right">
-                Club speed
-              </TableHead>
-              <TableHead data-column="launch" className="text-right">
-                Launch
-              </TableHead>
-              <TableHead data-column="path" className="text-right">
-                Path
-              </TableHead>
-              <TableHead data-column="face" className="text-right">
-                Face
-              </TableHead>
-              <TableHead data-column="quality">Quality</TableHead>
-              <TableHead data-column="action" className="text-right">
-                Action
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {shots.map((shot) => {
-              const selected = shot.id === selectedShotId;
-
-              return (
-                <TableRow
-                  key={shot.id}
-                  tabIndex={0}
-                  className={cn("focus-aaa outline-none", selected && "bg-primary/8")}
+          <Button variant="outline" disabled={current === 1} onClick={() => setPage(current - 1)}>
+            Previous
+          </Button>
+          <span className="text-sm">
+            {shots.length ? (current - 1) * 20 + 1 : 0}–{Math.min(current * 20, shots.length)} of{" "}
+            {shots.length}
+          </span>
+          <Button
+            variant="outline"
+            disabled={current === pages}
+            onClick={() => setPage(current + 1)}
+          >
+            Next
+          </Button>
+        </nav>
+      </div>
+      <div className={styles.desktopTable}>
+        <DataTableFrame mainTable mainTableLabel="Club shot evidence table" stickyFirstColumn>
+          <Table
+            className="min-w-[1180px]"
+            data-workbench-scope="club-shot-evidence"
+            data-workbench-export-table="club-shot-evidence"
+            aria-describedby="club-shot-evidence-summary"
+          >
+            <TableCaption id="club-shot-evidence-summary" className="sr-only">
+              Club shot evidence table showing shot number, date, carry, total, offline distance,
+              ball speed, club speed, launch, path, face, quality and selected-shot action.
+            </TableCaption>
+            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
+              <TableRow>
+                <TableHead
+                  data-column="shot"
+                  className="sticky left-0 z-20 min-w-28 bg-card shadow-[1px_0_0_hsl(var(--border))]"
                 >
-                  <TableCell
-                    data-column="shot"
-                    className="sticky left-0 z-10 min-w-28 bg-card font-semibold shadow-[1px_0_0_hsl(var(--border))]"
+                  Shot
+                </TableHead>
+                <TableHead data-column="date">Date</TableHead>
+                <TableHead data-column="carry" className="text-right">
+                  Carry (yd)
+                </TableHead>
+                <TableHead data-column="total" className="text-right">
+                  Total (yd)
+                </TableHead>
+                <TableHead data-column="offline" className="text-right">
+                  Offline (yd)
+                </TableHead>
+                <TableHead data-column="ball-speed" className="text-right">
+                  Ball speed (mph)
+                </TableHead>
+                <TableHead data-column="club-speed" className="text-right">
+                  Club speed (mph)
+                </TableHead>
+                <TableHead data-column="launch" className="text-right">
+                  Launch (°)
+                </TableHead>
+                <TableHead data-column="path" className="text-right">
+                  Path (°)
+                </TableHead>
+                <TableHead data-column="face" className="text-right">
+                  Face (°)
+                </TableHead>
+                <TableHead data-column="quality">Quality</TableHead>
+                <TableHead data-column="action" className="text-right">
+                  Action
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {shots.map((shot) => {
+                const selected = shot.id === selectedShotId;
+
+                return (
+                  <TableRow
+                    key={shot.id}
+                    tabIndex={0}
+                    className={cn("focus-aaa outline-none", selected && "bg-primary/8")}
                   >
-                    #{shot.shotNumber ?? "-"}
-                    {selected ? (
-                      <Badge
-                        variant="secondary"
-                        className="ml-2 h-auto px-2 py-0.5 text-xs text-primary"
-                      >
-                        selected
-                      </Badge>
-                    ) : null}
-                  </TableCell>
-                  <TableCell data-column="date">{formatDate(shot.shotAt)}</TableCell>
-                  <TableCell data-column="carry" className="text-right">
-                    {formatMetric(shot.carryYd, " yd")}
-                  </TableCell>
-                  <TableCell data-column="total" className="text-right">
-                    {formatMetric(shot.totalYd, " yd")}
-                  </TableCell>
-                  <TableCell data-column="offline" className="text-right">
-                    {formatSide(shot.sideCarryYd)}
-                  </TableCell>
-                  <TableCell data-column="ball-speed" className="text-right">
-                    {formatMetric(shot.ballSpeedMph, " mph")}
-                  </TableCell>
-                  <TableCell data-column="club-speed" className="text-right">
-                    {formatMetric(shot.clubSpeedMph, " mph")}
-                  </TableCell>
-                  <TableCell data-column="launch" className="text-right">
-                    {formatMetric(shot.launchAngleDeg, " deg")}
-                  </TableCell>
-                  <TableCell data-column="path" className="text-right">
-                    {formatMetric(shot.clubPathDeg, " deg")}
-                  </TableCell>
-                  <TableCell data-column="face" className="text-right">
-                    {formatMetric(resolveClubFaceAngleDeg(shot), " deg")}
-                  </TableCell>
-                  <TableCell data-column="quality">
-                    {shot.qualityTag ?? shot.shotCategory ?? "Unclassified"}
-                  </TableCell>
-                  <TableCell data-column="action" className="text-right">
-                    <Button
-                      type="button"
-                      variant={selected ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => onSelect(shot.id)}
+                    <TableCell
+                      data-column="shot"
+                      className="sticky left-0 z-10 min-w-28 bg-card font-semibold shadow-[1px_0_0_hsl(var(--border))]"
                     >
-                      {selected ? "Selected" : "Select"}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </DataTableFrame>
+                      #{shot.shotNumber ?? "-"}
+                      {selected ? (
+                        <Badge
+                          variant="secondary"
+                          className="ml-2 h-auto px-2 py-0.5 text-xs text-primary"
+                        >
+                          selected
+                        </Badge>
+                      ) : null}
+                    </TableCell>
+                    <TableCell data-column="date">{formatDate(shot.shotAt)}</TableCell>
+                    <TableCell data-column="carry" className="text-right">
+                      {formatMetric(shot.carryYd, " yd")}
+                    </TableCell>
+                    <TableCell data-column="total" className="text-right">
+                      {formatMetric(shot.totalYd, " yd")}
+                    </TableCell>
+                    <TableCell data-column="offline" className="text-right">
+                      {formatSide(shot.sideCarryYd)}
+                    </TableCell>
+                    <TableCell data-column="ball-speed" className="text-right">
+                      {formatMetric(shot.ballSpeedMph, " mph")}
+                    </TableCell>
+                    <TableCell data-column="club-speed" className="text-right">
+                      {formatMetric(shot.clubSpeedMph, " mph")}
+                    </TableCell>
+                    <TableCell data-column="launch" className="text-right">
+                      {formatMetric(shot.launchAngleDeg, " deg")}
+                    </TableCell>
+                    <TableCell data-column="path" className="text-right">
+                      {formatMetric(shot.clubPathDeg, " deg")}
+                    </TableCell>
+                    <TableCell data-column="face" className="text-right">
+                      {formatMetric(resolveClubFaceAngleDeg(shot), " deg")}
+                    </TableCell>
+                    <TableCell data-column="quality">
+                      {shot.qualityTag ?? shot.shotCategory ?? "Unclassified"}
+                    </TableCell>
+                    <TableCell data-column="action" className="text-right">
+                      <Button
+                        type="button"
+                        variant={selected ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => onSelect(shot.id)}
+                      >
+                        {selected ? "Selected" : "Select"}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </DataTableFrame>
+      </div>
     </section>
   );
 }

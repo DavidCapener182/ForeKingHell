@@ -19,7 +19,18 @@ export function MobileCoursePreview({
   href: string;
 }) {
   const [failed, setFailed] = useState(false);
-  if (failed) return null;
+  if (failed)
+    return (
+      <div role="status" className="grid gap-2 p-4 text-sm">
+        <p>
+          Course preview could not load. Your selected course and preparation details remain
+          available.
+        </p>
+        <Link href={href} className="min-h-11 content-center font-semibold text-primary">
+          Open selected Course Twin
+        </Link>
+      </div>
+    );
   return (
     <figure className={styles.preview}>
       <Link

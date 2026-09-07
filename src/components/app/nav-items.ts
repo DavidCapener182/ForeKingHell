@@ -63,7 +63,7 @@ const desktopAreaDefinitions = [
     label: "Strategy / Course Twin",
     ids: ["play-companion", "course-strategy", "course-twins", "courses"],
   },
-  { label: "Bag", ids: ["bag", "quick-bag", "equipment"] },
+  { label: "Bag", ids: ["bag", "best-shots", "quick-bag", "equipment"] },
   {
     label: "Insights",
     ids: ["analyse", "session-impact", "progress", "strokes-gained", "data-chat"],
@@ -134,44 +134,39 @@ export const mobilePrimaryItems: AppNavItem[] = mobilePrimaryDefinitions.map(
   },
 );
 
-const mobileMoreGroupOrder = ["Golf", "Compete", "Account"] as const;
-
-const mobileMoreIds = {
-  Golf: ["import", "progress", "shots", "speed", "training-load", "handicap", "goals"],
-  Compete: ["challenges", "tournaments", "leaderboard", "achievements"],
-  Account: ["profile", "notifications", "settings"],
-} as const;
-
-function belongsInMobileMoreGroup(
-  item: AppRouteMetadata,
-  label: (typeof mobileMoreGroupOrder)[number],
-) {
-  return item.mobileNav === "more" && mobileMoreIds[label].some((id) => id === item.id);
+/** More is a searchable directory of authorised canonical tasks, not a
+ * capability allowlist. Route guards still enforce permissions and task readiness.
+ */
+export function buildMobileMoreGroups(isAdmin = false): AppNavGroup[] {
+  const primaryRoutes = new Set(mobilePrimaryItems.map((item) => item.href));
+  const groups = buildDesktopNavGroups(isAdmin)
+    .map((group) => ({
+      ...group,
+      items: group.items
+        .filter((item) => !primaryRoutes.has(item.href))
+        .map((item) => ({
+          ...item,
+          label: item.href === "/import" ? "Import & Sync" : item.label,
+        })),
+    }))
+    .filter((group) => group.items.length > 0);
+  return [
+    ...groups,
+    {
+      label: "Privacy",
+      items: [
+        {
+          href: "/privacy",
+          label: "Privacy",
+          icon: ShieldCheck,
+          isActive: (pathname: string) => pathname === "/privacy",
+        },
+      ],
+    },
+  ];
 }
 
-export const mobileMoreGroups: AppNavGroup[] = mobileMoreGroupOrder
-  .map((label) => ({
-    label,
-    items: [
-      ...routesAvailableTo(false)
-        .filter((item) => belongsInMobileMoreGroup(item, label))
-        .map((item) => ({
-          ...toNavItem(item),
-          label: item.id === "import" ? "Import & Sync" : item.shortTitle,
-        })),
-      ...(label === "Account"
-        ? [
-            {
-              href: "/privacy",
-              label: "Privacy",
-              icon: ShieldCheck,
-              isActive: (pathname: string) => pathname === "/privacy",
-            },
-          ]
-        : []),
-    ],
-  }))
-  .filter((group) => group.items.length > 0);
+export const mobileMoreGroups = buildMobileMoreGroups();
 
 export function mobilePageTitle(pathname: string) {
   if (pathname === "/shots/review") return "Review shots";

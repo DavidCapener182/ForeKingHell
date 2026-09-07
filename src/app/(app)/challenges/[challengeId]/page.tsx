@@ -1,68 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ArrowLeft,
-  CalendarDays,
-  MessageCircle,
-  Plus,
-  Send,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
-
-import {
-  addChallengeCommentAction,
-  inviteFriendToChallengeAction,
-  joinChallengeAction,
-} from "@/app/challenges/actions";
+import { ChallengeInviteReview } from "@/app/challenges/challenge-invite-review";
 import { ChallengeJoinDialog } from "@/app/challenges/challenge-join-dialog";
 import { ChallengeLeaveDialog } from "@/app/challenges/challenge-leave-dialog";
-import { StatusTimeline } from "@/components/app/status-timeline";
-import type {
-  DesktopSavedViewSuggestion,
-  DesktopWorkbenchColumn,
-} from "@/components/app/desktop-workbench";
-import {
-  DataPanel,
-  DataTableFrame,
-  PageHeader,
-  PageShell,
-  SectionHeader,
-  StatusPill,
-} from "@/components/premium";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSInlineStatus,
-  IOSListRow,
-} from "@/components/app/ios-mobile";
-import { MobilePageTabs } from "@/components/app/mobile-controls";
-import {
-  BottomSheet,
-  MobileAppShell,
-  MobileStatusAction,
-  MobileTopBar,
-  NativeListSection,
-} from "@/components/mobile-sports";
+import { ChallengeDetailSections } from "@/app/challenges/challenge-detail-sections";
+import { ChallengeCommentComposer } from "@/app/challenges/challenge-comment-composer";
+import { DataTableFrame, PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -72,24 +17,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type {
+  DesktopWorkbenchColumn,
+  DesktopSavedViewSuggestion,
+} from "@/components/app/desktop-workbench";
 import { getChallengeDetailData } from "@/lib/challenges";
-import { getRequestAppSurface } from "@/lib/app-surface-server";
-
+import boardStyles from "@/app/course-records/course-record-board.module.css";
 export const dynamic = "force-dynamic";
-
-type ChallengePageProps = {
-  params: Promise<{
-    challengeId: string;
-  }>;
-  searchParams?: Promise<{
-    invite?: string;
-    tab?: string;
-  }>;
-};
-
 type ChallengeDetail = NonNullable<Awaited<ReturnType<typeof getChallengeDetailData>>>;
 type ChallengeResultRow = ChallengeDetail["results"][number];
-
+const challengeDateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "UTC",
+});
 const challengeLeaderboardColumns: DesktopWorkbenchColumn[] = [
   { id: "rank", label: "Rank", locked: true },
   { id: "player", label: "Player" },
@@ -98,643 +42,268 @@ const challengeLeaderboardColumns: DesktopWorkbenchColumn[] = [
   { id: "calculated", label: "Calculated" },
   { id: "action", label: "Action", locked: true },
 ];
-
-export default async function ChallengePage({ params, searchParams }: ChallengePageProps) {
+function challengeLeaderboardSuggestedViews(id: string): DesktopSavedViewSuggestion[] {
+  return [
+    { title: "Board", href: `/challenges/${id}?tab=board`, detail: "Qualifying standings" },
+    {
+      title: "Attempts",
+      href: `/challenges/${id}?tab=attempts`,
+      detail: "Imported result provenance",
+    },
+  ];
+}
+export default async function ChallengePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ challengeId: string }>;
+  searchParams?: Promise<{ tab?: string; invite?: string }>;
+}) {
   const [{ challengeId }, query] = await Promise.all([params, searchParams]);
-  const [data, surface] = await Promise.all([
-    getChallengeDetailData(challengeId),
-    getRequestAppSurface(),
-  ]);
-
-  if (!data) {
-    notFound();
-  }
-
-  const workbench =
-    surface === "workbench" ? await import("@/components/app/desktop-workbench") : null;
-  const DesktopWorkbenchLayout = workbench?.DesktopWorkbenchLayout;
-
-  const podium = data.results.slice(0, 3);
-  const viewerResult = data.results.find((row) => row.result.userId === data.viewerUserId);
-  const verificationMode = boardVerificationMode(data.results.map((row) => row.verificationLabel));
-  const activeTab = parseChallengeDetailTab(query?.tab);
-
-  return (
-    <PageShell>
-      {surface === "companion" ? (
-        <MobileAppShell>
-          <MobileTopBar
-            title={data.challenge.title}
-            actions={<Badge variant="outline">{data.challenge.templateName}</Badge>}
-          />
-          <MobileStatusAction
-            label="Imported result"
-            value={viewerResult ? `#${viewerResult.result.rank}` : "No qualifying shots"}
-            detail={
-              viewerResult
-                ? `${viewerResult.result.scoreLabel} · ${viewerResult.verificationLabel}`
-                : `${data.challenge.participantCount} players · ${verificationMode}`
-            }
-            action={
-              !data.challenge.viewerJoined ? (
-                <form action={joinChallengeAction}>
-                  <input type="hidden" name="challengeId" value={data.challenge.id} />
-                  <Button type="submit" className="rounded-full">
-                    <Plus className="size-4" />
-                    Join
-                  </Button>
-                </form>
-              ) : (
-                <Button asChild className="rounded-full">
-                  <Link href="/import" prefetch={false}>
-                    Import data
+  const data = await getChallengeDetailData(challengeId);
+  if (!data) notFound();
+  const c = data.challenge;
+  const viewer = data.results.find((row) => row.result.userId === data.viewerUserId);
+  const closed = c.status !== "open" || Boolean(c.endsAt && c.endsAt <= new Date());
+  const active =
+    query?.tab === "shots"
+      ? "attempts"
+      : ["board", "command", "rules", "attempts", "chat"].includes(query?.tab ?? "")
+        ? query!.tab!
+        : "board";
+  const personal = (
+    <section className="grid gap-3 rounded-xl border bg-card p-4">
+      <h2 className="text-lg font-semibold">Your imported result</h2>
+      <p className="text-2xl font-semibold">
+        {viewer?.result.scoreLabel ?? "No qualifying result"}
+      </p>
+      <p>
+        {viewer
+          ? `Rank #${viewer.result.rank} · ${viewer.verificationLabel}`
+          : "Joining alone does not create a scored result."}
+      </p>
+      <p>
+        {c.viewerEvidenceCount} / {c.evidenceTargetCount} qualifying shots · {c.evidenceRequirement}
+      </p>
+      <p className="text-sm">
+        Window: {challengeDateTimeFormatter.format(c.startsAt)} —{" "}
+        {c.endsAt ? challengeDateTimeFormatter.format(c.endsAt) : "Open ended"} (UTC)
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {!c.viewerJoined ? (
+          <ChallengeJoinDialog challengeId={c.id} challengeTitle={c.title} disabled={closed} />
+        ) : null}
+        {c.viewerJoined && c.creatorUserId !== data.viewerUserId ? (
+          <ChallengeLeaveDialog challengeId={c.id} challengeTitle={c.title} />
+        ) : null}
+        {!closed ? (
+          <Button asChild className="min-h-11">
+            <Link href={`/import?challengeId=${c.id}`}>Import qualifying evidence</Link>
+          </Button>
+        ) : (
+          <p className="text-sm">
+            This challenge is {c.status === "open" ? "ended" : c.status}; joining is closed.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+  const board = (
+    <section className="grid gap-4">
+      <h2 className="text-lg font-semibold">
+        Standings · {closed ? "recorded results" : "provisional"}
+      </h2>
+      <p className="text-sm">
+        {c.scoringDirection === "asc" ? "Lower" : "Higher"} qualifying result wins. Positions and
+        ties use the existing scoring rules. Results are recalculated from eligible evidence when
+        viewed.
+      </p>
+      <div className={boardStyles.desktop}>
+        <ChallengeLeaderboardTable data={data} verificationMode="Qualifying imported results" />
+      </div>
+      <div className={boardStyles.mobile}>
+        {data.results.length ? (
+          data.results.map(({ result, profile, verificationLabel }) => (
+            <article
+              key={result.id}
+              className={`mb-3 grid gap-2 rounded-xl border p-3 ${result.userId === data.viewerUserId ? "border-primary bg-primary/5" : ""}`}
+            >
+              <p className="break-words font-semibold">
+                #{result.rank} · {profile.displayName}
+                {result.userId === data.viewerUserId ? " · You" : ""}
+              </p>
+              <p className="text-xl font-semibold">{result.scoreLabel}</p>
+              <details>
+                <summary className="min-h-11 cursor-pointer content-center">
+                  Result, proof and date
+                </summary>
+                <p>{verificationLabel}</p>
+                <p>Calculated {challengeDateTimeFormatter.format(result.calculatedAt)} UTC</p>
+                <Button asChild variant="outline" className="mt-2 min-h-11">
+                  <Link href={`/profile/${profile.username}`}>Open profile</Link>
+                </Button>
+              </details>
+            </article>
+          ))
+        ) : (
+          <p>No qualifying imported results yet.</p>
+        )}
+      </div>
+    </section>
+  );
+  const attempts = (
+    <section className="grid gap-3">
+      <h2 className="text-lg font-semibold">Qualifying attempt ledger</h2>
+      <p className="text-sm">
+        These are calculated qualifying results, not a complete history of rejected imports.
+        Excluded, modelled, out-of-window and nonmatching shots do not rank. Open Rules for the
+        exact eligibility criteria.
+      </p>
+      {data.attempts.length ? (
+        data.attempts
+          .slice()
+          .sort((a, b) => a.attempt.attemptedAt.getTime() - b.attempt.attemptedAt.getTime())
+          .map(({ attempt, profile }) => (
+            <details key={attempt.id} className="rounded-xl border bg-card p-4">
+              <summary className="min-h-11 cursor-pointer content-center break-words font-semibold">
+                {profile.displayName} · {attemptScoreLabel(attempt)}
+              </summary>
+              <dl className="mt-3 grid gap-2 text-sm">
+                <Fact label="Metric" value={attempt.metricLabel} />
+                <Fact label="Source" value={attempt.sourceType.replaceAll("_", " ")} />
+                <Fact
+                  label="Attempted (UTC)"
+                  value={challengeDateTimeFormatter.format(attempt.attemptedAt)}
+                />
+                <Fact label="Verification" value={attempt.verificationLabel} />
+                <Fact
+                  label="Qualifying evidence"
+                  value={attemptMetadataLabel(attempt.metadataJson)}
+                />
+              </dl>
+              <Button asChild variant="outline" className="mt-3 min-h-11">
+                <Link href={`/profile/${profile.username}`}>Open player profile</Link>
+              </Button>
+              {attempt.userId === data.viewerUserId && attempt.sourceId ? (
+                <Button asChild variant="outline" className="mt-3 min-h-11">
+                  <Link href={`/sessions/${attempt.sourceId}`}>
+                    Open latest qualifying source session
                   </Link>
                 </Button>
-              )
-            }
-          />
-          <section className="ios-grouped-list p-4">
-            <p className="text-sm font-semibold text-primary">Challenge</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-normal">{data.challenge.title}</h2>
-            <p className="mt-1 text-sm leading-5 text-muted-foreground">
-              {data.challenge.rulesSummary}
-            </p>
-          </section>
-          {query?.invite ? (
-            <IOSInlineStatus label="Invite sent" tone="positive" className="px-1" />
-          ) : null}
-          <MobileChallengeSections
-            data={data}
-            activeTab={activeTab}
-            viewerResult={viewerResult}
-            podium={podium}
-          />
-        </MobileAppShell>
-      ) : null}
-
-      {surface === "workbench" && DesktopWorkbenchLayout ? (
-        <DesktopWorkbenchLayout scope="challenge-detail">
-          <div className="flex items-center justify-between gap-3">
-            <Button asChild variant="ghost" className="px-0">
-              <Link href="/challenges" prefetch={false}>
-                <ArrowLeft className="size-4" />
-                Challenges
-              </Link>
-            </Button>
-            <Badge variant="outline">{data.challenge.templateName}</Badge>
-          </div>
-
-          <PageHeader
-            eyebrow={<StatusPill tone="amber">Challenge</StatusPill>}
-            title={data.challenge.title}
-            description={data.challenge.description ?? data.challenge.coachNote}
-            metrics={[
-              {
-                label: "Participants",
-                value: data.challenge.participantCount,
-                detail: "Joined entries",
-              },
-              {
-                label: "Visibility",
-                value: titleCase(data.challenge.visibility),
-                detail: "Private friend-safe scope",
-              },
-              {
-                label: "Your rank",
-                value: data.challenge.viewerRank ? `#${data.challenge.viewerRank}` : "--",
-                detail: "From imported shots",
-              },
-              {
-                label: "Scoring",
-                value: data.challenge.scoringDirection === "desc" ? "High wins" : "Low wins",
-                detail: "Automatic from imports",
-              },
-            ]}
-          />
-
-          {query?.invite ? (
-            <Badge variant="secondary" className="w-fit">
-              Invite sent
-            </Badge>
-          ) : null}
-
-          <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Challenge views">
-            <Anchor href="#board" label="Board" />
-            <Anchor href="#challenge-command" label="Command board" />
-            <Sheet>
-              <span id="rules" className="scroll-mt-28">
-                <SheetTrigger
-                  type="button"
-                  data-variant="outline"
-                  data-size="sm"
-                  className={buttonVariants({
-                    variant: "outline",
-                    size: "sm",
-                    className: "min-h-11 rounded-xl",
-                  })}
-                >
-                  <ShieldCheck className="size-4" />
-                  Rules
-                </SheetTrigger>
-              </span>
-              <SheetContent className="overflow-y-auto sm:max-w-lg">
-                <SheetHeader>
-                  <SheetTitle>Challenge rules</SheetTitle>
-                  <SheetDescription>{data.challenge.rulesSummary}</SheetDescription>
-                </SheetHeader>
-                <div className="grid gap-3 px-4 pb-4">
-                  {data.challenge.rulesBullets.map((rule) => (
-                    <div key={rule} className="rounded-lg border bg-card p-3 text-sm leading-5">
-                      {rule}
-                    </div>
-                  ))}
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline">Imported shots only</Badge>
-                    <Badge variant="outline">Active window only</Badge>
-                    <Badge variant="outline">Auto-scored board</Badge>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
-            <Anchor href="#challenge-attempts" label="Attempts" />
-            <Anchor href="#chat" label="Chat" />
-            {data.challenge.creatorUserId === data.viewerUserId ? (
-              <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0 rounded-xl">
-                <Link href={`/tournaments?fromChallenge=${data.challenge.id}`} prefetch={false}>
-                  Convert to tournament
-                </Link>
-              </Button>
-            ) : null}
-          </nav>
-
-          <section
-            id="board"
-            className="grid scroll-mt-28 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]"
-          >
-            <Card className="gap-0 py-0">
-              <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 p-5 pb-0">
-                <div>
-                  <StatusPill tone="green">Event board</StatusPill>
-                  <h2 className="mt-3 text-2xl font-semibold tracking-normal">Podium</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Imported shots inside the challenge window decide this board. Full rankings stay
-                    below for dense review.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="secondary" className="gap-1">
-                    <ShieldCheck className="size-3" />
-                    {verificationMode}
-                  </Badge>
-                  {data.challenge.endsAt ? (
-                    <Badge variant="outline" className="gap-1">
-                      <CalendarDays className="size-3" />
-                      Ends {formatDate(data.challenge.endsAt)}
-                    </Badge>
-                  ) : null}
-                </div>
-              </CardHeader>
-              <CardContent className="p-5 pt-0">
-                <div className="mt-4 grid gap-3 md:grid-cols-3">
-                  {podium.length === 0 ? (
-                    <p className="rounded-xl border border-dashed p-5 text-sm text-muted-foreground md:col-span-3">
-                      No qualifying imported shots yet. New imports during the active window will
-                      update this board automatically.
-                    </p>
-                  ) : (
-                    podium.map((row) => <PodiumCard key={row.result.id} row={row} />)
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="gap-0 py-0">
-              <CardHeader className="p-4 pb-0">
-                <CardTitle className="text-sm font-semibold">Your imported result</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                {viewerResult ? (
-                  <div className="mt-3 rounded-lg bg-muted/55 p-4">
-                    <Badge variant="secondary">Rank #{viewerResult.result.rank}</Badge>
-                    <p className="mt-3 text-2xl font-semibold tracking-normal">
-                      {viewerResult.result.scoreLabel}
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {viewerResult.verificationLabel}
-                    </p>
-                  </div>
+              ) : null}
+            </details>
+          ))
+      ) : (
+        <p className="rounded-xl border p-4">
+          No qualifying attempts yet. Review the rules and import eligible evidence.
+        </p>
+      )}
+    </section>
+  );
+  return (
+    <PageShell>
+      <PageHeader
+        title={c.title}
+        description={`${c.templateName} · ${c.status} · ${c.visibility} · ${c.scoringDirection === "asc" ? "Lower" : "Higher"} result wins`}
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/challenges">Back to Challenges</Link>
+          </Button>
+        }
+      />
+      <p className="text-sm">{c.description ?? c.rulesSummary}</p>
+      {personal}
+      <ChallengeDetailSections
+        active={active}
+        items={[
+          { id: "board", label: "Board", content: board },
+          {
+            id: "command",
+            label: "Command board",
+            content: (
+              <section className="grid gap-4">
+                <h2 className="text-lg font-semibold">Challenge command board</h2>
+                <p>
+                  {data.results.length} ranked players · {data.attempts.length} qualifying results ·{" "}
+                  {c.participantCount} joined players
+                </p>
+                <p className="text-sm">
+                  Your result above and the standings come from the same qualifying imports.
+                </p>
+                {c.creatorUserId === data.viewerUserId ? (
+                  <ChallengeInviteReview
+                    challengeId={c.id}
+                    title={c.title}
+                    visibility={c.visibility}
+                    friends={data.friendOptions}
+                    disabled={closed}
+                  />
                 ) : (
-                  <p className="mt-3 rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                    {data.challenge.viewerJoined
-                      ? "No qualifying imported shots yet. Import shots during the active window and the board will update automatically."
-                      : "Join the challenge to have your qualifying imports counted on this board."}
-                  </p>
+                  <p className="text-sm">Only the challenge creator can invite friends.</p>
                 )}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {!data.challenge.viewerJoined ? (
-                    <ChallengeJoinDialog
-                      challengeId={data.challenge.id}
-                      challengeTitle={data.challenge.title}
-                      size="default"
-                    />
-                  ) : null}
-                  <Button asChild variant="outline">
-                    <Link href="/import" prefetch={false}>
-                      Import data
-                    </Link>
-                  </Button>
-                  {data.challenge.viewerJoined &&
-                  data.challenge.creatorUserId !== data.viewerUserId ? (
-                    <ChallengeLeaveDialog
-                      challengeId={data.challenge.id}
-                      challengeTitle={data.challenge.title}
-                    />
-                  ) : null}
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          <ChallengeCommandTables data={data} verificationMode={verificationMode} />
-
-          <section className="grid gap-4 lg:grid-cols-[0.34fr_0.66fr]">
-            <div className="grid gap-4">
-              <DataPanel id="imported-shots">
-                <SectionHeader
-                  title="Imported shot status"
-                  description="Challenge results are calculated from qualifying imports only."
-                  action={<ShieldCheck className="size-5 text-primary" />}
-                />
-                <CardContent className="grid gap-3 text-sm">
-                  <p className="rounded-lg border bg-muted/55 p-3 text-muted-foreground">
-                    {data.challenge.rulesSummary}
-                  </p>
-                  {!data.challenge.viewerJoined ? (
-                    <form action={joinChallengeAction}>
-                      <input type="hidden" name="challengeId" value={data.challenge.id} />
-                      <Button type="submit" className="rounded-lg">
-                        <Plus className="size-4" />
-                        Join challenge
-                      </Button>
-                    </form>
-                  ) : (
-                    <Button asChild variant="outline" className="rounded-xl">
-                      <Link href="/import" prefetch={false}>
-                        Open import
-                      </Link>
-                    </Button>
-                  )}
-                </CardContent>
-              </DataPanel>
-
-              <DataPanel>
-                <SectionHeader
-                  title="Invite friends"
-                  description="Invite links keep friend challenges scoped without granting account access."
-                  action={<Users className="size-5 text-[var(--status-information-foreground)]" />}
-                />
-                <CardContent>
-                  {data.friendOptions.length > 0 ? (
-                    <form action={inviteFriendToChallengeAction} className="grid gap-3">
-                      <input type="hidden" name="challengeId" value={data.challenge.id} />
-                      <Select name="inviteeUserId" defaultValue={data.friendOptions[0]?.userId}>
-                        <SelectTrigger className="h-10 w-full" aria-label="Friend to invite">
-                          <SelectValue placeholder="Select a friend" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {data.friendOptions.map((friend) => (
-                            <SelectItem key={friend.userId} value={friend.userId}>
-                              {friend.displayName} (@{friend.username})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button type="submit" variant="outline">
-                        <Send className="size-4" />
-                        Invite
-                      </Button>
-                    </form>
-                  ) : (
-                    <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                      Add friends before sending challenge invites.
-                    </p>
-                  )}
-                </CardContent>
-              </DataPanel>
-            </div>
-
-            <div className="grid gap-4">
-              <section className="grid gap-4 md:grid-cols-2">
-                <Card id="chat" className="premium-card scroll-mt-28">
-                  <CardHeader>
-                    <CardTitle>Comments</CardTitle>
-                    <CardDescription>
-                      Keep challenge talk attached to the challenge.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid gap-3">
-                    {data.comments.map((comment) => (
-                      <div key={comment.id} className="rounded-lg border bg-card px-3 py-2 text-sm">
-                        <Link
-                          href={`/profile/${comment.profile.username}`}
-                          prefetch={false}
-                          className="font-medium hover:underline"
-                        >
-                          {comment.profile.displayName}
-                        </Link>
-                        <p className="text-muted-foreground">{comment.body}</p>
-                      </div>
-                    ))}
-                    <form action={addChallengeCommentAction} className="grid gap-2">
-                      <input type="hidden" name="challengeId" value={data.challenge.id} />
-                      <Input
-                        name="body"
-                        placeholder="Add a comment"
-                        className="h-9 rounded-xl bg-background"
-                      />
-                      <Button type="submit" variant="outline">
-                        <MessageCircle className="size-4" />
-                        Comment
-                      </Button>
-                    </form>
-                  </CardContent>
-                </Card>
+                <p className="text-sm">{c.coachNote}</p>
               </section>
-            </div>
-          </section>
-        </DesktopWorkbenchLayout>
-      ) : null}
+            ),
+          },
+          {
+            id: "rules",
+            label: "Rules",
+            content: (
+              <section className="grid gap-3 rounded-xl border bg-card p-4">
+                <h2 className="text-lg font-semibold">Challenge rules</h2>
+                <p>{c.rulesSummary}</p>
+                <ol className="list-decimal space-y-3 pl-5">
+                  {c.rulesBullets.map((rule, i) => (
+                    <li key={i}>{rule}</li>
+                  ))}
+                </ol>
+                <p>
+                  Visibility: {c.visibility}. {c.scoringDirection === "asc" ? "Lower" : "Higher"}{" "}
+                  qualifying result wins.
+                </p>
+              </section>
+            ),
+          },
+          { id: "attempts", label: "Attempts", content: attempts },
+          {
+            id: "chat",
+            label: `Chat (${data.comments.length})`,
+            content: (
+              <section className="grid gap-4">
+                <h2 className="text-lg font-semibold">Challenge comments</h2>
+                {data.comments.length ? (
+                  data.comments.map((comment) => (
+                    <article key={comment.id} className="rounded-xl border bg-card p-4">
+                      <Link
+                        className="font-semibold text-primary"
+                        href={`/profile/${comment.profile.username}`}
+                      >
+                        {comment.profile.displayName}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">
+                        {challengeDateTimeFormatter.format(comment.createdAt)} UTC
+                      </p>
+                      <p className="mt-2 whitespace-pre-wrap break-words">{comment.body}</p>
+                    </article>
+                  ))
+                ) : (
+                  <p>No comments yet.</p>
+                )}
+                <ChallengeCommentComposer challengeId={c.id} />
+              </section>
+            ),
+          },
+        ]}
+      />
     </PageShell>
   );
 }
-
-function MobileChallengeSections({
-  data,
-  activeTab,
-  viewerResult,
-  podium,
-}: {
-  data: ChallengeDetail;
-  activeTab: "board" | "rules" | "shots" | "chat";
-  viewerResult: ChallengeResultRow | undefined;
-  podium: ChallengeResultRow[];
-}) {
-  const baseHref = `/challenges/${data.challenge.id}`;
-
+function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <MobilePageTabs
-      initialValue={activeTab}
-      ariaLabel="Challenge sections"
-      tabs={[
-        {
-          value: "board",
-          label: "Board",
-          href: baseHref,
-          content: (
-            <NativeListSection
-              title="Leaderboard"
-              description={
-                viewerResult
-                  ? `You are #${viewerResult.result.rank} · ${viewerResult.result.scoreLabel}`
-                  : "No qualifying imported shots yet"
-              }
-            >
-              <IOSGroupedList label="Challenge podium">
-                {podium.length > 0 ? (
-                  podium.map((row) => (
-                    <IOSListRow
-                      key={row.result.userId}
-                      label={`${row.result.rank}. ${row.profile.displayName}`}
-                      value={row.result.scoreLabel}
-                      detail={row.verificationLabel}
-                      href={`/profile/${row.profile.username}`}
-                    />
-                  ))
-                ) : (
-                  <IOSListRow
-                    label="No leaderboard result yet"
-                    detail="Qualifying imported shots will populate this board automatically."
-                  />
-                )}
-              </IOSGroupedList>
-              {data.results.length > 3 ? (
-                <IOSDisclosureGroup
-                  label="Full challenge leaderboard"
-                  items={[
-                    {
-                      value: "full-board",
-                      title: "Full leaderboard",
-                      summary: `${data.results.length}`,
-                      description: "Every qualifying result",
-                      content: (
-                        <IOSGroupedList label="All challenge leaderboard results">
-                          {data.results.map((row) => (
-                            <IOSListRow
-                              key={row.result.userId}
-                              label={`${row.result.rank}. ${row.profile.displayName}`}
-                              value={row.result.scoreLabel}
-                              detail={row.verificationLabel}
-                              href={`/profile/${row.profile.username}`}
-                            />
-                          ))}
-                        </IOSGroupedList>
-                      ),
-                    },
-                  ]}
-                />
-              ) : null}
-              <ChallengeInviteSheet data={data} />
-            </NativeListSection>
-          ),
-        },
-        {
-          value: "rules",
-          label: "Rules",
-          href: `${baseHref}?tab=rules`,
-          content: (
-            <NativeListSection title="Rules" description={data.challenge.rulesSummary}>
-              <IOSGroupedList label="Challenge rules">
-                {data.challenge.rulesBullets.map((rule) => (
-                  <IOSListRow
-                    key={rule}
-                    label={rule}
-                    leading={<ShieldCheck className="size-5 shrink-0 text-primary" aria-hidden />}
-                  />
-                ))}
-              </IOSGroupedList>
-            </NativeListSection>
-          ),
-        },
-        {
-          value: "shots",
-          label: "Attempts",
-          href: `${baseHref}?tab=shots`,
-          content: (
-            <NativeListSection
-              title="Attempt timeline"
-              description="Every qualifying imported attempt, in the order it reached the challenge."
-            >
-              <StatusTimeline
-                label="Challenge attempt timeline"
-                items={data.attempts.map((row) => challengeAttemptTimelineItem(row))}
-                empty={
-                  <p className="text-sm text-muted-foreground">
-                    No qualifying attempts yet. Import shots during the active window to start the
-                    timeline.
-                  </p>
-                }
-              />
-            </NativeListSection>
-          ),
-        },
-        {
-          value: "chat",
-          label: "Chat",
-          href: `${baseHref}?tab=chat`,
-          content: (
-            <NativeListSection title="Chat">
-              <IOSGroupedList label="Challenge comments">
-                {data.comments.length > 0 ? (
-                  data.comments.map((comment) => (
-                    <IOSListRow
-                      key={comment.id}
-                      label={comment.profile.displayName}
-                      detail={comment.body}
-                      href={`/profile/${comment.profile.username}`}
-                    />
-                  ))
-                ) : (
-                  <IOSListRow
-                    label="No comments yet"
-                    detail="Start the challenge conversation below."
-                  />
-                )}
-              </IOSGroupedList>
-              <form action={addChallengeCommentAction} className="grid gap-2">
-                <input type="hidden" name="challengeId" value={data.challenge.id} />
-                <Input
-                  name="body"
-                  placeholder="Add a comment"
-                  className="h-11 rounded-xl bg-card text-base"
-                />
-                <Button type="submit" variant="outline" className="min-h-11 rounded-xl">
-                  Comment
-                </Button>
-              </form>
-            </NativeListSection>
-          ),
-        },
-      ]}
-    />
-  );
-}
-
-type PodiumRow = NonNullable<Awaited<ReturnType<typeof getChallengeDetailData>>>["results"][number];
-
-function ChallengeInviteSheet({ data }: { data: ChallengeDetail }) {
-  return (
-    <BottomSheet
-      label={
-        <>
-          <Send className="size-4" aria-hidden />
-          Invite a friend
-        </>
-      }
-      title="Invite to this challenge"
-      triggerClassName="min-h-11 w-full rounded-xl border border-border bg-card text-foreground"
-    >
-      {data.friendOptions.length > 0 ? (
-        <form
-          action={inviteFriendToChallengeAction}
-          className="grid gap-4 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
-        >
-          <input type="hidden" name="challengeId" value={data.challenge.id} />
-          <label className="grid gap-1.5 text-sm font-semibold">
-            Friend
-            <Select name="inviteeUserId" defaultValue={data.friendOptions[0]?.userId}>
-              <SelectTrigger className="min-h-11 w-full" aria-label="Friend to invite">
-                <SelectValue placeholder="Select a friend" />
-              </SelectTrigger>
-              <SelectContent>
-                {data.friendOptions.map((friend) => (
-                  <SelectItem key={friend.userId} value={friend.userId}>
-                    {friend.displayName} (@{friend.username})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </label>
-          <Button type="submit" className="min-h-11 rounded-xl">
-            <Send className="size-4" aria-hidden />
-            Send invitation
-          </Button>
-        </form>
-      ) : (
-        <div className="grid gap-3 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-          <p className="text-sm leading-6 text-muted-foreground">
-            Add friends before sending a private challenge invitation.
-          </p>
-          <Button asChild variant="outline" className="min-h-11 rounded-xl">
-            <Link href="/friends" prefetch={false}>
-              Open Friends
-            </Link>
-          </Button>
-        </div>
-      )}
-    </BottomSheet>
-  );
-}
-
-function ChallengeCommandTables({
-  data,
-  verificationMode,
-}: {
-  data: ChallengeDetail;
-  verificationMode: string;
-}) {
-  return (
-    <section id="challenge-command" className="grid scroll-mt-28 gap-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-xl font-semibold tracking-normal">Challenge command board</h2>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            The leaderboard and chronological attempt trail come from the same qualifying imports
-            that decide the podium.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <StatusPill tone={data.results.length > 0 ? "green" : "slate"}>
-            {data.results.length} ranked
-          </StatusPill>
-          <StatusPill tone={data.attempts.length > 0 ? "amber" : "slate"}>
-            {data.attempts.length} attempts
-          </StatusPill>
-        </div>
-      </div>
-
-      <ChallengeLeaderboardTable data={data} verificationMode={verificationMode} />
-      <section
-        id="challenge-attempts"
-        className="scroll-mt-28 rounded-xl border bg-card p-4"
-        data-challenge-attempt-timeline
-      >
-        <div className="mb-4">
-          <p className="font-semibold">Attempt history</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Recent qualifying imports in chronological context.
-          </p>
-        </div>
-        <StatusTimeline
-          label="Challenge attempt history"
-          items={data.attempts.map((row) => challengeAttemptTimelineItem(row))}
-          empty={
-            <p className="text-sm text-muted-foreground">
-              No qualifying attempts have arrived yet.
-            </p>
-          }
-        />
-      </section>
-    </section>
+    <div>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="break-words">{value}</dd>
+    </div>
   );
 }
 
@@ -803,7 +372,13 @@ async function ChallengeLeaderboardTable({
           </TableHeader>
           <TableBody>
             {data.results.length > 0 ? (
-              data.results.map((row) => <ChallengeLeaderboardRow key={row.result.id} row={row} />)
+              data.results.map((row) => (
+                <ChallengeLeaderboardRow
+                  key={row.result.id}
+                  row={row}
+                  own={row.result.userId === data.viewerUserId}
+                />
+              ))
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
@@ -818,9 +393,12 @@ async function ChallengeLeaderboardTable({
   );
 }
 
-function ChallengeLeaderboardRow({ row }: { row: ChallengeResultRow }) {
+function ChallengeLeaderboardRow({ row, own }: { row: ChallengeResultRow; own: boolean }) {
   return (
-    <TableRow tabIndex={0} className="focus-aaa outline-none">
+    <TableRow
+      tabIndex={0}
+      className={own ? "focus-aaa bg-primary/5 outline-none" : "focus-aaa outline-none"}
+    >
       <TableCell
         data-column="rank"
         className="sticky left-0 z-10 min-w-24 bg-card shadow-[1px_0_0_color-mix(in_srgb,var(--border)_72%,transparent)]"
@@ -836,6 +414,7 @@ function ChallengeLeaderboardRow({ row }: { row: ChallengeResultRow }) {
           className="font-semibold text-primary hover:underline"
         >
           {row.profile.displayName}
+          {own ? " · You" : ""}
         </Link>
         <p className="mt-1 text-xs text-muted-foreground">@{row.profile.username}</p>
       </TableCell>
@@ -847,7 +426,7 @@ function ChallengeLeaderboardRow({ row }: { row: ChallengeResultRow }) {
         {challengeDateTimeFormatter.format(row.result.calculatedAt)}
       </TableCell>
       <TableCell data-column="action" className="text-right">
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="outline" size="sm" className="min-h-11">
           <Link href={`/profile/${row.profile.username}`} prefetch={false}>
             Open profile
           </Link>
@@ -855,78 +434,6 @@ function ChallengeLeaderboardRow({ row }: { row: ChallengeResultRow }) {
       </TableCell>
     </TableRow>
   );
-}
-
-function PodiumCard({ row }: { row: PodiumRow }) {
-  const rank = row.result.rank ?? 0;
-
-  return (
-    <article
-      className={
-        rank === 1
-          ? "rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] p-4"
-          : "rounded-lg border bg-muted/55 p-4"
-      }
-    >
-      <Badge variant={rank === 1 ? "default" : "outline"}>#{rank || "--"}</Badge>
-      <Link
-        href={`/profile/${row.profile.username}`}
-        prefetch={false}
-        className="mt-3 block text-lg font-semibold tracking-normal hover:underline"
-      >
-        {row.profile.displayName}
-      </Link>
-      <p className="mt-1 text-2xl font-semibold tracking-normal">{row.result.scoreLabel}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{row.verificationLabel}</p>
-    </article>
-  );
-}
-
-function boardVerificationMode(labels: string[]) {
-  if (labels.length === 0) {
-    return "Awaiting imports";
-  }
-
-  return "Import-scored board";
-}
-
-const challengeDateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(value);
-}
-
-function titleCase(value: string) {
-  return value
-    .split(/[-_]/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function challengeLeaderboardSuggestedViews(challengeId: string): DesktopSavedViewSuggestion[] {
-  return [
-    {
-      title: "Leaderboard",
-      href: `/challenges/${challengeId}#challenge-command`,
-      detail: "Full ranking, score and verification evidence.",
-    },
-    {
-      title: "Attempt timeline",
-      href: `/challenges/${challengeId}#challenge-attempts`,
-      detail: "Qualifying evidence in chronological order.",
-    },
-    {
-      title: "Challenge centre",
-      href: "/challenges",
-      detail: "Active, invited and recommended challenge boards.",
-    },
-  ];
 }
 
 function scoreDisplay(value: number) {
@@ -964,35 +471,4 @@ function attemptMetadataLabel(metadata: Record<string, unknown>) {
   }
 
   return "Imported shots";
-}
-
-function challengeAttemptTimelineItem(row: ChallengeDetail["attempts"][number]) {
-  return {
-    id: row.attempt.id,
-    timestamp: challengeDateTimeFormatter.format(row.attempt.attemptedAt),
-    title: `${row.profile.displayName} · ${attemptScoreLabel(row.attempt)}`,
-    description: `${titleCase(row.attempt.sourceType)} · ${attemptMetadataLabel(row.attempt.metadataJson)}`,
-    status: row.attempt.verificationLabel,
-    kind: "import" as const,
-    href: `/profile/${row.profile.username}`,
-  };
-}
-
-function Anchor({ href, label }: { href: string; label: string }) {
-  return (
-    <a
-      href={href}
-      className="inline-flex min-h-11 shrink-0 items-center rounded-xl border bg-card px-3 text-sm font-semibold"
-    >
-      {label}
-    </a>
-  );
-}
-
-function parseChallengeDetailTab(value?: string) {
-  if (value === "rules" || value === "shots" || value === "chat") {
-    return value;
-  }
-
-  return "board";
 }

@@ -1,4 +1,5 @@
 "use client";
+import { useClientReady } from "@/hooks/use-client-ready";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ChevronDown, FileUp } from "lucide-react";
@@ -59,14 +60,22 @@ const clubOptions = [
 ] as const;
 
 type SaveProgress = "idle" | "checking" | "saving" | "building" | "queued" | "error";
+// A stable identity prevents useImportFiles from reparsing after every UI state update.
+const AUTOMATIC_COLUMN_MAPPING = {};
 
 export function CompanionRangeImport({ practicePlanId }: { practicePlanId: string | null }) {
+  const ready = useClientReady();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [distanceUnit, setDistanceUnit] = useState<"yards" | "meters">("yards");
-  const { parsedFiles, readProgress, readSelectedFiles, clearFiles } = useImportFiles(
-    distanceUnit,
-    {},
-  );
+  const {
+    parsedFiles,
+    readProgress,
+    readSelectedFiles,
+    clearFiles,
+    fileErrors,
+    parseError,
+    isParsing,
+  } = useImportFiles(distanceUnit, AUTOMATIC_COLUMN_MAPPING);
   const [duplicate, setDuplicate] = useState<{
     checked: boolean;
     duplicate: boolean;
@@ -214,6 +223,23 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
     });
   }
 
+  const readErrors =
+    fileErrors.length || parseError ? (
+      <Alert variant="destructive">
+        <AlertTitle>Review this file</AlertTitle>
+        <AlertDescription>
+          {fileErrors.map((error) => (
+            <p key={error.id} className="break-words">
+              {error.file.name}: {error.message}
+            </p>
+          ))}
+          {parseError ? <p>{parseError}</p> : null}
+          <p className="mt-2">
+            Choose the file again to retry. Use the full workflow to review several files.
+          </p>
+        </AlertDescription>
+      </Alert>
+    ) : null;
   if (!file) {
     return (
       <Card data-companion-csv-import>
@@ -229,10 +255,12 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
           </div>
         </CardHeader>
         <CardContent className="grid gap-4">
+          {readErrors}
           <Input
             ref={fileInputRef}
             id="companion-csv-file"
             type="file"
+            disabled={!ready}
             className="sr-only"
             accept=".csv,text/csv,application/csv,application/vnd.ms-excel,text/plain"
             onChange={(event) => {
@@ -244,6 +272,7 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
             type="button"
             className="min-h-12 rounded-xl text-base"
             onClick={() => fileInputRef.current?.click()}
+            disabled={!ready}
           >
             <FileUp className="size-5" aria-hidden />
             Choose CSV from Files
@@ -261,8 +290,15 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
             />
           ) : null}
           {message ? (
-            <Alert variant="destructive">
-              <AlertTitle>This file cannot be imported</AlertTitle>
+            <Alert
+              variant={progress === "queued" ? "default" : "destructive"}
+              role={progress === "queued" ? "status" : "alert"}
+            >
+              <AlertTitle>
+                {progress === "queued"
+                  ? "Upload queued on this device"
+                  : "This file cannot be imported"}
+              </AlertTitle>
               <AlertDescription>{message}</AlertDescription>
             </Alert>
           ) : null}
@@ -289,6 +325,7 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
 
   return (
     <div className="grid gap-4" data-companion-csv-confirmation>
+      {readErrors}
       <OperationStepper steps={workflowSteps} label="CSV import progress" compact />
       <Card data-import-preview-card>
         <CardHeader>
@@ -296,7 +333,7 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
               Ready to save
             </p>
-            <CardTitle className="mt-1 truncate text-xl">{file.fileName}</CardTitle>
+            <CardTitle className="mt-1 break-words text-xl">{file.fileName}</CardTitle>
           </div>
           <CardAction>
             <Badge variant={unknownGroups.length === 0 ? "default" : "outline"}>
@@ -464,7 +501,14 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
               type="button"
               className="min-h-12 flex-1 rounded-xl text-base"
               onClick={save}
-              disabled={!mappingsComplete || pending || !duplicate.checked}
+              disabled={
+                !mappingsComplete ||
+                pending ||
+                !duplicate.checked ||
+                isParsing ||
+                Boolean(readProgress) ||
+                Boolean(parseError)
+              }
             >
               {duplicate.duplicate ? "Open saved review" : "Save and build review"}
             </Button>

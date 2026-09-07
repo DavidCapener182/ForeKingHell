@@ -4,6 +4,12 @@ import type { PracticePlannerContext } from "@/lib/practice-planner";
 import type { TodayPracticeData, TodayPracticeShot } from "@/lib/today-session-data";
 import { buildMobileTodayReview, practiceDateKey } from "@/lib/mobile-today-review";
 
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useSearchParams: () => new URLSearchParams(),
+}));
+vi.mock("@/lib/today-shot-detail-data", () => ({ getTodayShotDetailRows: async () => [] }));
+
 // The shared async evidence panel has its own metric and rendering tests.
 vi.mock("@/components/analysis/driver-development-panel", () => ({
   DriverDevelopmentPanel: () => <div>Driver development evidence</div>,
@@ -18,7 +24,10 @@ vi.mock("@/lib/today-activity-data", () => ({ getTodayActivity: async () => [] }
 vi.mock("@/db/client", () => ({
   getDb: () => ({
     select: () => ({
-      from: () => ({ where: () => ({ orderBy: () => ({ limit: async () => [] }) }) }),
+      from: () => ({
+        where: () =>
+          Object.assign(Promise.resolve([]), { orderBy: () => ({ limit: async () => [] }) }),
+      }),
     }),
   }),
 }));

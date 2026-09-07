@@ -33,7 +33,7 @@ describe("authenticated app state motion hooks", () => {
       "setBadgeCount(nextCount)",
     );
     expect(readSource("src/components/app/workbench/notification-centre.tsx")).toContain(
-      "setBadgeCount(nextUnreadCount)",
+      'data-open={unreadCount > 0 ? "true" : "false"}',
     );
   });
 
@@ -98,10 +98,12 @@ describe("authenticated app state motion hooks", () => {
   });
 
   it("keeps changing counts accessible while animating only a decorative copy", () => {
-    for (const path of [
-      "src/app/sessions/sessions-companion-list.tsx",
-      "src/app/admin/admin-bulk-action-submit.tsx",
-    ]) {
+    const sessions = readSource("src/app/sessions/sessions-companion-list.tsx");
+    const toolbar = readSource("src/app/sessions/history-toolbar.tsx");
+    expect(sessions).toContain("count={visible.length}");
+    expect(toolbar).toContain('role="status"');
+    expect(toolbar).toContain("{count} of {sessions.length} loaded sessions");
+    for (const path of ["src/app/admin/admin-bulk-action-submit.tsx"]) {
       const source = readSource(path);
 
       expect(source).toContain("t-number-pop tabular-nums");

@@ -36,16 +36,25 @@ export function ScorecardExtractionPanel({
     <div className="apple-panel space-y-4 p-4">
       <div className="flex items-start gap-3">
         <MapPinned className="mt-0.5 size-4 shrink-0 text-primary" />
-        <div className="flex-1 space-y-3">
+        <div className="min-w-0 flex-1 space-y-3">
           <div className="space-y-1">
-            <p className="text-sm font-medium">Course scorecard</p>
+            <h3 className="text-sm font-semibold">Course scorecard</h3>
+            <p className="text-xs font-medium text-primary">
+              Estimated mapping · confirm extracted values before saving
+            </p>
             <p className="text-sm leading-6 text-muted-foreground">
               The CSV does not include hole labels, so the app uses the scorecard, shot order, and
               review rows below to map shots to holes. Enter a hole score and anything above CSV
               shots plus penalties is treated as putts.
             </p>
           </div>
-          <Button type="button" variant="outline" size="sm" onClick={onApplySawgrassPreset}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-11 whitespace-normal"
+            onClick={onApplySawgrassPreset}
+          >
             Use sample TPC Sawgrass scorecard
           </Button>
           <input
@@ -70,6 +79,7 @@ export function ScorecardExtractionPanel({
               type="button"
               variant="secondary"
               size="sm"
+              className="min-h-11 whitespace-normal"
               disabled={scorecardExtractState.status === "loading"}
               onClick={() => scorecardImageInputRef.current?.click()}
             >

@@ -11,7 +11,12 @@ describe("shared report access feedback", () => {
   it("uses shadcn Input, Button and Alert for the password gate", () => {
     expect(source).toContain("<Input");
     expect(source).toContain("<Button");
-    expect(source).toContain('<Alert variant="destructive">');
+    expect(source).toMatch(
+      /<Alert\b[^>]*variant="destructive"[^>]*id="shared-report-password-error"/,
+    );
+    expect(source).toContain(
+      'aria-describedby={error ? "shared-report-password-error" : undefined}',
+    );
     expect(source).toContain("<AlertDescription");
     expect(source).not.toContain('<p role="alert"');
   });

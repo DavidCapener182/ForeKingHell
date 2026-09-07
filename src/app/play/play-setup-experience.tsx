@@ -4,6 +4,7 @@ import {
   PlaySelectionControls,
   type PlaySelectionControlsProps,
 } from "@/app/play/play-selection-controls";
+import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerContent,
@@ -30,7 +31,20 @@ export function PlaySetupExperience({
           </DrawerDescription>
         </DrawerHeader>
         <div className="min-h-0 overflow-y-auto px-4 pb-4">
-          <PlaySelectionControls {...selection} />
+          <PlaySelectionControls
+            key={`${selection.selectedCourseId}:${selection.selectedTeeId}`}
+            {...selection}
+            showSearch
+            stageChanges
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 min-h-11 w-full"
+            onClick={() => onOpenChange(false)}
+          >
+            Done / cancel unsaved setup
+          </Button>
         </div>
       </DrawerContent>
     </Drawer>

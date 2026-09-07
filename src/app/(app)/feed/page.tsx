@@ -6,7 +6,6 @@ import { FeedFilterControls } from "@/app/feed/feed-filter-controls";
 import { buildFeedActivityCsvHref, feedActivityExportFileName } from "@/app/feed/feed-csv-export";
 import { StatusUpdateComposerSheet } from "@/app/feed/status-update-composer";
 import { AppEmptyState } from "@/components/app/app-empty-state";
-import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import { FeedCardList } from "@/components/social/feed-card-list";
 import { SocialAvatar } from "@/components/social/social-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +21,9 @@ export const dynamic = "force-dynamic";
 type FeedPageProps = {
   searchParams?: Promise<{
     filter?: string;
+    q?: string;
+    from?: string;
+    to?: string;
   }>;
 };
 
@@ -31,18 +33,29 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
   const params = await searchParams;
   const activeFilter = parseFeedFilter(params?.filter);
   const data = await getFeedPageData();
-  const filteredItems = filterFeedItems(data.items, activeFilter, {
+  const scopedItems = filterFeedItems(data.items, activeFilter, {
     viewerUserId: data.viewerUserId,
     friendIds: data.friendIds,
     followingIds: data.followingIds,
   });
+  const query = params?.q?.trim() ?? "";
+  const from = validDate(params?.from);
+  const to = validDate(params?.to);
+  const filteredItems = scopedItems.filter(
+    (item) =>
+      `${item.profile.displayName} ${item.profile.username} ${item.headline} ${item.context ?? ""} ${item.metricLabel ?? ""} ${item.metricValue ?? ""}`
+        .toLowerCase()
+        .includes(query.toLowerCase()) &&
+      (!from || item.createdAt.toISOString().slice(0, 10) >= from) &&
+      (!to || item.createdAt.toISOString().slice(0, 10) <= to),
+  );
   const exportHref = buildFeedActivityCsvHref(filteredItems);
 
   return (
     <PageShell className="bg-muted/20">
-      <DesktopWorkbenchLayout scope="feed">
+      <div className="grid min-w-0 gap-4 pb-28" data-feed-workspace>
         <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_264px] lg:items-start">
-          <main className="grid min-w-0 gap-3" data-feed-timeline-first>
+          <div className="grid min-w-0 gap-3" data-feed-timeline-first>
             <PageHeader
               eyebrow={<Badge variant="secondary">Golf activity network</Badge>}
               title="Clubhouse"
@@ -60,7 +73,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                 />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold">Add to the clubhouse</p>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="break-words text-xs text-muted-foreground">
                     Share a result, golf thought or quick update.
                   </p>
                 </div>
@@ -101,7 +114,9 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                   <h2 id="clubhouse-stream-title" className="text-lg font-semibold">
                     Latest activity
                   </h2>
-                  <p className="text-xs text-muted-foreground">Newest first · no suggested posts</p>
+                  <p className="text-xs text-muted-foreground">
+                    Newest first · up to 40 loaded visible activities
+                  </p>
                 </div>
                 <Badge variant="outline">
                   {filteredItems.length} {filteredItems.length === 1 ? "activity" : "activities"}
@@ -109,9 +124,10 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
               </div>
 
               <FeedFilterControls
-                activeFilter={
-                  activeFilter === "all" || activeFilter === "me" ? "following" : activeFilter
-                }
+                activeFilter={activeFilter}
+                query={query}
+                from={from}
+                to={to}
                 filters={feedFilters}
                 exportHref={exportHref}
                 exportFileName={feedActivityExportFileName(activeFilter)}
@@ -119,7 +135,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
               />
               <FeedCardList items={filteredItems} />
             </section>
-          </main>
+          </div>
 
           <aside aria-label="Clubhouse network shortcuts" className="lg:sticky lg:top-28">
             <Card className="gap-0 py-0 shadow-sm" data-feed-utility-rail>
@@ -136,11 +152,11 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
                     <Link
                       href="/profile"
                       prefetch={false}
-                      className="truncate text-sm font-semibold hover:underline"
+                      className="break-words text-sm font-semibold hover:underline"
                     >
                       {data.profile.displayName}
                     </Link>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="break-words text-xs text-muted-foreground">
                       @{data.profile.username}
                     </p>
                   </div>
@@ -199,13 +215,15 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             </Card>
           </aside>
         </section>
-      </DesktopWorkbenchLayout>
+      </div>
     </PageShell>
   );
 }
 
-const feedFilters: Array<{ key: Exclude<FeedFilter, "me" | "all">; label: string }> = [
+const feedFilters: Array<{ key: FeedFilter; label: string }> = [
   { key: "following", label: "Following" },
+  { key: "me", label: "My activity" },
+  { key: "all", label: "All visible" },
   { key: "friends", label: "Friends" },
   { key: "groups", label: "Groups" },
   { key: "achievements", label: "Achievements" },
@@ -214,8 +232,10 @@ const feedFilters: Array<{ key: Exclude<FeedFilter, "me" | "all">; label: string
 function NetworkStat({ value, label }: { value: number; label: string }) {
   return (
     <div className="min-w-0 px-1">
-      <p className="truncate text-sm font-semibold tabular-nums">{numberFormatter.format(value)}</p>
-      <p className="truncate text-[0.65rem] text-muted-foreground">{label}</p>
+      <p className="break-words text-sm font-semibold tabular-nums">
+        {numberFormatter.format(value)}
+      </p>
+      <p className="break-words text-[0.65rem] text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -267,3 +287,9 @@ function filterFeedItems(
 }
 
 const numberFormatter = new Intl.NumberFormat("en-GB");
+
+function validDate(value?: string) {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value))
+    ? value
+    : "";
+}

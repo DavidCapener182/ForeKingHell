@@ -22,9 +22,15 @@ describe("user isolation source guards", () => {
     ]);
 
     expectAll(source("src/app/(app)/bag/longest/page.tsx"), [
+      'import { getLongestShots } from "@/lib/longest-shot-data";',
+      'getLongestShots("total")',
+      'getLongestShots("carry")',
+    ]);
+    expectAll(source("src/lib/longest-shot-data.ts"), [
       "const userId = await requireCurrentUserId();",
       "eq(clubs.userId, userId)",
       "eq(shots.userId, userId)",
+      "eq(sessions.userId, userId)",
     ]);
 
     expectAll(source("src/app/(app)/bag/[clubId]/page.tsx"), [

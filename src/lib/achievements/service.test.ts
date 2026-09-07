@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { shouldPersistProgressCandidate } from "./service";
+import { achievementSessionFallback, shouldPersistProgressCandidate } from "./service";
 import { ACHIEVEMENT_REGISTRY_VERSION } from "./registry";
 
 function progressCandidate(achievementId: string) {
@@ -20,5 +20,17 @@ describe("achievement progress persistence", () => {
 
   it("forces existing achievement progress to resynchronise", () => {
     expect(ACHIEVEMENT_REGISTRY_VERSION).toBe("2026-08-13-club-metric-progress-v1");
+  });
+});
+
+describe("achievement source provenance", () => {
+  it.each(["manual", "course_twin_live", "unknown", "", "rapsodo_cloud"])(
+    "does not invent a provider for %s",
+    (source) => {
+      expect(achievementSessionFallback(source)).toBe("Source session");
+    },
+  );
+  it("names the recorded Rapsodo source", () => {
+    expect(achievementSessionFallback("rapsodo")).toBe("Rapsodo session");
   });
 });

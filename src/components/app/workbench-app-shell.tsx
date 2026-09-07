@@ -16,6 +16,7 @@ import {
   Zap,
 } from "lucide-react";
 
+import { NavigationSection } from "@/components/untitled-ui/navigation-section";
 import { BrandMark } from "@/components/brand-mark";
 import { AppSurfaceLink } from "@/components/app/app-surface-link";
 import { AppCommandTrigger } from "@/components/app/app-command-trigger";
@@ -42,7 +43,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuBadge,
@@ -278,51 +278,54 @@ export function WorkbenchAppShell({
             </SidebarMenu>
             {desktopNavGroups.map((group) => (
               <SidebarGroup key={group.label} className={cn(isCompactSidebar && "p-1")}>
-                <SidebarGroupLabel className={cn(isCompactSidebar && "h-6 px-1.5 text-[11px]")}>
-                  {group.label}
-                </SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {group.items.map((item) => {
-                      const Icon = item.icon;
-                      const active = item.isActive(pathname);
+                <NavigationSection
+                  label={group.label}
+                  iconMode={sidebarDensity === "icon"}
+                  activeLabel={group.items.find((item) => item.isActive(pathname))?.label}
+                >
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {group.items.map((item) => {
+                        const Icon = item.icon;
+                        const active = item.isActive(pathname);
 
-                      return (
-                        <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton
-                            asChild
-                            isActive={active}
-                            tooltip={item.label}
-                            className={cn(
-                              isCompactSidebar && "h-7 gap-1.5 px-1.5 text-xs",
-                              active &&
-                                "bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary shadow-[inset_0_0_0_1px_rgba(7,95,54,0.08)]",
-                            )}
-                          >
-                            <Link
-                              href={item.href}
-                              prefetch={false}
-                              aria-current={active ? "page" : undefined}
+                        return (
+                          <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton
+                              asChild
+                              isActive={active}
+                              tooltip={item.label}
+                              className={cn(
+                                isCompactSidebar && "h-7 gap-1.5 px-1.5 text-xs",
+                                active &&
+                                  "bg-primary/10 font-medium text-primary hover:bg-primary/10 hover:text-primary shadow-[inset_0_0_0_1px_rgba(7,95,54,0.08)]",
+                              )}
                             >
-                              <Icon className="size-4" aria-hidden />
-                              <span>{item.label}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                          {item.badge ? (
-                            <SidebarMenuBadge>
-                              <Badge
-                                variant={item.badge === "Admin" ? "default" : "secondary"}
-                                className="h-5 px-1.5 text-[10px]"
+                              <Link
+                                href={item.href}
+                                prefetch={false}
+                                aria-current={active ? "page" : undefined}
                               >
-                                {item.badge}
-                              </Badge>
-                            </SidebarMenuBadge>
-                          ) : null}
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
+                                <Icon className="size-4" aria-hidden />
+                                <span>{item.label}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                            {item.badge ? (
+                              <SidebarMenuBadge>
+                                <Badge
+                                  variant={item.badge === "Admin" ? "default" : "secondary"}
+                                  className="h-5 px-1.5 text-[10px]"
+                                >
+                                  {item.badge}
+                                </Badge>
+                              </SidebarMenuBadge>
+                            ) : null}
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </NavigationSection>
               </SidebarGroup>
             ))}
           </SidebarContent>
@@ -372,7 +375,13 @@ export function WorkbenchAppShell({
         )}
       >
         {isMobileImmersive || surface !== "companion" ? null : (
-          <MobileNav pathname={pathname} totalXp={totalXp} level={level.level} profile={profile} />
+          <MobileNav
+            pathname={pathname}
+            totalXp={totalXp}
+            level={level.level}
+            profile={profile}
+            isAdmin={isAdmin}
+          />
         )}
         {surface === "workbench" ? (
           <DesktopWorkbenchChrome
@@ -393,6 +402,7 @@ export function WorkbenchAppShell({
         {surface === "workbench" && !isMobileImmersive ? (
           <AppSurfaceLink
             href="/surface/companion?next=%2Ftoday"
+            preserveLocation
             data-phone-companion-return
             className="mx-4 mt-3 hidden min-h-12 shrink-0 items-center justify-center gap-2 rounded-2xl border border-white/15 bg-[#071a11] px-4 text-sm font-semibold text-white shadow-lg max-md:inline-flex"
           >
@@ -687,7 +697,7 @@ function ProfileDropdown({
       <DropdownMenuContent side={isTopbar ? "bottom" : "right"} align="end" className="w-64">
         <DropdownMenuLabel>
           <div className="grid gap-1">
-            <span className="truncate text-sm text-foreground">{profileLabel}</span>
+            <span className="break-words text-sm text-foreground">{profileLabel}</span>
             <span>{xpFormatter.format(xpToNextLevel)} XP to next level</span>
           </div>
         </DropdownMenuLabel>
@@ -714,7 +724,7 @@ function ProfileDropdown({
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <AppSurfaceLink href="/surface/companion?next=%2Ftoday">
+          <AppSurfaceLink href="/surface/companion?next=%2Ftoday" preserveLocation>
             <PanelLeftIcon className="size-4" />
             Open companion app
           </AppSurfaceLink>

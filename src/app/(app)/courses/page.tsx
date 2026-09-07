@@ -30,6 +30,7 @@ type CourseSearchParams = Promise<{
   q?: string | string[];
   tab?: string | string[];
   view?: string | string[];
+  location?: string | string[];
 }>;
 
 export default async function CoursesPage({ searchParams }: { searchParams: CourseSearchParams }) {
@@ -38,6 +39,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Cour
   return (
     <Suspense fallback={<CoursesLoading />}>
       <CoursesPageContent
+        initialLocation={first(params.location) || "all"}
         initialQuery={first(params.q).slice(0, 80)}
         initialFilter={first(params.tab)}
         initialView={first(params.view) === "table" ? "table" : "grid"}
@@ -48,10 +50,12 @@ export default async function CoursesPage({ searchParams }: { searchParams: Cour
 
 async function CoursesPageContent({
   initialFilter,
+  initialLocation,
   initialQuery,
   initialView,
 }: {
   initialFilter: string;
+  initialLocation: string;
   initialQuery: string;
   initialView: "grid" | "table";
 }) {
@@ -68,11 +72,11 @@ async function CoursesPageContent({
             Find your next course
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-            Browse the courses you play, prepare strategy, open a Course Twin, or review the
-            record—without turning the catalogue into a management screen.
+            Browse the courses you play, prepare strategy, open a Course Twin, or review the records
+            for your saved courses.
           </p>
         </div>
-        <Button asChild className="min-h-10 w-full sm:w-auto">
+        <Button asChild className="min-h-11 w-full sm:w-auto">
           <Link href="/courses/new">
             <Plus className="size-4" aria-hidden />
             Add course
@@ -86,6 +90,7 @@ async function CoursesPageContent({
           initialQuery={initialQuery}
           initialView={initialView}
           initialFilter={initialFilter}
+          initialLocation={initialLocation}
         />
       ) : (
         <AppEmptyState

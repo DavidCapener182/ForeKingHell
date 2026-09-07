@@ -42,6 +42,53 @@ export type PracticeBlockImportStatus =
 
 export type PracticeOutcomeStatus = "passed" | "not_passed" | "awaiting_evidence";
 
+/** Saved identity is not proof an activity started or that a measured result exists. */
+export function practiceActivityPresentation({
+  savedPlanId,
+  status,
+  started,
+  paused,
+  finished,
+  hasMeasuredResult,
+}: {
+  savedPlanId: string | null;
+  status: string | undefined;
+  started: boolean;
+  paused: boolean;
+  finished: boolean;
+  hasMeasuredResult: boolean;
+}) {
+  if (hasMeasuredResult)
+    return {
+      label: "Measured practice result",
+      action: "Build next practice",
+      detail: "Review the matched shots to see which objectives were met.",
+    };
+  if (finished || status === "completed")
+    return {
+      label: "Practice activity complete",
+      action: "Build next practice",
+      detail: "Your activity is saved. Import matching shots to measure the result.",
+    };
+  if (!savedPlanId)
+    return {
+      label: "Recommended for you",
+      action: "Start practice",
+      detail: "Adjust the plan, then save and start when you are ready.",
+    };
+  if (started || status === "active" || status === "awaiting_import")
+    return {
+      label: paused ? "Practice paused" : "Practice in progress",
+      action: "Resume Range Mode",
+      detail: "Your saved blocks and notes are ready to continue.",
+    };
+  return {
+    label: "Your saved practice",
+    action: "Start saved practice",
+    detail: "This plan is saved and ready to start.",
+  };
+}
+
 const MANUAL_EVIDENCE_DETAIL = "Record manually; launch-monitor shots are not used.";
 
 type PracticeScoredBlockLike = {

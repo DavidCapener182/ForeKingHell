@@ -312,7 +312,7 @@ export async function createChallenge(input: {
     .limit(1);
   const visibility = parseVisibility(input.visibility, "friends");
 
-  if (!template) {
+  if (!template || !template.active) {
     throw new Error("Challenge template not found.");
   }
 
@@ -326,7 +326,28 @@ export async function createChallenge(input: {
 
   const title = input.title.trim() || template.name;
   const now = new Date();
+  const startsAt = input.startsAt ?? now;
+  const endsAt = input.endsAt ?? defaultChallengeEnd(now);
+  if (
+    !Number.isFinite(startsAt.getTime()) ||
+    !Number.isFinite(endsAt.getTime()) ||
+    endsAt <= startsAt
+  ) {
+    throw new Error("Challenge dates must be valid, with the end after the start.");
+  }
   const [challenge] = await getDb().transaction(async (tx) => {
+    const [currentTemplate] = await tx
+      .select()
+      .from(challengeTemplates)
+      .where(eq(challengeTemplates.id, template.id))
+      .limit(1)
+      .for("share");
+    if (
+      !currentTemplate?.active ||
+      currentTemplate.updatedAt.getTime() !== template.updatedAt.getTime()
+    ) {
+      throw new Error("The challenge template changed or is unavailable. Review it and try again.");
+    }
     const [created] = await tx
       .insert(challenges)
       .values({
@@ -337,8 +358,8 @@ export async function createChallenge(input: {
         visibility,
         status: "open",
         challengeRulesJson: template.rulesJson,
-        startsAt: input.startsAt ?? now,
-        endsAt: input.endsAt ?? defaultChallengeEnd(now),
+        startsAt,
+        endsAt,
         updatedAt: now,
       })
       .returning();
@@ -394,6 +415,10 @@ export async function joinChallenge(challengeId: string) {
   const profile = await ensureSocialProfileForUser(userId);
   const challenge = await requireVisibleChallenge(userId, challengeId);
   const now = new Date();
+
+  if (challenge.status !== "open" || (challenge.endsAt && challenge.endsAt <= now)) {
+    throw new Error("This challenge is no longer open to join.");
+  }
 
   await getDb()
     .insert(challengeEntries)
@@ -575,6 +600,10 @@ export async function inviteFriendToChallenge(challengeId: string, inviteeUserId
 
   if (challenge.creatorUserId !== inviterUserId) {
     throw new Error("Only the challenge creator can invite friends.");
+  }
+
+  if (challenge.status !== "open" || (challenge.endsAt && challenge.endsAt <= new Date())) {
+    throw new Error("This challenge is no longer open to invitations.");
   }
 
   if (!(await areFriends(inviterUserId, inviteeUserId))) {
@@ -796,7 +825,9 @@ async function calculateImportedChallengeAttemptState(
   const clauses: SQL[] = [
     inArray(shots.userId, userIds),
     ne(sessions.source, "manual"),
+    ne(sessions.source, "course_twin_live"),
     gte(shots.shotAt, challenge.startsAt),
+    lte(shots.shotAt, new Date()),
     inArray(shots.reviewStatus, ["included", "restored"]),
   ];
 
@@ -891,7 +922,7 @@ export function filterImportedChallengeEvidenceRows<
     shotCategory?: string | null;
   },
 >(rows: readonly T[]): T[] {
-  return rows.filter(isShotEvidenceEligible);
+  return rows.filter((row) => row.qualityTag !== "modelled" && isShotEvidenceEligible(row));
 }
 
 function rankImportedChallengeAttempts(

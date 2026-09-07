@@ -18,9 +18,11 @@ describe("secondary analytics shot lifecycle boundaries", () => {
 
   it("filters conditions, post-round strategy and Quick Bag evidence at query and legacy layers", () => {
     const conditions = readSource("src/app/(app)/analyse/conditions/page.tsx");
-    const strategy = readSource(
+    const strategyPage = readSource(
       "src/app/(app)/courses/strategy/course-strategy-workbench-page.tsx",
     );
+    expect(strategyPage).toContain("getPostRoundReviewData(");
+    const strategy = readSource("src/lib/post-round-review-data.ts");
     const quickBag = readSource("src/app/(app)/quick-bag/page.tsx");
 
     expect(conditions).toContain("shotEvidenceSqlPredicate()");
@@ -34,10 +36,18 @@ describe("secondary analytics shot lifecycle boundaries", () => {
     expect(strategy).toContain("currentShots: currentShots.filter(isShotEvidenceEligible)");
     expect(strategy).toContain("baselineShots: baselineShots.filter(isShotEvidenceEligible)");
 
-    expect(quickBag).toContain('inArray(shots.reviewStatus, ["included", "restored"])');
-    expect(quickBag).toContain('eq(shots.reviewStatus, "restored")');
-    expect(quickBag).toContain(".filter(isShotEvidenceEligible)");
-    expect(quickBag).toContain('shot.reviewStatus === "restored" ? null : shot.qualityTag');
+    expect(quickBag).toContain("getMobileQuickBag()");
+    const quickBagData = readSource("src/lib/mobile-quick-bag-data.ts");
+    expect(quickBagData).toContain("mobileQuickBagClub(club, byClub.get(club.id) ?? [])");
+    expect(quickBagData).toContain("reviewStatus: shots.reviewStatus");
+    expect(quickBagData).toContain("qualityTag: shots.qualityTag");
+    const quickBagEvidence = readSource("src/lib/mobile-quick-bag-evidence.ts");
+    expect(quickBagEvidence).toContain("mobileClubEvidence(shots, club.type, touch)");
+    expect(quickBagEvidence).toContain("calculateStockYardage(shots, shots.length");
+    expect(readSource("src/lib/mobile-club-evidence.ts")).toContain(
+      "selectLatestReliableStockShots(ordered, ordered.length",
+    );
+    expect(readSource("src/lib/stock-yardage.ts")).toContain("if (!isShotEvidenceEligible(shot))");
   });
 
   it("limits weekly personal-best windows to included or restored evidence", () => {

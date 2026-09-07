@@ -26,53 +26,72 @@ export function buildPostRoundReview(input: {
   );
   const strongest = [...current].sort(
     (left, right) =>
-      right.playableRate - left.playableRate || left.averageAbsSide - right.averageAbsSide,
+      right.playableRate - left.playableRate ||
+      left.averageAbsSide - right.averageAbsSide ||
+      left.clubId.localeCompare(right.clubId),
   )[0];
   const costly = [...current].sort(
     (left, right) =>
-      right.averageAbsSide - left.averageAbsSide || left.playableRate - right.playableRate,
+      right.averageAbsSide - left.averageAbsSide ||
+      left.playableRate - right.playableRate ||
+      left.clubId.localeCompare(right.clubId),
   )[0];
   const changes = current.flatMap((club) => {
     const prior = baseline.get(club.clubId);
     return prior ? [{ club, prior, delta: club.averageAbsSide - prior.averageAbsSide }] : [];
   });
   const biggestChange = [...changes].sort(
-    (left, right) => Math.abs(right.delta) - Math.abs(left.delta),
+    (left, right) =>
+      Math.abs(right.delta) - Math.abs(left.delta) ||
+      left.club.clubId.localeCompare(right.club.clubId),
   )[0];
   const totalShots = current.reduce((total, club) => total + club.sampleSize, 0);
 
   return {
+    sampleSize: totalShots,
+    clubCount: current.length,
     strongest: strongest
       ? {
+          status: "Measured" as const,
           value: strongest.label,
           detail: `${strongest.playableRate}% inside the 15 yd lateral window · ${strongest.sampleSize} measured shots.`,
         }
       : noRead("No trusted club read", "At least three measured shots per club are required."),
     mostCostly: costly
       ? {
+          status: "Measured" as const,
           value: costly.label,
           detail: `${costly.averageAbsSide.toFixed(1)} yd average lateral miss · ${costly.sampleSize} measured shots.`,
         }
-      : noRead("No costly pattern yet", "Add measured round shots before assigning a costly club."),
+      : noRead(
+          "No lateral pattern yet",
+          "At least three eligible directional readings per club are required.",
+        ),
     biggestDifference: biggestChange
       ? {
+          status: "Compared" as const,
           value: `${biggestChange.club.label} ${signed(biggestChange.delta)} yd`,
-          detail: `${biggestChange.delta > 0 ? "Wider" : "Tighter"} than the earlier personal baseline (${biggestChange.prior.sampleSize} comparison shots).`,
+          detail: `${Math.abs(biggestChange.delta) < 0.05 ? "Unchanged to 0.1 yd" : biggestChange.delta > 0 ? "Larger average lateral miss" : "Smaller average lateral miss"} against earlier shots with this club (${biggestChange.club.sampleSize} current / ${biggestChange.prior.sampleSize} earlier). Conditions and shot intent may differ.`,
         }
       : noRead(
-          "No like-for-like baseline",
+          "No same-club baseline",
           "This round does not yet have a club with three measured shots in both periods.",
         ),
     practiceRecommendation: costly
       ? {
-          value: `${costly.label} start-line block`,
+          status: "Suggested" as const,
+          value: `${costly.label} lateral-control check`,
           detail: `Rebuild a 10-shot measured sample and try to beat ${costly.averageAbsSide.toFixed(1)} yd average lateral miss.`,
           clubId: costly.clubId,
+          clubType: costly.clubType,
         }
       : {
-          value: "Capture the round evidence",
-          detail: "Import or connect measured shots before changing the practice plan.",
+          status: "Needs evidence" as const,
+          value: "Review the recorded round",
+          detail:
+            "Use the scorecard and your notes to choose what to review. A shot-based practice suggestion needs measured evidence.",
           clubId: null,
+          clubType: null,
         },
     confidence:
       totalShots >= 20 && current.length >= 3 ? "High" : totalShots >= 10 ? "Moderate" : "Low",
@@ -117,11 +136,12 @@ export function mergeStoredPostRoundReview(notes: string | null, review: StoredP
 function clubReads(shots: PostRoundReviewShot[]) {
   const groups = new Map<string, PostRoundReviewShot[]>();
   for (const shot of shots) {
-    if (shot.sideYd === null) continue;
+    if (shot.sideYd === null || !Number.isFinite(shot.sideYd)) continue;
     groups.set(shot.clubId, [...(groups.get(shot.clubId) ?? []), shot]);
   }
   return [...groups.entries()].map(([clubId, rows]) => ({
     clubId,
+    clubType: rows[0]!.clubType,
     label: formatClubType(rows[0]?.clubType ?? "club"),
     sampleSize: rows.length,
     averageAbsSide: average(rows.map((shot) => Math.abs(shot.sideYd!))),
@@ -132,7 +152,7 @@ function clubReads(shots: PostRoundReviewShot[]) {
 }
 
 function noRead(value: string, detail: string) {
-  return { value, detail };
+  return { value, detail, status: "Needs evidence" as const };
 }
 
 function emptyReview(): StoredPostRoundReview {

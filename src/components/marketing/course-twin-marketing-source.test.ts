@@ -34,7 +34,9 @@ describe("marketing Course Twin source contract", () => {
   it("keeps the R3F runtime capability-gated and dynamically loaded near the section", () => {
     expect(showcaseSource).toMatch(/useInViewOnce<HTMLElement>\("[1-9][0-9]*px 0px"\)/);
     expect(showcaseSource).toContain('import("./course-twin-demo-runtime")');
-    expect(showcaseSource).toContain("if (!isVisible || !capability.canLoad || Runtime) return");
+    expect(showcaseSource).toContain(
+      "if (!requested || !isVisible || !capability.canLoad || Runtime) return",
+    );
     expect(showcaseSource).toContain("prefers-reduced-motion: reduce");
     expect(showcaseSource).toContain("connection?.saveData");
     expect(showcaseSource).toContain('connection?.effectiveType === "slow-2g"');

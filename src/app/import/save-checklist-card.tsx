@@ -1,11 +1,8 @@
 "use client";
-
-import { CheckCircle2, Upload, WifiOff } from "lucide-react";
-
-import { ChecklistItem } from "@/app/import/import-stepper";
+import { Upload, WifiOff } from "lucide-react";
+import { ChecklistItem } from "./import-stepper";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
 export function SaveChecklistCard({
   hasFiles,
   hasShots,
@@ -15,6 +12,10 @@ export function SaveChecklistCard({
   isPending,
   canSave,
   onSave,
+  settingsConfirmed = true,
+  fileCount,
+  shotCount,
+  sessionSummary,
 }: {
   hasFiles: boolean;
   hasShots: boolean;
@@ -24,60 +25,53 @@ export function SaveChecklistCard({
   isPending: boolean;
   canSave: boolean;
   onSave: () => void;
+  settingsConfirmed?: boolean;
+  fileCount?: number;
+  shotCount?: number;
+  sessionSummary?: string;
 }) {
-  const checks = [
-    { label: "File", complete: hasFiles },
-    { label: "Shots", complete: hasShots },
-    { label: "Clubs", complete: hasCompleteCourseMapping },
-    { label: "Audit", complete: hasNoWarnings },
-  ];
-  const readyCount = checks.filter((check) => check.complete).length;
-
   return (
-    <Card
-      className="shadow-sm"
-      data-import-save-checklist
-      data-clubhouse-state={canSave ? "live" : "current"}
-    >
+    <Card id="import-save" className="scroll-mt-28 shadow-sm" data-import-save-checklist>
       <CardHeader>
-        <CardTitle>Step 4: Save import</CardTitle>
+        <CardTitle>Review and save</CardTitle>
         <CardDescription>
-          Save only when the checklist is green. Successful saves show PBs, achievements, and
-          updated yardages.
+          {fileCount !== undefined ? `${fileCount} files · ${shotCount ?? 0} parsed shots. ` : ""}
+          {sessionSummary}
+          <span className="mt-1 block">
+            Saving adds session evidence and updates eligible yardages. Existing duplicate checks
+            still apply.
+          </span>
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="grid gap-2 text-sm sm:hidden">
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-lg border border-border bg-background/70 px-3 py-2 text-xs">
-            {checks.map((check) => (
-              <span
-                key={check.label}
-                className={check.complete ? "font-semibold text-primary" : "text-muted-foreground"}
-              >
-                {check.label} {check.complete ? "✓" : "Review"}
-              </span>
-            ))}
-          </div>
-          <p className="text-xs leading-5 text-muted-foreground">
-            {readyCount}/4 checks ready. The status strip above stays visible while you review.
-          </p>
-        </div>
-        <div className="hidden gap-2 text-sm sm:grid">
-          <ChecklistItem complete={hasFiles}>CSV file selected</ChecklistItem>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <ChecklistItem complete={hasFiles}>CSV files selected</ChecklistItem>
+          <ChecklistItem complete={settingsConfirmed}>Session settings confirmed</ChecklistItem>
           <ChecklistItem complete={hasShots}>Shots detected</ChecklistItem>
-          <ChecklistItem complete={hasCompleteCourseMapping}>Round mapping complete</ChecklistItem>
+          <ChecklistItem complete={hasCompleteCourseMapping}>Round mapping ready</ChecklistItem>
           <ChecklistItem complete={hasNoWarnings}>Warnings reviewed</ChecklistItem>
         </div>
-        <Button type="button" size="lg" disabled={!canSave} onClick={onSave} className="rounded-lg">
-          {!isOnline ? (
-            <WifiOff className="size-4" />
-          ) : canSave ? (
-            <CheckCircle2 className="size-4" />
-          ) : (
-            <Upload className="size-4" />
-          )}
-          {isPending ? "Saving…" : isOnline ? "Save import" : "Queue offline"}
-        </Button>
+        <div className="flex flex-col gap-3 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
+          <a href="#import-preview" className="inline-flex min-h-11 items-center text-sm underline">
+            Back to shot review
+          </a>
+          <Button
+            type="button"
+            size="lg"
+            disabled={!canSave || isPending}
+            aria-busy={isPending}
+            onClick={onSave}
+            className="min-h-12 rounded-lg"
+          >
+            {isOnline ? <Upload size={18} aria-hidden /> : <WifiOff size={18} aria-hidden />}
+            {isPending ? "Saving…" : isOnline ? "Save import" : "Queue offline"}
+          </Button>
+        </div>
+        {!canSave && !isPending ? (
+          <p className="text-xs text-muted-foreground">
+            Complete the outstanding checks above. Sample data is preview only.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

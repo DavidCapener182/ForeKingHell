@@ -1,0 +1,113 @@
+.panel {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--card-foreground);
+}
+.answer {
+  min-width: 0;
+  padding: clamp(1.25rem, 2.4vw, 2rem);
+}
+.eyebrow {
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.title {
+  margin-top: 0.75rem;
+  font-size: clamp(1.75rem, 3vw, 2.75rem);
+  font-weight: 650;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.description {
+  margin-top: 1rem;
+  color: var(--muted-foreground);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  margin-top: 1.5rem;
+}
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  gap: 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.primary {
+  padding: 0.75rem 1rem;
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.secondary {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+}
+.evidence {
+  min-width: 0;
+  border-top: 1px solid var(--border);
+  padding: clamp(1.25rem, 2.4vw, 2rem);
+  background: color-mix(in srgb, var(--muted) 45%, var(--card));
+}
+@media (min-width: 1200px) {
+  .panel {
+    grid-template-columns: minmax(0, 1.8fr) minmax(16rem, 1fr);
+  }
+  .evidence {
+    border-top: 0;
+    border-left: 1px solid var(--border);
+  }
+}
+.forest {
+  --card: #103d2d;
+  --card-foreground: #fafcf5;
+  --foreground: #fafcf5;
+  --muted-foreground: #d5e7d8;
+  --primary: #d8eb95;
+  --primary-foreground: #103d2d;
+  --border: #ffffff29;
+  --muted: #103d2d;
+  --ring: #d8eb95;
+  border: 0;
+  border-radius: 0;
+}
+
+.compact .answer,
+.compact .evidence {
+  padding: 1rem;
+}
+.compact .title {
+  font-size: 1.5rem;
+  line-height: 1.25;
+  margin-top: 0.5rem;
+}
+.compact .description {
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+}
+.compact .actions {
+  margin-top: 0.75rem;
+}

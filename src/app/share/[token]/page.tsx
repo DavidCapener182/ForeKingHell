@@ -3,10 +3,11 @@ import { notFound } from "next/navigation";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
-import { sessions, shareLinks, teeSets, users } from "@/db/schema";
+import { courses, sessions, shareLinks, teeSets, users } from "@/db/schema";
 import { getRequestAppSurface } from "@/lib/app-surface-server";
 import type { AppSurface } from "@/lib/app-surface";
 import { calculateRoundDifferential } from "@/lib/round-handicap";
+import { roundCompletionIssue } from "@/lib/round-context";
 import { hashShareToken } from "@/lib/share-links";
 
 export const dynamic = "force-dynamic";
@@ -92,7 +93,14 @@ async function getSharedRound(token: string) {
       ownerName: users.name,
     })
     .from(sessions)
-    .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
+    .leftJoin(
+      courses,
+      and(
+        eq(sessions.courseId, courses.id),
+        or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, link.userId)),
+      ),
+    )
+    .leftJoin(teeSets, and(eq(sessions.teeSetId, teeSets.id), eq(teeSets.courseId, courses.id)))
     .innerJoin(users, eq(sessions.userId, users.id))
     .where(and(eq(sessions.id, link.resourceId), eq(sessions.userId, link.userId)))
     .limit(1);
@@ -105,13 +113,15 @@ async function getSharedRound(token: string) {
   const totalScore = sumNullable(holes.map((hole) => hole.score ?? null));
   const totalPar = holes.length > 0 ? holes.reduce((total, hole) => total + hole.par, 0) : null;
   const totalPutts = sumNullable(holes.map((hole) => hole.putts ?? null));
-  const handicapDifferential = calculateRoundDifferential({
-    totalScore,
-    totalPar,
-    courseRating: session.courseRating,
-    slopeRating: session.slopeRating,
-    holesPlayed: holes.length,
-  });
+  const handicapDifferential = roundCompletionIssue(holes)
+    ? null
+    : calculateRoundDifferential({
+        totalScore,
+        totalPar,
+        courseRating: session.courseRating,
+        slopeRating: session.slopeRating,
+        holesPlayed: holes.length,
+      });
 
   return {
     link,

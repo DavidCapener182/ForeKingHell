@@ -65,7 +65,13 @@ describe("training and diagnostics lifecycle source contracts", () => {
   });
 
   it("uses lifecycle-eligible shots for weekly goal volume", () => {
-    const weeklyShotQuery = goals.slice(goals.indexOf(".select({ total: count(shots.id) })"));
+    const queryStart = goals.indexOf(
+      ".select({ sessions: countDistinct(sessions.id), shots: countDistinct(shots.id) })",
+    );
+    expect(queryStart).toBeGreaterThanOrEqual(0);
+    const weeklyShotQuery = goals.slice(queryStart, goals.indexOf("const plan ="));
     expect(weeklyShotQuery).toContain("shotEvidenceSqlPredicate()");
+    expect(weeklyShotQuery).toContain("eq(shots.userId, userId)");
+    expect(weeklyShotQuery).toContain("eq(sessions.userId, userId)");
   });
 });

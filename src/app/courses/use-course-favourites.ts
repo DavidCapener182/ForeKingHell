@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { setCourseFavouriteAction } from "@/app/courses/actions";
 
 export function useCourseFavourites(initialFavourites: string[] = []) {
+  const [error, setError] = useState<string | null>(null);
   const [favourites, setFavourites] = useState(() => new Set(initialFavourites));
   const [isPending, startTransition] = useTransition();
   const [pendingCourseIds, setPendingCourseIds] = useState(() => new Set<string>());
@@ -16,6 +17,7 @@ export function useCourseFavourites(initialFavourites: string[] = []) {
   }, [favourites]);
 
   function toggleFavourite(courseId: string) {
+    setError(null);
     const next = new Set(favouritesRef.current);
     const shouldFavourite = !next.has(courseId);
     const requestVersion = (requestVersionsRef.current.get(courseId) ?? 0) + 1;
@@ -33,6 +35,9 @@ export function useCourseFavourites(initialFavourites: string[] = []) {
         if (requestVersionsRef.current.get(courseId) !== requestVersion) return;
       } catch {
         if (requestVersionsRef.current.get(courseId) !== requestVersion) return;
+        setError(
+          "Could not update this favourite. Your previous choice has been restored. Try again.",
+        );
         const rollback = new Set(favouritesRef.current);
         if (shouldFavourite) rollback.delete(courseId);
         else rollback.add(courseId);
@@ -50,5 +55,5 @@ export function useCourseFavourites(initialFavourites: string[] = []) {
     });
   }
 
-  return { favourites, isPending, pendingCourseIds, toggleFavourite };
+  return { favourites, isPending, pendingCourseIds, toggleFavourite, error };
 }

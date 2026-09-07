@@ -2,7 +2,6 @@ import Link from "next/link";
 import { CreditCard, ShieldCheck, Sparkles } from "lucide-react";
 
 import { DataChatPanel } from "@/app/data-chat/data-chat-panel";
-import { DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import { PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { getAiFeatureEntitlement } from "@/lib/ai/usage";
@@ -26,19 +25,21 @@ export default async function DataChatPage({ searchParams }: DataChatPageProps) 
 
   return (
     <PageShell className="lg:py-4" contentClassName="lg:gap-0">
-      <DesktopWorkbenchLayout scope="data-chat">
-        <section data-data-chat-panel="desktop" aria-labelledby="data-chat-heading">
+      <div className="min-w-0" data-workbench-scope="data-chat">
+        <section data-data-chat-panel="responsive" aria-labelledby="data-chat-heading">
           {canUseDataChat ? (
             <DataChatPanel
+              key={userId}
+              accountId={userId}
               monthlyRemaining={entitlement.monthlyRemaining}
-              questionId="desktop-data-chat-question"
+              questionId="data-chat-question"
               initialQuestion={initialPrompt}
             />
           ) : (
             <LockedDataChatPanel />
           )}
         </section>
-      </DesktopWorkbenchLayout>
+      </div>
     </PageShell>
   );
 }

@@ -27,7 +27,11 @@ describe("mobile session club selection", () => {
     expect(html).toContain("No trusted metric readings for Driver");
     expect(html).toContain('href="/shots?sessionId=owned-session&amp;club=driver"');
     expect(html).toContain("View all 2 shots");
-    expect(html).not.toContain("Median of 1 trusted carry readings");
+    // Other clubs remain available in closed disclosure summaries, outside the selected result.
+    const selectedResult = html.slice(0, html.indexOf("<details"));
+    expect(selectedResult).not.toContain("Median of 1 trusted carry readings");
+    expect(html).toContain("All club summaries");
+    expect(html).not.toMatch(/<details[^>]*\bopen(?:[ =]|>)/);
   });
   it("falls back to the measured focus for an absent club without inventing a group", () => {
     state.query = new URLSearchParams("club=5w");

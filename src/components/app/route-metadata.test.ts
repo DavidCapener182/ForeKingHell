@@ -1,3 +1,7 @@
+import {
+  isDesktopOnlyCompanionPath,
+  isSummaryOnlyCompanionPath,
+} from "@/lib/app-route-capabilities";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -25,8 +29,16 @@ describe("central route metadata", () => {
     expect(findRouteMetadata("/practice")?.mobileNav).toBe("primary");
     expect(findRouteMetadata("/courses/strategy")?.mobileNav).toBe("primary");
     expect(findRouteMetadata("/bag")?.mobileNav).toBe("primary");
-    expect(findRouteMetadata("/analyse")?.mobileExperience).toBe("desktop-only");
+    expect(findRouteMetadata("/analyse")?.mobileExperience).toBe("companion");
     expect(findRouteMetadata("/admin")?.mobileNav).toBe(false);
+  });
+
+  it("aligns canonical companion metadata with the actual route gates", () => {
+    for (const route of appRouteMetadata) {
+      expect(isDesktopOnlyCompanionPath(route.route), route.route).toBe(false);
+      expect(isSummaryOnlyCompanionPath(route.route), route.route).toBe(false);
+      expect(route.mobileExperience, route.route).toBe("companion");
+    }
   });
 
   it("keeps aliases available for command search without exposing admin routes to players", () => {

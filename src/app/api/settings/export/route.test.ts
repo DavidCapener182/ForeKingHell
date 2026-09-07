@@ -33,6 +33,36 @@ describe("personal data export route", () => {
     expect(mocks.getDb).not.toHaveBeenCalled();
   });
 
+  it("returns exactly one shot page and a continuation pointing after its last row", async () => {
+    mocks.getOptionalCurrentUserId.mockResolvedValue("user-1");
+    const rows = Array.from({ length: 5001 }, (_, index) => ({
+      id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+      userId: "user-1",
+      carryYd: 100,
+    }));
+    mocks.getDb.mockReturnValue({
+      select: () => ({
+        from: () => ({
+          where: () =>
+            Object.assign(Promise.resolve([]), {
+              orderBy: () => ({ limit: async () => rows }),
+            }),
+        }),
+      }),
+    });
+    const { GET } = await import("@/app/api/settings/export/route");
+    const response = await GET(new Request("http://localhost/api/settings/export"));
+    const payload = await response.json();
+    expect(payload.data.shots).toHaveLength(5000);
+    expect(payload.data.shots.at(-1).id).toBe(rows[4999].id);
+    expect(payload.pagination.shots).toMatchObject({
+      hasMore: true,
+      nextCursor: rows[4999].id,
+      nextPath: `/api/settings/export?shotCursor=${rows[4999].id}`,
+    });
+    expect(payload.data.shots.some((row: { id: string }) => row.id === rows[5000].id)).toBe(false);
+  });
+
   it("returns a private, no-store, versioned personal export", async () => {
     mocks.getOptionalCurrentUserId.mockResolvedValue("user-1");
     mocks.getDb.mockReturnValue(emptyDb());

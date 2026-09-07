@@ -1,20 +1,14 @@
 import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import Link from "next/link";
-import { and, count, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, lte, inArray, or, sql } from "drizzle-orm";
 import { ArrowLeft, ArrowRight, CloudSun, Database, ShieldAlert } from "lucide-react";
 
+import { ConditionsScope, ConditionProof } from "@/app/analyse/conditions/conditions-controls";
 import { AnalysisPageTemplate } from "@/components/app/analysis-page-template";
 import { DataWarning, RecommendedAction } from "@/components/app/evidence-status";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -27,6 +21,8 @@ import { getDb } from "@/db/client";
 import { clubs, sessions, shots } from "@/db/schema";
 import {
   buildConditionsAnalysis,
+  classifyCondition,
+  conditionDimensions,
   strongestConditionDifference,
   type ConditionShot,
 } from "@/lib/conditions-analysis";
@@ -39,11 +35,47 @@ export const dynamic = "force-dynamic";
 export default async function ConditionsAnalysisPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ clubId?: string }>;
+  searchParams?: Promise<{
+    clubId?: string;
+    dimension?: string;
+    from?: string;
+    to?: string;
+    group?: string;
+    proofPage?: string;
+  }>;
 }) {
   const params = await searchParams;
-  const data = await getConditionsData(params?.clubId);
-  const strongest = strongestConditionDifference(data.breakdowns);
+  const from = validDate(params?.from);
+  const to = validDate(params?.to);
+  const data = await getConditionsData(params?.clubId, from, to);
+  const dimension = conditionDimensions.find((value) => value === params?.dimension) ?? "all";
+  const breakdowns =
+    dimension === "all"
+      ? data.breakdowns
+      : data.breakdowns.filter((item) => item.dimension === dimension);
+  const strongest = strongestConditionDifference(breakdowns);
+  const baseQuery = new URLSearchParams({
+    clubId: data.selectedClub?.id ?? "",
+    dimension,
+    from,
+    to,
+  });
+  const evidenceHref = (dim: string, group: string, page = 1) =>
+    `/analyse/conditions?${new URLSearchParams({ ...Object.fromEntries(baseQuery), dimension: dim, group, proofPage: String(page) }).toString()}#condition-proof`;
+  const proofDimension = conditionDimensions.find((value) => value === dimension);
+  const proofRows =
+    params?.group && proofDimension
+      ? data.evidence.filter(
+          (row) => (classifyCondition(row, proofDimension) ?? "unknown") === params.group,
+        )
+      : [];
+  const proofPage = Math.max(
+    1,
+    Math.min(
+      Math.ceil(proofRows.length / 50) || 1,
+      Number.parseInt(params?.proofPage ?? "1", 10) || 1,
+    ),
+  );
 
   return (
     <PageShell>
@@ -55,31 +87,23 @@ export default async function ConditionsAnalysisPage({
       </Button>
       <PageHeader
         eyebrow={<StatusPill tone="sky">Conditions analysis</StatusPill>}
-        title="See when the same club behaves differently"
+        title="Conditions analysis"
         description="Compare recorded indoor, outdoor, weather, elevation, surface and ball conditions without silently mixing missing context into the result."
-        actions={
-          <form action="/analyse/conditions" className="flex flex-wrap items-end gap-2">
-            <label className="grid gap-1 text-sm font-semibold">
-              Club
-              <Select name="clubId" defaultValue={data.selectedClub?.id}>
-                <SelectTrigger className="min-h-11 min-w-52">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {data.clubOptions.map((club) => (
-                    <SelectItem key={club.id} value={club.id}>
-                      {club.label} · {club.shotCount} shots
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            <Button type="submit" variant="outline" className="min-h-11">
-              Compare
-            </Button>
-          </form>
-        }
       />
+      <ConditionsScope
+        key={baseQuery.toString()}
+        clubs={data.clubOptions}
+        clubId={data.selectedClub?.id ?? ""}
+        dimension={dimension}
+        from={from}
+        to={to}
+        count={data.shotCount}
+      />
+      {((params?.from && !from) || (params?.to && !to) || (from && to && from > to)) && (
+        <p role="alert" className="text-sm text-destructive">
+          Check the date range. Use valid session dates with From before To.
+        </p>
+      )}
 
       {data.selectedClub ? (
         <AnalysisPageTemplate
@@ -93,10 +117,20 @@ export default async function ConditionsAnalysisPage({
                     : `There is not yet a repeatable conditions comparison for ${data.selectedClub.label}`}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-3">
-                <EvidenceMetric label="Club" value={data.selectedClub.label} />
-                <EvidenceMetric label="Measured shots" value={String(data.shotCount)} />
-                <EvidenceMetric label="Sessions" value={String(data.sessionCount)} />
+              <CardContent>
+                <dl className="grid gap-3 sm:grid-cols-3">
+                  <EvidenceMetric label="Club" value={data.selectedClub.label} />
+                  <EvidenceMetric label="Included rows" value={String(data.shotCount)} />
+                  <EvidenceMetric label="Sessions" value={String(data.sessionCount)} />
+                </dl>
+                {strongest && (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    {strongest.high.label}: {strongest.high.shotCount} rows /{" "}
+                    {strongest.high.sessionCount} sessions; {strongest.low.label}:{" "}
+                    {strongest.low.shotCount} rows / {strongest.low.sessionCount} sessions.
+                    Association only.
+                  </p>
+                )}
               </CardContent>
             </Card>
           }
@@ -119,7 +153,7 @@ export default async function ConditionsAnalysisPage({
                   ? `Use the same ${data.selectedClub.label}, ball, target and warm-up in both conditions before changing the stock number.`
                   : "Import two sessions for the same club with condition metadata and at least six measured shots in each group."
               }
-              href="/practice/quick-range"
+              href={`/practice/quick-range?clubId=${data.selectedClub.id}`}
               actionLabel="Start Quick Range"
             />
           }
@@ -134,7 +168,7 @@ export default async function ConditionsAnalysisPage({
                 moderate is 12+ across 2+ sessions.
               </p>
             </div>
-            {data.breakdowns.map((breakdown) => (
+            {breakdowns.map((breakdown) => (
               <article key={breakdown.dimension} className="rounded-2xl border bg-card p-4 sm:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -149,7 +183,7 @@ export default async function ConditionsAnalysisPage({
                 </div>
                 {breakdown.groups.length ? (
                   <div
-                    className="mt-4 overflow-hidden rounded-xl border"
+                    className="mt-4 hidden overflow-hidden rounded-xl border lg:block"
                     role="region"
                     aria-label={`${breakdown.label} evidence table`}
                   >
@@ -157,9 +191,10 @@ export default async function ConditionsAnalysisPage({
                       <TableHeader>
                         <TableRow>
                           <TableHead>Condition</TableHead>
-                          <TableHead className="text-right">Carry</TableHead>
-                          <TableHead className="text-right">Side</TableHead>
+                          <TableHead className="text-right">Carry (yd)</TableHead>
+                          <TableHead className="text-right">Absolute side (yd)</TableHead>
                           <TableHead className="text-right">Evidence</TableHead>
+                          <TableHead>Inspect</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -176,6 +211,14 @@ export default async function ConditionsAnalysisPage({
                               {group.confidence} · {group.shotCount} shots / {group.sessionCount}{" "}
                               sessions
                             </TableCell>
+                            <TableCell>
+                              <Link
+                                className="inline-flex min-h-11 items-center underline"
+                                href={evidenceHref(breakdown.dimension, group.label)}
+                              >
+                                Source rows
+                              </Link>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -187,6 +230,52 @@ export default async function ConditionsAnalysisPage({
                     No recorded metadata for this condition.
                   </div>
                 )}
+                <div className="mt-4 grid gap-2 lg:hidden">
+                  {breakdown.groups.map((group) => (
+                    <details key={group.label} className="rounded-lg border p-3">
+                      <summary className="min-h-11 cursor-pointer text-sm font-medium">
+                        {group.label} · {group.shotCount} rows
+                      </summary>
+                      <dl className="mt-2 grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <dt>Mean carry</dt>
+                          <dd>{formatYards(group.meanCarryYd)}</dd>
+                        </div>
+                        <div>
+                          <dt>Mean absolute side</dt>
+                          <dd>{formatYards(group.meanAbsoluteSideYd)}</dd>
+                        </div>
+                        <div>
+                          <dt>Sessions</dt>
+                          <dd>{group.sessionCount}</dd>
+                        </div>
+                        <div>
+                          <dt>Confidence</dt>
+                          <dd>{group.confidence}</dd>
+                        </div>
+                      </dl>
+                      <Button asChild variant="outline" className="mt-3">
+                        <Link href={evidenceHref(breakdown.dimension, group.label)}>
+                          Inspect source rows
+                        </Link>
+                      </Button>
+                    </details>
+                  ))}
+                </div>
+                <div className="mt-3 rounded-lg border border-dashed p-3 text-sm">
+                  <p>
+                    Unknown / unrecorded: {breakdown.unclassifiedShots} rows. Kept outside the
+                    comparison.
+                  </p>
+                  {breakdown.unclassifiedShots > 0 && (
+                    <Link
+                      className="inline-flex min-h-11 items-center underline"
+                      href={evidenceHref(breakdown.dimension, "unknown")}
+                    >
+                      Inspect unknown rows
+                    </Link>
+                  )}
+                </div>
                 <div className="mt-3 flex gap-2 text-xs leading-5 text-muted-foreground">
                   <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
                   <p>
@@ -198,6 +287,40 @@ export default async function ConditionsAnalysisPage({
             ))}
           </section>
 
+          {params?.group && proofDimension && (
+            <ConditionProof
+              key={`${dimension}:${params.group}:${proofPage}`}
+              title={params.group === "unknown" ? "Unknown / unrecorded" : params.group}
+              rows={proofRows.slice((proofPage - 1) * 50, proofPage * 50).map((row) => ({
+                id: row.id,
+                sessionId: row.sessionId,
+                clubId: data.selectedClub!.id,
+                date: row.date.toLocaleDateString("en-GB"),
+                carry: row.carryYd,
+                side: row.sideCarryYd,
+                context: row.playContext,
+                source: row.source,
+                raw: {
+                  ...row.sourceRaw,
+                  ...Object.fromEntries(
+                    Object.entries(row.weather ?? {})
+                      .filter((entry): entry is [string, string] => typeof entry[1] === "string")
+                      .map(([key, value]) => [`Session ${key}`, value]),
+                  ),
+                },
+              }))}
+              total={proofRows.length}
+              page={proofPage}
+              previousHref={
+                proofPage > 1 ? evidenceHref(proofDimension, params.group, proofPage - 1) : null
+              }
+              nextHref={
+                proofPage * 50 < proofRows.length
+                  ? evidenceHref(proofDimension, params.group, proofPage + 1)
+                  : null
+              }
+            />
+          )}
           <section className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div>
               <h2 className="font-semibold">Need the row-level proof?</h2>
@@ -231,7 +354,7 @@ export default async function ConditionsAnalysisPage({
   );
 }
 
-async function getConditionsData(requestedClubId?: string) {
+async function getConditionsData(requestedClubId?: string, from = "", to = "") {
   const userId = await requireCurrentUserId();
   const db = getDb();
   const rawClubOptions = await db
@@ -255,15 +378,26 @@ async function getConditionsData(requestedClubId?: string) {
     label: [club.brand, club.model].filter(Boolean).join(" ") || formatClubType(club.type),
     shotCount: Number(club.shotCount),
   }));
-  const selectedClub =
-    clubOptions.find((club) => club.id === requestedClubId) ?? clubOptions[0] ?? null;
+  const selectedClub = requestedClubId
+    ? (clubOptions.find((club) => club.id === requestedClubId) ?? null)
+    : (clubOptions[0] ?? null);
 
   if (!selectedClub) {
-    return { clubOptions, selectedClub: null, shotCount: 0, sessionCount: 0, breakdowns: [] };
+    return {
+      clubOptions,
+      selectedClub: null,
+      shotCount: 0,
+      sessionCount: 0,
+      breakdowns: [],
+      evidence: [],
+    };
   }
 
   const rows = await db
     .select({
+      id: shots.id,
+      date: sessions.date,
+      source: sessions.source,
       sessionId: shots.sessionId,
       carryYd: shots.carryYd,
       sideCarryYd: directionalMetricSql(shots.sideCarryYd),
@@ -278,7 +412,13 @@ async function getConditionsData(requestedClubId?: string) {
     .from(shots)
     .innerJoin(sessions, and(eq(shots.sessionId, sessions.id), eq(sessions.userId, userId)))
     .where(
-      and(eq(shots.userId, userId), eq(shots.clubId, selectedClub.id), shotEvidenceSqlPredicate()),
+      and(
+        eq(shots.userId, userId),
+        eq(shots.clubId, selectedClub.id),
+        shotEvidenceSqlPredicate(),
+        from ? gte(sessions.date, new Date(`${from}T00:00:00Z`)) : undefined,
+        to ? lte(sessions.date, new Date(`${to}T23:59:59.999Z`)) : undefined,
+      ),
     )
     .orderBy(desc(shots.shotAt))
     .limit(5000);
@@ -289,6 +429,7 @@ async function getConditionsData(requestedClubId?: string) {
     selectedClub,
     shotCount: evidence.length,
     sessionCount: new Set(evidence.map((shot) => shot.sessionId)).size,
+    evidence,
     breakdowns: buildConditionsAnalysis(evidence),
   };
 }
@@ -325,4 +466,10 @@ function formatYards(value: number | null) {
 
 function round(value: number) {
   return Math.round(value * 10) / 10;
+}
+
+function validDate(value?: string) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value ? value : "";
 }

@@ -273,7 +273,9 @@ describe("practice planner view helpers", () => {
     expect(source).toContain("db.transaction(async (tx) =>");
     expect(source).toContain("practicePlanMatchValues(userId, saved, session, sessionMatch, true)");
     expect(source).toContain("sourceSessionIds");
-    expect(source).toContain("coalesce(${practicePlans.startedAt}, ${now})");
+    expect(source).toContain(
+      "coalesce(${practicePlans.startedAt}, ${now.toISOString()}::timestamptz)",
+    );
     expect(source).toContain("const effectiveStartIso = effectiveStart.toISOString()");
     expect(source).toContain("${effectiveStartIso}::timestamptz");
   });

@@ -8,12 +8,14 @@ const source = readFileSync(
 );
 
 describe("notification settings mobile composition", () => {
-  it("uses grouped delivery rows, native switches and a bottom-safe save action", () => {
-    expect(source).toContain("ios-grouped-list");
-    expect(source).toContain("ios-grouped-row");
+  it("uses labelled delivery groups and shared draft-preserving save behavior", () => {
+    expect(source.match(/<fieldset/g)).toHaveLength(2);
+    expect(source).toContain("Delivery by category");
     expect(source).toContain("<Switch");
-    expect(source).toContain("env(safe-area-inset-bottom)");
-    expect(source).toContain("IOSDisclosureGroup");
+    expect(source).toContain("<SettingsDirtyForm action={saveNotificationPreferencesFormAction}");
+    expect(source).toContain(
+      "saving this form does not send an email or enable push notifications",
+    );
   });
 
   it("keeps delivery selectors and compatibility switches uniquely labelled", () => {
@@ -24,9 +26,14 @@ describe("notification settings mobile composition", () => {
     expect(source).not.toContain("htmlFor={option.key}");
   });
 
-  it("uses a semantic shadcn Alert for save feedback", () => {
-    expect(source).toContain('<Alert role="status">');
-    expect(source).toContain("<AlertDescription>Notification preferences saved.");
+  it("announces shared save and error feedback", () => {
+    const form = readFileSync(
+      join(process.cwd(), "src/app/settings/settings-dirty-form.tsx"),
+      "utf8",
+    );
+    expect(form).toContain('role="status">Settings saved.');
+    expect(form).toContain('role="alert"');
+    expect(form).toContain("Your draft is retained");
     expect(source).not.toContain("bg-emerald-");
   });
 });

@@ -1,24 +1,21 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerClose,
-} from "@/components/ui/drawer";
-import { MobileGroupedList, MobileListRow, MobileDisclosure } from "./mobile-primitives";
+import dynamic from "next/dynamic";
+const TodayChangeDrawer = dynamic(
+  () => import("./today-drawers").then((module) => module.TodayChangeDrawer),
+  { loading: () => <p role="status">Loading evidence…</p> },
+);
 import type { MobileTodayChange } from "@/lib/mobile-today-briefing";
 import styles from "./mobile-companion.module.css";
 
 const carryFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
 
 export function MobileTodayChangeDetail({ change }: { change: MobileTodayChange }) {
+  const trigger = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
+  const [visited, setVisited] = useState(false);
+  if (open && !visited) setVisited(true);
   const direction = change.delta < 0 ? "shorter" : "longer";
   const latestCarry = carryFormatter.format(change.latest.value);
   const previousCarry = carryFormatter.format(change.previous.value);
@@ -26,6 +23,7 @@ export function MobileTodayChangeDetail({ change }: { change: MobileTodayChange 
   return (
     <>
       <button
+        ref={trigger}
         className={styles.change}
         onClick={() => setOpen(true)}
         aria-label={`${change.clubLabel}: ${changeSummary}. Latest average ${latestCarry} yd; earlier average ${previousCarry} yd. View comparison.`}
@@ -43,74 +41,14 @@ export function MobileTodayChangeDetail({ change }: { change: MobileTodayChange 
         </div>
         <ChevronRight className="size-5 text-muted-foreground" aria-hidden />
       </button>
-      <Drawer open={open} onOpenChange={setOpen}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>{change.clubLabel} average carry</DrawerTitle>
-            <DrawerDescription>
-              Your latest average carry was {Math.abs(change.delta)} yd {direction} than the earlier
-              average. Carry is the distance the ball travels before landing.
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="grid min-h-0 gap-4 overflow-y-auto px-4 pb-4">
-            <MobileGroupedList label="Carry comparison">
-              <MobileListRow
-                label="Latest practice day"
-                value={`${latestCarry} yd`}
-                detail={`${change.latest.count} trusted carry readings · ${change.latest.dateLabel}`}
-              />
-              <MobileListRow
-                label="Earlier sample"
-                value={`${previousCarry} yd`}
-                detail={`${change.previous.count} trusted carry readings`}
-              />
-            </MobileGroupedList>
-            <MobileDisclosure
-              items={[
-                {
-                  value: "latest",
-                  title: "Latest evidence",
-                  content: (
-                    <MobileGroupedList>
-                      {change.latest.sessions.map((s) => (
-                        <MobileListRow
-                          key={s.id}
-                          label={s.label}
-                          detail={`${s.count} carry reading${s.count === 1 ? "" : "s"} · ${s.date}`}
-                          href={s.href}
-                        />
-                      ))}
-                    </MobileGroupedList>
-                  ),
-                },
-                {
-                  value: "previous",
-                  title: "Earlier evidence",
-                  content: (
-                    <MobileGroupedList>
-                      {change.previous.sessions.map((s) => (
-                        <MobileListRow
-                          key={s.id}
-                          label={s.label}
-                          detail={`${s.count} carry reading${s.count === 1 ? "" : "s"} · ${s.date}`}
-                          href={s.href}
-                        />
-                      ))}
-                    </MobileGroupedList>
-                  ),
-                },
-              ]}
-            />
-          </div>
-          <DrawerFooter>
-            <DrawerClose asChild>
-              <Button variant="outline" className="min-h-11">
-                Done
-              </Button>
-            </DrawerClose>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+      {visited ? (
+        <TodayChangeDrawer
+          open={open}
+          setOpen={setOpen}
+          change={change}
+          onRestoreFocus={() => trigger.current?.focus()}
+        />
+      ) : null}
     </>
   );
 }

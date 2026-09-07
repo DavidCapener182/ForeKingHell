@@ -51,6 +51,13 @@ describe("desktop workbench notifications route source", () => {
     expect(source).toContain("NextResponse.json({ items: [] })");
     expect(source).toContain(".sort((left, right) =>");
     expect(source).toContain(".slice(0, 8)");
-    expect(source).not.toContain("status: 401");
+    const getHandler = source.slice(
+      source.indexOf("export async function GET"),
+      source.indexOf("export async function POST"),
+    );
+    expect(getHandler).not.toMatch(/status:\s*401/);
+    const postHandler = source.slice(source.indexOf("export async function POST"));
+    expect(postHandler).toContain("if (!user)");
+    expect(postHandler).toMatch(/status:\s*401/);
   });
 });

@@ -32,7 +32,11 @@ describe("shared round request-surface composition", () => {
   it("keeps the public companion scorecard and privacy journey in its own graph", () => {
     expect(companion).toContain("MobileSharedRound");
     expect(companion).toContain("MobileSharedHoleRows");
-    expect(companion).toContain("IOSDisclosureGroup");
+    expect(companion).toContain("<details");
+    expect(companion).toContain("<summary");
+    expect(companion).not.toContain("MobileAppShell");
+    expect(companion).not.toContain("SharedRoundWorkbench");
+    expect(companion).toContain("sticky left-0");
     expect(companion).toContain("ios-public-auth");
     expect(companion).toContain("Shot data and private account details are not exposed");
     expect(companion).not.toContain("DesktopTableWorkbenchControls");

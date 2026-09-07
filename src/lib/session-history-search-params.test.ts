@@ -4,6 +4,7 @@ import {
   buildSessionHistoryQuery,
   clearSessionHistoryQuery,
   resolveSessionHistorySearchParams,
+  sessionMatchesHistoryFilters,
 } from "@/lib/session-history-search-params";
 
 const sessions = [
@@ -118,5 +119,31 @@ describe("session history search params", () => {
     );
 
     expect(query).toBe("campaign=summer");
+  });
+});
+
+describe("history search", () => {
+  it("keeps source/title matching and unrelated URL context", () => {
+    const rows = [
+      { ...sessions[0], title: "Long Driver session" },
+      { ...sessions[1], title: "Evening round" },
+    ];
+    const query = buildSessionHistoryQuery(
+      "campaign=summer&session=practice-1",
+      { search: "long driver" },
+      rows,
+    );
+    expect(query).toContain("campaign=summer");
+    expect(query).not.toContain("session=");
+    const { filters } = resolveSessionHistorySearchParams(query, rows);
+    expect(
+      rows.filter((row) => sessionMatchesHistoryFilters(row, filters)).map((row) => row.id),
+    ).toEqual(["practice-1"]);
+    expect(clearSessionHistoryQuery(query)).toBe("campaign=summer");
+  });
+  it("shows no results for unmatched text without resetting the search", () => {
+    const { filters, changed } = resolveSessionHistorySearchParams("q=missing", sessions);
+    expect(changed).toBe(false);
+    expect(sessions.filter((row) => sessionMatchesHistoryFilters(row, filters))).toEqual([]);
   });
 });

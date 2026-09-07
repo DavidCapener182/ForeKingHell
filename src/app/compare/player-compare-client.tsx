@@ -6,6 +6,7 @@ import { Users } from "lucide-react";
 
 import {
   ComparisonWorkspace,
+  updateComparisonScope,
   type ComparisonTableRow,
   type SavedWorkspaceComparison,
 } from "@/app/compare/comparison-workspace";
@@ -50,6 +51,7 @@ export function PlayerCompareClient({
         ? draftPlayerBId
         : (data.players.find((player) => player.userId !== nextPlayerAId)?.userId ?? "");
 
+    updateComparisonScope({ playerAId: nextPlayerAId, playerBId: nextPlayerBId });
     setSelectedPlayerAId(nextPlayerAId);
     setSelectedPlayerBId(nextPlayerBId);
     setDraftPlayerBId(nextPlayerBId);
@@ -59,6 +61,7 @@ export function PlayerCompareClient({
     const fallbackAId = data.players[0]?.userId ?? "";
     const fallbackBId = data.players.find((player) => player.userId !== fallbackAId)?.userId ?? "";
 
+    updateComparisonScope({ playerAId: fallbackAId, playerBId: fallbackBId });
     setDraftPlayerAId(fallbackAId);
     setDraftPlayerBId(fallbackBId);
     setSelectedPlayerAId(fallbackAId);

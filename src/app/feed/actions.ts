@@ -98,6 +98,60 @@ export async function muteFeedItemUserAction(formData: FormData) {
   await muteFeedItemUser(requiredString(formData, "feedItemId"));
 }
 
+export async function feedInteractionFormAction(
+  _previous: { ok: boolean; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    switch (requiredString(formData, "operation")) {
+      case "reaction":
+        await addFeedReactionAction(formData);
+        break;
+      case "unreact":
+        await removeFeedReactionAction(formData);
+        break;
+      case "comment":
+        await addFeedCommentAction(formData);
+        break;
+      case "delete-comment":
+        await deleteFeedCommentAction(formData);
+        break;
+      case "comment-reaction":
+        await addFeedCommentReactionAction(formData);
+        break;
+      case "comment-unreact":
+        await removeFeedCommentReactionAction(formData);
+        break;
+      case "visibility":
+        await updateFeedItemVisibilityAction(formData);
+        break;
+      case "delete":
+        await deleteFeedItemAction(formData);
+        break;
+      case "hide":
+        await hideFeedItemAction(formData);
+        break;
+      case "hide-type":
+        await hideFeedItemTypeAction(formData);
+        break;
+      case "mute":
+        await muteFeedItemUserAction(formData);
+        break;
+      case "report":
+        await reportFeedItemAction(formData);
+        break;
+      default:
+        throw new Error("Unknown feed operation.");
+    }
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not update feed. Try again.",
+    };
+  }
+}
+
 function requiredString(formData: FormData, key: string) {
   const value = formData.get(key);
 

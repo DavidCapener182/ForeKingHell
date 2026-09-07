@@ -36,19 +36,52 @@ export async function joinChallengeAction(formData: FormData) {
 export async function leaveChallengeAction(formData: FormData) {
   const challengeId = requiredString(formData, "challengeId");
   await leaveChallenge(challengeId);
-  redirect("/challenges?tab=joined");
+  redirect("/challenges?tab=active");
 }
 
 export async function addChallengeCommentAction(formData: FormData) {
   const challengeId = requiredString(formData, "challengeId");
   await addChallengeComment(challengeId, requiredString(formData, "body"));
-  redirect(`/challenges/${challengeId}`);
+  redirect(`/challenges/${challengeId}?tab=chat`);
 }
 
 export async function inviteFriendToChallengeAction(formData: FormData) {
   const challengeId = requiredString(formData, "challengeId");
   await inviteFriendToChallenge(challengeId, requiredString(formData, "inviteeUserId"));
   redirect(`/challenges/${challengeId}?invite=sent`);
+}
+
+export async function addChallengeCommentFormAction(
+  _previousState: { ok: boolean; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await addChallengeComment(
+      requiredString(formData, "challengeId"),
+      requiredString(formData, "body"),
+    );
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not save comment." };
+  }
+}
+
+export async function inviteFriendToChallengeFormAction(
+  _previousState: { ok: boolean; error?: string },
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await inviteFriendToChallenge(
+      requiredString(formData, "challengeId"),
+      requiredString(formData, "inviteeUserId"),
+    );
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not save invitation.",
+    };
+  }
 }
 
 function requiredString(formData: FormData, key: string) {
@@ -74,5 +107,12 @@ function dateFromForm(formData: FormData, key: string) {
   }
 
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    !Number.isFinite(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== value
+  ) {
+    throw new Error(`${key} must be a valid date.`);
+  }
+  return parsed;
 }

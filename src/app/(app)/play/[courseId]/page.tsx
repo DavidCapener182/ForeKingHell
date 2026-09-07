@@ -41,7 +41,7 @@ export default async function CourseTwinPage({
     <main
       id="main-content"
       data-course-twin-viewport
-      className={`${mobileStyles.viewport} relative min-h-[calc(100dvh-3.5rem)] w-full overflow-x-hidden bg-[#07150e] xl:h-[calc(100dvh-3.5rem)] xl:min-h-0 xl:overflow-hidden`}
+      className={`${mobileStyles.viewport} relative min-h-[calc(100dvh-3.5rem)] w-full overflow-x-hidden bg-[#07150e] xl:h-[calc(100dvh-3.5rem)] xl:min-h-0 xl:overflow-hidden [&:has([data-course-twin-low-power-fallback])]:h-auto [&:has([data-course-twin-low-power-fallback])]:overflow-visible`}
     >
       <Link
         href="/course-twins"

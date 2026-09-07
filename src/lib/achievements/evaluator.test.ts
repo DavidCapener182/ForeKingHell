@@ -580,6 +580,32 @@ describe("Rapsodo achievement evaluation", () => {
 });
 
 describe("round achievement evaluation", () => {
+  it("waits for a finished, scored round before awarding penalty-free or full-round scoring", () => {
+    const holes: RoundScorecardHole[] = Array.from({ length: 18 }, (_, index) => ({
+      holeNumber: index + 1,
+      par: 4,
+      yards: 350,
+      score: 4,
+      penalties: 0,
+    }));
+    const partial = evaluateRoundScorecardAchievements(
+      makeSession({
+        scorecardJson: holes.map((hole, index) => ({ ...hole, score: index < 2 ? 4 : null })),
+      }),
+    );
+    expect(achievementIds(partial.unlocks)).not.toContain("penalty_free");
+    const active = evaluateRoundScorecardAchievements(
+      makeSession({ roundStatus: "in_progress", scorecardJson: holes }),
+    );
+    expect(achievementIds(active.unlocks)).not.toContain("penalty_free");
+    expect(achievementIds(active.unlocks)).not.toContain("break_80");
+    const complete = evaluateRoundScorecardAchievements(
+      makeSession({ roundStatus: "complete", scorecardJson: holes }),
+    );
+    expect(achievementIds(complete.unlocks)).toContain("penalty_free");
+    expect(achievementIds(complete.unlocks)).toContain("break_80");
+  });
+
   it("unlocks scoring, birdie, eagle, and putting achievements", () => {
     const holes = Array.from({ length: 18 }, (_, index): RoundScorecardHole => {
       const holeNumber = index + 1;

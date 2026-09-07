@@ -1,3 +1,8 @@
+import {
+  comparisonObservations,
+  type ComparisonClub,
+} from "@/app/progress/progress-comparison-data";
+import { formatClubType } from "@/lib/club-format";
 import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
@@ -18,6 +23,7 @@ import { observeServerOperation } from "@/lib/server-observability";
 
 export type ProgressData = {
   clubs: ProgressClub[];
+  comparisons: ComparisonClub[];
 };
 
 export type ProgressScoringEvidence = {
@@ -47,7 +53,7 @@ export async function getProgressData(userId?: string): Promise<ProgressData> {
       if (clubRows.length === 0) {
         telemetry.setRowCount(0);
         telemetry.setResult("empty");
-        return { clubs: [] };
+        return { clubs: [], comparisons: [] };
       }
 
       const clubIds = clubRows.map((club) => club.id);
@@ -135,7 +141,17 @@ export async function getProgressData(userId?: string): Promise<ProgressData> {
         })
         .sort((left, right) => clubSortValue(left.clubType) - clubSortValue(right.clubType));
       telemetry.setRowCount(clubRows.length + evidenceShotRows.length);
-      return { clubs: progressClubs };
+      return {
+        clubs: progressClubs,
+        comparisons: trackedClubs.map((club) => ({
+          clubId: club.id,
+          name: [formatClubType(club.type), club.brand, club.model].filter(Boolean).join(" · "),
+          observations: comparisonObservations(
+            (shotsByClubId.get(club.id) ?? []).map((shot) => toAnalyticsShot(shot, club.type)),
+            club.type,
+          ),
+        })),
+      };
     },
   );
 }

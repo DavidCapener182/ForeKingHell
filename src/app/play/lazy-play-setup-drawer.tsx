@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Settings2 } from "lucide-react";
 
 import type { PlaySelectionControlsProps } from "@/app/play/play-selection-controls";
+import { useClientReady } from "@/hooks/use-client-ready";
 import { Button } from "@/components/ui/button";
 
 const PlaySetupExperience = dynamic(
@@ -23,11 +24,13 @@ export function LazyPlaySetupDrawer({
   ...selection
 }: PlaySelectionControlsProps & { label?: string }) {
   const [open, setOpen] = useState(false);
+  const ready = useClientReady();
 
   return (
     <>
       <Button
         type="button"
+        disabled={!ready}
         variant="outline"
         className="min-h-12 w-full rounded-xl"
         onClick={() => setOpen(true)}

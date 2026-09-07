@@ -43,10 +43,14 @@ export async function POST(request: NextRequest) {
       const result = await saveRapsodoImportBatch(payload.inputs);
 
       if (result.ok) {
-        await setAchievementUnlockFlash(result.achievementUnlockNotifications);
+        try {
+          await setAchievementUnlockFlash(result.achievementUnlockNotifications);
+        } catch {
+          console.error("Offline import notification failed after the import completed.");
+        }
       }
 
-      return { status: result.ok ? 200 : 400, body: result };
+      return { status: result.ok ? 200 : result.retryable ? 503 : 400, body: result };
     },
   });
 }

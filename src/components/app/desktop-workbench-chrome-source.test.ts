@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { buildWorkbenchBreadcrumbItems } from "@/lib/workbench-breadcrumbs";
 
 describe("desktop workbench chrome source", () => {
   it("keeps the optional AI assistant available on analytical workbench routes", () => {
@@ -52,16 +53,13 @@ describe("desktop workbench chrome source", () => {
     expect(prefixBlock).not.toContain('"/tournaments"');
   });
 
-  it("labels deep desktop breadcrumbs for workbench detail routes", () => {
-    const source = readFileSync(
-      join(process.cwd(), "src/components/app/desktop-workbench-chrome.tsx"),
-      "utf8",
-    );
-
-    expect(source).toContain('return "Club analytics"');
-    expect(source).toContain('return "Round review"');
-    expect(source).toContain('return "Hole management"');
-    expect(source).toContain('return "Event leaderboard"');
+  it.each([
+    ["/bag/club-a/analytics", "Club analytics"],
+    ["/rounds/round-a", "Round review"],
+    ["/courses/course-a/holes", "Hole management"],
+    ["/tournaments/event-a/leaderboard", "Event leaderboard"],
+  ])("labels the current breadcrumb for %s", (path, label) => {
+    expect(buildWorkbenchBreadcrumbItems(undefined, path).at(-1)).toEqual({ label });
   });
 
   it("keeps desktop primary actions route-aware instead of falling back to import", () => {

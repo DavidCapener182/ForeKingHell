@@ -27,8 +27,19 @@ describe("equipment experiment desktop workbench", () => {
     expect(source).toContain("data-equipment-experiment-desktop");
     expect(source).toContain('className="grid gap-4"');
     expect(source).toContain("getCompareData(filters)");
-    expect(source).toContain("saveSessionComparisonAction");
-    expect(source).toContain('action="/equipment/experiments"');
+    expect(source).toContain("action={saveSessionComparisonWithStateAction}");
+    expect(source).toContain('name="baselineSessionId" value={data.filters.baselineSessionId}');
+    expect(source).toContain('name="sessionId" value={data.filters.sessionId}');
+    expect(source).toContain(
+      "Your recorded judgement, separate from calculated sample confidence.",
+    );
+    expect(source).toContain("<ExperimentSelection");
+    expect(source).toContain("initialBaseline={filters.baselineSessionId}");
+    const selection = readFileSync(
+      join(process.cwd(), "src/app/equipment/experiments/experiment-selection.tsx"),
+      "utf8",
+    );
+    expect(selection).toContain('action="/equipment/experiments"');
   });
 
   it("uses accessible native controls and honest confidence language", () => {

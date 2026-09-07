@@ -40,12 +40,17 @@ export default async function RoundsPage() {
           title="Rounds"
           detail={`${completedRounds} completed · ${indexRounds.length} saved`}
           action={
-            <Button asChild variant="ghost" className="min-h-11">
-              <Link href="/rounds/new">
-                <Plus aria-hidden className="size-5" />
-                <span className="sr-only">Add round</span>
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" className="min-h-11">
+                <Link href="/import">Import</Link>
+              </Button>
+              <Button asChild variant="ghost" className="min-h-11">
+                <Link href="/rounds/new">
+                  <Plus aria-hidden className="size-5" />
+                  <span className="sr-only">Add round</span>
+                </Link>
+              </Button>
+            </div>
           }
         />
       ) : null}

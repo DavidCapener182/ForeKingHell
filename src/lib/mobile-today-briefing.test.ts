@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildMobileTodayChange, todayPlanAction } from "./mobile-today-briefing";
-import type { ClubDayComparison, TodayPracticeShot } from "./today-session-data";
+import {
+  buildMobileTodayChange,
+  todayPlanAction,
+  todayReviewTakeaway,
+} from "./mobile-today-briefing";
+import type { ClubDayComparison, TodayPracticeShot, TodayPracticeData } from "./today-session-data";
 
 const snapshot = {
   shotCount: 6,
@@ -115,5 +119,20 @@ describe("Today evidence and activity handoffs", () => {
       }),
     ).toBeNull();
     expect(buildMobileTodayChange(null)).toBeNull();
+  });
+
+  it("describes carry movement without calling longer carry an improvement", () => {
+    const data = {
+      dateLabel: "6 September 2026",
+      overall: { verdict: "mixed" },
+      clubComparisons: [comparison],
+      comparisonShots: Array.from({ length: 6 }, (_, i) => shot(String(i), "latest")),
+      previousComparisonShots: Array.from({ length: 6 }, (_, i) => shot(String(i), "previous")),
+    } as TodayPracticeData;
+    expect(todayReviewTakeaway(data)?.title).toBe("7 Iron carry is 4 yd shorter");
+    expect(todayReviewTakeaway(data)?.summary).toContain("6 current and 6 earlier carry readings");
+    expect(
+      todayReviewTakeaway({ ...data, comparisonShots: data.comparisonShots.slice(0, 2) }),
+    ).toBeNull();
   });
 });

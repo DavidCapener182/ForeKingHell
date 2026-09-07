@@ -1,26 +1,30 @@
 "use client";
 
 import Link from "next/link";
+import { useClientReady } from "@/hooks/use-client-ready";
+import { MobileTrainingChart } from "./mobile-training-chart";
+import { LabEvidenceList } from "@/app/simulator-lab/lab-evidence";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetClose,
+} from "@/components/ui/sheet";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   AlertTriangle,
   BarChart3,
   CheckCircle2,
   Flame,
   LineChart,
-  Plus,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
 
-import {
-  DesktopTableWorkbenchControls,
-  type DesktopSavedViewSuggestion,
-  type DesktopWorkbenchColumn,
-} from "@/components/app/desktop-workbench";
-import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
-import { DataTableFrame, SectionHeader, StatusPill, type Tone } from "@/components/premium";
+import { SectionHeader, StatusPill, type Tone } from "@/components/premium";
 import { RecentTrainingSessions } from "@/components/training/RecentTrainingSessions";
 import { TrainingSessionForm } from "@/components/training/TrainingSessionForm";
 import { TrainingStatusCard } from "@/components/training/TrainingStatusCard";
@@ -30,26 +34,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { selectTrainingRangeData } from "@/lib/training/rangeSelection";
 import type { TrainingRangeKey } from "@/lib/training/ranges";
-import type {
-  TrainingEfficiencyCard,
-  TrainingOverTimeData,
-  TrainingSessionListItem,
-} from "@/lib/training/trainingData";
+import type { TrainingEfficiencyCard, TrainingOverTimeData } from "@/lib/training/trainingData";
 import { cn } from "@/lib/utils";
 
 import styles from "./TrainingLoadRangeView.module.css";
+
+const subscribeDesktop = (notify: () => void) => {
+  const media = window.matchMedia("(min-width: 1024px)");
+  media.addEventListener("change", notify);
+  return () => media.removeEventListener("change", notify);
+};
+const desktopSnapshot = () => window.matchMedia("(min-width: 1024px)").matches;
+const serverDesktopSnapshot = () => false;
+const TrainingSessionLedger = dynamic(
+  () => import("./TrainingSessionLedger").then((module) => module.TrainingSessionLedger),
+  { loading: () => <p role="status">Loading full training ledger…</p> },
+);
 
 const TrainingOverTimeChart = dynamic(
   () =>
@@ -66,46 +69,14 @@ const TrainingLoadBars = dynamic(
 type TrainingLoadRangeViewProps = {
   data: TrainingOverTimeData;
   initialRangeKey: TrainingRangeKey;
+  sourceLinks?: Record<string, { href: string; label: string }>;
 };
 
 const integerFormatter = new Intl.NumberFormat("en-GB", {
   maximumFractionDigits: 0,
 });
-const ledgerDateFormatter = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "short",
-});
-
-const trainingSessionColumns: DesktopWorkbenchColumn[] = [
-  { id: "date", label: "Date", locked: true },
-  { id: "session", label: "Session", locked: true },
-  { id: "source", label: "Source" },
-  { id: "load", label: "Load" },
-  { id: "rpe", label: "RPE" },
-  { id: "volume", label: "Volume" },
-  { id: "conditions", label: "Conditions" },
-  { id: "notes", label: "Notes" },
-];
-
-const trainingSessionSuggestedViews: DesktopSavedViewSuggestion[] = [
-  {
-    title: "Heavy golf load",
-    href: "/stats/training-over-time?range=3m#training-load-sessions",
-    detail: "High-load rounds, range work and speed sessions",
-  },
-  {
-    title: "Recent practice rhythm",
-    href: "/stats/training-over-time?range=4w#training-load-sessions",
-    detail: "Last month of logged golf workload",
-  },
-  {
-    title: "Season build",
-    href: "/stats/training-over-time?range=1y#training-load-sessions",
-    detail: "Long-range fitness, fatigue and form evidence",
-  },
-];
-
 const READINESS_RANGE_OPTIONS: Array<{ key: TrainingRangeKey; label: string }> = [
+  { key: "7d", label: "7 days" },
   { key: "4w", label: "4 weeks" },
   { key: "3m", label: "3 months" },
   { key: "6m", label: "6 months" },
@@ -126,12 +97,17 @@ function DeferredChartLoading({ label }: { label: string }) {
   );
 }
 
-export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRangeViewProps) {
-  const [activeRangeKey, setActiveRangeKey] = useState<TrainingRangeKey>(
-    initialRangeKey === "7d" ? "4w" : initialRangeKey,
-  );
-  const [logOpen, setLogOpen] = useState(false);
-  const isDesktopViewport = useDesktopViewport();
+export function TrainingLoadRangeView({
+  data,
+  initialRangeKey,
+  sourceLinks = {},
+}: TrainingLoadRangeViewProps) {
+  const ready = useClientReady();
+  const desktop = useSyncExternalStore(subscribeDesktop, desktopSnapshot, serverDesktopSnapshot);
+  const [ledgerVisited, setLedgerVisited] = useState(false);
+  const [activeRangeKey, setActiveRangeKey] = useState<TrainingRangeKey>(initialRangeKey);
+  const [rangeOpen, setRangeOpen] = useState(false);
+  const [draftRange, setDraftRange] = useState(initialRangeKey);
   const displayData = useMemo(
     () => selectTrainingRangeData(data, activeRangeKey),
     [activeRangeKey, data],
@@ -143,6 +119,71 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
 
   return (
     <>
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border p-3">
+        <Button
+          variant="outline"
+          disabled={!ready}
+          onClick={() => {
+            setDraftRange(activeRangeKey);
+            setRangeOpen(true);
+          }}
+        >
+          History range:{" "}
+          {READINESS_RANGE_OPTIONS.find((option) => option.key === activeRangeKey)?.label}
+        </Button>
+        <p role="status" className="text-sm">
+          {displayData.sessions.length} logged entries · {displayData.chartStartDate} to{" "}
+          {displayData.today}
+        </p>
+        <Button variant="ghost" onClick={() => handleRangeChange("4w")}>
+          Clear range
+        </Button>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Current readiness uses the existing long-term model. The selected range scopes chart dates
+        and the entry ledger; unlogged activity is unknown, not proof of rest.
+      </p>
+      <Sheet open={rangeOpen} onOpenChange={setRangeOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Training history range</SheetTitle>
+            <SheetDescription>
+              Select a supported history window. Current readiness is not recalculated as a past
+              assessment.
+            </SheetDescription>
+          </SheetHeader>
+          <label className="grid gap-2 p-4">
+            History window
+            <select
+              className="min-h-11 rounded-lg border bg-background px-3"
+              value={draftRange}
+              onChange={(event) => setDraftRange(event.target.value as TrainingRangeKey)}
+            >
+              {READINESS_RANGE_OPTIONS.map((option) => (
+                <option key={option.key} value={option.key}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex flex-wrap gap-3 p-4">
+            <Button variant="outline" onClick={() => setDraftRange("4w")}>
+              Reset
+            </Button>
+            <SheetClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </SheetClose>
+            <Button
+              onClick={() => {
+                handleRangeChange(draftRange);
+                setRangeOpen(false);
+              }}
+            >
+              Apply range
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
       {!displayData.hasTrainingData ? (
         <TrainingEmptyState conditioningDays={displayData.conditioningDays} />
       ) : null}
@@ -185,96 +226,115 @@ export function TrainingLoadRangeView({ data, initialRangeKey }: TrainingLoadRan
 
         <CardContent className="grid gap-0 p-0 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="min-w-0 px-3 py-4 sm:px-5 sm:py-6 lg:border-r lg:border-border/70 lg:px-6">
-            <TrainingOverTimeChart
-              data={displayData.series}
-              sessionMarkers={displayData.sessionMarkers}
-            />
+            <div className={styles.desktopChart}>
+              {desktop ? (
+                <TrainingOverTimeChart
+                  data={displayData.series}
+                  sessionMarkers={displayData.sessionMarkers}
+                />
+              ) : !ready ? (
+                <DeferredChartLoading label="Training status chart" />
+              ) : null}
+            </div>
+            <div className={styles.mobileChart}>
+              <MobileTrainingChart data={displayData.series} inspect />
+            </div>
           </div>
           <ReadinessRecommendation data={displayData} />
         </CardContent>
       </Card>
 
-      <ResponsiveDetailPanel
-        open={logOpen}
-        onOpenChange={setLogOpen}
-        title="Log golf training"
-        description="Add a round, practice block, speed session or manual workload entry."
-        trigger={
-          <Button type="button" className="min-h-11 w-full sm:w-fit" data-training-log-trigger>
-            <Plus className="size-4" aria-hidden="true" />
-            Log Training
-          </Button>
-        }
-      >
+      <details className="rounded-xl border" id="log-training">
+        <summary
+          className="min-h-12 cursor-pointer p-4 font-semibold text-primary"
+          data-training-log-trigger
+        >
+          Log Training
+        </summary>
         <TrainingSessionForm
           rangeKey={activeRangeKey}
           today={displayData.today}
           idPrefix="training-load"
         />
-      </ResponsiveDetailPanel>
+      </details>
 
-      {isDesktopViewport ? (
-        <div className={styles.desktopHistory} data-training-desktop-history>
-          <TrainingRhythmWorkbench data={displayData} streakData={data} />
+      <div className="grid min-w-0 gap-4" data-training-desktop-history>
+        <TrainingRhythmWorkbench data={displayData} streakData={data} />
 
-          <Card id="load" className="shadow-sm" data-training-daily-load-chart>
-            <SectionHeader
-              title="Daily swing load"
-              description="Each bar is the total session load logged for that day. Normal, heavy and very heavy bands keep workload changes easy to scan."
-              action={<BarChart3 className="size-5 text-primary" aria-hidden="true" />}
-            />
-            <CardContent className="grid gap-3">
-              <LoadLegend />
-              <TrainingLoadBars data={displayData.series} />
-            </CardContent>
-          </Card>
-
-          <TrainingSessionLedger sessions={displayData.sessions} rangeKey={activeRangeKey} />
-
-          <TrainingStatusCard
-            latest={displayData.latest}
-            status={displayData.status}
-            trend={displayData.trend}
-            confidence={displayData.confidence}
-            sessionFormSignal={displayData.sessionFormSignal}
+        <Card id="load" className="shadow-sm" data-training-daily-load-chart>
+          <SectionHeader
+            title="Daily swing load"
+            description="Each bar is the total session load logged for that day. Normal, heavy and very heavy bands keep workload changes easy to scan."
+            action={<BarChart3 className="size-5 text-primary" aria-hidden="true" />}
           />
+          <CardContent className="grid gap-3">
+            <LoadLegend />
+            <TrainingLoadBars data={displayData.series} />
+          </CardContent>
+        </Card>
 
-          <EfficiencyCards cards={displayData.efficiencyCards} />
+        <LabEvidenceList
+          title="Training entries"
+          rows={displayData.sessions.map((row) => ({
+            id: row.id,
+            title: row.title,
+            summary: `${row.sessionDate} · ${row.sourceType} · ${row.sessionLoad.toFixed(1)} load`,
+            href: row.sourceId ? sourceLinks[row.sourceId]?.href : undefined,
+            fields: Object.entries(row).map(([label, value]) => ({
+              label: label.replace(/([A-Z])/g, " $1"),
+              value: value === null ? "Not recorded" : String(value),
+            })),
+          }))}
+        />
+        <details
+          data-training-ledger-disclosure
+          onToggle={(event) => {
+            if (event.currentTarget.open) setLedgerVisited(true);
+          }}
+        >
+          <summary className="min-h-11 cursor-pointer py-3">
+            Full training ledger and export
+          </summary>
+          {ledgerVisited ? (
+            <TrainingSessionLedger
+              sessions={displayData.sessions}
+              rangeKey={activeRangeKey}
+              rangeLabel={
+                READINESS_RANGE_OPTIONS.find((option) => option.key === activeRangeKey)?.label ??
+                activeRangeKey
+              }
+            />
+          ) : null}
+        </details>
 
-          <Card id="log-load" className="shadow-sm" data-training-load-actions>
-            <CardContent className="flex items-center justify-between gap-4 p-4">
-              <div>
-                <p className="font-semibold">Training history</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Review every round and practice entry behind this readiness signal.
-                </p>
-              </div>
-              <Button asChild variant="outline">
-                <Link href="/sessions">View session history</Link>
-              </Button>
-            </CardContent>
-          </Card>
+        <TrainingStatusCard
+          latest={displayData.latest}
+          status={displayData.status}
+          trend={displayData.trend}
+          confidence={displayData.confidence}
+          sessionFormSignal={displayData.sessionFormSignal}
+        />
 
-          <RecentTrainingSessions sessions={displayData.recentSessions} />
-        </div>
-      ) : null}
+        <EfficiencyCards cards={displayData.efficiencyCards} />
+
+        <Card id="log-load" className="shadow-sm" data-training-load-actions>
+          <CardContent className="flex items-center justify-between gap-4 p-4">
+            <div>
+              <p className="font-semibold">Training history</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Review every round and practice entry behind this readiness signal.
+              </p>
+            </div>
+            <Button asChild variant="outline">
+              <Link href="/sessions">View session history</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <RecentTrainingSessions sessions={displayData.sessions} />
+      </div>
     </>
   );
-}
-
-function useDesktopViewport() {
-  const [isDesktop, setIsDesktop] = useState(false);
-
-  useEffect(() => {
-    const query = window.matchMedia("(min-width: 1024px)");
-    const update = () => setIsDesktop(query.matches);
-
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
-
-  return isDesktop;
 }
 
 function ReadinessRecommendation({ data }: { data: TrainingOverTimeData }) {
@@ -549,127 +609,6 @@ function EfficiencyCards({ cards }: { cards: TrainingEfficiencyCard[] }) {
             </article>
           ))}
         </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function TrainingSessionLedger({
-  sessions,
-  rangeKey,
-}: {
-  sessions: TrainingSessionListItem[];
-  rangeKey: TrainingRangeKey;
-}) {
-  const rangeLabel =
-    READINESS_RANGE_OPTIONS.find((option) => option.key === rangeKey)?.label ?? rangeKey;
-
-  return (
-    <Card
-      id="training-load-sessions"
-      className="scroll-mt-28 gap-0 py-0 shadow-sm"
-      data-workbench-scope="training-load-sessions"
-    >
-      <SectionHeader
-        title="Training load ledger"
-        description="Range, round, speed and manual workload rows behind the selected Training Status range."
-        action={<StatusPill tone="sky">{rangeLabel}</StatusPill>}
-      />
-      <CardContent className="grid gap-3 p-3">
-        <DesktopTableWorkbenchControls
-          viewKey="training-load-sessions"
-          scope="training-load-sessions"
-          currentViewLabel={`${rangeLabel} training load`}
-          resultLabel={`${integerFormatter.format(sessions.length)} session${sessions.length === 1 ? "" : "s"}`}
-          columns={trainingSessionColumns}
-          suggestedViews={trainingSessionSuggestedViews}
-          exportTableId="training-load-sessions"
-          exportFileName={`forekinghell-training-load-${rangeKey}.csv`}
-        />
-        <DataTableFrame mainTable mainTableLabel="Training load session table" stickyFirstColumn>
-          <Table
-            data-workbench-export-table="training-load-sessions"
-            aria-describedby="training-load-sessions-summary"
-          >
-            <TableCaption id="training-load-sessions-summary" className="sr-only">
-              Training load session table showing date, session, source, workload, RPE, volume,
-              conditions and notes for the selected range.
-            </TableCaption>
-            <TableHeader className="[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card">
-              <TableRow>
-                <TableHead data-column="date" className="sticky left-0 z-20 min-w-28 bg-card">
-                  Date
-                </TableHead>
-                <TableHead data-column="session" className="min-w-64">
-                  Session
-                </TableHead>
-                <TableHead data-column="source">Source</TableHead>
-                <TableHead data-column="load" className="text-right">
-                  Load
-                </TableHead>
-                <TableHead data-column="rpe" className="text-right">
-                  RPE
-                </TableHead>
-                <TableHead data-column="volume">Volume</TableHead>
-                <TableHead data-column="conditions">Conditions</TableHead>
-                <TableHead data-column="notes" className="min-w-72">
-                  Notes
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sessions.length > 0 ? (
-                sessions.map((session) => (
-                  <TableRow key={session.id} tabIndex={0} className="focus-aaa outline-none">
-                    <TableCell
-                      data-column="date"
-                      className="sticky left-0 z-10 border-r border-border bg-card font-semibold"
-                    >
-                      {formatLedgerDate(session.sessionDate)}
-                    </TableCell>
-                    <TableCell data-column="session">
-                      <div className="min-w-0">
-                        <p className="max-w-72 truncate font-semibold text-foreground">
-                          {session.title}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {session.competition ? "Competition" : "Training"} ·{" "}
-                          {session.sourceId ? session.sourceId.slice(0, 8) : "manual entry"}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell data-column="source">
-                      <StatusPill tone={trainingSourceTone(session.sourceType)}>
-                        {formatTrainingSource(session.sourceType)}
-                      </StatusPill>
-                    </TableCell>
-                    <TableCell data-column="load" className="text-right tabular-nums">
-                      {integerFormatter.format(Math.round(session.sessionLoad))}
-                    </TableCell>
-                    <TableCell data-column="rpe" className="text-right tabular-nums">
-                      {session.rpe}
-                    </TableCell>
-                    <TableCell data-column="volume">{formatTrainingVolume(session)}</TableCell>
-                    <TableCell data-column="conditions">
-                      {formatTrainingConditions(session)}
-                    </TableCell>
-                    <TableCell data-column="notes">
-                      <span className="block max-w-80 truncate text-muted-foreground">
-                        {session.notes?.trim() || "No notes"}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
-                    No training load sessions are logged in this range.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </DataTableFrame>
       </CardContent>
     </Card>
   );
@@ -1134,56 +1073,6 @@ function statusSurfaceClass(tone: Tone | "red") {
     case "slate":
       return "border-border bg-muted/50 text-foreground";
   }
-}
-
-function formatLedgerDate(dateKey: string) {
-  return ledgerDateFormatter.format(new Date(`${dateKey}T00:00:00.000Z`));
-}
-
-function formatTrainingSource(sourceType: TrainingSessionListItem["sourceType"]) {
-  switch (sourceType) {
-    case "launch_monitor":
-      return "Launch monitor";
-    case "imported":
-      return "Imported";
-    case "practice":
-      return "Practice";
-    case "round":
-      return "Round";
-    case "manual":
-      return "Manual";
-  }
-}
-
-function trainingSourceTone(sourceType: TrainingSessionListItem["sourceType"]): Tone {
-  switch (sourceType) {
-    case "round":
-      return "green";
-    case "manual":
-      return "amber";
-    default:
-      return "sky";
-  }
-}
-
-function formatTrainingVolume(session: TrainingSessionListItem) {
-  if (session.holesPlayed) return `${integerFormatter.format(session.holesPlayed)} holes`;
-  if (session.totalSwings) return `${integerFormatter.format(session.totalSwings)} swings`;
-  if (session.durationMinutes) return `${integerFormatter.format(session.durationMinutes)} min`;
-  return "Manual";
-}
-
-function formatTrainingConditions(session: TrainingSessionListItem) {
-  const conditions = [
-    session.walked ? "Walked" : session.usedCart ? "Cart" : null,
-    session.fullSwings ? `${integerFormatter.format(session.fullSwings)} full` : null,
-    session.shortGameSwings ? `${integerFormatter.format(session.shortGameSwings)} short` : null,
-    session.puttingSwings ? `${integerFormatter.format(session.puttingSwings)} putts` : null,
-    session.mentalPressure ? `Pressure ${session.mentalPressure}` : null,
-    session.physicalDemand ? `Demand ${session.physicalDemand}` : null,
-  ].filter(Boolean);
-
-  return conditions.length > 0 ? conditions.join(" / ") : "Not recorded";
 }
 
 function formatMetric(value: number) {

@@ -4,14 +4,16 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, MoreHorizontal, Search, Upload, X } from "lucide-react";
+import { NotificationCentre } from "@/components/app/workbench/notification-centre";
 
 import {
-  mobileMoreGroups,
+  buildMobileMoreGroups,
   mobilePageTitle,
   mobilePrimaryItems,
   type AppNavGroup,
 } from "@/components/app/nav-items";
 import { AppSurfaceLink } from "@/components/app/app-surface-link";
+import { appSurfaceHref } from "@/lib/app-surface-navigation";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import {
   AlertDialog,
@@ -40,9 +42,11 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { BRAND_NAME } from "@/lib/brand";
 import { useMobileNavigationViewport } from "./use-mobile-navigation-viewport";
 import { isSettingsSection, settingsSections } from "@/lib/settings-sections";
 import { isMobileCompanionHeroRoute, mobileBackNavigation } from "@/components/app/route-metadata";
+import previewStyles from "./companion-preview.module.css";
 
 export type MobileNavProfile = {
   displayName: string;
@@ -55,11 +59,12 @@ type MobileNavProps = {
   totalXp: number;
   level: number;
   profile: MobileNavProfile;
+  isAdmin?: boolean;
 };
 
 const xpFormatter = new Intl.NumberFormat("en-GB");
 
-export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps) {
+export function MobileNav({ pathname, totalXp, level, profile, isAdmin = false }: MobileNavProps) {
   const params = useSearchParams();
   const savedPlanId = pathname === "/practice" ? params.get("planId") : null;
   const requestedSettingsSection = pathname === "/settings" ? params.get("section") : null;
@@ -82,7 +87,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
           : mobileBackNavigation(pathname),
     [pathname, savedPlanId, settingsSection],
   );
-  const groups = mobileMoreGroups;
+  const groups = useMemo(() => buildMobileMoreGroups(isAdmin), [isAdmin]);
   const [query, setQuery] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const moreCloseRef = useRef<HTMLButtonElement>(null);
@@ -189,7 +194,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                 event.preventDefault();
                 moreCloseRef.current?.focus({ preventScroll: true });
               }}
-              className="ios-navigation-sheet z-[70] gap-0 p-0"
+              className={cn("ios-navigation-sheet z-[70] gap-0 p-0", previewStyles.navigationSheet)}
             >
               <span className="ios-sheet-handle" aria-hidden />
               <SheetHeader className="ios-sheet-header border-b px-4 pb-3 pt-2 text-left">
@@ -197,7 +202,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                   <SheetTitle className="text-[1.375rem] font-bold tracking-tight">
                     Your golf
                   </SheetTitle>
-                  <SheetDescription className="mt-0.5 truncate">
+                  <SheetDescription className="mt-0.5 break-words">
                     {profileLabel} · Level {level} · {xpFormatter.format(totalXp)} XP
                   </SheetDescription>
                 </div>
@@ -237,7 +242,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                   ) : (
                     <AppEmptyState
                       title="No matching pages"
-                      description="Clear the search to see every companion destination."
+                      description="Clear the search to see every available destination."
                       primaryAction={
                         <Button type="button" size="sm" onClick={() => setQuery("")}>
                           Clear search
@@ -249,11 +254,25 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                 </div>
               </ScrollArea>
               <div className="ios-sheet-footer mt-auto grid gap-3 border-t px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3">
+                <NotificationCentre embedded />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-12 justify-start"
+                  onClick={() => {
+                    setMoreOpen(false);
+                    window.setTimeout(
+                      () => window.dispatchEvent(new Event("fkh:open-command-centre")),
+                      180,
+                    );
+                  }}
+                >
+                  <Search className="size-4" aria-hidden />
+                  Search clubs, rounds and people
+                </Button>
                 <Button asChild variant="outline" className="min-h-12 justify-start">
                   <SheetClose asChild>
-                    <AppSurfaceLink
-                      href={`/surface/workbench?next=${encodeURIComponent(pathname)}`}
-                    >
+                    <AppSurfaceLink href={appSurfaceHref("workbench", location)} preserveLocation>
                       <Search className="size-4" />
                       Open full desktop site
                     </AppSurfaceLink>
@@ -271,7 +290,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Sign out of ForeKingHell?</AlertDialogTitle>
+                      <AlertDialogTitle>Sign out of {BRAND_NAME}?</AlertDialogTitle>
                       <AlertDialogDescription>
                         Private offline golf data will be cleared from this device before the
                         session ends.
@@ -298,7 +317,7 @@ export function MobileNav({ pathname, totalXp, level, profile }: MobileNavProps)
           <div className="relative grid min-w-0 place-items-center">
             <p
               className={cn(
-                "ios-inline-title min-w-0 truncate text-center transition-opacity duration-150 motion-reduce:transition-none",
+                "ios-inline-title w-full max-w-full min-w-0 truncate text-center transition-opacity duration-150 motion-reduce:transition-none",
                 compactTitleVisible ? "opacity-100" : "pointer-events-none opacity-0",
               )}
               data-mobile-route-label
@@ -432,5 +451,5 @@ function mobileGroupDescription(label: string) {
   if (label === "Golf") return "Bag numbers, goals and import";
   if (label === "Compete") return "Current challenges, tournaments and achievements";
   if (label === "Account") return "Profile, notifications and preferences";
-  return "More ForeKingHell tools";
+  return `More ${BRAND_NAME} tools`;
 }

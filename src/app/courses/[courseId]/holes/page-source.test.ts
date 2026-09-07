@@ -58,16 +58,16 @@ describe("course holes desktop workspace", () => {
   });
 
   it("organises course details with tabs, a mapping alert and a tee editor sheet", () => {
-    expect(source).toContain("data-course-detail-tabs");
-    expect(source).toContain('<TabsTrigger value="overview">');
-    expect(source).toContain('<TabsTrigger value="mapping">');
-    expect(source).toContain('<TabsTrigger value="tees">');
-    expect(source).toContain('<TabsTrigger value="holes">');
-    expect(source).toContain('<TabsTrigger value="records">');
+    expect(source).toContain('label="Course editor sections"');
+    expect(source).toContain('id: "overview"');
+    expect(source).toContain('id: "mapping"');
+    expect(source).toContain('id: "tees"');
+    expect(source).toContain('id: "holes"');
+    expect(source).toContain('id: "records"');
     expect(source).toContain("<Alert");
     expect(source).toContain("ConnectedMetricBar");
     expect(source).toContain("CourseTeeEditorSheet");
-    expect(source).toContain("defaultValue={activeTab}");
+    expect(source).toContain("defaultTabKey={activeTab}");
     expect(source).toContain('href: "?tab=holes#hole-geometry-table"');
     expect(source).toContain('href: "?tab=tees#tee-set"');
     expect(source).toContain('href: "?tab=tees#geometry-preview"');
@@ -126,8 +126,15 @@ describe("course holes desktop workspace", () => {
     );
     expect(mapEditorSource).toContain("aria-controls={controlsId}");
     expect(mapEditorSource).toContain("id={controlsId}");
-    expect(mapEditorSource).toContain('!controlsOpen && "hidden"');
-    expect(mapEditorSource).toContain('"lg:block"');
+    expect(mapEditorSource).toContain("data-open={controlsOpen}");
+    const styles = readFileSync(
+      join(process.cwd(), "src/app/courses/[courseId]/holes/course-editor.module.css"),
+      "utf8",
+    );
+    expect(styles).toMatch(/\.controls\[data-open="false"\]\s*\{\s*display:\s*none;\s*\}/);
+    expect(styles).toMatch(
+      /@media\s*\(min-width:\s*1024px\)\s*\{\s*\.controls\[data-open="false"\]\s*\{\s*display:\s*block;\s*\}/,
+    );
     expect(mapEditorSource.match(/name="holeNumber"/g)).toHaveLength(1);
     expect(mapEditorSource).toContain("h-[56dvh]");
     expect(mapEditorSource).toContain("lg:grid-cols-[minmax(18rem,0.75fr)_minmax(0,1.25fr)]");

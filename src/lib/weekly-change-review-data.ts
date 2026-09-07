@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, count, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, lte, inArray, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
@@ -22,7 +22,7 @@ export async function getWeeklyChangeEvidence(userId: string, now = new Date()) 
       getDb()
         .select({ date: sessions.date })
         .from(sessions)
-        .where(eq(sessions.userId, userId))
+        .where(and(eq(sessions.userId, userId), lte(sessions.date, now)))
         .orderBy(desc(sessions.date))
         .limit(1),
       getDb()
@@ -33,6 +33,7 @@ export async function getWeeklyChangeEvidence(userId: string, now = new Date()) 
             eq(practicePlans.userId, userId),
             inArray(practicePlans.status, ["completed", "analysed"]),
             gte(practicePlans.completedAt, since),
+            lte(practicePlans.completedAt, now),
           ),
         ),
       getDb()
@@ -41,7 +42,9 @@ export async function getWeeklyChangeEvidence(userId: string, now = new Date()) 
           rounds: sql<number>`count(*) filter (where ${sessions.type} = 'real_round')::int`,
         })
         .from(sessions)
-        .where(and(eq(sessions.userId, userId), gte(sessions.date, since))),
+        .where(
+          and(eq(sessions.userId, userId), gte(sessions.date, since), lte(sessions.date, now)),
+        ),
       getDb()
         .select({
           suspiciousShots: sql<number>`count(*) filter (where ${shots.carryYd} <= 0 or ${shots.carryYd} > 400 or ${shots.totalYd} > 500)::int`,
@@ -65,7 +68,8 @@ export async function getWeeklyChangeEvidence(userId: string, now = new Date()) 
           ) as prior_best
         from ${shots}
         where ${shots.userId} = ${userId}
-          and ${shots.carryYd} is not null
+          and ${shots.carryYd} > 0
+          and ${shots.carryYd} < 'Infinity'::double precision
           and ${shots.reviewStatus} in ('included', 'restored')
           and (
             ${shots.reviewStatus} = 'restored'
@@ -84,6 +88,7 @@ export async function getWeeklyChangeEvidence(userId: string, now = new Date()) 
           )
       ) ranked
       where shot_at >= ${sinceIso}::timestamptz
+        and shot_at <= ${now.toISOString()}::timestamptz
         and (prior_best is null or carry_yd > prior_best)
     `),
     ]);
@@ -91,6 +96,8 @@ export async function getWeeklyChangeEvidence(userId: string, now = new Date()) 
   const issues = issueRows[0];
 
   return {
+    windowStart: sinceIso,
+    windowEnd: now.toISOString(),
     latestSessionAt: latestSession[0]?.date ?? null,
     completedPracticeCount: Number(completedRows[0]?.total ?? 0),
     completedSessionCount: Number(sessionRows[0]?.sessions ?? 0),

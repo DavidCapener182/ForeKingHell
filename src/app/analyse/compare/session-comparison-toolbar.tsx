@@ -1,9 +1,19 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
+import { useId, useState } from "react";
 import { ArrowRight, GitCompareArrows } from "lucide-react";
 
-import { EntityCombobox } from "@/components/app/entity-combobox";
+import { ComparisonSearchSheet } from "./comparison-search-sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetTrigger,
+  SheetClose,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
@@ -38,6 +48,8 @@ export function SessionComparisonToolbar({
   initial,
   period,
 }: SessionComparisonToolbarProps) {
+  const formId = useId();
+  const searchParams = useSearchParams();
   const [focusSessionId, setFocusSessionId] = useState(initial.focusSessionId);
   const [baselineSessionId, setBaselineSessionId] = useState(initial.baselineSessionId);
   const [clubId, setClubId] = useState(initial.clubId || "all");
@@ -75,134 +87,169 @@ export function SessionComparisonToolbar({
     },
   ];
 
+  const advancedCount =
+    Number(clubId !== "all") + Number(condition !== "same") + Number(selectedPeriod !== "sessions");
+  function reset() {
+    setFocusSessionId("");
+    setBaselineSessionId("");
+    setClubId("all");
+    setCondition("same");
+    setSelectedPeriod("sessions");
+  }
   return (
     <form
+      id={formId}
       action="/analyse/compare"
-      className="overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm"
+      className="grid min-w-0 gap-4 rounded-xl border bg-card p-4"
       data-comparison-toolbar
     >
+      <input type="hidden" name="metric" value={searchParams.get("metric") ?? ""} />
+      <input type="hidden" name="view" value={searchParams.get("view") ?? ""} />
       <input type="hidden" name="sessionId" value={focusSessionId} />
       <input type="hidden" name="baselineSessionId" value={baselineSessionId} />
       <input type="hidden" name="clubId" value={clubId === "all" ? "" : clubId} />
       <input type="hidden" name="condition" value={condition} />
       <input type="hidden" name="period" value={selectedPeriod} />
-
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-muted/25 px-3 py-2">
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <GitCompareArrows className="size-4 text-primary" aria-hidden />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 font-semibold">
+          <GitCompareArrows className="size-4" aria-hidden />
           Comparison setup
-        </div>
-        <ToggleGroup
-          type="single"
-          value={selectedPeriod}
-          onValueChange={(value) => value && setSelectedPeriod(value as "sessions" | "month")}
-          variant="outline"
-          spacing={0}
-          size="sm"
-          aria-label="Comparison period"
-        >
-          <ToggleGroupItem value="sessions">Sessions</ToggleGroupItem>
-          <ToggleGroupItem value="month">30 days</ToggleGroupItem>
-        </ToggleGroup>
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {sessions.length} available sessions · {clubs.length} clubs
+        </p>
       </div>
-
-      <div className="grid lg:grid-cols-[minmax(12rem,1.25fr)_auto_minmax(12rem,1.25fr)_minmax(9rem,0.8fr)_minmax(10rem,0.9fr)_auto] lg:items-stretch">
-        <ToolbarField
+      <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <ComparisonSearchSheet
           label="Focus session"
-          className="border-b border-border/70 lg:border-b-0 lg:border-r"
+          value={focusSessionId}
+          onValueChange={setFocusSessionId}
+          options={[
+            { value: "", label: selectedPeriod === "month" ? "Latest 30 days" : "Latest session" },
+            ...sessionOptions,
+          ]}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          disabled={
+            selectedPeriod !== "sessions" ||
+            !focusSessionId ||
+            !baselineSessionId ||
+            focusSessionId === baselineSessionId
+          }
+          onClick={() => {
+            setFocusSessionId(baselineSessionId);
+            setBaselineSessionId(focusSessionId);
+          }}
         >
-          <EntityCombobox
-            label="Focus session"
-            value={focusSessionId}
-            onValueChange={setFocusSessionId}
-            options={sessionOptions}
-            placeholder={selectedPeriod === "month" ? "Latest 30 days" : "Choose focus session"}
-            searchPlaceholder="Search focus sessions…"
-            emptyLabel="No matching session."
-            className="h-9 border-0 bg-transparent px-0 shadow-none hover:bg-transparent"
-          />
-        </ToolbarField>
-
-        <div className="hidden items-center justify-center border-r border-border/70 px-2 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground lg:flex">
-          vs
-        </div>
-
-        <ToolbarField
+          Swap sessions
+        </Button>
+        <ComparisonSearchSheet
           label="Baseline session"
-          className="border-b border-border/70 lg:border-b-0 lg:border-r"
-        >
-          <EntityCombobox
-            label="Baseline session"
-            value={baselineSessionId}
-            onValueChange={setBaselineSessionId}
-            options={sessionOptions.map((option) => ({
+          value={baselineSessionId}
+          onValueChange={setBaselineSessionId}
+          options={[
+            {
+              value: "",
+              label: selectedPeriod === "month" ? "Previous 30 days" : "Automatic previous session",
+            },
+            ...sessionOptions.map((option) => ({
               ...option,
               disabled: selectedPeriod === "sessions" && option.value === focusSessionId,
-            }))}
-            placeholder={
-              selectedPeriod === "month" ? "Previous 30 days" : "Automatic previous session"
-            }
-            searchPlaceholder="Search baseline sessions…"
-            emptyLabel="No matching session."
-            className="h-9 border-0 bg-transparent px-0 shadow-none hover:bg-transparent"
-          />
-        </ToolbarField>
-
-        <ToolbarField label="Club" className="border-b border-border/70 lg:border-b-0 lg:border-r">
-          <EntityCombobox
-            label="Club"
-            value={clubId}
-            onValueChange={setClubId}
-            options={clubOptions}
-            placeholder="All clubs"
-            searchPlaceholder="Search clubs…"
-            emptyLabel="No matching club."
-            className="h-9 border-0 bg-transparent px-0 shadow-none hover:bg-transparent"
-          />
-        </ToolbarField>
-
-        <ToolbarField
-          label="Environment / conditions"
-          className="border-b border-border/70 lg:border-b-0 lg:border-r"
-        >
-          <EntityCombobox
-            label="Environment and conditions"
-            value={condition}
-            onValueChange={setCondition}
-            options={conditionOptions}
-            placeholder="As recorded"
-            searchPlaceholder="Search conditions…"
-            emptyLabel="No matching condition."
-            className="h-9 border-0 bg-transparent px-0 shadow-none hover:bg-transparent"
-          />
-        </ToolbarField>
-
-        <div className="flex items-stretch p-2.5">
-          <Button type="submit" className="min-h-11 w-full px-4 lg:min-h-0">
-            Compare
-            <ArrowRight className="size-4" aria-hidden />
-          </Button>
-        </div>
+            })),
+          ]}
+        />
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {selectedPeriod === "month"
+          ? "Comparing adjacent 30-day periods; session choices do not change this period mode."
+          : "Focus is compared against baseline. Apply to update results and the shareable URL."}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button type="button" variant="outline">
+              Filters ({advancedCount})
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="w-full sm:max-w-lg">
+            <SheetHeader>
+              <SheetTitle>Comparison filters</SheetTitle>
+              <SheetDescription>
+                Choose the club, recorded environment and time scope.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="grid min-h-0 gap-5 overflow-y-auto p-4">
+              <ToggleGroup
+                type="single"
+                value={selectedPeriod}
+                onValueChange={(value) => value && setSelectedPeriod(value as "sessions" | "month")}
+                aria-label="Comparison period"
+              >
+                <ToggleGroupItem value="sessions">Sessions</ToggleGroupItem>
+                <ToggleGroupItem value="month">30 days</ToggleGroupItem>
+              </ToggleGroup>
+              <label className="grid gap-2 text-sm font-medium">
+                Club
+                <select
+                  className="min-h-11 w-full rounded-lg border bg-background px-3"
+                  value={clubId}
+                  onChange={(event) => setClubId(event.target.value)}
+                >
+                  {clubOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Environment and conditions
+                <select
+                  className="min-h-11 w-full rounded-lg border bg-background px-3"
+                  value={condition}
+                  onChange={(event) => setCondition(event.target.value)}
+                >
+                  {conditionOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="mt-auto flex flex-wrap gap-2 border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+              <Button type="submit" form={formId}>
+                Apply filters
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setClubId("all");
+                  setCondition("same");
+                  setSelectedPeriod("sessions");
+                }}
+              >
+                Reset filters
+              </Button>
+              <SheetClose asChild>
+                <Button type="button" variant="outline">
+                  Close filters
+                </Button>
+              </SheetClose>
+            </div>
+          </SheetContent>
+        </Sheet>
+        <Button type="button" variant="outline" onClick={reset}>
+          Clear all
+        </Button>
+        <Button type="submit">
+          Compare
+          <ArrowRight className="size-4" aria-hidden />
+        </Button>
       </div>
     </form>
-  );
-}
-
-function ToolbarField({
-  label,
-  className,
-  children,
-}: {
-  label: string;
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className={`min-w-0 px-3 py-2 ${className ?? ""}`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-        {label}
-      </p>
-      <div className="mt-0.5 min-w-0">{children}</div>
-    </div>
   );
 }

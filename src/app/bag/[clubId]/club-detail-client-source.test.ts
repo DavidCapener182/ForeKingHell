@@ -8,10 +8,13 @@ const source = readFileSync(
 );
 
 describe("club profile desktop helper bundle", () => {
-  it("ships only the desktop club decision and analysis path", () => {
-    expect(source).toContain("data-desktop-club-profile");
+  it("shares range-filtered shot evidence across the selected club composition", () => {
+    expect(source).toContain("if (companion)");
+    expect(source).toContain("data-mobile-club-detail");
+    expect(source).toContain("filterShotsForRange(orderedShots, shotRange, new Date())");
+    expect(source.match(/shots={selectedShots}/g)?.length).toBeGreaterThanOrEqual(2);
     expect(source).toContain("<RangeToggle");
-    expect(source).toContain('aria-label="Shot date range"');
+    expect(source).toContain('label="Shot date range"');
     expect(source).toContain("<ClubAnalysisTabs");
     expect(source).toContain("afterDispersion={");
 
@@ -38,8 +41,8 @@ describe("club profile desktop helper bundle", () => {
       /(?:bg|text|border|ring)-(?:white|black|slate|emerald|green|amber|orange|yellow|red|rose|pink|sky|blue|indigo|violet|purple|cyan|teal)(?:-|\b)|(?:bg|text|border|ring)-\[#|rgba\(|#[0-9a-f]{3,8}/i;
 
     expect(source).not.toMatch(fixedPalette);
-    expect(source).toContain("<ToggleGroup");
-    expect(source).toContain("<ToggleGroupItem");
+    expect(source).toContain("<UntitledSelect");
+    expect(source).toContain("onValueChange={(next) => onChange(next as ShotRange)}");
     expect(source).toContain("<Badge");
     expect(source).toContain("<Progress");
     expect(source).toContain("var(--status-success-surface)");

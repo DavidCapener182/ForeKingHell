@@ -1858,9 +1858,11 @@ export const sessions = pgTable(
         yards: number;
         name: string | null;
         csvShotCount?: number;
+        shotAssignmentSource?: "manual";
         progressYd?: number;
         distanceRemainingYd?: number;
         putts?: number | null;
+        puttsSource?: "manual";
         penalties?: number | null;
         score?: number | null;
         netScore?: number | null;

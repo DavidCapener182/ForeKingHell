@@ -1,0 +1,4529 @@
+[
+  {
+    "route": "/admin/billing",
+    "canonicalRoute": "/admin/billing",
+    "source": "src/app/(admin)/admin/billing/page.tsx",
+    "adjacentSources": [],
+    "family": "admin-billing",
+    "user": "Administrator",
+    "primaryJob": "Billing operations: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/today",
+    "entryPoints": {
+      "navigation": "Billing ops",
+      "back": null
+    },
+    "nextActionsInSource": ["/admin/users"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/admin"],
+    "permissionEvidence": [
+      "@/app/admin/actions",
+      "@/app/admin/admin-confirm-submit-button",
+      "@/app/admin/admin-billing-actions",
+      "@/app/admin/admin-components",
+      "@/lib/admin"
+    ],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "admin-workflows.test.ts:4realDB cases verify owner-role authority, audit rollback/deactivation, missing moderation no audit and concurrent/repeated resolution. Broader admin route and browser acceptance remain pending."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/admin/challenges",
+    "canonicalRoute": "/admin/challenges",
+    "source": "src/app/(admin)/admin/challenges/page.tsx",
+    "adjacentSources": [],
+    "family": "admin-challenges",
+    "user": "Administrator",
+    "primaryJob": "Challenge operations: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/today",
+    "entryPoints": {
+      "navigation": "Challenge ops",
+      "back": null
+    },
+    "nextActionsInSource": ["/challenges"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/admin"],
+    "permissionEvidence": [
+      "@/app/admin/admin-components",
+      "@/app/admin/admin-challenge-actions",
+      "@/lib/admin"
+    ],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "admin-workflows.test.ts:4realDB cases verify owner-role authority, audit rollback/deactivation, missing moderation no audit and concurrent/repeated resolution. Broader admin route and browser acceptance remain pending."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/admin/moderation",
+    "canonicalRoute": "/admin/moderation",
+    "source": "src/app/(admin)/admin/moderation/page.tsx",
+    "adjacentSources": [],
+    "family": "admin-moderation",
+    "user": "Administrator",
+    "primaryJob": "Moderation: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/today",
+    "entryPoints": {
+      "navigation": "Moderation",
+      "back": null
+    },
+    "nextActionsInSource": ["/admin/moderation"],
+    "modesAndParameters": ["set", "toString"],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/admin"],
+    "permissionEvidence": [
+      "@/app/admin/actions",
+      "@/app/admin/admin-bulk-action-submit",
+      "@/app/admin/moderation-row-actions",
+      "@/app/admin/admin-components",
+      "@/lib/admin"
+    ],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "admin-workflows.test.ts:4realDB cases verify owner-role authority, audit rollback/deactivation, missing moderation no audit and concurrent/repeated resolution. Broader admin route and browser acceptance remain pending."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/admin",
+    "canonicalRoute": "/admin",
+    "source": "src/app/(admin)/admin/page.tsx",
+    "adjacentSources": [],
+    "family": "admin",
+    "user": "Administrator",
+    "primaryJob": "Admin: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/today",
+    "entryPoints": {
+      "navigation": "Admin",
+      "back": null
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [
+      "/admin/billing",
+      "/admin/challenges",
+      "/admin/moderation",
+      "/admin/system-checks",
+      "/admin/users"
+    ],
+    "dataDependencies": ["@/lib/admin"],
+    "permissionEvidence": [
+      "@/app/admin/admin-components",
+      "@/app/admin/admin-overview-components",
+      "@/lib/admin"
+    ],
+    "recoveryFiles": ["src/app/(admin)/admin/loading.tsx"],
+    "implementation": "in progress",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "admin-workflows.test.ts:4realDB cases verify owner-role authority, audit rollback/deactivation, missing moderation no audit and concurrent/repeated resolution. Broader admin route and browser acceptance remain pending."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/admin/system-checks",
+    "canonicalRoute": "/admin/system-checks",
+    "source": "src/app/(admin)/admin/system-checks/page.tsx",
+    "adjacentSources": [],
+    "family": "admin-system",
+    "user": "Administrator",
+    "primaryJob": "System checks: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/today",
+    "entryPoints": {
+      "navigation": "System",
+      "back": null
+    },
+    "nextActionsInSource": ["/providers?tab=diagnostics#provider-health"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/admin", "@/lib/utils"],
+    "permissionEvidence": [
+      "@/app/admin/admin-components",
+      "@/app/admin/admin-retry-button",
+      "@/lib/admin"
+    ],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "admin-workflows.test.ts:4realDB cases verify owner-role authority, audit rollback/deactivation, missing moderation no audit and concurrent/repeated resolution. Broader admin route and browser acceptance remain pending."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/admin/users",
+    "canonicalRoute": "/admin/users",
+    "source": "src/app/(admin)/admin/users/page.tsx",
+    "adjacentSources": [],
+    "family": "admin-users",
+    "user": "Administrator",
+    "primaryJob": "Users: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/today",
+    "entryPoints": {
+      "navigation": "Users",
+      "back": null
+    },
+    "nextActionsInSource": ["/admin/users"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/admin"],
+    "permissionEvidence": [
+      "@/app/admin/admin-user-actions",
+      "@/app/admin/admin-components",
+      "@/lib/admin"
+    ],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "admin-workflows.test.ts:4realDB cases verify owner-role authority, audit rollback/deactivation, missing moderation no audit and concurrent/repeated resolution. Broader admin route and browser acceptance remain pending."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/achievements",
+    "canonicalRoute": "/achievements",
+    "source": "src/app/(app)/achievements/page.tsx",
+    "adjacentSources": [],
+    "family": "achievements",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Achievements: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Achievements",
+      "back": {
+        "href": "/progress",
+        "label": "Progress"
+      }
+    },
+    "nextActionsInSource": [
+      "/today",
+      "/course-records",
+      "/tournaments",
+      "/rounds",
+      "/bag",
+      "/import",
+      "/leaderboard?tab=friends",
+      "/challenges"
+    ],
+    "modesAndParameters": ["achievement"],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/app-surface-server", "@/lib/social", "@/lib/achievements/service"],
+    "permissionEvidence": [],
+    "recoveryFiles": [
+      "src/app/(app)/achievements/error.tsx",
+      "src/app/(app)/achievements/loading.tsx",
+      "src/app/(app)/achievements/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/analyse/compare",
+    "canonicalRoute": "/analyse/compare",
+    "source": "src/app/(app)/analyse/compare/page.tsx",
+    "adjacentSources": [],
+    "family": "analyse",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Investigate a specific performance question",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/sessions",
+    "entryPoints": {
+      "navigation": "Analyse",
+      "back": {
+        "href": "/analyse",
+        "label": "Analyse"
+      }
+    },
+    "nextActionsInSource": [
+      "/analyse",
+      "/compare",
+      "/shots",
+      "/coach/reports?include=comparisons",
+      "/practice"
+    ],
+    "modesAndParameters": ["period", "condition", "sessionId", "baselineSessionId", "clubId"],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/comparison-provenance",
+      "@/lib/compare-data",
+      "@/lib/current-user"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": ["src/app/(app)/analyse/compare/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/analyse/conditions",
+    "canonicalRoute": "/analyse/conditions",
+    "source": "src/app/(app)/analyse/conditions/page.tsx",
+    "adjacentSources": [],
+    "family": "analyse",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Investigate a specific performance question",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/sessions",
+    "entryPoints": {
+      "navigation": "Analyse",
+      "back": {
+        "href": "/analyse",
+        "label": "Analyse"
+      }
+    },
+    "nextActionsInSource": ["/analyse", "/analyse/workspace", "/practice/quick-range", "/import"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/directional-confidence-sql",
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/conditions-analysis",
+      "@/lib/club-format",
+      "@/lib/current-user",
+      "@/lib/shot-review"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/analyse",
+    "canonicalRoute": "/analyse",
+    "source": "src/app/(app)/analyse/page.tsx",
+    "adjacentSources": [],
+    "family": "analyse",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Investigate a specific performance question",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/sessions",
+    "entryPoints": {
+      "navigation": "Analyse",
+      "back": null
+    },
+    "nextActionsInSource": [
+      "/import",
+      "/providers",
+      "/analyse/compare",
+      "/analyse/conditions",
+      "/analyse/workspace"
+    ],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [
+      "/analyse/compare",
+      "/analyse/conditions",
+      "/analyse/session-impact",
+      "/analyse/workspace"
+    ],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/analysis-confidence",
+      "@/lib/club-format",
+      "@/lib/current-user",
+      "@/lib/shot-records",
+      "@/lib/session-date-range"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": ["src/app/(app)/analyse/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/analyse/session-impact",
+    "canonicalRoute": "/analyse/session-impact",
+    "source": "src/app/(app)/analyse/session-impact/page.tsx",
+    "adjacentSources": [],
+    "family": "session-impact",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Session impact: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/sessions",
+    "entryPoints": {
+      "navigation": "Session impact",
+      "back": {
+        "href": "/analyse",
+        "label": "Analyse"
+      }
+    },
+    "nextActionsInSource": ["/analyse", "/sessions"],
+    "modesAndParameters": ["sessionId"],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/db/schema", "@/db/client", "@/lib/current-user", "@/lib/club-format"],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/analyse/session-impact/error.tsx",
+      "src/app/(app)/analyse/session-impact/loading.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/analyse/workspace",
+    "canonicalRoute": "/analyse/workspace",
+    "source": "src/app/(app)/analyse/workspace/page.tsx",
+    "adjacentSources": [],
+    "family": "analyse",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Investigate a specific performance question",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/sessions",
+    "entryPoints": {
+      "navigation": "Analyse",
+      "back": {
+        "href": "/analyse",
+        "label": "Analyse"
+      }
+    },
+    "nextActionsInSource": ["/analyse", "/analyse/session-impact"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/analysis-workspace",
+      "@/lib/analysis-confidence",
+      "@/lib/equipment-change-analysis",
+      "@/lib/current-user",
+      "@/lib/club-format",
+      "@/lib/round-sessions"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/analyse/workspace/error.tsx",
+      "src/app/(app)/analyse/workspace/loading.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/bag/[clubId]/analytics",
+    "canonicalRoute": "/bag/[clubId]/analytics",
+    "source": "src/app/(app)/bag/[clubId]/analytics/page.tsx",
+    "adjacentSources": [],
+    "family": "bag",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Find trusted club numbers, gaps and supporting evidence",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Bag",
+      "back": {
+        "href": "/bag/[clubId]",
+        "label": "Club"
+      }
+    },
+    "nextActionsInSource": ["/import", "/assets/hole-350-aerial.jpg"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/directional-confidence-sql",
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/club-format",
+      "@/lib/club-analytics",
+      "@/lib/current-user",
+      "@/lib/shot-review",
+      "@/lib/short-game",
+      "@/lib/stock-yardage"
+    ],
+    "permissionEvidence": ["@/components/app/chart-accessible-fallback", "@/lib/current-user"],
+    "recoveryFiles": ["src/app/(app)/bag/[clubId]/analytics/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/bag/[clubId]",
+    "canonicalRoute": "/bag/[clubId]",
+    "source": "src/app/(app)/bag/[clubId]/page.tsx",
+    "adjacentSources": [],
+    "family": "bag",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Find trusted club numbers, gaps and supporting evidence",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Bag",
+      "back": {
+        "href": "/bag",
+        "label": "Bag"
+      }
+    },
+    "nextActionsInSource": ["/bag", "/import"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": ["/bag/[clubId]/analytics"],
+    "dataDependencies": [
+      "@/lib/directional-confidence-sql",
+      "@/lib/app-surface-server",
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/club-format",
+      "@/lib/current-user",
+      "@/lib/feature-ideas",
+      "@/lib/mobile-club-neighbours-data"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/bag/longest",
+    "canonicalRoute": "/bag/longest",
+    "source": "src/app/(app)/bag/longest/page.tsx",
+    "adjacentSources": [],
+    "family": "best-shots",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Best shots by club: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Best shots",
+      "back": {
+        "href": "/bag",
+        "label": "Bag"
+      }
+    },
+    "nextActionsInSource": ["/bag", "/import"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/longest-shot-data",
+      "@/lib/club-format",
+      "@/lib/current-user",
+      "@/lib/units"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "implemented; wider theme and permissions checks pending",
+    "findings": [
+      "Existing destination was buried under Shot simulator wording. One total-distance winner could not answer longest carry separately. The original query excluded entire SW/LW club types."
+    ],
+    "proposedImprovements": [
+      "Separate metric winners, original-shot deep links, explicit raw maxima, mobile selectors, discovery in Today, Bag, sidebar and command search."
+    ],
+    "preservedDesign": "Optional existing illustrative replay and desktop table export/column/density controls retained below the new record board.",
+    "verification": {
+      "functional": [
+        "tests/e2e/best-shots.spec.ts: distinct metric winners, excluded raw maxima, exact-shot inspection, refresh and Back, mobile selection, seven widths; 1 passed before final club-ID refinement, final log pending readback.",
+        "42 focused unit tests passed."
+      ],
+      "desktop": [
+        "output/playwright/redesign/best-shots/workbench.png visually inspected with synthetic records. Live localhost:3000 UI readback verified real records without writes."
+      ],
+      "mobile": [
+        "output/playwright/redesign/best-shots/companion.png inspected; subsequently added immediately reachable club/record selectors. Axe WCAG A/AA scan of record board passed."
+      ],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["All supported theme and loading/error-state visual matrix remains incomplete."]
+  },
+  {
+    "route": "/bag",
+    "canonicalRoute": "/bag",
+    "source": "src/app/(app)/bag/page.tsx",
+    "adjacentSources": [],
+    "family": "bag",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Find trusted club numbers, gaps and supporting evidence",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Bag",
+      "back": null
+    },
+    "nextActionsInSource": [
+      "/import",
+      "/equipment",
+      "/equipment/experiments",
+      "/speed",
+      "/quick-bag"
+    ],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": ["/bag/[clubId]/analytics", "/bag/[clubId]", "/bag/longest"],
+    "dataDependencies": [
+      "@/lib/directional-confidence-sql",
+      "@/lib/mobile-quick-bag-data",
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/app-surface-server",
+      "@/lib/server-observability",
+      "@/lib/bag-intelligence",
+      "@/lib/club-benchmarks",
+      "@/lib/current-user",
+      "@/lib/course-decision-advice",
+      "@/lib/gapping-targets",
+      "@/lib/gapping-windows",
+      "@/lib/club-format",
+      "@/lib/club-evolution",
+      "@/lib/social",
+      "@/lib/feature-ideas",
+      "@/lib/speed-training-data",
+      "@/lib/speed-training",
+      "@/lib/short-game",
+      "@/lib/shot-records",
+      "@/lib/shot-review",
+      "@/lib/stock-yardage"
+    ],
+    "permissionEvidence": ["@/components/app/chart-accessible-fallback", "@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/bag/error.tsx",
+      "src/app/(app)/bag/loading.tsx",
+      "src/app/(app)/bag/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/billing",
+    "canonicalRoute": "/billing",
+    "source": "src/app/(app)/billing/page.tsx",
+    "adjacentSources": [],
+    "family": "billing",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Billing: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/settings",
+    "entryPoints": {
+      "navigation": "Billing",
+      "back": null
+    },
+    "nextActionsInSource": ["#compare-plans"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/billing"],
+    "permissionEvidence": [],
+    "recoveryFiles": ["src/app/(app)/billing/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/challenges/[challengeId]",
+    "canonicalRoute": "/challenges/[challengeId]",
+    "source": "src/app/(app)/challenges/[challengeId]/page.tsx",
+    "adjacentSources": [],
+    "family": "challenges",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Challenges: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Challenges",
+      "back": {
+        "href": "/challenges",
+        "label": "Challenges"
+      }
+    },
+    "nextActionsInSource": [
+      "/import",
+      "/challenges",
+      "#board",
+      "#challenge-command",
+      "#challenge-attempts",
+      "#chat",
+      "/friends"
+    ],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/challenges", "@/lib/app-surface-server"],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "challenge-workflows-final.log:realDB join/replay/imported leaderboard/exclusion/leave journey plus3lifecycle units pass. Future-shot regression reproduced500vs250 and fixed. UI/private access/closed-event cases remain separate."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/challenges",
+    "canonicalRoute": "/challenges",
+    "source": "src/app/(app)/challenges/page.tsx",
+    "adjacentSources": [],
+    "family": "challenges",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Challenges: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Challenges",
+      "back": null
+    },
+    "nextActionsInSource": ["/billing"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": ["/challenges/[challengeId]"],
+    "dataDependencies": [
+      "@/lib/app-surface-server",
+      "@/lib/billing",
+      "@/lib/challenges",
+      "@/lib/social",
+      "@/lib/utils"
+    ],
+    "permissionEvidence": [],
+    "recoveryFiles": ["src/app/(app)/challenges/loading.tsx"],
+    "implementation": "in progress",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "challenge-workflows-final.log:realDB join/replay/imported leaderboard/exclusion/leave journey plus3lifecycle units pass. Future-shot regression reproduced500vs250 and fixed. UI/private access/closed-event cases remain separate."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/coach/diagnosis",
+    "canonicalRoute": "/coach/diagnosis",
+    "source": "src/app/(app)/coach/diagnosis/page.tsx",
+    "adjacentSources": [],
+    "family": "coach",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Turn supported interpretation into a practice prescription",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": "/practice",
+    "entryPoints": {
+      "navigation": "Coach",
+      "back": {
+        "href": "/coach",
+        "label": "Coach"
+      }
+    },
+    "nextActionsInSource": ["/coach", "/import"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/coach", "@/lib/current-user", "@/lib/progress-data"],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/coach",
+    "canonicalRoute": "/coach",
+    "source": "src/app/(app)/coach/page.tsx",
+    "adjacentSources": [],
+    "family": "coach",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Turn supported interpretation into a practice prescription",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": "/practice",
+    "entryPoints": {
+      "navigation": "Coach",
+      "back": null
+    },
+    "nextActionsInSource": [
+      "/coach/workspace",
+      "/coach/reports",
+      "/speed",
+      "/coach?tab=evidence",
+      "/rounds",
+      "/sessions",
+      "/bag",
+      "/coach/diagnosis",
+      "/shots",
+      "/billing",
+      "/import"
+    ],
+    "modesAndParameters": ["tab"],
+    "meaningfulSubroutes": ["/coach/diagnosis", "/coach/reports", "/coach/workspace"],
+    "dataDependencies": [
+      "@/lib/ai/usage",
+      "@/lib/ai/features",
+      "@/lib/app-surface-server",
+      "@/lib/coach",
+      "@/lib/coach-drill-awards",
+      "@/lib/coach-evidence-browser",
+      "@/lib/current-user",
+      "@/lib/progress-data",
+      "@/lib/progress-summary"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/coach/error.tsx",
+      "src/app/(app)/coach/loading.tsx",
+      "src/app/(app)/coach/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/coach/reports",
+    "canonicalRoute": "/coach/reports",
+    "source": "src/app/(app)/coach/reports/page.tsx",
+    "adjacentSources": [],
+    "family": "coach",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Turn supported interpretation into a practice prescription",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": "/practice",
+    "entryPoints": {
+      "navigation": "Coach",
+      "back": {
+        "href": "/coach",
+        "label": "Coach"
+      }
+    },
+    "nextActionsInSource": ["/coach"],
+    "modesAndParameters": ["share", "error", "include"],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/coach-report",
+      "@/lib/coach-report-access",
+      "@/lib/current-user",
+      "@/lib/site-origin"
+    ],
+    "permissionEvidence": ["@/lib/coach-report-access", "@/lib/current-user"],
+    "recoveryFiles": ["src/app/(app)/coach/reports/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/coach/workspace",
+    "canonicalRoute": "/coach/workspace",
+    "source": "src/app/(app)/coach/workspace/page.tsx",
+    "adjacentSources": [],
+    "family": "coach",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Turn supported interpretation into a practice prescription",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": "/practice",
+    "entryPoints": {
+      "navigation": "Coach",
+      "back": {
+        "href": "/coach",
+        "label": "Coach"
+      }
+    },
+    "nextActionsInSource": ["/coach", "/coach/reports", "#add-coach-interaction"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/coach",
+      "@/lib/coach-workspace",
+      "@/lib/current-user",
+      "@/lib/product-preferences",
+      "@/lib/progress-data"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/companion-runtime/import/csv",
+    "canonicalRoute": "/import?source=csv",
+    "source": "src/app/(app)/companion-runtime/import/csv/page.tsx",
+    "adjacentSources": [],
+    "family": "import",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Import evidence once and continue to the correct result",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Import",
+      "back": null
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/companion-runtime/import",
+    "canonicalRoute": "/import",
+    "source": "src/app/(app)/companion-runtime/import/page.tsx",
+    "adjacentSources": [],
+    "family": "import",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Import evidence once and continue to the correct result",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Import",
+      "back": null
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": ["/companion-runtime/import/csv", "/companion-runtime/import/result"],
+    "dataDependencies": [],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/companion-runtime/import/result",
+    "canonicalRoute": "/import/result",
+    "source": "src/app/(app)/companion-runtime/import/result/page.tsx",
+    "adjacentSources": [],
+    "family": "import",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Import evidence once and continue to the correct result",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Import",
+      "back": {
+        "href": "/import",
+        "label": "Import"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/companion-runtime/rapsodo",
+    "canonicalRoute": "/rapsodo",
+    "source": "src/app/(app)/companion-runtime/rapsodo/page.tsx",
+    "adjacentSources": [],
+    "family": "rapsodo",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Rapsodo: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Rapsodo",
+      "back": null
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": ["practicePlanId"],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/current-user", "@/lib/practice-planner"],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/companion/handoff",
+    "canonicalRoute": "/companion/handoff",
+    "source": "src/app/(app)/companion/handoff/page.tsx",
+    "adjacentSources": [],
+    "family": "internal",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "/companion/handoff: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "Route-specific responsive review pending",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": null,
+      "back": null
+    },
+    "nextActionsInSource": ["/sessions", "/play", "/quick-bag"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/companion/summary",
+    "canonicalRoute": "/companion/summary",
+    "source": "src/app/(app)/companion/summary/page.tsx",
+    "adjacentSources": [],
+    "family": "internal",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "/companion/summary: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "Route-specific responsive review pending",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": null,
+      "back": null
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/companion-summary-data", "@/lib/current-user"],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/compare",
+    "canonicalRoute": "/compare",
+    "source": "src/app/(app)/compare/page.tsx",
+    "adjacentSources": [],
+    "family": "compare",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Compare: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/sessions",
+    "entryPoints": {
+      "navigation": "Compare",
+      "back": null
+    },
+    "nextActionsInSource": ["/import", "/shots"],
+    "modesAndParameters": ["view", "clubAId", "clubId", "clubBId", "playerAId", "playerBId"],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/compare-data", "@/db/client", "@/db/schema", "@/lib/current-user"],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/compare/error.tsx",
+      "src/app/(app)/compare/loading.tsx",
+      "src/app/(app)/compare/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/course-records/[recordId]",
+    "canonicalRoute": "/course-records/[recordId]",
+    "source": "src/app/(app)/course-records/[recordId]/page.tsx",
+    "adjacentSources": [],
+    "family": "course-records",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Course records: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/play",
+    "entryPoints": {
+      "navigation": "Records",
+      "back": {
+        "href": "/course-records",
+        "label": "Records"
+      }
+    },
+    "nextActionsInSource": ["#submit-record"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/course-records"],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/course-records",
+    "canonicalRoute": "/course-records",
+    "source": "src/app/(app)/course-records/page.tsx",
+    "adjacentSources": [],
+    "family": "course-records",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Course records: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/play",
+    "entryPoints": {
+      "navigation": "Records",
+      "back": null
+    },
+    "nextActionsInSource": ["/courses", "/tournaments"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": ["/course-records/[recordId]"],
+    "dataDependencies": [
+      "@/lib/course-records",
+      "@/lib/feature-ideas",
+      "@/lib/google-image-search",
+      "@/lib/google-places"
+    ],
+    "permissionEvidence": [],
+    "recoveryFiles": ["src/app/(app)/course-records/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/course-twins",
+    "canonicalRoute": "/course-twins",
+    "source": "src/app/(app)/course-twins/page.tsx",
+    "adjacentSources": [],
+    "family": "course-twins",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Course Twins: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Course Twin",
+      "back": {
+        "href": "/play",
+        "label": "Play"
+      }
+    },
+    "nextActionsInSource": ["/courses"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/course-twin-data",
+      "@/lib/current-user",
+      "@/lib/app-surface-server"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/courses/[courseId]/holes",
+    "canonicalRoute": "/courses/[courseId]/holes",
+    "source": "src/app/(app)/courses/[courseId]/holes/page.tsx",
+    "adjacentSources": [],
+    "family": "courses",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Courses: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Courses",
+      "back": {
+        "href": "/courses",
+        "label": "Courses"
+      }
+    },
+    "nextActionsInSource": ["/courses", "/rounds", "/courses/new"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/current-user",
+      "@/lib/course-twin-data",
+      "@/lib/course-auto-enrichment",
+      "@/lib/shot-pattern-feature"
+    ],
+    "permissionEvidence": ["@/components/app/chart-accessible-fallback", "@/lib/current-user"],
+    "recoveryFiles": ["src/app/(app)/courses/[courseId]/holes/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/courses/[courseId]",
+    "canonicalRoute": "/courses/[courseId]",
+    "source": "src/app/(app)/courses/[courseId]/page.tsx",
+    "adjacentSources": [],
+    "family": "courses",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Courses: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Courses",
+      "back": null
+    },
+    "nextActionsInSource": ["/courses", "/course-twins"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [
+      "/courses/[courseId]/holes",
+      "/courses/[courseId]/records/[recordId]",
+      "/courses/[courseId]/records",
+      "/courses/[courseId]/shot-pattern",
+      "/courses/[courseId]/tournaments"
+    ],
+    "dataDependencies": [
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/course-twin-data",
+      "@/lib/current-user",
+      "@/lib/utils"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/courses/[courseId]/records/[recordId]",
+    "canonicalRoute": "/courses/[courseId]/records/[recordId]",
+    "source": "src/app/(app)/courses/[courseId]/records/[recordId]/page.tsx",
+    "adjacentSources": [],
+    "family": "courses",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Courses: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Courses",
+      "back": {
+        "href": "/courses/[courseId]/records",
+        "label": "Course records"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/courses/[courseId]/records",
+    "canonicalRoute": "/courses/[courseId]/records",
+    "source": "src/app/(app)/courses/[courseId]/records/page.tsx",
+    "adjacentSources": [],
+    "family": "courses",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Courses: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Courses",
+      "back": {
+        "href": "/course-records",
+        "label": "Records"
+      }
+    },
+    "nextActionsInSource": ["/course-records"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": ["/courses/[courseId]/records/[recordId]"],
+    "dataDependencies": ["@/lib/course-records"],
+    "permissionEvidence": [],
+    "recoveryFiles": ["src/app/(app)/courses/[courseId]/records/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/courses/[courseId]/shot-pattern",
+    "canonicalRoute": "/courses/[courseId]/shot-pattern",
+    "source": "src/app/(app)/courses/[courseId]/shot-pattern/page.tsx",
+    "adjacentSources": [],
+    "family": "courses",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Courses: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Courses",
+      "back": {
+        "href": "/courses",
+        "label": "Courses"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/current-user",
+      "@/lib/shot-pattern-feature",
+      "@/lib/shot-pattern-overlay-data",
+      "@/lib/shot-patterns"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/courses/[courseId]/tournaments",
+    "canonicalRoute": "/courses/[courseId]/tournaments",
+    "source": "src/app/(app)/courses/[courseId]/tournaments/page.tsx",
+    "adjacentSources": [],
+    "family": "courses",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Courses: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Courses",
+      "back": {
+        "href": "/courses",
+        "label": "Courses"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/courses/new",
+    "canonicalRoute": "/courses/new",
+    "source": "src/app/(app)/courses/new/page.tsx",
+    "adjacentSources": [],
+    "family": "courses",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Courses: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Courses",
+      "back": {
+        "href": "/courses",
+        "label": "Courses"
+      }
+    },
+    "nextActionsInSource": ["/courses"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/courses",
+    "canonicalRoute": "/courses",
+    "source": "src/app/(app)/courses/page.tsx",
+    "adjacentSources": [],
+    "family": "courses",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Courses: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Courses",
+      "back": {
+        "href": "/play",
+        "label": "Play"
+      }
+    },
+    "nextActionsInSource": ["/courses/new", "/rounds/new"],
+    "modesAndParameters": ["q", "tab", "view"],
+    "meaningfulSubroutes": [
+      "/courses/[courseId]/holes",
+      "/courses/[courseId]",
+      "/courses/[courseId]/records/[recordId]",
+      "/courses/[courseId]/records",
+      "/courses/[courseId]/shot-pattern",
+      "/courses/[courseId]/tournaments",
+      "/courses/new",
+      "/courses/strategy"
+    ],
+    "dataDependencies": [
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/course-dedupe",
+      "@/lib/course-twin-data",
+      "@/lib/current-user"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/courses/error.tsx",
+      "src/app/(app)/courses/loading.tsx",
+      "src/app/(app)/courses/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/courses/strategy",
+    "canonicalRoute": "/courses/strategy",
+    "source": "src/app/(app)/courses/strategy/page.tsx",
+    "adjacentSources": [
+      "src/app/(app)/courses/strategy/course-strategy-companion-page.tsx",
+      "src/app/(app)/courses/strategy/course-strategy-workbench-page.tsx"
+    ],
+    "family": "course-strategy",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Course Strategy: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Strategy",
+      "back": {
+        "href": "/play",
+        "label": "Play"
+      }
+    },
+    "nextActionsInSource": ["/play", "/rounds/new", "/import", "/progress"],
+    "modesAndParameters": ["roundId", "saved"],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/app-surface-server",
+      "@/lib/selected-course",
+      "@/lib/course-strategy-map",
+      "@/lib/course-twin-data",
+      "@/lib/course-strategy-data",
+      "@/lib/current-user",
+      "@/lib/post-round-review-data"
+    ],
+    "permissionEvidence": ["@/lib/current-user", "@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [
+      "Desktop now receives the selected tee and uses the same latest-reliable evidence basis as Play/mobile.",
+      "Hole and strategy mode live in URL state; round preparation preserves course/tee.",
+      "Caddie book uses a section within the page main and a subordinate heading.",
+      "Explicit course/tee selector; mode links use current URL and preserve hole/tee through pre/post navigation; review form handoffs retain context.",
+      "Phone mode=post now opens selected completed round reflection. Shared note recovery and owned/older round loader; explicit unavailable IDs do not fall back. Directional comparisons use existing confidence projection.",
+      "Shared desktop/mobile measured outcomes label lateral control rather than strokes lost, disclose same-club comparison limits, and remove unsupported empty-data badges/CTAs. Native completed-round selector and sourceSessionId+club Practice handoff; mobile evidence disclosure keeps suggested next step visible."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "play-preparation-browser-verified.log: desktop selected-hole deep link, selection/reload, round-preparation URL and phone hole/reload passed.",
+        "strategy-context-browser.log: load same course/tee, pre/post navigation and Back/Forward retain the selected hole; phone preparation and reload passed (10.1s).",
+        "post-round-browser-pass.log: phone notes retain values after deliberate rejection, retry/reload and desktop readback; foreign write/read rejected.",
+        "post-round-evidence-browser-verified.log:1 pass8.4s; synthetic empty/measured round switching and actual Practice source evidence on companion/workbench. Disclosure Enter key expands readings;96px notes fields verified. No page errors."
+      ],
+      "desktop": [
+        "play-verified/strategy-desktop.png inspected; final inactive-mode contrast refinement awaiting screenshot readback.",
+        "round-strategy-visual-verified: active/inactive tab contrast inspected; targeted navigation axe zero violations, zero page errors/overflow.",
+        "post-round-verified/round-notes-desktop.png inspected. Empty-data Measured badges and generic practice CTA need next pass.",
+        "post-round-evidence-results/empty-workbench.png and measured-workbench.png inspected at1440px; corrected empty/present statuses, visible native selector, zero overflow and scoped results axe violations."
+      ],
+      "mobile": [
+        "strategy-phone-final.log: corrected heading order; main-content axe zero violations, zero page errors/overflow at 390px.",
+        "post-round-verified/round-notes-phone.png inspected; save button reachable after PageShell/bottom clearance fix.",
+        "post-round-evidence-verified/empty-companion.png and measured-companion.png inspected at390px. Compact disclosure and96px notes fields; zero document overflow and scoped results axe violations. Full-page screenshots include fixed navigation at current viewport position; not proof of all scrolling/focus states."
+      ],
+      "empty": [
+        "Empty completed round: no Measured badges and no shot-based Practice CTA on either surface; recorded-round review stays available."
+      ],
+      "loading": [],
+      "error": [
+        "Deliberate notes update failure retains input; unavailable explicit round shows no fallback form."
+      ]
+    },
+    "blockers": [
+      "Remaining route states, broader accessibility/themes, errors and full integration gates are not yet verified.",
+      "Full notes-form/theme/boundary/zoom matrix, additional course/tee and completed prescribed drill/save flow remain pending; current handoff verifies planner source and club, not an exact persisted10-shot drill."
+    ]
+  },
+  {
+    "route": "/dashboard",
+    "canonicalRoute": "/dashboard",
+    "source": "src/app/(app)/dashboard/page.tsx",
+    "adjacentSources": [],
+    "family": "dashboard",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Review the broader performance picture and longer-term priorities",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Dashboard",
+      "back": null
+    },
+    "nextActionsInSource": ["/dashboard", "/today", "/progress", "/shots", "/import", "/speed"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/current-user",
+      "@/lib/practice-planner",
+      "@/lib/round-handicap",
+      "@/lib/speed-training-data",
+      "@/lib/speed-development",
+      "@/lib/progress-data"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/dashboard/error.tsx",
+      "src/app/(app)/dashboard/loading.tsx",
+      "src/app/(app)/dashboard/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/data-chat",
+    "canonicalRoute": "/data-chat",
+    "source": "src/app/(app)/data-chat/page.tsx",
+    "adjacentSources": [],
+    "family": "data-chat",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Ask questions about selected evidence and its limitations",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/practice",
+    "entryPoints": {
+      "navigation": "Data Chat",
+      "back": null
+    },
+    "nextActionsInSource": ["/billing"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/ai/usage", "@/lib/ai/features", "@/lib/current-user"],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": ["src/app/(app)/data-chat/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/equipment/experiments",
+    "canonicalRoute": "/equipment/experiments",
+    "source": "src/app/(app)/equipment/experiments/page.tsx",
+    "adjacentSources": [],
+    "family": "equipment",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Equipment: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/quick-bag",
+    "entryPoints": {
+      "navigation": "Equipment",
+      "back": {
+        "href": "/equipment",
+        "label": "Equipment"
+      }
+    },
+    "nextActionsInSource": ["/equipment"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/comparison-provenance",
+      "@/lib/compare-data",
+      "@/lib/current-user"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/equipment",
+    "canonicalRoute": "/equipment",
+    "source": "src/app/(app)/equipment/page.tsx",
+    "adjacentSources": [],
+    "family": "equipment",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Equipment: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/quick-bag",
+    "entryPoints": {
+      "navigation": "Equipment",
+      "back": null
+    },
+    "nextActionsInSource": ["/bag", "/equipment/experiments"],
+    "modesAndParameters": ["saved"],
+    "meaningfulSubroutes": ["/equipment/experiments"],
+    "dataDependencies": [
+      "@/lib/directional-confidence-sql",
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/club-format",
+      "@/lib/current-user",
+      "@/lib/feature-ideas",
+      "@/lib/shot-review",
+      "@/lib/stock-yardage",
+      "@/lib/witb-snapshots"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/equipment/error.tsx",
+      "src/app/(app)/equipment/loading.tsx",
+      "src/app/(app)/equipment/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/feed",
+    "canonicalRoute": "/feed",
+    "source": "src/app/(app)/feed/page.tsx",
+    "adjacentSources": [],
+    "family": "feed",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Activity feed: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/profile",
+    "entryPoints": {
+      "navigation": "Feed",
+      "back": null
+    },
+    "nextActionsInSource": [
+      "/profile",
+      "/friends",
+      "/groups",
+      "/challenges",
+      "/achievements",
+      "/course-records",
+      "/practice"
+    ],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/social"],
+    "permissionEvidence": [],
+    "recoveryFiles": ["src/app/(app)/feed/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/friends",
+    "canonicalRoute": "/friends",
+    "source": "src/app/(app)/friends/page.tsx",
+    "adjacentSources": [],
+    "family": "friends",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Friends: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/profile",
+    "entryPoints": {
+      "navigation": "Friends",
+      "back": null
+    },
+    "nextActionsInSource": ["/profile"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/social", "@/lib/site-origin"],
+    "permissionEvidence": [],
+    "recoveryFiles": ["src/app/(app)/friends/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/goals",
+    "canonicalRoute": "/goals",
+    "source": "src/app/(app)/goals/page.tsx",
+    "adjacentSources": [],
+    "family": "goals",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Connect a target to comparable evidence and next practice",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Goals",
+      "back": {
+        "href": "/progress",
+        "label": "Progress"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/current-user",
+      "@/lib/product-preferences"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [
+      "Goal add/edit/delete now mutate the latest locked preference collection; concurrent additions no longer discard one another. Stable creationId supports retry without duplicates. Capacity rejects a thirteenth goal instead of deleting the oldest.",
+      "Goal and season state actions return recoverable errors without redirect; old redirect APIs remain supported. Numerical/date/rhythm validation happens before persistence. Manual-value provenance is explicit when no source was provided.",
+      "Owned improvement-project references connect a baseline to existing drills, completed practice and subsequent eligible measured evidence. Missing references remain explicit; manual goal values do not automatically change. Project UI and automatic attachment of newly generated practice remain pending.",
+      "Practice save/start accepts goal context and optional stable creationId; plan/blocks/awards and goal link commit atomically. UI callers still require peer integration."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "goal-workflows-integration.log:6 real DB/action cases plus7 preference/movement units passed937ms (7September00:53). Observed concurrency regression before fix; creation replay/conflicting payload/capacity, concurrent independent edits, increasing/decreasing progress, movement uniqueness, deletion, foreign ownership, malformed numbers/date, real failed writes/retry/settings preservation and season1..7rhythm verified. Current-user identity mocked; browser rendering/form recovery remains separate with UI task.",
+        "goal-project-final.log:5files85tests passed3.10s, including8goal DB/action cases and27round DB cases. Goal project actual completion/import evaluation, ownership, deleted references and invalid/nonfinite evidence verified. Final scoped lint and whole-workspace TypeScript exited0. This is direct service/action verification, not project-editor browser proof.",
+        "goal-practice-creation-final.log:53tests passed including10goalDBcases; atomic failed-attachment rollback, simultaneous links, identical-request replay and context URLs. Final types/lint clean."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/groups/[groupSlug]",
+    "canonicalRoute": "/groups/[groupSlug]",
+    "source": "src/app/(app)/groups/[groupSlug]/page.tsx",
+    "adjacentSources": [],
+    "family": "groups",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Groups: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/challenges",
+    "entryPoints": {
+      "navigation": "Groups",
+      "back": {
+        "href": "/groups",
+        "label": "Groups"
+      }
+    },
+    "nextActionsInSource": ["/groups", "/tournaments"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/groups"],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/groups",
+    "canonicalRoute": "/groups",
+    "source": "src/app/(app)/groups/page.tsx",
+    "adjacentSources": [],
+    "family": "groups",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Groups: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/challenges",
+    "entryPoints": {
+      "navigation": "Groups",
+      "back": null
+    },
+    "nextActionsInSource": ["/groups?tab=discover"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": ["/groups/[groupSlug]"],
+    "dataDependencies": ["@/lib/groups"],
+    "permissionEvidence": [],
+    "recoveryFiles": ["src/app/(app)/groups/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/handicap",
+    "canonicalRoute": "/handicap",
+    "source": "src/app/(app)/handicap/page.tsx",
+    "adjacentSources": [],
+    "family": "handicap",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Handicap: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Handicap",
+      "back": {
+        "href": "/progress",
+        "label": "Progress"
+      }
+    },
+    "nextActionsInSource": [
+      "/rounds",
+      "/import",
+      "/rounds/new",
+      "/simulator-lab#range-reality",
+      "/practice",
+      "/import?source=csv#csv-import"
+    ],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/schema",
+      "@/lib/app-surface-server",
+      "@/db/client",
+      "@/lib/current-user",
+      "@/lib/coach",
+      "@/lib/progress-data",
+      "@/lib/round-handicap",
+      "@/lib/round-sessions",
+      "@/lib/feature-ideas",
+      "@/lib/reality-handicap"
+    ],
+    "permissionEvidence": ["@/components/app/chart-accessible-fallback", "@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/handicap/error.tsx",
+      "src/app/(app)/handicap/loading.tsx",
+      "src/app/(app)/handicap/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/import",
+    "canonicalRoute": "/import",
+    "source": "src/app/(app)/import/page.tsx",
+    "adjacentSources": [
+      "src/app/(app)/import/import-companion-page.tsx",
+      "src/app/(app)/import/import-workbench-page.tsx"
+    ],
+    "family": "import",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Import evidence once and continue to the correct result",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Import",
+      "back": null
+    },
+    "nextActionsInSource": [
+      "/rounds/new",
+      "#recent-imports",
+      "/settings?section=offline#offline-storage",
+      "#import-library",
+      "/rapsodo",
+      "/import?source=csv#csv-import",
+      "/import?source=sample#csv-import"
+    ],
+    "modesAndParameters": ["practicePlanId"],
+    "meaningfulSubroutes": ["/import/result"],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/current-user",
+      "@/lib/practice-planner",
+      "@/lib/session-review-route",
+      "@/lib/feature-ideas"
+    ],
+    "permissionEvidence": ["@/lib/current-user", "@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/import/error.tsx",
+      "src/app/(app)/import/loading.tsx",
+      "src/app/(app)/import/not-found.tsx"
+    ],
+    "implementation": "in progress",
+    "findings": [
+      "Fixed a fresh empty mapping object that repeatedly restarted CSV parsing and froze the browser.",
+      "File input waits for client hydration so early file selections are not lost."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "core-journey-current.log: 30-shot CSV, club confirmation, save and duplicate return to the same session passed."
+      ],
+      "desktop": ["core-before-play: populated desktop captured; Play visually inspected."],
+      "mobile": ["core-before-play: populated phone captured; Play visually inspected."],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": [
+      "Remaining route states, broader accessibility/themes, errors and full integration gates are not yet verified."
+    ]
+  },
+  {
+    "route": "/import/result",
+    "canonicalRoute": "/import/result",
+    "source": "src/app/(app)/import/result/page.tsx",
+    "adjacentSources": [
+      "src/app/(app)/import/result/result-companion-page.tsx",
+      "src/app/(app)/import/result/result-workbench-page.tsx"
+    ],
+    "family": "import",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Import evidence once and continue to the correct result",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Import",
+      "back": {
+        "href": "/import",
+        "label": "Import"
+      }
+    },
+    "nextActionsInSource": ["/today", "/settings?section=offline#offline-storage"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/companion-import-result",
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/current-user",
+      "@/lib/feature-ideas",
+      "@/lib/import-result-triage",
+      "@/lib/practice-planner",
+      "@/lib/session-review-route"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [
+      "Next-plan link preserves the imported source session. Shot-pattern expansion waits for client hydration."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "core-journey-current.log: measured verdict, dispersion/flight, linked Plan versus Actual, next plan and duplicate saved review passed."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": [
+      "Remaining route states, broader accessibility/themes, errors and full integration gates are not yet verified."
+    ]
+  },
+  {
+    "route": "/leaderboard",
+    "canonicalRoute": "/leaderboard",
+    "source": "src/app/(app)/leaderboard/page.tsx",
+    "adjacentSources": [],
+    "family": "leaderboard",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Leaderboards: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Leaderboards",
+      "back": null
+    },
+    "nextActionsInSource": ["/profile", "/course-records", "/tournaments"],
+    "modesAndParameters": ["set", "toString", "provider", "verification"],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/challenges",
+      "@/lib/social",
+      "@/lib/current-user",
+      "@/lib/app-surface-server",
+      "@/lib/shot-records"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/leaderboard/error.tsx",
+      "src/app/(app)/leaderboard/loading.tsx",
+      "src/app/(app)/leaderboard/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/partners",
+    "canonicalRoute": "/partners",
+    "source": "src/app/(app)/partners/page.tsx",
+    "adjacentSources": [],
+    "family": "partners",
+    "user": "Administrator",
+    "primaryJob": "Partners: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/today",
+    "entryPoints": {
+      "navigation": "Partners",
+      "back": null
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/partners"],
+    "permissionEvidence": [],
+    "recoveryFiles": ["src/app/(app)/partners/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/play/[courseId]",
+    "canonicalRoute": "/play/[courseId]",
+    "source": "src/app/(app)/play/[courseId]/page.tsx",
+    "adjacentSources": [],
+    "family": "course-twins",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Course Twins: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "immersive",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Course Twin",
+      "back": null
+    },
+    "nextActionsInSource": ["/course-twins"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/current-user", "@/lib/course-twin-data"],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/play/[courseId]/loading.tsx",
+      "src/app/(app)/play/[courseId]/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/play",
+    "canonicalRoute": "/play",
+    "source": "src/app/(app)/play/page.tsx",
+    "adjacentSources": [],
+    "family": "play-companion",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Prepare, start or resume a round",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Play",
+      "back": null
+    },
+    "nextActionsInSource": ["/rounds", "/quick-bag", "/courses/new", "/courses"],
+    "modesAndParameters": ["courseId", "teeSetId"],
+    "meaningfulSubroutes": ["/play/[courseId]"],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/course-strategy-data",
+      "@/lib/course-twin-data",
+      "@/lib/mobile-course-preview",
+      "@/lib/app-surface-server",
+      "@/lib/current-user",
+      "@/lib/play-companion-state",
+      "@/lib/selected-course"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": ["src/app/(app)/play/loading.tsx"],
+    "implementation": "in progress",
+    "findings": [
+      "Preparation distinguishes four essentials from optional Course Twin and links to supporting bag/strategy evidence.",
+      "Explicit tee deep links are honoured. Unknown course IDs are resolved against available courses before database lookup.",
+      "Opening recommendation now requires a supported Hole 1 plan; key-hole links open the corresponding strategy."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "play-preparation-browser-verified.log: desktop/phone tee handoff, selected hole, reload and round-preparation URL passed."
+      ],
+      "desktop": ["core-before-play: populated desktop captured; Play visually inspected."],
+      "mobile": ["core-before-play: populated phone captured; Play visually inspected."],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": [
+      "Remaining route states, broader accessibility/themes, errors and full integration gates are not yet verified."
+    ]
+  },
+  {
+    "route": "/practice",
+    "canonicalRoute": "/practice",
+    "source": "src/app/(app)/practice/page.tsx",
+    "adjacentSources": [
+      "src/app/(app)/practice/practice-companion-page.tsx",
+      "src/app/(app)/practice/practice-workbench-page.tsx"
+    ],
+    "family": "practice",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Plan, perform, recover and review measured practice",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Practice",
+      "back": null
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": ["planId"],
+    "meaningfulSubroutes": ["/practice/quick-range"],
+    "dataDependencies": [
+      "@/lib/app-surface-server",
+      "@/lib/current-user",
+      "@/lib/practice-handoff",
+      "@/lib/practice-planner",
+      "@/lib/server-observability"
+    ],
+    "permissionEvidence": ["@/lib/current-user", "@/lib/current-user"],
+    "recoveryFiles": ["src/app/(app)/practice/loading.tsx"],
+    "implementation": "in progress",
+    "findings": [
+      "Saved/unstarted versus resumed activity labels fixed. SQL Date start failure fixed; plan+blocks+start save atomically.",
+      "Source-session context now survives generation, templates, saved-plan restoration and both surface deep links. Missing/foreign records are rejected.",
+      "Regeneration failures preserve the current plan and edits. Saved source snapshots do not silently become the newest session."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "3 flagship browser tests passed: failure rollback; Today geometry; exact-plan pause/reload/resume.",
+        "handoff-history-browser.log: source handoff, regeneration, saved-plan reload, cross-account rejection and history uniqueness passed.",
+        "core-journey-current.log: physical practice to CSV to linked Plan versus Actual and exact duplicate retry passed."
+      ],
+      "desktop": [],
+      "mobile": ["after-populated/practice-companion.png inspected."],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": [
+      "Remaining route states, broader accessibility/themes, errors and full integration gates are not yet verified."
+    ]
+  },
+  {
+    "route": "/practice/quick-range",
+    "canonicalRoute": "/practice/quick-range",
+    "source": "src/app/(app)/practice/quick-range/page.tsx",
+    "adjacentSources": [],
+    "family": "quick-range",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Quick Range: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Quick Range",
+      "back": {
+        "href": "/practice",
+        "label": "Practice"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/current-user",
+      "@/lib/product-preferences",
+      "@/lib/app-surface-server"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/profile/[username]",
+    "canonicalRoute": "/profile/[username]",
+    "source": "src/app/(app)/profile/[username]/page.tsx",
+    "adjacentSources": [],
+    "family": "profile",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Profile: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Profile",
+      "back": {
+        "href": "/friends",
+        "label": "Friends"
+      }
+    },
+    "nextActionsInSource": ["/friends", "/profile", "/compare"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/social", "@/lib/app-surface-server"],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/profile",
+    "canonicalRoute": "/profile",
+    "source": "src/app/(app)/profile/page.tsx",
+    "adjacentSources": [],
+    "family": "profile",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Profile: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Profile",
+      "back": null
+    },
+    "nextActionsInSource": ["/achievements"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": ["/profile/[username]"],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/achievements/service",
+      "@/lib/app-surface-server",
+      "@/lib/profile-initials",
+      "@/lib/profile-honours",
+      "@/lib/site-origin",
+      "@/lib/social",
+      "@/lib/utils"
+    ],
+    "permissionEvidence": [],
+    "recoveryFiles": ["src/app/(app)/profile/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/progress",
+    "canonicalRoute": "/progress",
+    "source": "src/app/(app)/progress/page.tsx",
+    "adjacentSources": [],
+    "family": "progress",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Check whether comparable evidence shows improvement",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Progress",
+      "back": {
+        "href": "/today",
+        "label": "Today"
+      }
+    },
+    "nextActionsInSource": ["/goals", "/import", "/stats/training-over-time"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/handicap-data",
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/app-surface-server",
+      "@/lib/club-format",
+      "@/lib/current-user",
+      "@/lib/practice-planner",
+      "@/lib/progress-data",
+      "@/lib/progress-summary",
+      "@/lib/product-preferences",
+      "@/lib/progress-readiness",
+      "@/lib/training/trainingData",
+      "@/lib/utils",
+      "@/lib/weekly-change-review-data"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/progress/error.tsx",
+      "src/app/(app)/progress/loading.tsx",
+      "src/app/(app)/progress/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/providers",
+    "canonicalRoute": "/providers",
+    "source": "src/app/(app)/providers/page.tsx",
+    "adjacentSources": [],
+    "family": "providers",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Providers: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/import",
+    "entryPoints": {
+      "navigation": "Providers",
+      "back": null
+    },
+    "nextActionsInSource": ["/import", "/rapsodo"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/feature-ideas", "@/lib/provider-integrations"],
+    "permissionEvidence": [],
+    "recoveryFiles": ["src/app/(app)/providers/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/quick-bag",
+    "canonicalRoute": "/quick-bag",
+    "source": "src/app/(app)/quick-bag/page.tsx",
+    "adjacentSources": [],
+    "family": "quick-bag",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Choose a club for the target distance",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Quick Bag",
+      "back": {
+        "href": "/bag",
+        "label": "Bag"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/directional-confidence-sql",
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/club-format",
+      "@/lib/app-surface-server",
+      "@/lib/mobile-quick-bag-data",
+      "@/lib/current-user",
+      "@/lib/shot-review",
+      "@/lib/shot-pattern-chart-data"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/rapsodo",
+    "canonicalRoute": "/rapsodo",
+    "source": "src/app/(app)/rapsodo/page.tsx",
+    "adjacentSources": ["src/app/(app)/rapsodo/rapsodo-workbench-page.tsx"],
+    "family": "rapsodo",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Rapsodo: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Rapsodo",
+      "back": null
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/feature-ideas"],
+    "permissionEvidence": [],
+    "recoveryFiles": [
+      "src/app/(app)/rapsodo/error.tsx",
+      "src/app/(app)/rapsodo/loading.tsx",
+      "src/app/(app)/rapsodo/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/rounds/[sessionId]",
+    "canonicalRoute": "/rounds/[sessionId]",
+    "source": "src/app/(app)/rounds/[sessionId]/page.tsx",
+    "adjacentSources": [],
+    "family": "rounds",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Rounds: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Rounds",
+      "back": {
+        "href": "/rounds",
+        "label": "Rounds"
+      }
+    },
+    "nextActionsInSource": ["/rounds", "/shots", "/import", "#mobile-current-hole"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/round-context",
+      "@/lib/utils",
+      "@/lib/round-learning-review",
+      "@/lib/course-strategy-data",
+      "@/lib/live-round-club-evidence",
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/current-user",
+      "@/lib/course-auto-enrichment",
+      "@/lib/round-handicap",
+      "@/lib/rapsodo/parser",
+      "@/lib/shot-pattern-feature",
+      "@/lib/app-surface-server"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": ["src/app/(app)/rounds/[sessionId]/loading.tsx"],
+    "implementation": "in progress",
+    "findings": [
+      "Round completion feed is emitted on completion, not on starting a live round.",
+      "Full-round score/putting achievements respect lifecycle status; Penalty-Free also requires a fully scored card. Legacy imported scorecards without a lifecycle field retain support.",
+      "Shared scorecard learning now treats ties and missing stats explicitly; no fabricated costly Hole1/turning point on all-par cards. Selected-round reflection replaces ignored roundId-only practice handoff.",
+      "Scorecard corrections are directly discoverable in the companion Scorecard tab with compact native per-hole disclosures. Unknown optional statistics are not described as zero.",
+      "Owned hole updates lock the scorecard row and recalculate inside one transaction, preserving simultaneous edits to different holes. Invalid whole-number scores are rejected.",
+      "Failed saves preserve form entries. Native desktop disclosures and an opt-in mounted companion scorecard preserve unsaved edits through collapse and local tab navigation.",
+      "Explicit putt corrections carry a manual source marker in existing scorecard JSON. Recalculation retains manual values and explicit blanks; unedited legacy records retain previous inference.",
+      "Context completion and live completion now share valid scorecard checks under an owned row lock; malformed status and incomplete scorecards are rejected, and retry uses the existing deduplicated feed.",
+      "Tee picker and course relink enforce shared/owned visibility. Stale private links expose no live tee/geometry data while preserving the saved scorecard.",
+      "Course relinking preserves recorded hole count and evidence, rejects missing/empty tees, and shares the transaction lock with score corrections. Nine recorded holes do not become eighteen."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "round-award-browser.log: score save, failed API sync, local reload recovery, retry, all 18 holes, completion, single completion feed item and review passed; no premature full-round award.",
+        "post-round-browser-pass.log: full round→review→notes failure/retry/reload→desktop readback→foreign-round rejection passed14.9s.",
+        "round-correction-browser-retained.log: 1 passed11.6s; phone failure/retry/reload, native disclosure draft retention, Summary/Back selection and draft retention, desktop save, concurrent edits exact DB readback and foreign-owner mutation rejection with unchanged foreign scorecard.",
+        "round-correction-browser-provenance.log:1passed12.0s/12.8stotal; full prior flow plus stored launch-shot accounting preserves explicit1putt and cleared null, while untouched legacy hole retains inferred putts.4files27units/types/scoped lint pass.",
+        "round-context-browser-final.log: context17.0s and existing live51.7s passed; incomplete/invalid completion rejection, retry and one feed event, owner/private restrictions, missing/short tees, preserved nine-hole card, concurrent score/relink and live sync/recovery/completion.",
+        "round-context-browser-mobile.log: final1passed17.6s/18.4stotal. Actual phone note save persisted exact text; private-link redaction, foreign round immutability and full desktop mutation checks passed again. No pageerrors; scoped desktop and phone form axe0.3files24units/types/scoped lint pass.",
+        "correction-integration.log:6 real-Postgres tests passed1.53s; owner/session isolation, raw/manual/directional provenance, stock eligibility, real linked practice refresh, rollback/retry/concurrency, score/tee SG replacement and existing feed audience/date preservation. Domain/action evidence only; browser/UI remains partial.",
+        "correction-warning-integration.log:14 real-Postgres integration tests plus5 lifecycle checks passed2.21s (7September00:25). Adds whole-club rename/merge across rounds, raw/manual preservation, destination ownership, atomic later-round failure rollback, simultaneous single/bulk correction, linked-practice refresh, saved warning/retry/Undo, explicit split/unmapping, and completion replay audience preservation. UI/HTTP/offline conflict coverage remains separate and incomplete.",
+        "offline-access-integration.log:27 real database/handler/loader cases plus9 lifecycle/shared-source checks passed5.79s (7September00:36). Locked offline version guards cover all7edit kinds; reproduced two200 lost-update race now one200/one409 with accepted ledger replay. Account-switch rejection and monotonic versions with/without scorecard verified. Normal online behavior preserved. Handler calls use mocked authentication identity; deployed HTTP/PWA browser behavior not proven here."
+      ],
+      "desktop": [
+        "round-correction-retained/scorecard-correction-desktop.png inspected at1440: all score/optional-stat controls and native correction disclosure available; fixed chrome full-page capture limitations retained.",
+        "round-context-stable/context-desktop.png inspected at1440; final disclosure heading aligned left after merging conflicting button utilities. Final browser asserts its label begins within24px of the disclosure edge."
+      ],
+      "mobile": [
+        "round-verified/live-round-phone.png and round-review-phone.png inspected.",
+        "post-round-verified/round-review-phone.png inspected; all-par and missing-stat text verified.",
+        "round-correction-retained/scorecard-correction-phone.png at390: compact holes, explicit unknown stats, scoped scorecard axe0 and document overflow0; unsaved score persists after collapse and tab navigation.",
+        "round-context-mobile/context-phone.png inspected at390: explicit save acknowledgement and correct saved notes; scoped form axe0 and document overflow0. Fixed-header full-page artefact is not a physical keyboard/scroll check."
+      ],
+      "empty": [],
+      "loading": [],
+      "error": [
+        "Failed sync preserves score through reload and succeeds on retry. This is a failed transport check, not offline service-worker navigation.",
+        "Deliberate isolated database rejection preserves score and putts; retry saves exact values. Foreign owner correction returns not-found and leaves its scorecard unchanged.",
+        "Deliberate context DB rejection retains notes, then retries successfully. Invalid completion/private/empty/short tee requests leave recorded scores unchanged; unavailable linked tee has explicit recovery copy."
+      ]
+    },
+    "blockers": [
+      "Shot-club reassignment/deletion propagation and all correction variants, full evidence/Map/share modes, broader import/handicap provenance, completed-feed refresh after subsequent score/tee edits, navigation/refresh/account-switch drafts, real offline navigation, remaining viewports/themes and production gates remain pending."
+    ]
+  },
+  {
+    "route": "/rounds/new",
+    "canonicalRoute": "/rounds/new",
+    "source": "src/app/(app)/rounds/new/page.tsx",
+    "adjacentSources": [],
+    "family": "rounds",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Rounds: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Rounds",
+      "back": {
+        "href": "/rounds",
+        "label": "Rounds"
+      }
+    },
+    "nextActionsInSource": ["/rounds", "/courses"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/current-user",
+      "@/lib/app-surface-server"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [
+      "Creation errors preserve form entries and allow retry with the same round identity; selected course and tee survive the preparation handoff.",
+      "Long course names no longer push the phone form beyond the viewport.",
+      "Historical entry uses saved tee hole facts, whole-number validation, confirmed tee changes, preserved failed-save drafts, companion step/hole navigation at wide viewports and full-score review. Stable requestId survives viewport refresh; laptop scorecard uses available width before help rail."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "round-award-browser.log: creation failure, retained edited date, exact POST replay creates one owned round; complete live scoring journey passed.",
+        "historical-round-browser-verified.log: phone historical18-hole completion, invalid-field focus, tee-change cancel/clear, empty tee with no fabricated holes, deliberate save rejection/retry and exact saved data passed12.2s.",
+        "historical-round-browser-stable.log:2 browser tests passed39.4s; historical17.8s covers phone and desktop creation, frozen ID after resize and actual saved records. Existing live lifecycle20.7s still passes failure/retry/exact replay/complete/post-review ownership."
+      ],
+      "desktop": [
+        "round-verified/new-round-desktop.png inspected; requested tee selected.",
+        "round-strategy-visual-verified: changed form region axe zero violations; zero page errors/overflow.",
+        "historical-round-stable/history-desktop-1280.png and history-desktop-1440.png inspected: all8scorecard columns and setup fields visible after helprail deferred to2xl. Zero document overflow; same frozen ID saved after resizing."
+      ],
+      "mobile": [
+        "round-verified/new-round-error-phone.png inspected; 320/390/430px document overflow checks passed.",
+        "round-strategy-visual-verified: changed form region axe zero violations; zero page errors/overflow.",
+        "Historical companion single-hole entry verified320/390/768/1024, scoped form axe zero, screenshot setup/score inspected; broader desktop final recheck pending at checkpoint.",
+        "Final historical-round-stable/history-score-phone.png inspected.320/390/768/1024 companion one-hole layout verified; cancel/confirm tee change, emptytee no invented holes, missing score action and hidden invalid putt focus passed."
+      ],
+      "empty": [],
+      "loading": [],
+      "error": [
+        "Database insertion rejection produces inline recovery; no session created until retry."
+      ]
+    },
+    "blockers": [
+      "Historical score-entry recovery, empty courses, dark/theme accessibility, permission mutation matrix and production gates remain pending.",
+      "Full draft persistence after navigation/refresh, account switch, software keyboard, themes/zoom, all supplementary input combinations and remaining viewport coverage are still unverified."
+    ]
+  },
+  {
+    "route": "/rounds",
+    "canonicalRoute": "/rounds",
+    "source": "src/app/(app)/rounds/page.tsx",
+    "adjacentSources": [],
+    "family": "rounds",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Rounds: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Rounds",
+      "back": {
+        "href": "/play",
+        "label": "Play"
+      }
+    },
+    "nextActionsInSource": ["/rounds/new", "/import"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": ["/rounds/[sessionId]", "/rounds/new"],
+    "dataDependencies": [
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/app-surface-server",
+      "@/lib/current-user",
+      "@/lib/round-sessions",
+      "@/lib/server-observability",
+      "@/lib/round-handicap",
+      "@/lib/round-handicap-effect",
+      "@/lib/round-history-evidence"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/rounds/error.tsx",
+      "src/app/(app)/rounds/loading.tsx",
+      "src/app/(app)/rounds/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/sessions/[sessionId]",
+    "canonicalRoute": "/sessions/[sessionId]",
+    "source": "src/app/(app)/sessions/[sessionId]/page.tsx",
+    "adjacentSources": [],
+    "family": "sessions",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Find and review actual activities and their evidence",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Sessions",
+      "back": {
+        "href": "/sessions",
+        "label": "Sessions"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/today-shot-detail-data",
+      "@/lib/club-format",
+      "@/lib/mobile-review-copy",
+      "@/lib/app-surface-server",
+      "@/lib/session-review-metadata",
+      "@/lib/session-review-route",
+      "@/lib/mobile-session-review",
+      "@/lib/current-user",
+      "@/lib/practice-planner",
+      "@/lib/shot-pattern-chart-data",
+      "@/lib/today-session-data",
+      "@/lib/utils"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [
+      "Desktop and mobile practice actions now carry the owned source session and club."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "core-journey-current.log: imported session found in history; Review, Clubs & shots and Next practice tabs passed."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": [
+      "Remaining route states, broader accessibility/themes, errors and full integration gates are not yet verified."
+    ]
+  },
+  {
+    "route": "/sessions",
+    "canonicalRoute": "/sessions",
+    "source": "src/app/(app)/sessions/page.tsx",
+    "adjacentSources": [
+      "src/app/(app)/sessions/sessions-companion-page.tsx",
+      "src/app/(app)/sessions/sessions-workbench-page.tsx"
+    ],
+    "family": "sessions",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Find and review actual activities and their evidence",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Sessions",
+      "back": null
+    },
+    "nextActionsInSource": ["/import", "/rounds/new"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": ["/sessions/[sessionId]"],
+    "dataDependencies": [
+      "@/lib/app-surface-server",
+      "@/lib/session-history-search-params",
+      "@/lib/current-user"
+    ],
+    "permissionEvidence": ["@/lib/current-user", "@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/sessions/error.tsx",
+      "src/app/(app)/sessions/loading.tsx",
+      "src/app/(app)/sessions/not-found.tsx"
+    ],
+    "implementation": "in progress",
+    "findings": [
+      "Latest linked plan is selected before joining shots, preventing duplicate history rows and incorrect history limits when several plans share a session."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "handoff-history-browser.log: two linked plans yield one row, correct shot count and latest result."
+      ],
+      "desktop": ["core-before-play: populated desktop captured; Play visually inspected."],
+      "mobile": ["core-before-play: populated phone captured; Play visually inspected."],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": [
+      "Remaining route states, broader accessibility/themes, errors and full integration gates are not yet verified."
+    ]
+  },
+  {
+    "route": "/settings/invitations/[token]",
+    "canonicalRoute": "/settings/invitations/[token]",
+    "source": "src/app/(app)/settings/invitations/[token]/page.tsx",
+    "adjacentSources": [],
+    "family": "settings",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Settings: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Settings",
+      "back": {
+        "href": "/settings",
+        "label": "Settings"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/schema",
+      "@/lib/brand",
+      "@/db/client",
+      "@/lib/current-user",
+      "@/lib/collaboration"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/settings/notifications",
+    "canonicalRoute": "/settings/notifications",
+    "source": "src/app/(app)/settings/notifications/page.tsx",
+    "adjacentSources": [],
+    "family": "notifications",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Notifications: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Notifications",
+      "back": {
+        "href": "/settings",
+        "label": "Settings"
+      }
+    },
+    "nextActionsInSource": ["/settings"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/current-user", "@/lib/product-preferences"],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/settings",
+    "canonicalRoute": "/settings",
+    "source": "src/app/(app)/settings/page.tsx",
+    "adjacentSources": [],
+    "family": "settings",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Settings: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Settings",
+      "back": null
+    },
+    "nextActionsInSource": [
+      "/settings?section=general",
+      "/settings?section=appearance",
+      "/settings?section=privacy",
+      "/settings?section=notifications",
+      "/settings?section=sharing",
+      "/settings?section=data",
+      "/settings?section=offline",
+      "/settings?section=billing",
+      "/settings?section=danger",
+      "/providers",
+      "/import",
+      "/api/settings/export",
+      "/billing"
+    ],
+    "modesAndParameters": ["invite", "inviteError"],
+    "meaningfulSubroutes": ["/settings/invitations/[token]", "/settings/notifications"],
+    "dataDependencies": [
+      "@/lib/settings-sections",
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/app-surface-server",
+      "@/lib/current-user",
+      "@/lib/feature-ideas",
+      "@/lib/product-preferences",
+      "@/lib/site-origin",
+      "@/lib/user-settings"
+    ],
+    "permissionEvidence": ["@/app/settings/settings-access-actions", "@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/settings/error.tsx",
+      "src/app/(app)/settings/loading.tsx",
+      "src/app/(app)/settings/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "account-sharing-workflows.test.ts:3realDB cases verify recipient-only acceptance, cancellation, stranger mutation isolation, removal/read denial, replay, expiry and simultaneous acceptance. UI/browser separate. Included in admin-sharing-expanded.log7pass."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/shared/[userId]",
+    "canonicalRoute": "/shared/[userId]",
+    "source": "src/app/(app)/shared/[userId]/page.tsx",
+    "adjacentSources": [],
+    "family": "public-sharing",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "/shared/[userId]: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "Route-specific responsive review pending",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": null,
+      "back": {
+        "href": "/settings",
+        "label": "Settings"
+      }
+    },
+    "nextActionsInSource": ["/settings"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/account-access",
+      "@/lib/app-surface-server",
+      "@/lib/shot-review"
+    ],
+    "permissionEvidence": ["@/lib/account-access"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/shots",
+    "canonicalRoute": "/shots",
+    "source": "src/app/(app)/shots/page.tsx",
+    "adjacentSources": [],
+    "family": "shots",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Shot explorer: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Shots",
+      "back": {
+        "href": "/sessions",
+        "label": "Sessions"
+      }
+    },
+    "nextActionsInSource": ["/import", "/providers"],
+    "modesAndParameters": [
+      "sort",
+      "trust",
+      "group",
+      "page",
+      "shotId",
+      "review",
+      "club",
+      "sessionId",
+      "category",
+      "q",
+      "from",
+      "to",
+      "dir",
+      "set",
+      "toString"
+    ],
+    "meaningfulSubroutes": ["/shots/review"],
+    "dataDependencies": [
+      "@/lib/session-data-confidence",
+      "@/lib/app-surface-server",
+      "@/lib/shot-review",
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/club-format",
+      "@/lib/current-user",
+      "@/lib/shot-records",
+      "@/lib/server-observability",
+      "@/lib/shot-deletion"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/shots/error.tsx",
+      "src/app/(app)/shots/loading.tsx",
+      "src/app/(app)/shots/not-found.tsx"
+    ],
+    "implementation": "in progress",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "correction-integration.log:6 real-Postgres tests passed1.53s; owner/session isolation, raw/manual/directional provenance, stock eligibility, real linked practice refresh, rollback/retry/concurrency, score/tee SG replacement and existing feed audience/date preservation. Domain/action evidence only; browser/UI remains partial.",
+        "correction-warning-integration.log:14 real-Postgres integration tests plus5 lifecycle checks passed2.21s (7September00:25). Adds whole-club rename/merge across rounds, raw/manual preservation, destination ownership, atomic later-round failure rollback, simultaneous single/bulk correction, linked-practice refresh, saved warning/retry/Undo, explicit split/unmapping, and completion replay audience preservation. UI/HTTP/offline conflict coverage remains separate and incomplete.",
+        "offline-access-integration.log:27 real database/handler/loader cases plus9 lifecycle/shared-source checks passed5.79s (7September00:36). Locked offline version guards cover all7edit kinds; reproduced two200 lost-update race now one200/one409 with accepted ledger replay. Account-switch rejection and monotonic versions with/without scorecard verified. Normal online behavior preserved. Handler calls use mocked authentication identity; deployed HTTP/PWA browser behavior not proven here."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/shots/review",
+    "canonicalRoute": "/shots/review",
+    "source": "src/app/(app)/shots/review/page.tsx",
+    "adjacentSources": [],
+    "family": "shots",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Shot explorer: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Shots",
+      "back": {
+        "href": "/shots",
+        "label": "Shots"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/automatic-shot-review-data"],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/simulator-lab",
+    "canonicalRoute": "/simulator-lab",
+    "source": "src/app/(app)/simulator-lab/page.tsx",
+    "adjacentSources": [],
+    "family": "simulator-lab",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Assess launch-monitor performance in depth",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/sessions",
+    "entryPoints": {
+      "navigation": "Performance Lab",
+      "back": null
+    },
+    "nextActionsInSource": [
+      "/import?source=csv#csv-import",
+      "/equipment",
+      "/practice",
+      "/handicap#range-reality",
+      "/import"
+    ],
+    "modesAndParameters": ["set", "toString"],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/simulator-lab",
+      "@/lib/reality-handicap",
+      "@/lib/dispersion-corridor",
+      "@/lib/utils"
+    ],
+    "permissionEvidence": [],
+    "recoveryFiles": ["src/app/(app)/simulator-lab/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/social-intelligence",
+    "canonicalRoute": "/social-intelligence",
+    "source": "src/app/(app)/social-intelligence/page.tsx",
+    "adjacentSources": [],
+    "family": "social-intelligence",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Recaps & Safety: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/profile",
+    "entryPoints": {
+      "navigation": "Safety",
+      "back": null
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/social-intelligence", "@/lib/social"],
+    "permissionEvidence": [],
+    "recoveryFiles": ["src/app/(app)/social-intelligence/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/speed",
+    "canonicalRoute": "/speed",
+    "source": "src/app/(app)/speed/page.tsx",
+    "adjacentSources": [],
+    "family": "speed",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Connect training speed to repeatable playing performance",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Speed",
+      "back": {
+        "href": "/practice",
+        "label": "Practice"
+      }
+    },
+    "nextActionsInSource": ["/rapsodo"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": ["/speed/sessions/[sessionId]"],
+    "dataDependencies": [
+      "@/lib/app-surface-server",
+      "@/lib/current-user",
+      "@/lib/speed-training-data",
+      "@/lib/speed-training",
+      "@/lib/speed-chart-signature",
+      "@/lib/utils"
+    ],
+    "permissionEvidence": ["@/components/app/chart-accessible-fallback", "@/lib/current-user"],
+    "recoveryFiles": ["src/app/(app)/speed/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/speed/sessions/[sessionId]",
+    "canonicalRoute": "/speed/sessions/[sessionId]",
+    "source": "src/app/(app)/speed/sessions/[sessionId]/page.tsx",
+    "adjacentSources": [],
+    "family": "speed",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Connect training speed to repeatable playing performance",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Speed",
+      "back": {
+        "href": "/speed",
+        "label": "Speed"
+      }
+    },
+    "nextActionsInSource": ["/speed"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/app-surface-server",
+      "@/lib/current-user",
+      "@/lib/speed-training-data",
+      "@/lib/speed-training",
+      "@/lib/utils"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/stats/training-over-time",
+    "canonicalRoute": "/stats/training-over-time",
+    "source": "src/app/(app)/stats/training-over-time/page.tsx",
+    "adjacentSources": [],
+    "family": "training-load",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Training Load: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Training load",
+      "back": {
+        "href": "/progress",
+        "label": "Progress"
+      }
+    },
+    "nextActionsInSource": ["/speed"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/app-surface-server",
+      "@/lib/training/mobile-training-source-links",
+      "@/lib/current-user",
+      "@/lib/speed-development",
+      "@/lib/speed-training-data",
+      "@/lib/training/trainingData"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": ["src/app/(app)/stats/training-over-time/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/strokes-gained",
+    "canonicalRoute": "/strokes-gained",
+    "source": "src/app/(app)/strokes-gained/page.tsx",
+    "adjacentSources": [],
+    "family": "strokes-gained",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Strokes gained: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "desktop-only",
+    "mobileFallback": "/sessions?type=rounds",
+    "entryPoints": {
+      "navigation": "Strokes gained",
+      "back": null
+    },
+    "nextActionsInSource": ["/coach", "/practice?intent=latest_weakness", "/strokes-gained#events"],
+    "modesAndParameters": [
+      "sort",
+      "sg",
+      "sessionId",
+      "category",
+      "hole",
+      "startLie",
+      "endLie",
+      "from",
+      "to",
+      "set",
+      "toString"
+    ],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/schema",
+      "@/db/client",
+      "@/lib/current-user",
+      "@/lib/strokes-gained",
+      "@/lib/utils"
+    ],
+    "permissionEvidence": ["@/components/app/chart-accessible-fallback", "@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/strokes-gained/error.tsx",
+      "src/app/(app)/strokes-gained/loading.tsx",
+      "src/app/(app)/strokes-gained/not-found.tsx"
+    ],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/today",
+    "canonicalRoute": "/today",
+    "source": "src/app/(app)/today/page.tsx",
+    "adjacentSources": [
+      "src/app/(app)/today/today-companion-page.tsx",
+      "src/app/(app)/today/today-workbench-page.tsx"
+    ],
+    "family": "today",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Understand the latest result and choose the next useful action",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "companion",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Today",
+      "back": null
+    },
+    "nextActionsInSource": [
+      "/sessions",
+      "/progress",
+      "/quick-bag",
+      "/practice",
+      "/play",
+      "/goals",
+      "/today",
+      "/assets/hole-350-aerial.jpg",
+      "/coach",
+      "/course-records",
+      "/tournaments"
+    ],
+    "modesAndParameters": [
+      "social",
+      "date",
+      "session",
+      "club",
+      "evidence",
+      "clubSort",
+      "set",
+      "toString"
+    ],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/app-surface-server",
+      "@/lib/today-shot-detail-data",
+      "@/lib/today-highlights",
+      "@/lib/mobile-today-review",
+      "@/lib/mobile-today-briefing",
+      "@/lib/club-format",
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/current-user",
+      "@/lib/practice-planner",
+      "@/lib/shot-pattern-chart-data",
+      "@/lib/today-primary-state",
+      "@/lib/today-activity-data",
+      "@/lib/today-session-data",
+      "@/lib/challenge-relevance",
+      "@/lib/club-analytics",
+      "@/lib/club-face-angle",
+      "@/lib/challenges",
+      "@/lib/handicap-data",
+      "@/lib/product-preferences",
+      "@/lib/selected-course",
+      "@/lib/today-club-scoring",
+      "@/lib/today-practice-scoring"
+    ],
+    "permissionEvidence": ["@/lib/current-user", "@/lib/current-user"],
+    "recoveryFiles": [
+      "src/app/(app)/today/error.tsx",
+      "src/app/(app)/today/loading.tsx",
+      "src/app/(app)/today/not-found.tsx"
+    ],
+    "implementation": "in progress",
+    "findings": [
+      "Arbitrary qualitative confidence percentages removed; action/evidence overlap fixed; unsupported worsening claims corrected; empty handicap/form conflation removed.",
+      "User screenshots show remaining dense legacy analysis and weak visual differentiation; larger visual overhaul remains required."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [
+        "Today flagship geometry checks passed at all seven requested widths.",
+        "Empty and populated screenshots visually inspected under output/playwright/redesign."
+      ],
+      "mobile": [
+        "after-populated/today-companion.png inspected; Driver signal follows full review."
+      ],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/tournaments/[tournamentId]/leaderboard",
+    "canonicalRoute": "/tournaments/[tournamentId]/leaderboard",
+    "source": "src/app/(app)/tournaments/[tournamentId]/leaderboard/page.tsx",
+    "adjacentSources": [],
+    "family": "tournaments",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Tournaments: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Tournaments",
+      "back": {
+        "href": "/tournaments/[tournamentId]",
+        "label": "Tournament"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [
+      "Submission retry no longer flags its own CSV evidence as duplicate; owned entry/terms and valid round index checked before proof consumption. Submission/evidence/proof writes are transactional; secondary standings/feed remain postcommit."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "tournament-workflows-final.log:3realDB cases +9units pass. Tests cover entry replay, saved score derivation, submission/concurrent replay, cross-round duplication, foreign rounds, invalid index, withdrawal, failed proof/evidence rollback and retry. Browser/lifecycle date/closed-event checks remain unverified; final types/lint/format clean."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/tournaments/[tournamentId]",
+    "canonicalRoute": "/tournaments/[tournamentId]",
+    "source": "src/app/(app)/tournaments/[tournamentId]/page.tsx",
+    "adjacentSources": [],
+    "family": "tournaments",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Tournaments: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Tournaments",
+      "back": {
+        "href": "/tournaments",
+        "label": "Tournaments"
+      }
+    },
+    "nextActionsInSource": ["/tournaments", "#your-result"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [
+      "/tournaments/[tournamentId]/leaderboard",
+      "/tournaments/[tournamentId]/rounds",
+      "/tournaments/[tournamentId]/rules",
+      "/tournaments/[tournamentId]/submit"
+    ],
+    "dataDependencies": [
+      "@/lib/app-surface-server",
+      "@/lib/tournament-entry-terms",
+      "@/lib/tournaments"
+    ],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [
+      "Submission retry no longer flags its own CSV evidence as duplicate; owned entry/terms and valid round index checked before proof consumption. Submission/evidence/proof writes are transactional; secondary standings/feed remain postcommit."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "tournament-workflows-final.log:3realDB cases +9units pass. Tests cover entry replay, saved score derivation, submission/concurrent replay, cross-round duplication, foreign rounds, invalid index, withdrawal, failed proof/evidence rollback and retry. Browser/lifecycle date/closed-event checks remain unverified; final types/lint/format clean."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/tournaments/[tournamentId]/rounds",
+    "canonicalRoute": "/tournaments/[tournamentId]/rounds",
+    "source": "src/app/(app)/tournaments/[tournamentId]/rounds/page.tsx",
+    "adjacentSources": [],
+    "family": "tournaments",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Tournaments: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Tournaments",
+      "back": {
+        "href": "/tournaments/[tournamentId]",
+        "label": "Tournament"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [
+      "Submission retry no longer flags its own CSV evidence as duplicate; owned entry/terms and valid round index checked before proof consumption. Submission/evidence/proof writes are transactional; secondary standings/feed remain postcommit."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "tournament-workflows-final.log:3realDB cases +9units pass. Tests cover entry replay, saved score derivation, submission/concurrent replay, cross-round duplication, foreign rounds, invalid index, withdrawal, failed proof/evidence rollback and retry. Browser/lifecycle date/closed-event checks remain unverified; final types/lint/format clean."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/tournaments/[tournamentId]/rules",
+    "canonicalRoute": "/tournaments/[tournamentId]/rules",
+    "source": "src/app/(app)/tournaments/[tournamentId]/rules/page.tsx",
+    "adjacentSources": [],
+    "family": "tournaments",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Tournaments: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Tournaments",
+      "back": {
+        "href": "/tournaments/[tournamentId]",
+        "label": "Tournament"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [
+      "Submission retry no longer flags its own CSV evidence as duplicate; owned entry/terms and valid round index checked before proof consumption. Submission/evidence/proof writes are transactional; secondary standings/feed remain postcommit."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "tournament-workflows-final.log:3realDB cases +9units pass. Tests cover entry replay, saved score derivation, submission/concurrent replay, cross-round duplication, foreign rounds, invalid index, withdrawal, failed proof/evidence rollback and retry. Browser/lifecycle date/closed-event checks remain unverified; final types/lint/format clean."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/tournaments/[tournamentId]/submit",
+    "canonicalRoute": "/tournaments/[tournamentId]/submit",
+    "source": "src/app/(app)/tournaments/[tournamentId]/submit/page.tsx",
+    "adjacentSources": [],
+    "family": "tournaments",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Tournaments: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Tournaments",
+      "back": {
+        "href": "/tournaments/[tournamentId]",
+        "label": "Tournament"
+      }
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [
+      "Submission retry no longer flags its own CSV evidence as duplicate; owned entry/terms and valid round index checked before proof consumption. Submission/evidence/proof writes are transactional; secondary standings/feed remain postcommit."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "tournament-workflows-final.log:3realDB cases +9units pass. Tests cover entry replay, saved score derivation, submission/concurrent replay, cross-round duplication, foreign rounds, invalid index, withdrawal, failed proof/evidence rollback and retry. Browser/lifecycle date/closed-event checks remain unverified; final types/lint/format clean."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/tournaments",
+    "canonicalRoute": "/tournaments",
+    "source": "src/app/(app)/tournaments/page.tsx",
+    "adjacentSources": [],
+    "family": "tournaments",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "Tournaments: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "summary",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": "Tournaments",
+      "back": null
+    },
+    "nextActionsInSource": ["/tournaments", "/challenges", "/course-records"],
+    "modesAndParameters": ["set", "toString"],
+    "meaningfulSubroutes": [
+      "/tournaments/[tournamentId]/leaderboard",
+      "/tournaments/[tournamentId]",
+      "/tournaments/[tournamentId]/rounds",
+      "/tournaments/[tournamentId]/rules",
+      "/tournaments/[tournamentId]/submit"
+    ],
+    "dataDependencies": ["@/lib/app-surface-server", "@/lib/tournaments"],
+    "permissionEvidence": [],
+    "recoveryFiles": ["src/app/(app)/tournaments/loading.tsx"],
+    "implementation": "in progress",
+    "findings": [
+      "Submission retry no longer flags its own CSV evidence as duplicate; owned entry/terms and valid round index checked before proof consumption. Submission/evidence/proof writes are transactional; secondary standings/feed remain postcommit."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "tournament-workflows-final.log:3realDB cases +9units pass. Tests cover entry replay, saved score derivation, submission/concurrent replay, cross-round duplication, foreign rounds, invalid index, withdrawal, failed proof/evidence rollback and retry. Browser/lifecycle date/closed-event checks remain unverified; final types/lint/format clean."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/welcome",
+    "canonicalRoute": "/welcome",
+    "source": "src/app/(app)/welcome/page.tsx",
+    "adjacentSources": [
+      "src/app/(app)/welcome/welcome-companion-page.tsx",
+      "src/app/(app)/welcome/welcome-workbench-page.tsx"
+    ],
+    "family": "internal",
+    "user": "Signed-in golfer; record ownership required",
+    "primaryJob": "/welcome: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "Route-specific responsive review pending",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": null,
+      "back": null
+    },
+    "nextActionsInSource": ["/today"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/lib/activation-journey",
+      "@/lib/app-surface-server",
+      "@/lib/current-user"
+    ],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/login",
+    "canonicalRoute": "/login",
+    "source": "src/app/login/page.tsx",
+    "adjacentSources": [],
+    "family": "public",
+    "user": "Visitor or shared-link recipient",
+    "primaryJob": "/login: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "Route-specific responsive review pending",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": null,
+      "back": null
+    },
+    "nextActionsInSource": ["/", "/privacy"],
+    "modesAndParameters": ["reason", "next", "accountDeleted", "receipt", "error"],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/brand", "@/lib/current-user", "@/lib/safe-next-path"],
+    "permissionEvidence": ["@/lib/current-user"],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/offline",
+    "canonicalRoute": "/offline",
+    "source": "src/app/offline/page.tsx",
+    "adjacentSources": [],
+    "family": "public",
+    "user": "Visitor or shared-link recipient",
+    "primaryJob": "/offline: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "Route-specific responsive review pending",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": null,
+      "back": null
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/",
+    "canonicalRoute": "/",
+    "source": "src/app/page.tsx",
+    "adjacentSources": [],
+    "family": "public",
+    "user": "Visitor or shared-link recipient",
+    "primaryJob": "/: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "Route-specific responsive review pending",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": null,
+      "back": null
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/marketing-demo-data"],
+    "permissionEvidence": [
+      "@/components/marketing/beta-access-section",
+      "@/components/marketing/privacy-trust-section"
+    ],
+    "recoveryFiles": ["src/app/error.tsx", "src/app/not-found.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/privacy",
+    "canonicalRoute": "/privacy",
+    "source": "src/app/privacy/page.tsx",
+    "adjacentSources": [],
+    "family": "public",
+    "user": "Visitor or shared-link recipient",
+    "primaryJob": "/privacy: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "Route-specific responsive review pending",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": null,
+      "back": null
+    },
+    "nextActionsInSource": ["/login", "/settings"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": ["@/lib/brand"],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/share/[token]",
+    "canonicalRoute": "/share/[token]",
+    "source": "src/app/share/[token]/page.tsx",
+    "adjacentSources": [],
+    "family": "public-sharing",
+    "user": "Visitor or shared-link recipient",
+    "primaryJob": "/share/[token]: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "Route-specific responsive review pending",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": null,
+      "back": null
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/app-surface-server",
+      "@/lib/app-surface",
+      "@/lib/round-handicap",
+      "@/lib/share-links"
+    ],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "in progress",
+    "findings": [
+      "Shared-round server loader now omits live tee metadata when the linked course is neither shared nor owned by the link owner; saved scorecard remains readable. Regression reproduced private tee name/rating/slope exposure before fix."
+    ],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [
+        "share-access-integration.log:2 real Postgres/public-loader tests passed1.64s. Own share creation stores hashed token; foreign creation/revocation cannot change owner data; expired/revoked/wrong-owner/wrong-type/deleted-resource links resolve unavailable. Shared and link-owner private courses retain valid tee metadata. Authentication identity/surface/presentation component mocked; data loader and actions real. No browser or rendering claim."
+      ],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/share/course-twin/[token]",
+    "canonicalRoute": "/share/course-twin/[token]",
+    "source": "src/app/share/course-twin/[token]/page.tsx",
+    "adjacentSources": [],
+    "family": "public-sharing",
+    "user": "Visitor or shared-link recipient",
+    "primaryJob": "/share/course-twin/[token]: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "Route-specific responsive review pending",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": null,
+      "back": null
+    },
+    "nextActionsInSource": ["/login"],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/brand",
+      "@/lib/course-twin-data",
+      "@/lib/share-links"
+    ],
+    "permissionEvidence": [],
+    "recoveryFiles": [],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  },
+  {
+    "route": "/share/report/[token]",
+    "canonicalRoute": "/share/report/[token]",
+    "source": "src/app/share/report/[token]/page.tsx",
+    "adjacentSources": [],
+    "family": "public-sharing",
+    "user": "Visitor or shared-link recipient",
+    "primaryJob": "/share/report/[token]: inspect route-specific task and handoff",
+    "desktop": "Full-width workbench; route-specific review pending",
+    "mobile": "Route-specific responsive review pending",
+    "mobileFallback": null,
+    "entryPoints": {
+      "navigation": null,
+      "back": null
+    },
+    "nextActionsInSource": [],
+    "modesAndParameters": [],
+    "meaningfulSubroutes": [],
+    "dataDependencies": [
+      "@/db/client",
+      "@/db/schema",
+      "@/lib/app-surface-server",
+      "@/lib/app-surface",
+      "@/lib/coach-report",
+      "@/lib/coach-report-access",
+      "@/lib/share-links"
+    ],
+    "permissionEvidence": ["@/lib/coach-report-access"],
+    "recoveryFiles": ["src/app/share/report/[token]/loading.tsx"],
+    "implementation": "pending",
+    "findings": [],
+    "proposedImprovements": [],
+    "preservedDesign": null,
+    "verification": {
+      "functional": [],
+      "desktop": [],
+      "mobile": [],
+      "empty": [],
+      "loading": [],
+      "error": []
+    },
+    "blockers": ["Runtime, populated/empty/error states and permissions not yet verified"]
+  }
+]

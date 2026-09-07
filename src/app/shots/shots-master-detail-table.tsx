@@ -130,22 +130,26 @@ export type ShotMiniDispersionPoint = {
 
 type DetailTab = "overview" | "source" | "history";
 
+import { ClubCorrection } from "./club-correction";
+
 export function ShotsMasterDetailTable({
   shots,
   sorts,
+  correctionClubs,
   groupBy = "none",
   dispersionClubLabel,
   dispersionShots = [],
 }: {
   shots: ShotMasterDetailRow[];
   sorts: ShotTableSort[];
+  correctionClubs: Array<{ value: string; label: string }>;
   groupBy?: "none" | "club" | "session";
   dispersionClubLabel?: string;
   dispersionShots?: ShotMiniDispersionPoint[];
 }) {
   const [selectedId, setSelectedId] = useState(shots[0]?.id ?? "");
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
-  const [detailOpen, setDetailOpen] = useState(true);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [detailTab, setDetailTab] = useState<DetailTab>("overview");
   const rowRefs = useRef<Array<HTMLTableRowElement | null>>([]);
   const selectedShot = useMemo(
@@ -488,6 +492,11 @@ export function ShotsMasterDetailTable({
         className="lg:sticky lg:top-[9.5rem] lg:max-h-[calc(100dvh-11rem)] lg:self-start lg:overflow-hidden"
         contentClassName="p-0 lg:overflow-y-auto"
       >
+        <ClubCorrection
+          key={selectedShot?.id}
+          shotId={selectedShot?.id ?? ""}
+          clubs={correctionClubs}
+        />
         <SelectedShotDetail
           shot={selectedShot}
           tab={detailTab}

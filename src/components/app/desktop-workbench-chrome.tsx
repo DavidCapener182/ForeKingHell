@@ -1,6 +1,9 @@
 "use client";
 
+import { WorkbenchBreadcrumbs } from "./workbench-breadcrumbs";
+
 import Link from "next/link";
+import { buildWorkbenchBreadcrumbItems } from "@/lib/workbench-breadcrumbs";
 import dynamic from "next/dynamic";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -78,6 +81,7 @@ import { NotificationCentre } from "@/components/app/workbench/notification-cent
 import { WorkspaceSwitcher } from "@/components/app/workbench/workspace-switcher";
 import { cn } from "@/lib/utils";
 import { commandRoutes, productAreaLabel } from "@/navigation/route-registry";
+import chromeStyles from "@/components/untitled-ui/workbench-controls.module.css";
 
 const DesktopCommandPalette = dynamic(
   () =>
@@ -91,6 +95,8 @@ type DesktopWorkbenchChromeProps = {
   navGroups: AppNavGroup[];
   isAdmin: boolean;
   accountMenu?: ReactNode;
+  commandOnly?: boolean;
+  enableKeyboardShortcut?: boolean;
 };
 
 export type WorkbenchLink = {
@@ -127,11 +133,6 @@ type AssistantContext = {
     prompt: string;
     icon: LucideIcon;
   }>;
-};
-
-type BreadcrumbItem = {
-  label: string;
-  href?: string;
 };
 
 const recentStorageKey = "fkh:desktop-recent-items";
@@ -299,6 +300,8 @@ export function DesktopWorkbenchChrome({
   navGroups,
   isAdmin,
   accountMenu,
+  commandOnly = false,
+  enableKeyboardShortcut = true,
 }: DesktopWorkbenchChromeProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -313,6 +316,7 @@ export function DesktopWorkbenchChrome({
   const [savedViewCommands, setSavedViewCommands] = useState<SavedViewCommandItem[]>([]);
   const [workspaceCommands, setWorkspaceCommands] = useState<WorkspaceCommandItem[]>([]);
   const [workspaceCommandsLoaded, setWorkspaceCommandsLoaded] = useState(false);
+  const [workspaceCommandsError, setWorkspaceCommandsError] = useState(false);
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
   const [hydrated, setHydrated] = useState(false);
   const commandInputRef = useRef<HTMLInputElement>(null);
@@ -322,7 +326,11 @@ export function DesktopWorkbenchChrome({
 
   const activeItem = useMemo(() => findActiveItem(navGroups, pathname), [navGroups, pathname]);
   const breadcrumbItems = useMemo(
-    () => buildBreadcrumbItems(activeItem, pathname),
+    () =>
+      buildWorkbenchBreadcrumbItems(
+        activeItem ? { label: activeItem.item.label, href: activeItem.item.href } : undefined,
+        pathname,
+      ),
     [activeItem, pathname],
   );
   const assistantContext = useMemo(() => getAssistantContext(pathname), [pathname]);
@@ -439,17 +447,20 @@ export function DesktopWorkbenchChrome({
         });
 
         if (!response.ok) {
+          setWorkspaceCommandsError(true);
           setWorkspaceCommandsLoaded(true);
           return;
         }
 
         const payload: unknown = await response.json();
         if (!controller.signal.aborted) {
+          setWorkspaceCommandsError(false);
           setWorkspaceCommands(normalizeWorkspaceCommands(payload));
           setWorkspaceCommandsLoaded(true);
         }
       } catch {
         if (!controller.signal.aborted) {
+          setWorkspaceCommandsError(true);
           setWorkspaceCommands([]);
           setWorkspaceCommandsLoaded(true);
         }
@@ -494,6 +505,7 @@ export function DesktopWorkbenchChrome({
   }, [commandOpen]);
 
   useEffect(() => {
+    if (!enableKeyboardShortcut) return;
     function handleKeyDown(event: KeyboardEvent) {
       if (isEditableTarget(event.target)) {
         return;
@@ -504,6 +516,14 @@ export function DesktopWorkbenchChrome({
       if ((event.metaKey || event.ctrlKey) && key === "k") {
         event.preventDefault();
         openCommandPalette();
+        return;
+      }
+
+      if (commandOnly) {
+        if (key === "/" && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          event.preventDefault();
+          openCommandPalette();
+        }
         return;
       }
 
@@ -607,6 +627,8 @@ export function DesktopWorkbenchChrome({
       }
     };
   }, [
+    commandOnly,
+    enableKeyboardShortcut,
     assistantContext,
     closeCommandAndNavigate,
     commandOpen,
@@ -723,111 +745,78 @@ export function DesktopWorkbenchChrome({
 
   return (
     <>
-      <header
-        className="sticky top-0 z-40 hidden min-h-14 border-b border-border bg-background/92 px-4 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/82 lg:block"
-        data-desktop-workbench-hydrated={hydrated ? "true" : "false"}
-        inert={!hydrated}
-        aria-busy={hydrated ? undefined : true}
-      >
-        <div className="flex min-w-0 items-center gap-2 2xl:gap-3">
-          <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">
-            <Link
-              href="/dashboard"
-              className="focus-aaa rounded-md px-2 py-1 font-semibold text-foreground outline-none hover:bg-muted/55"
-            >
-              Home
-            </Link>
-            {breadcrumbItems.map((item, index) => {
-              const isLast = index === breadcrumbItems.length - 1;
+      <span hidden data-command-centre-ready={hydrated ? "true" : "false"} />
+      {!commandOnly ? (
+        <header
+          className="sticky top-0 z-40 hidden min-h-14 border-b border-border bg-background/92 px-4 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/82 lg:block"
+          data-desktop-workbench-hydrated={hydrated ? "true" : "false"}
+          inert={!hydrated}
+          aria-busy={hydrated ? undefined : true}
+        >
+          <div className={cn("flex min-w-0 items-center gap-2 2xl:gap-3", chromeStyles.chrome)}>
+            <WorkbenchBreadcrumbs items={breadcrumbItems} />
 
-              return (
-                <span
-                  key={`${item.label}-${item.href ?? index}`}
-                  className="flex min-w-0 items-center gap-2"
-                >
-                  <span className="text-muted-foreground" aria-hidden>
-                    /
-                  </span>
-                  {item.href && !isLast ? (
-                    <Link
-                      href={item.href}
-                      className="focus-aaa min-w-0 rounded-md px-2 py-1 font-medium text-muted-foreground outline-none hover:bg-muted/55 hover:text-foreground"
-                    >
-                      <span className="truncate">{item.label}</span>
-                    </Link>
-                  ) : (
-                    <span
-                      className="min-w-0 truncate rounded-md px-2 py-1 font-medium text-muted-foreground"
-                      aria-current={isLast ? "page" : undefined}
-                    >
-                      {item.label}
-                    </span>
-                  )}
-                </span>
-              );
-            })}
-          </nav>
-
-          <button
-            type="button"
-            onClick={openCommandPalette}
-            className="focus-aaa ml-auto grid h-9 min-w-0 max-w-xl flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-card/76 px-3 text-left text-sm text-muted-foreground shadow-sm outline-none transition-colors hover:border-primary/40 hover:bg-card lg:min-w-[12rem] 2xl:min-w-[18rem]"
-            aria-label="Open command palette"
-          >
-            <Search className="size-4" aria-hidden />
-            <span className="truncate">
-              Search pages, clubs, rounds, friends, courses or actions
-            </span>
-            <span className="hidden items-center gap-1 text-[11px] font-semibold text-muted-foreground lg:flex">
-              <ShortcutKey>⌘</ShortcutKey>
-              <ShortcutKey>K</ShortcutKey>
-            </span>
-          </button>
-
-          <Button asChild variant="outline" className="h-9 w-auto shrink-0 gap-2 px-2.5">
-            <Link href={pageAction.href} aria-label={pageAction.label}>
-              <PageActionIcon className="size-4" aria-hidden />
-              <span className="hidden xl:inline">{pageAction.label}</span>
-            </Link>
-          </Button>
-
-          {assistantContext ? (
-            <Button
+            <button
               type="button"
-              variant="secondary"
-              className="h-9 w-auto shrink-0 gap-2 px-2.5"
-              onClick={() => setAssistantOpen(true)}
-              aria-label={`Open AI assistant for ${assistantContext.label}`}
+              onClick={openCommandPalette}
+              className="focus-aaa ml-auto grid h-9 min-w-0 max-w-xl flex-1 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-border bg-card/76 px-3 text-left text-sm text-muted-foreground shadow-sm outline-none transition-colors hover:border-primary/40 hover:bg-card lg:min-w-[12rem] 2xl:min-w-[18rem]"
+              aria-label="Open command palette"
             >
-              <PanelRightOpen className="size-4" />
-              <span className="hidden 2xl:inline">Assistant</span>
+              <Search className="size-4" aria-hidden />
+              <span className="truncate">
+                Search pages, clubs, rounds, friends, courses or actions
+              </span>
+              <span className="hidden items-center gap-1 text-[11px] font-semibold text-muted-foreground lg:flex">
+                <ShortcutKey>⌘</ShortcutKey>
+                <ShortcutKey>K</ShortcutKey>
+              </span>
+            </button>
+
+            <Button asChild variant="outline" className="h-9 w-auto shrink-0 gap-2 px-2.5">
+              <Link href={pageAction.href} aria-label={pageAction.label}>
+                <PageActionIcon className="size-4" aria-hidden />
+                <span className="hidden xl:inline">{pageAction.label}</span>
+              </Link>
             </Button>
-          ) : null}
 
-          <WorkspaceLinksMenu
-            open={workspaceLinksOpen}
-            onOpenChange={setWorkspaceLinksOpen}
-            pinnedLinks={pinnedLinks}
-            recentLinks={recentLinks}
-            savedViewLinks={savedViewCommands}
-            onPinCurrent={pinCurrentPage}
-            onNavigate={closeCommandAndNavigate}
-            onOpenShortcuts={() => setShortcutsOpen(true)}
-            onExportCurrent={() => findCurrentExportControl()?.click()}
-            workspaceSwitcher={
-              <WorkspaceSwitcher
-                pathname={pathname}
-                isAdmin={isAdmin}
-                embedded
-                onNavigate={() => setWorkspaceLinksOpen(false)}
-              />
-            }
-            notificationMenu={<NotificationCentre embedded />}
-          />
+            {assistantContext ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-9 w-auto shrink-0 gap-2 px-2.5"
+                onClick={() => setAssistantOpen(true)}
+                aria-label={`Open AI assistant for ${assistantContext.label}`}
+              >
+                <PanelRightOpen className="size-4" />
+                <span className="hidden 2xl:inline">Assistant</span>
+              </Button>
+            ) : null}
 
-          {accountMenu}
-        </div>
-      </header>
+            <WorkspaceLinksMenu
+              open={workspaceLinksOpen}
+              onOpenChange={setWorkspaceLinksOpen}
+              pinnedLinks={pinnedLinks}
+              recentLinks={recentLinks}
+              savedViewLinks={savedViewCommands}
+              onPinCurrent={pinCurrentPage}
+              onNavigate={closeCommandAndNavigate}
+              onOpenShortcuts={() => setShortcutsOpen(true)}
+              onExportCurrent={() => findCurrentExportControl()?.click()}
+              workspaceSwitcher={
+                <WorkspaceSwitcher
+                  pathname={pathname}
+                  isAdmin={isAdmin}
+                  embedded
+                  onNavigate={() => setWorkspaceLinksOpen(false)}
+                />
+              }
+              notificationMenu={<NotificationCentre embedded />}
+            />
+
+            {accountMenu}
+          </div>
+        </header>
+      ) : null}
 
       <DesktopCommandPalette
         open={commandOpen}
@@ -840,6 +829,12 @@ export function DesktopWorkbenchChrome({
         }}
         onInputKeyDown={handleCommandInputKeyDown}
         commands={filteredCommands}
+        loading={shouldLoadWorkspaceCommands && !workspaceCommandsLoaded}
+        loadError={workspaceCommandsError}
+        onRetry={() => {
+          setWorkspaceCommandsError(false);
+          setWorkspaceCommandsLoaded(false);
+        }}
         activeIndex={safeActiveCommandIndex}
         pinnedLinks={pinnedLinks}
         savedViewLinks={savedViewCommands}
@@ -1338,57 +1333,6 @@ function findActiveItem(navGroups: AppNavGroup[], pathname: string) {
   }
 
   return matches.sort((left, right) => right.item.href.length - left.item.href.length)[0] ?? null;
-}
-
-function buildBreadcrumbItems(
-  activeItem: ReturnType<typeof findActiveItem>,
-  pathname: string,
-): BreadcrumbItem[] {
-  const items: BreadcrumbItem[] = activeItem
-    ? [{ label: activeItem.item.label, href: activeItem.item.href }]
-    : [];
-  const detailLabel = deepRouteLabel(pathname);
-
-  if (!detailLabel) {
-    return items;
-  }
-
-  const lastItem = items[items.length - 1];
-
-  if (lastItem?.label === detailLabel) {
-    return items;
-  }
-
-  return [...items, { label: detailLabel }];
-}
-
-function deepRouteLabel(pathname: string) {
-  if (pathname === "/bag/longest") return "Longest shots";
-  if (/^\/bag\/[^/]+\/analytics$/.test(pathname)) return "Club analytics";
-  if (/^\/bag\/[^/]+$/.test(pathname)) return "Club profile";
-  if (pathname === "/rounds/new") return "New round";
-  if (/^\/rounds\/[^/]+$/.test(pathname)) return "Round review";
-  if (pathname === "/courses/new") return "New course";
-  if (pathname === "/courses/strategy") return "Course Strategy";
-  if (/^\/courses\/[^/]+\/holes$/.test(pathname)) return "Hole management";
-  if (/^\/courses\/[^/]+\/records\/[^/]+$/.test(pathname)) return "Record detail";
-  if (/^\/courses\/[^/]+\/records$/.test(pathname)) return "Course records";
-  if (/^\/courses\/[^/]+\/shot-pattern$/.test(pathname)) return "Shot pattern";
-  if (/^\/courses\/[^/]+\/tournaments$/.test(pathname)) return "Course tournaments";
-  if (/^\/courses\/[^/]+$/.test(pathname)) return "Course detail";
-  if (/^\/course-records\/[^/]+$/.test(pathname)) return "Record detail";
-  if (/^\/tournaments\/[^/]+\/leaderboard$/.test(pathname)) return "Event leaderboard";
-  if (/^\/tournaments\/[^/]+\/rounds$/.test(pathname)) return "Event rounds";
-  if (/^\/tournaments\/[^/]+\/rules$/.test(pathname)) return "Event rules";
-  if (/^\/tournaments\/[^/]+\/submit$/.test(pathname)) return "Submit round";
-  if (/^\/tournaments\/[^/]+$/.test(pathname)) return "Event detail";
-  if (/^\/speed\/sessions\/[^/]+$/.test(pathname)) return "Speed session";
-  if (/^\/groups\/[^/]+$/.test(pathname)) return "Group detail";
-  if (/^\/profile\/[^/]+$/.test(pathname)) return "Public profile";
-  if (/^\/friends\/qr\/[^/]+$/.test(pathname)) return "Friend invite";
-  if (/^\/settings\/invitations\/[^/]+$/.test(pathname)) return "Invitation";
-
-  return null;
 }
 
 function getPrimaryAction(pathname: string): { label: string; href: string; icon: LucideIcon } {

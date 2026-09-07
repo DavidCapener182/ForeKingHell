@@ -15,26 +15,24 @@ const tabsSource = readFileSync(join(process.cwd(), "src/app/friends/friends-tab
 
 describe("friends people directory", () => {
   it("keeps the five relationship views as query links", () => {
-    expect(tabsSource).toContain("<ButtonGroup");
-    expect(tabsSource).toContain('aria-label="Friend sections"');
+    expect(tabsSource).toContain("<UntitledTabs");
+    expect(tabsSource).toContain('label="Friend sections"');
     for (const label of ["Friends", "Incoming", "Sent", "Discover", "Blocked"]) {
-      expect(tabsSource).toContain(`label: "${label}"`);
+      expect(tabsSource).toContain(`"${label}"]`);
     }
-    expect(tabsSource).toContain('aria-current={active ? "page" : undefined}');
+    expect(tabsSource).toContain("selectedKey={activeTab}");
     expect(tabsSource).not.toContain("TabsTrigger");
   });
 
   it("renders one responsive people directory for every active tab", () => {
-    expect(pageSource).toContain(
-      "<PeopleDirectory rows={rows} query={query} activeTab={activeTab} />",
-    );
+    expect(pageSource).toContain("<PeopleDirectory");
     expect(pageSource).toContain("buildPeopleDirectoryRows");
-    expect(pageSource).toContain('<DesktopWorkbenchLayout scope="friends">');
-    expect(pageSource).toContain("<FriendsTabs activeTab={activeTab} />");
+    expect(pageSource).toContain("<PageShell>");
+    expect(pageSource).toContain("<FriendsTabs");
     expect(directorySource).toContain("export function PeopleDirectory");
     expect(directorySource).toContain("<DataTableFrame");
-    expect(directorySource).toContain('className="hidden min-[1024px]:block"');
-    expect(directorySource).toContain('className="min-w-0 min-[1024px]:hidden"');
+    expect(directorySource).toContain("className={boardStyles.desktop}");
+    expect(directorySource).toContain("className={boardStyles.mobile}");
     expect(directorySource).toContain("<PeopleTableRow");
     expect(directorySource).toContain("<PeopleItemRow");
     expect(directorySource).toContain("<TableCaption");
@@ -50,7 +48,7 @@ describe("friends people directory", () => {
     expect(directorySource).toContain("connectionLabel(row)");
     expect(directorySource).toContain("<PeopleActionMenu");
     expect(menuSource).toContain("<DropdownMenu");
-    expect(menuSource).toContain("Profile");
+    expect(menuSource).toContain("Open profile");
     expect(menuSource).toContain("Invite to group");
     expect(menuSource).toContain("Remove");
     expect(menuSource).toContain("Accept");

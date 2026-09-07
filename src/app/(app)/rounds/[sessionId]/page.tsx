@@ -1,3 +1,6 @@
+import { roundCompletionIssue } from "@/lib/round-context";
+import { cn } from "@/lib/utils";
+import { buildRoundLearningReview } from "@/lib/round-learning-review";
 import { MobileRoundShotMap } from "@/app/rounds/mobile-round-shot-map";
 import { MobileLiveRound } from "@/app/rounds/mobile-live-round";
 import { MobileRoundHandicapEffect } from "@/app/rounds/mobile-round-handicap-effect";
@@ -23,7 +26,7 @@ import {
   Share2,
   Upload,
 } from "lucide-react";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, or } from "drizzle-orm";
 
 import {
   createCourseTwinReplayShareLinkAction,
@@ -45,12 +48,12 @@ import {
   IOSSectionHeader,
 } from "@/components/app/ios-mobile";
 import { MobilePageTabs } from "@/components/app/mobile-controls";
+import { RoundShotEvidence } from "@/app/rounds/[sessionId]/round-shot-evidence";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { LazyOfflineRoundEditForm as OfflineRoundEditForm } from "@/app/rounds/[sessionId]/lazy-offline-round-edit-form";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DataPair,
   DataTableFrame,
@@ -539,8 +542,8 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                     <CardHeader>
                       <CardTitle>Round context</CardTitle>
                       <CardDescription>
-                        Save partial-round state, weather, wind and equipment notes so comparisons
-                        explain the conditions behind the score.
+                        Save status and conditions with the round. Completing a round requires a
+                        score for every recorded hole.
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -551,12 +554,24 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                         className="grid gap-3 lg:grid-cols-[180px_1fr_1fr_1fr]"
                       >
                         <input type="hidden" name="sessionId" value={round.session.id} />
+                        {roundCompletionIssue(round.holes) ? (
+                          <p className="col-span-full text-sm leading-5 text-muted-foreground">
+                            {roundCompletionIssue(round.holes)}
+                          </p>
+                        ) : null}
                         <label className="grid gap-2 text-sm font-medium">
                           <span>Status</span>
                           <LazyRoundEditSelect
                             name="roundStatus"
-                            defaultValue={round.session.roundStatus}
-                            options={ROUND_STATUS_OPTIONS}
+                            defaultValue={
+                              round.session.roundStatus === "complete" ? "complete" : "in_progress"
+                            }
+                            options={ROUND_STATUS_OPTIONS.map((option) => ({
+                              ...option,
+                              disabled:
+                                option.value === "complete" &&
+                                Boolean(roundCompletionIssue(round.holes)),
+                            }))}
                             triggerClassName="h-10 w-full bg-card"
                           />
                         </label>
@@ -603,62 +618,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                   title="Course link"
                   description="Course and tee data used by the scorecard."
                 >
-                  <Card id="course-link" className="premium-card scroll-mt-28">
-                    <CardHeader>
-                      <CardTitle>Course link</CardTitle>
-                      <CardDescription>
-                        Change the course or tee set used by the scorecard, handicap calculation,
-                        and hole map.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <OfflineRoundEditForm
-                        action={updateRoundCourseLinkAction}
-                        editKind="round-course-link"
-                        recordVersion={round.session.updatedAt.toISOString()}
-                        className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-end"
-                      >
-                        <input type="hidden" name="sessionId" value={round.session.id} />
-                        <label className="grid gap-2 text-sm font-medium">
-                          <span>Course / tee set</span>
-                          <LazyRoundEditSelect
-                            name="teeSetId"
-                            defaultValue={round.session.teeSetId ?? undefined}
-                            placeholder="Select course"
-                            options={round.courseOptions.map((option) => ({
-                              value: option.teeSetId,
-                              label: `${option.courseName} - ${option.teeSetName}${
-                                option.courseRating && option.slopeRating
-                                  ? ` (${numberFormatter.format(option.courseRating)}/${option.slopeRating})`
-                                  : ""
-                              }`,
-                            }))}
-                            triggerClassName="h-11 w-full bg-card"
-                          />
-                        </label>
-                        <Button
-                          type="submit"
-                          className="h-11 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
-                        >
-                          <Save className="size-4" />
-                          Update link
-                        </Button>
-                        <Button asChild variant="outline" className="h-11 rounded-xl">
-                          <Link
-                            href={
-                              round.session.courseId
-                                ? `/courses/${round.session.courseId}/holes`
-                                : "/courses"
-                            }
-                            prefetch={false}
-                          >
-                            <MapPinned className="size-4" />
-                            Edit course
-                          </Link>
-                        </Button>
-                      </OfflineRoundEditForm>
-                    </CardContent>
-                  </Card>
+                  <RoundCourseLinkEditor round={round} />
                 </MobileCollapsible>
 
                 {!hasClubData ? (
@@ -746,7 +706,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                           <RoundNumberInput label="Score" name="score" value={hole.score} />
                           <RoundNumberInput label="Putts" name="putts" value={hole.putts} />
                           <RoundNumberInput
-                            label="Missing"
+                            label={isRealRound ? "Penalties" : "Missing"}
                             name="penalties"
                             value={hole.penalties}
                           />
@@ -956,6 +916,8 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                                       <input type="hidden" name="shotId" value={shot.id} />
                                       <LazyRoundEditSelect
                                         name="clubId"
+                                        native
+                                        ariaLabel="Change club"
                                         defaultValue={shot.clubId}
                                         options={round.allClubs.map((club) => ({
                                           value: club.id,
@@ -1060,6 +1022,8 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                                       <input type="hidden" name="shotId" value={shot.id} />
                                       <LazyRoundEditSelect
                                         name="clubId"
+                                        native
+                                        ariaLabel="Change club"
                                         defaultValue={shot.clubId}
                                         options={round.allClubs.map((club) => ({
                                           value: club.id,
@@ -1169,24 +1133,28 @@ function RoundLearningSummary({
   round: RoundDetail;
   hasClubData: boolean;
 }) {
-  const review = getCompanionRoundReview(round);
+  const review = buildRoundLearningReview(round);
 
   return (
     <section className="grid gap-4" data-round-review-summary>
-      <section className="grid gap-5 rounded-xl border bg-card p-5 shadow-sm xl:grid-cols-[minmax(0,0.8fr)_minmax(420px,1.2fr)] xl:items-center">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-            Final score
+      <section className="grid overflow-hidden rounded-2xl border bg-card shadow-sm xl:grid-cols-2">
+        <div className="flex flex-col justify-between bg-primary p-6 text-primary-foreground sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-foreground/75">
+            {round.session.roundStatus === "complete" ? "Your round result" : "Score so far"}
           </p>
           <div className="mt-3 flex items-end gap-4">
-            <p className="text-6xl font-semibold leading-none tracking-[-0.055em] tabular-nums sm:text-7xl">
+            <p className="text-7xl font-semibold leading-none tracking-[-0.055em] tabular-nums sm:text-8xl">
               {formatNullableInteger(round.totalScore)}
             </p>
-            <p className="pb-1 text-2xl font-semibold text-primary tabular-nums">
+            <p className="pb-1 text-2xl font-semibold text-primary-foreground/85 tabular-nums">
               {formatScoreToPar(round.totalScore, round.totalPar)}
             </p>
           </div>
-          <div className="mt-5 grid grid-cols-3 divide-x rounded-xl bg-muted/45 py-3 text-center">
+          <p className="mt-4 text-sm text-primary-foreground/75">
+            {round.holes.filter((hole) => hole.score !== null).length} of {round.holes.length} holes
+            scored · Par {formatNullableInteger(round.totalPar)}
+          </p>
+          <div className="mt-6 grid grid-cols-3 divide-x rounded-xl bg-card py-4 text-center text-card-foreground">
             <MiniSummaryStat label="Putts" value={formatNullableInteger(round.totalPutts)} />
             <MiniSummaryStat
               label="Differential"
@@ -1198,26 +1166,30 @@ function RoundLearningSummary({
             />
           </div>
         </div>
-        <ScoringBreakdown holes={round.holes} />
+        <div className="flex items-center p-6 sm:p-8">
+          <div className="w-full">
+            <ScoringBreakdown holes={round.holes} />
+          </div>
+        </div>
       </section>
 
       <section
         className="overflow-hidden rounded-xl border bg-card shadow-sm"
         aria-label="Round learning review"
       >
-        <LearningRow label="Best part" value={review.strongestArea} />
-        <LearningRow label="Costliest part" value={review.costliestArea} />
-        <LearningRow label="Turning point" value={review.turningPoint} />
-        <LearningRow label="Strategy result" value={review.strategyResult} />
+        <LearningRow label="Best scoring" value={review.strongestArea} />
+        <LearningRow label="Largest score over par" value={review.costliestArea} />
+        <LearningRow label="Scoring pattern" value={review.scorePattern} />
+        <LearningRow label="Recorded stats" value={review.strategyResult} />
         <LearningRow
-          label="Next practice action"
+          label="Next step"
           value={review.nextPractice}
           action={
             <Button asChild size="sm">
               <Link
-                href={`/practice?intent=round_preparation&source=round_review&roundId=${round.session.id}`}
+                href={`/courses/strategy?mode=post&roundId=${round.session.id}${round.session.courseId ? `&courseId=${round.session.courseId}` : ""}`}
               >
-                Build practice
+                Review round decisions
               </Link>
             </Button>
           }
@@ -1567,13 +1539,16 @@ function MobileRoundDetail({
   const evidenceSummary = hasClubData
     ? `${integerFormatter.format(round.shots.length)} shots`
     : "Scorecard only";
-  const companionReview = getCompanionRoundReview(round);
+  const companionReview = buildRoundLearningReview(round);
 
   return (
     <MobileAppShell className="gap-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       <MobileTopBar title={courseName} />
 
       <div className="px-1">
+        <p className="break-words text-base font-medium">
+          {round.session.teeName ?? "Tee not set"}
+        </p>
         <p className="text-[13px] font-medium text-muted-foreground">
           {formatDate(round.session.date)} · {formatSessionType(round.session.type)}
         </p>
@@ -1595,6 +1570,68 @@ function MobileRoundDetail({
         shotPatternEnabled={shotPatternEnabled}
       />
     </MobileAppShell>
+  );
+}
+
+function RoundCourseLinkEditor({ round }: { round: RoundDetail }) {
+  return (
+    <Card id="course-link" className="premium-card scroll-mt-28">
+      <CardHeader>
+        <CardTitle>Course link</CardTitle>
+        <CardDescription>
+          Correct the course or tee while keeping your recorded scores and notes. The selected tee
+          must include every recorded hole.
+          {round.session.teeSetId && !round.session.accessibleTeeSetId
+            ? " The linked tee is no longer available. Your saved scorecard is intact; choose an accessible tee."
+            : ""}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <OfflineRoundEditForm
+          action={updateRoundCourseLinkAction}
+          editKind="round-course-link"
+          recordVersion={round.session.updatedAt.toISOString()}
+          className="grid gap-3 lg:grid-cols-[1fr_auto_auto] lg:items-end"
+        >
+          <input type="hidden" name="sessionId" value={round.session.id} />
+          <label className="grid gap-2 text-sm font-medium">
+            <span>Course / tee set</span>
+            <LazyRoundEditSelect
+              name="teeSetId"
+              defaultValue={round.session.teeSetId ?? undefined}
+              placeholder="Select course"
+              options={round.courseOptions.map((option) => ({
+                value: option.teeSetId,
+                label: `${option.courseName} - ${option.teeSetName}${
+                  option.courseRating && option.slopeRating
+                    ? ` (${numberFormatter.format(option.courseRating)}/${option.slopeRating})`
+                    : ""
+                }`,
+              }))}
+              triggerClassName="h-11 w-full bg-card"
+            />
+          </label>
+          <Button
+            type="submit"
+            className="h-11 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Save className="size-4" />
+            Update link
+          </Button>
+          <Button asChild variant="outline" className="h-11 rounded-xl">
+            <Link
+              href={
+                round.session.courseId ? `/courses/${round.session.courseId}/holes` : "/courses"
+              }
+              prefetch={false}
+            >
+              <MapPinned className="size-4" />
+              Edit course
+            </Link>
+          </Button>
+        </OfflineRoundEditForm>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1621,7 +1658,7 @@ function MobileRoundReviewSections({
   evidenceSummary: string;
   proofReadyCount: number;
   proofItems: RoundProofItem[];
-  companionReview: ReturnType<typeof getCompanionRoundReview>;
+  companionReview: ReturnType<typeof buildRoundLearningReview>;
   hasClubData: boolean;
   hasMap: boolean;
   isRealRound: boolean;
@@ -1690,23 +1727,15 @@ function MobileRoundReviewSections({
           isRealRound={isRealRound}
         />
       ) : null}
+      <RoundCourseLinkEditor round={round} />
       <MobileRoundPerformance round={round} hasClubData={hasClubData} isRealRound={isRealRound} />
-      <MobileRoundScorecard round={round} hasClubData={hasClubData} isRealRound={isRealRound} />
-      {hasClubData ? (
-        <Button asChild variant="outline" className="min-h-11 w-full rounded-xl">
-          <Link
-            href={`/surface/workbench?next=${encodeURIComponent(`${baseHref}?view=corrections`)}`}
-          >
-            Advanced shot correction · Desktop
-          </Link>
-        </Button>
-      ) : null}
     </div>
   );
 
   return (
     <MobilePageTabs
-      initialValue={view === "corrections" ? "evidence" : view}
+      className="[&_[role=tab]]:min-w-max [&_[role=tab]]:flex-none [&_[role=tab]]:px-4"
+      initialValue={view}
       ariaLabel="Round review sections"
       tabs={[
         { value: "summary", label: "Summary", href: baseHref, content: summary },
@@ -1714,17 +1743,33 @@ function MobileRoundReviewSections({
           value: "scorecard",
           label: "Scorecard",
           href: `${baseHref}?view=scorecard`,
+          keepMounted: true,
           content: (
-            <IOSGroupedList label="Hole-by-hole scores">
-              {round.holes.map((hole) => (
-                <IOSListRow
-                  key={hole.holeNumber}
-                  label={`Hole ${hole.holeNumber} · Par ${hole.par}`}
-                  value={formatNullableInteger(hole.score)}
-                  detail={`${formatNullableInteger(hole.putts)} putts · ${formatNullableInteger(hole.penalties)} penalties`}
-                />
-              ))}
-            </IOSGroupedList>
+            <MobileRoundScorecard
+              round={round}
+              hasClubData={hasClubData}
+              isRealRound={isRealRound}
+            />
+          ),
+        },
+        {
+          value: "corrections",
+          label: "Corrections",
+          href: `${baseHref}?view=corrections`,
+          keepMounted: true,
+          content: (
+            <div className="grid gap-5">
+              {corrections}
+              <RoundShotEvidence
+                sessionId={round.session.id}
+                shots={round.shots.map((shot) => ({
+                  ...shot,
+                  clubLabel: clubLabel(shot),
+                  holeNumber: shot.courseHoleNumber,
+                }))}
+                clubs={round.allClubs.map((club) => ({ value: club.id, label: clubLabel(club) }))}
+              />
+            </div>
           ),
         },
         {
@@ -1743,7 +1788,8 @@ function MobileRoundReviewSections({
         },
         {
           value: "evidence",
-          label: "Insights",
+          label: "Evidence",
+          keepMounted: true,
           href: `${baseHref}?view=evidence`,
           content: (
             <div className="grid gap-4">
@@ -1762,9 +1808,9 @@ function MobileRoundReviewSections({
                     </p>
                     <Button asChild className="min-h-12">
                       <Link
-                        href={`/practice?intent=round_preparation&source=round_review&roundId=${round.session.id}`}
+                        href={`/courses/strategy?mode=post&roundId=${round.session.id}${round.session.courseId ? `&courseId=${round.session.courseId}` : ""}`}
                       >
-                        Build next practice
+                        Review round decisions
                       </Link>
                     </Button>
                   </MobileSection>
@@ -1772,7 +1818,10 @@ function MobileRoundReviewSections({
                     <ScoringBreakdown holes={round.holes} compact />
                     <IOSGroupedList>
                       <IOSListRow label="Best hole" value={companionReview.strongestArea} />
-                      <IOSListRow label="Costliest hole" value={companionReview.costliestArea} />
+                      <IOSListRow
+                        label="Largest score over par"
+                        value={companionReview.costliestArea}
+                      />
                       <IOSListRow
                         label="Fairways and greens"
                         detail={companionReview.strategyResult}
@@ -1797,12 +1846,6 @@ function MobileRoundReviewSections({
                   proofItems={proofItems}
                   compact
                 />
-              </details>
-              <details>
-                <summary className="flex min-h-11 items-center text-primary">
-                  Notes and score details
-                </summary>
-                {corrections}
               </details>
             </div>
           ),
@@ -1835,7 +1878,7 @@ function MobileRoundResultCard({
   proofReadyCount: number;
   proofItemCount: number;
   holes: RoundDetail["holes"];
-  review: ReturnType<typeof getCompanionRoundReview>;
+  review: ReturnType<typeof buildRoundLearningReview>;
   sessionId: string;
   courseId: string | null;
 }) {
@@ -1865,11 +1908,11 @@ function MobileRoundResultCard({
       <MobileRoundHandicapEffect sessionId={sessionId} />
       <ScoringBreakdown holes={holes} compact />
       <IOSGroupedList className="mt-4">
-        <IOSListRow label="Best part" value={review.strongestArea} />
-        <IOSListRow label="Costliest part" value={review.costliestArea} />
-        <IOSListRow label="Turning point" value={review.turningPoint} />
-        <IOSListRow label="Strategy result" value={review.strategyResult} />
-        <IOSListRow label="Next practice action" value={review.nextPractice} />
+        <IOSListRow label="Best scoring" value={review.strongestArea} />
+        <IOSListRow label="Largest score over par" value={review.costliestArea} />
+        <IOSListRow label="Scoring pattern" value={review.scorePattern} />
+        <IOSListRow label="Recorded stats" value={review.strategyResult} />
+        <IOSListRow label="Next step" value={review.nextPractice} />
       </IOSGroupedList>
       <div className="mt-4 grid gap-2">
         {courseId ? (
@@ -1886,9 +1929,9 @@ function MobileRoundResultCard({
           className="min-h-11 w-full rounded-xl"
         >
           <Link
-            href={`/practice?intent=round_preparation&source=round_review&roundId=${sessionId}`}
+            href={`/courses/strategy?mode=post&roundId=${sessionId}${courseId ? `&courseId=${courseId}` : ""}`}
           >
-            Build next practice
+            Review round decisions
           </Link>
         </Button>
       </div>
@@ -1974,7 +2017,11 @@ function MobileCurrentHoleEditor({
         <div className="grid grid-cols-3 gap-2">
           <RoundNumberInput label="Score" name="score" value={hole.score} />
           <RoundNumberInput label="Putts" name="putts" value={hole.putts} />
-          <RoundNumberInput label="Missing" name="penalties" value={hole.penalties} />
+          <RoundNumberInput
+            label={isRealRound ? "Penalties" : "Missing"}
+            name="penalties"
+            value={hole.penalties}
+          />
         </div>
         {isRealRound ? (
           <div className="grid grid-cols-2 gap-2">
@@ -2067,12 +2114,20 @@ function MobileRoundPerformance({
           className="ios-grouped-list grid gap-3 p-4"
         >
           <input type="hidden" name="sessionId" value={round.session.id} />
+          {roundCompletionIssue(round.holes) ? (
+            <p className="col-span-full text-sm leading-5 text-muted-foreground">
+              {roundCompletionIssue(round.holes)}
+            </p>
+          ) : null}
           <label className="grid gap-1.5 text-sm font-medium">
             <span>Status</span>
             <LazyRoundEditSelect
               name="roundStatus"
-              defaultValue={round.session.roundStatus}
-              options={ROUND_STATUS_OPTIONS}
+              defaultValue={round.session.roundStatus === "complete" ? "complete" : "in_progress"}
+              options={ROUND_STATUS_OPTIONS.map((option) => ({
+                ...option,
+                disabled: option.value === "complete" && Boolean(roundCompletionIssue(round.holes)),
+              }))}
               triggerClassName="h-11 w-full text-base"
             />
           </label>
@@ -2162,76 +2217,91 @@ function MobileRoundScorecard({
             </div>
           </div>
         </section>
-      ) : (
+      ) : round.holes.length === 0 ? (
         <p className="text-sm text-muted-foreground">No scorecard holes are saved.</p>
-      )}
+      ) : null}
 
       {round.holes.length > 0 ? (
         <section className="grid gap-2">
           <IOSSectionHeader
-            title="Hole corrections"
-            description="Save only the hole you changed."
+            title="Your scorecard"
+            description="Open a hole to check or correct it. Save only the hole you changed."
           />
-          <nav aria-label="Jump to hole" className="flex gap-1 overflow-x-auto pb-1">
-            {round.holes.map((hole) => (
-              <a
-                key={hole.holeNumber}
-                href={`#mobile-hole-${hole.holeNumber}`}
-                className="focus-aaa grid min-h-11 min-w-11 shrink-0 place-items-center rounded-xl bg-card text-sm font-semibold ring-1 ring-border/70 outline-none"
-                aria-label={`Go to hole ${hole.holeNumber}`}
-              >
-                {hole.holeNumber}
-              </a>
-            ))}
-          </nav>
           <div className="ios-grouped-list divide-y divide-border/70 overflow-hidden">
             {round.holes.map((hole) => (
-              <OfflineRoundEditForm
-                id={`mobile-hole-${hole.holeNumber}`}
-                key={hole.holeNumber}
-                action={updateRoundHoleAction}
-                editKind="round-hole"
-                recordVersion={round.session.updatedAt.toISOString()}
-                className="grid scroll-mt-32 gap-3 p-4"
-              >
-                <input type="hidden" name="sessionId" value={round.session.id} />
-                <input type="hidden" name="holeNumber" value={hole.holeNumber} />
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-[17px] font-semibold">Hole {hole.holeNumber}</h3>
-                    <p className="text-[13px] text-muted-foreground">{formatHoleSummary(hole)}</p>
-                  </div>
-                  <span className="text-[13px] font-medium text-muted-foreground">
-                    {hasClubData ? `${hole.shots.length} shots` : "Scorecard"}
+              <details key={hole.holeNumber} className="group">
+                <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 p-4 focus-visible:outline-2 focus-visible:outline-ring">
+                  <span>
+                    <span className="block text-sm font-semibold">
+                      Hole {hole.holeNumber} · Par {hole.par}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      {formatNullableInteger(hole.putts)} putts ·{" "}
+                      {formatNullableInteger(hole.penalties)}{" "}
+                      {isRealRound ? "penalties" : "missing strokes"}
+                    </span>
                   </span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <RoundNumberInput label="Score" name="score" value={hole.score} />
-                  <RoundNumberInput label="Putts" name="putts" value={hole.putts} />
-                  <RoundNumberInput label="Missing" name="penalties" value={hole.penalties} />
-                </div>
-                {isRealRound ? (
-                  <div className="grid grid-cols-2 gap-2">
-                    <RoundNumberInput label="Chips" name="chipShots" value={hole.chipShots} />
+                  <span className="flex items-center gap-3">
+                    <span className="text-xl font-semibold tabular-nums">
+                      {formatNullableInteger(hole.score)}
+                    </span>
+                    <ChevronDown
+                      className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+                      aria-hidden
+                    />
+                  </span>
+                </summary>
+                <OfflineRoundEditForm
+                  id={`mobile-hole-${hole.holeNumber}`}
+                  key={hole.holeNumber}
+                  action={updateRoundHoleAction}
+                  editKind="round-hole"
+                  recordVersion={round.session.updatedAt.toISOString()}
+                  className="grid scroll-mt-32 gap-3 p-4"
+                >
+                  <input type="hidden" name="sessionId" value={round.session.id} />
+                  <input type="hidden" name="holeNumber" value={hole.holeNumber} />
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-[17px] font-semibold">Hole {hole.holeNumber}</h3>
+                      <p className="text-[13px] text-muted-foreground">{formatHoleSummary(hole)}</p>
+                    </div>
+                    <span className="text-[13px] font-medium text-muted-foreground">
+                      {hasClubData ? `${hole.shots.length} shots` : "Scorecard"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <RoundNumberInput label="Score" name="score" value={hole.score} />
+                    <RoundNumberInput label="Putts" name="putts" value={hole.putts} />
                     <RoundNumberInput
-                      label="Sand"
-                      name="greensideSandShots"
-                      value={hole.greensideSandShots}
+                      label={isRealRound ? "Penalties" : "Missing"}
+                      name="penalties"
+                      value={hole.penalties}
                     />
                   </div>
-                ) : null}
-                <div className="grid grid-cols-2 gap-2">
-                  <RoundSelect label="Fairway" name="fairwayHit" value={hole.fairwayHit} />
-                  <RoundSelect label="GIR" name="gir" value={hole.gir} />
-                </div>
-                <p className="text-[13px] leading-5 text-muted-foreground">
-                  {strokeAccountingLabel(hole)}
-                </p>
-                <Button type="submit" variant="outline" className="min-h-11 w-full rounded-xl">
-                  <Save className="size-4" aria-hidden />
-                  Save hole {hole.holeNumber}
-                </Button>
-              </OfflineRoundEditForm>
+                  {isRealRound ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <RoundNumberInput label="Chips" name="chipShots" value={hole.chipShots} />
+                      <RoundNumberInput
+                        label="Sand"
+                        name="greensideSandShots"
+                        value={hole.greensideSandShots}
+                      />
+                    </div>
+                  ) : null}
+                  <div className="grid grid-cols-2 gap-2">
+                    <RoundSelect label="Fairway" name="fairwayHit" value={hole.fairwayHit} />
+                    <RoundSelect label="GIR" name="gir" value={hole.gir} />
+                  </div>
+                  <p className="text-[13px] leading-5 text-muted-foreground">
+                    {strokeAccountingLabel(hole)}
+                  </p>
+                  <Button type="submit" variant="outline" className="min-h-11 w-full rounded-xl">
+                    <Save className="size-4" aria-hidden />
+                    Save hole {hole.holeNumber}
+                  </Button>
+                </OfflineRoundEditForm>
+              </details>
             ))}
           </div>
         </section>
@@ -2334,15 +2404,16 @@ function ReviewAccordion({
 }) {
   return (
     <Card id={id} className="scroll-mt-28 gap-0 py-0">
-      <Collapsible className="group">
-        <CollapsibleTrigger
-          type="button"
-          className={buttonVariants({
-            variant: "ghost",
-            size: "lg",
-            className:
-              "h-auto min-h-14 w-full cursor-pointer items-center justify-between gap-3 whitespace-normal px-4 py-3 text-left text-sm",
-          })}
+      <details className="group">
+        <summary
+          className={cn(
+            buttonVariants({
+              variant: "ghost",
+              size: "lg",
+              className:
+                "h-auto min-h-14 w-full cursor-pointer list-none items-center justify-between gap-3 whitespace-normal px-4 py-3 text-left text-sm [&::-webkit-details-marker]:hidden",
+            }),
+          )}
         >
           <span className="min-w-0">
             <span className="block font-semibold tracking-normal">{title}</span>
@@ -2355,15 +2426,13 @@ function ReviewAccordion({
           <span className="inline-flex shrink-0 items-center gap-2 text-xs font-medium text-muted-foreground">
             {count ? <span>{count}</span> : null}
             <ChevronDown
-              className="size-4 transition-transform group-data-[state=open]:rotate-180"
+              className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none"
               aria-hidden="true"
             />
           </span>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="border-t border-border px-4 pb-4 pt-4">
-          {children}
-        </CollapsibleContent>
-      </Collapsible>
+        </summary>
+        <div className="border-t border-border px-4 pb-4 pt-4">{children}</div>
+      </details>
     </Card>
   );
 }
@@ -2390,9 +2459,18 @@ async function getRoundDetail(sessionId: string) {
       teeName: teeSets.name,
       courseRating: teeSets.courseRating,
       slopeRating: teeSets.slopeRating,
+      accessibleCourseId: courses.id,
+      accessibleTeeSetId: teeSets.id,
     })
     .from(sessions)
-    .leftJoin(teeSets, eq(sessions.teeSetId, teeSets.id))
+    .leftJoin(
+      courses,
+      and(
+        eq(sessions.courseId, courses.id),
+        or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)),
+      ),
+    )
+    .leftJoin(teeSets, and(eq(sessions.teeSetId, teeSets.id), eq(teeSets.courseId, courses.id)))
     .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
     .limit(1);
 
@@ -2400,7 +2478,10 @@ async function getRoundDetail(sessionId: string) {
     return null;
   }
 
-  const roundMapGeometry = await resolveRoundMapGeometry(db, session);
+  const roundMapGeometry = await resolveRoundMapGeometry(db, {
+    courseId: session.accessibleCourseId,
+    teeSetId: session.accessibleTeeSetId,
+  });
 
   const shotRows = await db
     .select({
@@ -2415,6 +2496,7 @@ async function getRoundDetail(sessionId: string) {
       carryYd: shots.carryYd,
       totalYd: shots.totalYd,
       sideCarryYd: shots.sideCarryYd,
+      reviewStatus: shots.reviewStatus,
       distanceRemainingYd: shots.distanceRemainingYd,
       courseHoleYards: shots.courseHoleYards,
     })
@@ -2457,8 +2539,9 @@ async function getRoundDetail(sessionId: string) {
     })
     .from(teeSets)
     .innerJoin(courses, eq(teeSets.courseId, courses.id))
+    .where(or(eq(courses.visibility, "shared"), eq(courses.createdByUserId, userId)))
     .orderBy(asc(courses.name), asc(teeSets.name));
-  const recordOpportunityRows = session.courseId
+  const recordOpportunityRows = session.accessibleCourseId
     ? await db
         .select({
           record: {
@@ -2475,16 +2558,21 @@ async function getRoundDetail(sessionId: string) {
         .from(courseRecords)
         .innerJoin(courseRecordCategories, eq(courseRecords.categoryId, courseRecordCategories.id))
         .where(
-          and(eq(courseRecords.courseId, session.courseId), eq(courseRecords.status, "active")),
+          and(
+            eq(courseRecords.courseId, session.accessibleCourseId),
+            eq(courseRecords.status, "active"),
+          ),
         )
         .orderBy(asc(courseRecordCategories.sortOrder))
         .limit(8)
     : [];
-  const tournamentOpportunityRows = session.courseId
+  const tournamentOpportunityRows = session.accessibleCourseId
     ? await db
         .select()
         .from(tournaments)
-        .where(and(eq(tournaments.courseId, session.courseId), eq(tournaments.status, "open")))
+        .where(
+          and(eq(tournaments.courseId, session.accessibleCourseId), eq(tournaments.status, "open")),
+        )
         .orderBy(asc(tournaments.endsAt))
         .limit(8)
     : [];
@@ -2906,7 +2994,8 @@ function RoundNumberInput({
         name={name}
         type="number"
         inputMode="numeric"
-        min={0}
+        min={name === "score" ? 1 : 0}
+        step={1}
         defaultValue={value ?? ""}
         className="h-11 bg-background text-base lg:h-9 lg:text-sm"
       />
@@ -3076,47 +3165,6 @@ function formatHoleToPar(score: number | null | undefined, par: number) {
   return `+${difference}`;
 }
 
-function getCompanionRoundReview(round: RoundDetail) {
-  const scored = round.holes
-    .filter((hole): hole is typeof hole & { score: number } => typeof hole.score === "number")
-    .map((hole) => ({ ...hole, difference: hole.score - hole.par }));
-  const strongest = [...scored].sort(
-    (left, right) => left.difference - right.difference || left.holeNumber - right.holeNumber,
-  )[0];
-  const costliest = [...scored].sort(
-    (left, right) => right.difference - left.difference || left.holeNumber - right.holeNumber,
-  )[0];
-  const fairwayAttempts = round.holes.filter((hole) => hole.fairwayHit !== null).length;
-  const girAttempts = round.holes.filter((hole) => hole.gir !== null).length;
-  const nextPractice =
-    (round.totalPenalties ?? 0) >= 2
-      ? "Penalty avoidance"
-      : round.totalPutts !== null &&
-          round.holes.length > 0 &&
-          round.totalPutts / round.holes.length >= 2
-        ? "Putting pace"
-        : girAttempts > 0 && round.gir / girAttempts < 0.4
-          ? "Approach control"
-          : "Replay the costliest hole";
-
-  return {
-    turningPoint: costliest
-      ? `Hole ${costliest.holeNumber} · ${formatHoleToPar(costliest.score, costliest.par)}`
-      : "Not enough scoring evidence",
-    strongestArea: strongest
-      ? `Hole ${strongest.holeNumber} · ${formatHoleToPar(strongest.score, strongest.par)}`
-      : "Not enough scoring evidence",
-    costliestArea: costliest
-      ? `Hole ${costliest.holeNumber} · ${costliest.difference > 0 ? `+${costliest.difference}` : "No shots lost"}`
-      : "Not enough scoring evidence",
-    strategyResult:
-      fairwayAttempts > 0 || girAttempts > 0
-        ? `${round.fairwaysHit}/${fairwayAttempts || "–"} fairways · ${round.gir}/${girAttempts || "–"} greens`
-        : "Course outcome only; strategy evidence was not captured",
-    nextPractice,
-  };
-}
-
 function formatRatingSlope(rating: number | null, slope: number | null) {
   if (typeof rating !== "number" || typeof slope !== "number") {
     return "--";
@@ -3136,14 +3184,26 @@ function strokeAccountingLabel(hole: {
   const launchShots = hole.shots.length;
   const putts = hole.putts ?? 0;
   const missing = hole.penalties ?? 0;
-  const chips = hole.chipShots ?? 0;
-  const sand = hole.greensideSandShots ?? 0;
   const accounted = launchShots + putts + missing;
 
   if (launchShots === 0) {
-    return `${putts} putts, ${chips} chips, ${sand} sand shots, ${missing} penalties.`;
+    const stats = [
+      [hole.putts, "putts"],
+      [hole.chipShots, "chips"],
+      [hole.greensideSandShots, "sand shots"],
+      [hole.penalties, "penalties"],
+    ] as const;
+    const recorded = stats
+      .filter(([value]) => typeof value === "number")
+      .map(([value, label]) => `${value} ${label}`);
+    return recorded.length
+      ? `${recorded.join(", ")}. Blank stats are not recorded.`
+      : "Optional stats are not recorded yet.";
   }
 
+  if (hole.putts == null || hole.penalties == null) {
+    return `${launchShots} launch shots. Stroke accounting is incomplete while putts or missing strokes are unrecorded.`;
+  }
   if (typeof hole.score !== "number") {
     return `${launchShots} launch shots + ${putts} putts + ${missing} missing strokes.`;
   }

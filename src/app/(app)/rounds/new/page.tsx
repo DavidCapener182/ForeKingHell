@@ -1,9 +1,10 @@
 import { MobileStartRound } from "@/app/rounds/new/mobile-start-round";
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { ArrowLeft, MapPinned } from "lucide-react";
 import { asc, eq, inArray, or } from "drizzle-orm";
 
-import { createManualRoundAction } from "@/app/rounds/actions";
+import { createManualRoundWithStateAction } from "@/app/rounds/actions";
 import { DataPanel, PageHeader, PageShell, SectionHeader, StatusPill } from "@/components/premium";
 import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ export default async function NewRoundPage({
   searchParams?: Promise<{ courseId?: string; teeSetId?: string; mode?: string }>;
 }) {
   const params = await searchParams;
+  const creationId = randomUUID();
   const [courseOptions, surface] = await Promise.all([
     getRoundCourseOptions(),
     getRequestAppSurface(),
@@ -75,18 +77,23 @@ export default async function NewRoundPage({
           courses={courseOptions}
           courseId={params?.courseId}
           teeSetId={params?.teeSetId}
-          action={createManualRoundAction}
+          creationId={creationId}
+          action={createManualRoundWithStateAction}
         />
       ) : surface === "companion" ? (
-        <MobileAppShell className="gap-3">
+        <MobileAppShell className="gap-3 pb-[calc(12rem+env(safe-area-inset-bottom))]">
           <MobileTopBar title="Add Round" />
           <p className="px-1 text-sm leading-5 text-muted-foreground">
             Pick a course, enter the scorecard, then review it before saving.
           </p>
           <NewRoundForm
+            compact
             instanceId="mobile-round"
             courses={courseOptions}
-            createRoundAction={createManualRoundAction}
+            courseId={params?.courseId}
+            teeSetId={params?.teeSetId}
+            creationId={creationId}
+            createRoundAction={createManualRoundWithStateAction}
           />
         </MobileAppShell>
       ) : DesktopWorkflowLayout ? (
@@ -144,6 +151,7 @@ export default async function NewRoundPage({
           />
 
           <DesktopWorkflowLayout
+            workflowRailBreakpoint="2xl"
             steps={roundWorkflowSteps}
             helpTitle="Round entry help"
             helpDescription="Keep the scorecard reliable"
@@ -158,7 +166,10 @@ export default async function NewRoundPage({
                 <NewRoundForm
                   instanceId="desktop-round"
                   courses={courseOptions}
-                  createRoundAction={createManualRoundAction}
+                  courseId={params?.courseId}
+                  teeSetId={params?.teeSetId}
+                  creationId={creationId}
+                  createRoundAction={createManualRoundWithStateAction}
                 />
               </CardContent>
             </DataPanel>

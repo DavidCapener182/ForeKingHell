@@ -1,3 +1,4 @@
+import { recordCoachReportView } from "@/lib/coach-report-view-history";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
@@ -82,17 +83,7 @@ export default async function SharedCoachReportPage({
     }
   }
 
-  const viewedAt = new Date().toISOString();
-  await getDb()
-    .update(contentExports)
-    .set({
-      renderConfigJson: {
-        ...row.renderConfig,
-        accessHistory: [...access.accessHistory, viewedAt].slice(-50),
-      },
-      updatedAt: new Date(),
-    })
-    .where(eq(contentExports.id, row.exportId));
+  await recordCoachReportView(row.exportId);
 
   return renderReport(surface, {
     report,

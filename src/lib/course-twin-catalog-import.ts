@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
-import { and, asc, eq, lte } from "drizzle-orm";
+import { and, asc, eq, isNull, lte } from "drizzle-orm";
 
 import { courseTwinCatalogJobs, courses, holes } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -204,6 +204,7 @@ async function upsertCatalogCourse(candidate: CourseTwinCatalogCandidate) {
     })
     .onConflictDoUpdate({
       target: [courses.provider, courses.externalId],
+      setWhere: and(isNull(courses.createdByUserId), eq(courses.visibility, "shared")),
       set: {
         name: candidate.name,
         country: candidate.country,
@@ -215,7 +216,7 @@ async function upsertCatalogCourse(candidate: CourseTwinCatalogCandidate) {
       },
     })
     .returning();
-  if (!course) throw new Error("Course row could not be imported.");
+  if (!course) throw new Error("Catalogue import cannot replace a private or user-owned course.");
   return course;
 }
 

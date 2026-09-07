@@ -5,6 +5,8 @@ import type { ComponentProps } from "react";
 import type * as Leaflet from "leaflet";
 import { ChevronDown, Crosshair, MapPinned, Save } from "lucide-react";
 
+import editorStyles from "./course-editor.module.css";
+import { CourseCreationForm } from "@/app/courses/course-creation-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +60,8 @@ export function CourseHoleMapEditor({
   const [mapContainerNode, setMapContainerNode] = useState<HTMLDivElement | null>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
   const layerRef = useRef<Leaflet.LayerGroup | null>(null);
+  const drafts = useRef(new Map<number, DraftHole>());
+  const [mapError, setMapError] = useState(false);
   const [leaflet, setLeaflet] = useState<typeof Leaflet | null>(null);
   const [selectedHoleNumber, setSelectedHoleNumber] = useState(holes[0]?.holeNumber ?? 1);
   const [placementTarget, setPlacementTarget] = useState<"tee" | "green">("tee");
@@ -131,7 +135,9 @@ export function CourseHoleMapEditor({
       setLeaflet(L);
     }
 
-    void setupMap();
+    void setupMap().catch(() => {
+      if (isMounted) setMapError(true);
+    });
 
     return () => {
       isMounted = false;
@@ -260,6 +266,11 @@ export function CourseHoleMapEditor({
 
   return (
     <div className="grid gap-4" data-selected-hole={selectedHoleNumber}>
+      {mapError ? (
+        <p role="alert" className="rounded-lg border p-3">
+          Map unavailable. Use the coordinate fields below to edit this hole.
+        </p>
+      ) : null}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Badge variant="secondary">{teeSetName}</Badge>
@@ -309,7 +320,10 @@ export function CourseHoleMapEditor({
             aria-expanded={controlsOpen}
             aria-controls={controlsId}
             onClick={() => setControlsOpen((open) => !open)}
-            className="focus-aaa flex h-auto min-h-14 w-full items-center justify-between gap-3 px-4 py-2.5 text-left lg:hidden"
+            className={cn(
+              editorStyles.toggle,
+              "focus-aaa h-auto min-h-14 w-full items-center justify-between gap-3 px-4 py-2.5 text-left",
+            )}
           >
             <span className="min-w-0">
               <span className="block text-[15px] font-medium text-foreground">
@@ -330,7 +344,8 @@ export function CourseHoleMapEditor({
 
           <div
             id={controlsId}
-            className={cn("apple-panel p-4", !controlsOpen && "hidden", "lg:block")}
+            data-open={controlsOpen}
+            className={cn(editorStyles.controls, "apple-panel p-4")}
           >
             <div className="hidden items-start justify-between gap-3 lg:flex">
               <div>
@@ -350,7 +365,7 @@ export function CourseHoleMapEditor({
                 className="min-h-11"
                 onClick={() => setPlacementTarget("tee")}
               >
-                Tee point
+                Place tee
               </Button>
               <Button
                 type="button"
@@ -359,11 +374,22 @@ export function CourseHoleMapEditor({
                 className="min-h-11"
                 onClick={() => setPlacementTarget("green")}
               >
-                Green point
+                Place green
               </Button>
             </div>
 
-            <form action={saveHoleAction} className="mt-4 grid gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="mt-3 min-h-11"
+              onClick={() => {
+                drafts.current.delete(selectedHoleNumber);
+                setDraft(draftFromHole(selectedHoleNumber, selectedHole));
+              }}
+            >
+              Reset this hole’s edits
+            </Button>
+            <CourseCreationForm noun="hole" action={saveHoleAction} className="mt-4 grid gap-3">
               <input type="hidden" name="courseId" value={courseId} />
               <input type="hidden" name="teeSetId" value={teeSetId} />
               <input type="hidden" name="holeNumber" value={selectedHoleNumber} />
@@ -452,7 +478,7 @@ export function CourseHoleMapEditor({
                   Save geometry
                 </Button>
               </div>
-            </form>
+            </CourseCreationForm>
 
             <p className="mt-3 text-xs leading-5 text-muted-foreground">
               Current draft: tee {formatCoordinatePair(draft.teeLat, draft.teeLng)} / green{" "}
@@ -471,9 +497,10 @@ export function CourseHoleMapEditor({
   }
 
   function selectHole(holeNumber: number) {
+    drafts.current.set(selectedHoleNumber, draft);
     const nextHole = holes.find((hole) => hole.holeNumber === holeNumber) ?? null;
     setSelectedHoleNumber(holeNumber);
-    setDraft(draftFromHole(holeNumber, nextHole));
+    setDraft(drafts.current.get(holeNumber) ?? draftFromHole(holeNumber, nextHole));
     setPlacementTarget("tee");
   }
 }

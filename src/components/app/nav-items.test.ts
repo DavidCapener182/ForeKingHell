@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildDesktopNavGroups,
+  buildMobileMoreGroups,
   mobileMoreGroups,
   mobilePageTitle,
   mobilePrimaryItems,
@@ -39,35 +40,27 @@ describe("application navigation hierarchy", () => {
     );
   });
 
-  it("keeps only explicitly approved companion destinations in More", () => {
-    expect(mobileMoreGroups.map((group) => group.label)).toEqual(["Golf", "Compete", "Account"]);
-
-    const mobileMoreRoutes = mobileMoreGroups.flatMap((group) =>
-      group.items.map((item) => item.href),
-    );
-    expect(mobileMoreRoutes).toEqual(
-      expect.arrayContaining([
-        "/import",
-        "/handicap",
-        "/goals",
-        "/challenges",
-        "/tournaments",
-        "/leaderboard",
-        "/achievements",
-        "/profile",
-        "/settings/notifications",
-        "/settings",
-        "/privacy",
-      ]),
-    );
-    expect(mobileMoreRoutes).not.toContain("/rapsodo");
-    expect(mobileMoreRoutes).not.toContain("/bag");
-    expect(mobileMoreRoutes).not.toContain("/quick-bag");
+  it("makes every authorised canonical workbench task discoverable in More", () => {
+    for (const isAdmin of [false, true]) {
+      const primary = new Set(mobilePrimaryItems.map((item) => item.href));
+      const expected = buildDesktopNavGroups(isAdmin)
+        .flatMap((group) => group.items.map((item) => item.href))
+        .filter((href) => !primary.has(href));
+      const actual = buildMobileMoreGroups(isAdmin).flatMap((group) =>
+        group.items.map((item) => item.href),
+      );
+      expect(actual).toEqual(expect.arrayContaining(expected));
+      expect(new Set(actual).size).toBe(actual.length);
+      expect(actual).toContain("/privacy");
+      expect(actual).not.toContain("/bag");
+      expect(actual).toContain("/billing");
+      expect(actual).toContain("/providers");
+      expect(actual).toContain("/equipment");
+      expect(actual.includes("/admin")).toBe(isAdmin);
+      expect(actual.some((href) => href.startsWith("/admin/"))).toBe(isAdmin);
+    }
     expect(mobileMoreGroups.flatMap((group) => group.items.map((item) => item.label))).toContain(
       "Import & Sync",
-    );
-    expect(mobileMoreRoutes).not.toEqual(
-      expect.arrayContaining(["/providers", "/billing", "/equipment", "/admin"]),
     );
   });
 

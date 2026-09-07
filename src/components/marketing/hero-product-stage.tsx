@@ -110,7 +110,13 @@ export function HeroProductStage() {
         <span>Course Twin · Pilot</span>
       </div>
 
-      <h1 id="hero-title" className={cinematic.heroTitle} data-hero-layer data-hero-depth="5">
+      <h1
+        tabIndex={-1}
+        id="hero-title"
+        className={cinematic.heroTitle}
+        data-hero-layer
+        data-hero-depth="5"
+      >
         <span>Stop guessing.</span>
         <span>Start knowing.</span>
       </h1>

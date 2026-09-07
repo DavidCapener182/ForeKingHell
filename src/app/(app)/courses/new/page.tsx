@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { UrlTabs } from "@/components/untitled-ui/url-tabs";
 import type { ComponentProps } from "react";
 import { ArrowLeft, Flag, MapPinned, Save, Search } from "lucide-react";
 
+import { CourseCreationForm } from "@/app/courses/course-creation-form";
 import { createCourseAction } from "@/app/courses/actions";
 import { GoogleCourseImporter } from "@/app/courses/google-course-importer";
 import { OsmCourseImporter } from "@/app/courses/osm-course-importer";
@@ -11,7 +13,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { PageArtwork } from "@/components/visuals/page-artwork";
 
 export const dynamic = "force-dynamic";
 
@@ -66,40 +67,9 @@ export default function NewCoursePage() {
       </div>
 
       <PageHeader
-        eyebrow={<StatusPill tone="green">Manual course setup</StatusPill>}
-        title="New Course"
-        description="Create the course and first tee set now. The next screen lets you enter tee and green coordinates for each hole so round overlays can use the real course."
-        visual={
-          <PageArtwork
-            variant="fairway"
-            alt=""
-            crop="fairway"
-            className="h-full min-h-44"
-            priority
-          />
-        }
-        metrics={[
-          {
-            label: "Required",
-            value: "Course + tee",
-            detail: "Name, par, yardage, rating and slope where known.",
-          },
-          {
-            label: "Next step",
-            value: "Hole map",
-            detail: "Add tee and green points for the overlay engine.",
-          },
-          {
-            label: "Display unit",
-            value: "Yards",
-            detail: "All course yardages are shown in yards.",
-          },
-          {
-            label: "Storage",
-            value: "LMWT tables",
-            detail: "Stores course and tee data in the LM World Tour tables.",
-          },
-        ]}
+        eyebrow={<StatusPill tone="green">Add a course</StatusPill>}
+        title="Add a course"
+        description="Choose a source or enter the course and first tee. Then review its hole map."
       />
 
       <DesktopWorkflowLayout
@@ -108,86 +78,117 @@ export default function NewCoursePage() {
         helpDescription="Build trustworthy course data"
         helpItems={courseWorkflowHelpItems}
       >
-        <section className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
-          <DataPanel>
-            <SectionHeader
-              title="Google import"
-              description="Find the real Google Place, store its canonical ID, address, coordinates, website and media signals."
-              action={<Search className="size-5 text-primary" />}
-            />
-            <CardContent>
-              <GoogleCourseImporter />
-            </CardContent>
-          </DataPanel>
-
-          <DataPanel>
-            <SectionHeader
-              title="Course details"
-              description="Start with the tee set you normally play. Extra tee sets can be added later."
-              action={<Flag className="size-5 text-primary" />}
-            />
-            <CardContent>
-              <form action={createCourseAction} className="grid gap-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    label="Course name"
-                    name="name"
-                    placeholder="Bootle Golf Course"
-                    required
+        <UrlTabs
+          label="Course setup source"
+          queryKey="source"
+          defaultTabKey="google"
+          tabs={[
+            {
+              id: "google",
+              label: "Google",
+              content: (
+                <DataPanel>
+                  <SectionHeader
+                    title="Google import"
+                    description="Search by name and location, then confirm the exact course before importing."
+                    action={<Search className="size-5 text-primary" />}
                   />
-                  <FormField label="Country" name="country" placeholder="England" />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField label="Tee set" name="teeName" placeholder="Yellow" required />
-                  <FormField
-                    label="Par"
-                    name="par"
-                    type="number"
-                    min={1}
-                    defaultValue={72}
-                    required
+                  <CardContent>
+                    <GoogleCourseImporter />
+                  </CardContent>
+                </DataPanel>
+              ),
+            },
+            {
+              id: "manual",
+              label: "Manual entry",
+              content: (
+                <DataPanel>
+                  <SectionHeader
+                    title="Course details"
+                    description="Start with the tee set you normally play. Extra tee sets can be added later."
+                    action={<Flag className="size-5 text-primary" />}
                   />
-                </div>
+                  <CardContent>
+                    <CourseCreationForm action={createCourseAction} className="grid gap-4">
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <FormField
+                          label="Course name"
+                          name="name"
+                          placeholder="Bootle Golf Course"
+                          required
+                        />
+                        <FormField label="Country" name="country" placeholder="England" />
+                      </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <FormField
-                    label="Course rating"
-                    name="courseRating"
-                    type="number"
-                    step="0.1"
-                    placeholder="71.5"
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <FormField label="Tee set" name="teeName" placeholder="Yellow" required />
+                        <FormField
+                          label="Par"
+                          name="par"
+                          type="number"
+                          min={1}
+                          defaultValue={72}
+                          required
+                        />
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-3">
+                        <FormField
+                          label="Course rating"
+                          name="courseRating"
+                          type="number"
+                          step="0.1"
+                          placeholder="71.5"
+                        />
+                        <FormField
+                          label="Slope rating"
+                          name="slopeRating"
+                          type="number"
+                          min={55}
+                          max={155}
+                          placeholder="123"
+                        />
+                        <FormField
+                          label="Total yardage (yd)"
+                          name="yards"
+                          type="number"
+                          min={1}
+                          placeholder="5839"
+                        />
+                      </div>
+
+                      <p className="text-sm text-muted-foreground">
+                        Course and tee names are required. Leave unknown rating, slope and yardage
+                        blank.
+                      </p>
+                      <Button type="submit" size="lg" className="w-full rounded-lg sm:w-fit">
+                        <Save className="size-4" />
+                        Create course
+                      </Button>
+                    </CourseCreationForm>
+                  </CardContent>
+                </DataPanel>
+              ),
+            },
+            {
+              id: "osm",
+              label: "OpenStreetMap",
+              content: (
+                <DataPanel>
+                  <SectionHeader
+                    title="OpenStreetMap import"
+                    description="Find a course in OpenStreetMap and review available hole locations before importing."
+                    action={<MapPinned className="size-5 text-primary" />}
                   />
-                  <FormField
-                    label="Slope rating"
-                    name="slopeRating"
-                    type="number"
-                    min={55}
-                    max={155}
-                    placeholder="123"
-                  />
-                  <FormField label="Yards" name="yards" type="number" min={1} placeholder="5839" />
-                </div>
-
-                <Button type="submit" size="lg" className="w-full rounded-lg sm:w-fit">
-                  <Save className="size-4" />
-                  Create course
-                </Button>
-              </form>
-            </CardContent>
-          </DataPanel>
-
-          <DataPanel>
-            <SectionHeader
-              title="OpenStreetMap import"
-              description="Search OSM/Nominatim, pull tagged golf-hole geometry from Overpass, then manually correct anything that needs work."
-              action={<MapPinned className="size-5 text-primary" />}
-            />
-            <CardContent>
-              <OsmCourseImporter />
-            </CardContent>
-          </DataPanel>
-        </section>
+                  <CardContent>
+                    <OsmCourseImporter />
+                  </CardContent>
+                </DataPanel>
+              ),
+            },
+          ]}
+        />
 
         <DataPanel>
           <SectionHeader
@@ -205,10 +206,10 @@ export default function NewCoursePage() {
               </AlertDescription>
             </Alert>
             <div className="apple-panel-strong p-4">
-              <p className="font-semibold">Good enough for MVP</p>
+              <p className="font-semibold">Review the hole map</p>
               <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                You only need tee and green coordinates to get useful overlays. The centreline can
-                be refined later when we build the full course editor.
+                You only need tee and green coordinates to get useful overlays. Check imported
+                points against the course before using them for shot overlays.
               </p>
             </div>
           </CardContent>
@@ -229,7 +230,12 @@ function FormField({
   return (
     <label className="grid gap-2 text-sm font-medium">
       <span>{label}</span>
-      <Input name={name} className="h-11 rounded-xl bg-background" {...props} />
+      <Input
+        inputMode={props.type === "number" ? "decimal" : undefined}
+        name={name}
+        className="h-11 rounded-xl bg-background"
+        {...props}
+      />
     </label>
   );
 }

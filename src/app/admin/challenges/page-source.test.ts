@@ -9,31 +9,58 @@ const source = readFileSync(
 
 describe("admin challenges desktop console source", () => {
   it("uses the shared challenge operations workbench without adding a contextual AI rail", () => {
-    expect(source).toContain("DesktopWorkbenchLayout");
-    expect(source).toContain('<DesktopWorkbenchLayout scope="admin-challenges">');
+    expect(source).toContain("<PageShell>");
+    expect(source).toContain("<PageHeader");
+    expect(source).toContain('<AdminNav active="/admin/challenges" />');
+    expect(source).toContain("getAdminChallengesData()");
+    expect(source.match(/<PageShell>/g)).toHaveLength(1);
+    expect(source).not.toMatch(/max-w-(?:6xl|7xl|\[1500px\])/);
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("rail={");
   });
 
-  it("keeps challenge boards as an exportable admin table", () => {
-    expect(source).toContain("DesktopTableWorkbenchControls");
-    expect(source).toContain("DataTableFrame");
-    expect(source).toContain('viewKey="admin-challenges"');
-    expect(source).toContain('scope="admin-challenges"');
-    expect(source).toContain('exportTableId="admin-challenges"');
-    expect(source).toContain('exportFileName="forekinghell-admin-challenges-view.csv"');
-    expect(source).toContain("mainTable");
-    expect(source).toContain('mainTableLabel="Challenge boards table"');
-    expect(source).toContain("stickyFirstColumn");
-    expect(source).toContain('data-workbench-scope="admin-challenges"');
-    expect(source).toContain('data-workbench-export-table="admin-challenges"');
-    expect(source).toContain("<TableCaption");
-    expect(source).toContain("tabIndex={0}");
-    expect(source).toContain("<a\n      href={`/admin/challenges?sort=${metric}&dir=${nextDir}`}");
-
-    for (const column of ["challenge", "owner", "status", "participation", "ends", "action"]) {
-      expect(source).toContain(`data-column="${column}"`);
+  it("keeps the extracted challenge board register exportable and configurable", () => {
+    const register = readFileSync(
+      join(process.cwd(), "src/app/admin/admin-challenge-board-register.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("<AdminChallengeBoardRegister");
+    expect(register).toContain("<DesktopWorkbenchControls");
+    for (const attribute of [
+      "viewKey",
+      "scope",
+      "data-workbench-scope",
+      "data-workbench-export-table",
+    ]) {
+      expect(register).toContain(`${attribute}="admin-challenge-boards"`);
     }
+    expect(register).toContain('exportFileName="admin-challenge-boards-filtered.csv"');
+    expect(register).toContain(
+      "localView={{ state: { query, status, sort, dir }, restore: update }}",
+    );
+    expect(register).toContain("shown.map((row) => (");
+    expect(register).toContain("data-column={column.id}");
+    expect(register).toContain("tabIndex={0}");
+    expect(register).toContain("<caption");
+    for (const column of [
+      "title",
+      "id",
+      "owner",
+      "template",
+      "status",
+      "visibility",
+      "entries",
+      "attempts",
+      "results",
+      "starts",
+      "ends",
+      "created",
+    ]) {
+      expect(register).toContain(`id: "${column}"`);
+    }
+    expect(register).toContain("<ResponsiveDetailPanel");
+    expect(register).toContain("a.entries - b.entries");
+    expect(register).toContain("a.attempts - b.attempts");
   });
 
   it("excludes the obsolete companion challenge queue from this desktop-only route", () => {

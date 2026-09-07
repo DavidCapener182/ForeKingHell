@@ -1,5 +1,7 @@
 import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import "server-only";
+import { createHash } from "node:crypto";
+import { mutateProductPreferences } from "@/lib/product-preferences";
 
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
@@ -99,6 +101,8 @@ export type PracticeFacilityOptions = {
 };
 
 export type GeneratePracticePlanOptions = {
+  /** The owned review which prompted this plan, independent of a later result import. */
+  sourceSessionId?: string;
   /** Explicit companion handoff; only a club in the golfer's bag can be selected. */
   focusClub?: string;
   sessionType: PracticeSessionType;
@@ -161,6 +165,7 @@ export type PracticePlannerContext = {
     wedgeMatrix: WedgeMatrixClub[];
   };
   trainingLoad: {
+    hasTrainingData?: boolean;
     statusKey: TrainingStatusKey;
     statusLabel: string;
     advice: string;
@@ -384,6 +389,7 @@ export type PracticePlanGeneration = {
 };
 
 export type SavedPracticePlan = {
+  sourcePractice?: PracticePlannerContext["latestPractice"];
   activityProgress?: PracticeActivityProgress | null;
   id: string;
   title: string;
@@ -403,6 +409,7 @@ export type SavedPracticePlan = {
   sourceSessionId: string | null;
   blocks: Array<PracticeBlock & { dbId: string }>;
   result: {
+    sourceSessionId?: string | null;
     verdict: string;
     nextAction: string;
     practiceScore: number;
@@ -474,6 +481,7 @@ const DRIVER_TYPES = new Set(["driver"]);
 const LONG_GAME_TYPES = new Set(["driver", "3w", "5w", "7w", "3h", "4h", "4i", "5i"]);
 
 type PracticePlannerContextOptions = {
+  sourceSessionId?: string;
   compactTraining?: boolean;
   includeSpeed?: boolean;
 };
@@ -482,11 +490,21 @@ export async function getPracticePlannerContext(
   userId: string,
   options: PracticePlannerContextOptions = {},
 ): Promise<PracticePlannerContext> {
+  if (
+    options.sourceSessionId &&
+    !(await getPracticeSourceSession(userId, options.sourceSessionId))
+  ) {
+    throw new Error(
+      "This source session is unavailable. Choose an available session from Sessions.",
+    );
+  }
   const compactTraining = options.compactTraining ?? false;
   const includeSpeed = options.includeSpeed ?? true;
   const [progressData, todayData, trainingData, speedData, scoring] = await Promise.all([
     getProgressData(userId),
-    getTodayPracticeData().catch(() => null),
+    options.sourceSessionId
+      ? getTodayPracticeData({ sessionId: options.sourceSessionId })
+      : getTodayPracticeData().catch(() => null),
     compactTraining
       ? getCompanionTrainingLoad(userId).catch(() => null)
       : getTrainingOverTimeData(userId, "1y").catch(() => null),
@@ -516,7 +534,9 @@ export async function getPracticePlannerContext(
   });
   const latestPractice = todayData
     ? latestPracticeContext(todayData.clubComparisons, {
-        sessionId: todayData.filters.sessionId || todayData.sessions[0]?.id || null,
+        sessionId:
+          todayData.filters.sessionId ||
+          (todayData.sessions.length === 1 ? todayData.sessions[0].id : null),
         dateLabel: todayData.dateLabel,
         straightRate: todayData.overall.today.straightRate,
         playableRate: todayData.overall.today.playableRate,
@@ -552,6 +572,7 @@ export async function getPracticePlannerContext(
       wedgeMatrix: buildContextWedgeMatrix(progressData.clubs),
     },
     trainingLoad: {
+      hasTrainingData: trainingData?.hasTrainingData ?? false,
       statusKey: trainingStatus.key,
       statusLabel: trainingStatus.label,
       advice: trainingStatus.advice,
@@ -1660,49 +1681,118 @@ export function adaptPracticePlanAfterBlock(
   };
 }
 
-export async function savePracticePlanForUser(userId: string, plan: PracticePlan) {
+export async function savePracticePlanForUser(
+  userId: string,
+  plan: PracticePlan,
+  options: { start?: boolean; goalId?: string; creationId?: string } = {},
+) {
   const now = new Date();
-  const db = getDb();
-  const [insertedPlan] = await db
-    .insert(practicePlans)
-    .values({
-      userId,
-      sessionType: plan.sessionType,
-      ballCount: plan.totalBalls,
-      timeMinutes: plan.estimatedTimeMinutes,
-      energyLevel: plan.energy,
-      intent: plan.intent,
-      facilityJson: { generation: plan.generation },
-      contextJson: plannerContextSnapshot(plan.sourceContext),
-      focusClubsJson: plan.focusClubs,
-      title: plan.title,
-      generatedSummary: plan.summary,
-      status: "planned",
-      plannedAt: now,
-      updatedAt: now,
-    })
-    .returning();
+  if (
+    options.creationId !== undefined &&
+    (typeof options.creationId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(options.creationId))
+  )
+    throw new Error("Invalid practice save request.");
+  const requestFingerprint = options.creationId
+    ? createHash("sha256")
+        .update(JSON.stringify({ plan, start: !!options.start, goalId: options.goalId ?? null }))
+        .digest("hex")
+    : null;
+  const persist = async (
+    db: Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0],
+  ) => {
+    const [insertedPlan] = await db
+      .insert(practicePlans)
+      .values({
+        userId,
+        ...(options.creationId ? { id: options.creationId } : {}),
+        sessionType: plan.sessionType,
+        ballCount: plan.totalBalls,
+        timeMinutes: plan.estimatedTimeMinutes,
+        energyLevel: plan.energy,
+        intent: plan.intent,
+        facilityJson: {
+          generation: plan.generation,
+          ...(requestFingerprint ? { creationFingerprint: requestFingerprint } : {}),
+        },
+        contextJson: plannerContextSnapshot(plan.sourceContext),
+        focusClubsJson: plan.focusClubs,
+        title: plan.title,
+        generatedSummary: plan.summary,
+        status: options.start ? "awaiting_import" : "planned",
+        startedAt: options.start ? now : null,
+        plannedAt: now,
+        updatedAt: now,
+      })
+      .returning();
 
-  await db.insert(practiceBlocks).values(
-    plan.blocks.map((blockItem) => ({
-      practicePlanId: insertedPlan.id,
-      userId,
-      blockOrder: blockItem.order,
-      blockType: blockItem.type,
-      title: blockItem.title,
-      clubsJson: blockItem.clubs,
-      ballCount: blockItem.ballCount,
-      timeMinutes: blockItem.timeMinutes,
-      goal: blockItem.purpose,
-      drill: blockItem.drill,
-      successCriteria: blockItem.successTarget,
-      recordPrompt: blockItem.recordPrompt,
-      scoringRulesJson: blockItem.scoringRules,
-    })),
-  );
-  await awardPracticePlannerAchievements(userId, "created");
+    await db.insert(practiceBlocks).values(
+      plan.blocks.map((blockItem) => ({
+        practicePlanId: insertedPlan.id,
+        userId,
+        blockOrder: blockItem.order,
+        blockType: blockItem.type,
+        title: blockItem.title,
+        clubsJson: blockItem.clubs,
+        ballCount: blockItem.ballCount,
+        timeMinutes: blockItem.timeMinutes,
+        goal: blockItem.purpose,
+        drill: blockItem.drill,
+        successCriteria: blockItem.successTarget,
+        recordPrompt: blockItem.recordPrompt,
+        scoringRulesJson: blockItem.scoringRules,
+      })),
+    );
+    await awardPracticePlannerAchievements(userId, "created", undefined, {}, db);
 
-  return insertedPlan.id;
+    return insertedPlan.id;
+  };
+  if (options.goalId !== undefined || options.creationId !== undefined) {
+    if (
+      options.goalId !== undefined &&
+      (typeof options.goalId !== "string" || !options.goalId.trim())
+    )
+      throw new Error("Choose an available goal before saving this practice.");
+    let planId = "";
+    await mutateProductPreferences(userId, async (current, db) => {
+      const goal = current.goals.find((item) => item.id === options.goalId);
+      if (options.goalId !== undefined && !goal)
+        throw new Error("That goal is no longer available in your account.");
+      if (options.creationId) {
+        const [existing] = await db
+          .select({ id: practicePlans.id, facility: practicePlans.facilityJson })
+          .from(practicePlans)
+          .where(and(eq(practicePlans.id, options.creationId), eq(practicePlans.userId, userId)))
+          .limit(1);
+        if (existing) {
+          if (existing.facility.creationFingerprint !== requestFingerprint)
+            throw new Error("This practice save request was already used for a different plan.");
+          planId = existing.id;
+          return {};
+        }
+      }
+      const linkedIds = goal?.project?.practicePlanIds ?? [];
+      if (linkedIds.length >= 50)
+        throw new Error("This goal already has 50 linked practice plans.");
+      planId = await persist(db);
+      if (!goal) return {};
+      return {
+        goals: current.goals.map((item) =>
+          item.id === goal.id
+            ? {
+                ...item,
+                project: {
+                  baselineSessionId: item.project?.baselineSessionId ?? null,
+                  practicePlanIds: [...linkedIds, planId],
+                },
+              }
+            : item,
+        ),
+      };
+    });
+    return planId;
+  }
+  return getDb().transaction(persist);
 }
 
 export async function updatePracticePlanStatusForUser(
@@ -1718,7 +1808,7 @@ export async function updatePracticePlanStatusForUser(
       status,
       startedAt:
         status === "awaiting_import"
-          ? sql`coalesce(${practicePlans.startedAt}, ${now})`
+          ? sql`coalesce(${practicePlans.startedAt}, ${now.toISOString()}::timestamptz)`
           : undefined,
       completedAt: status === "completed" || status === "abandoned" ? now : undefined,
       updatedAt: now,
@@ -2368,9 +2458,12 @@ function practicePlanMatchUpdateValues(match: PracticePlanMatchScore, accepted: 
   };
 }
 
-export async function getPracticePlannerPageData(userId: string) {
+export async function getPracticePlannerPageData(
+  userId: string,
+  options: PracticePlannerContextOptions = {},
+) {
   const [context, savedPlans, templates, importOptions] = await Promise.all([
-    getPracticePlannerContext(userId),
+    getPracticePlannerContext(userId, options),
     getSavedPracticePlans(userId),
     getPracticeTemplates(userId),
     getPracticeImportOptions(userId),
@@ -2437,16 +2530,29 @@ function practicePlanEvidenceTime(plan: Pick<SavedPracticePlan, "plannedAt" | "s
 export async function getSavedPracticePlans(
   userId: string,
   limit = 8,
-  planId?: string,
+  planId?: string | string[],
 ): Promise<SavedPracticePlan[]> {
+  if (Array.isArray(planId) && planId.length === 0) return [];
   const rows = await getDb()
     .select({
       plan: practicePlans,
       result: practiceResults,
     })
     .from(practicePlans)
-    .leftJoin(practiceResults, eq(practiceResults.practicePlanId, practicePlans.id))
-    .where(and(eq(practicePlans.userId, userId), planId ? eq(practicePlans.id, planId) : undefined))
+    .leftJoin(
+      practiceResults,
+      and(eq(practiceResults.practicePlanId, practicePlans.id), eq(practiceResults.userId, userId)),
+    )
+    .where(
+      and(
+        eq(practicePlans.userId, userId),
+        Array.isArray(planId)
+          ? inArray(practicePlans.id, planId)
+          : planId
+            ? eq(practicePlans.id, planId)
+            : undefined,
+      ),
+    )
     .orderBy(desc(practicePlans.createdAt))
     .limit(limit);
   const planIds = rows.map((row) => row.plan.id);
@@ -2455,7 +2561,9 @@ export async function getSavedPracticePlans(
       ? await getDb()
           .select()
           .from(practiceBlocks)
-          .where(inArray(practiceBlocks.practicePlanId, planIds))
+          .where(
+            and(inArray(practiceBlocks.practicePlanId, planIds), eq(practiceBlocks.userId, userId)),
+          )
           .orderBy(practiceBlocks.blockOrder)
       : [];
 
@@ -2481,10 +2589,12 @@ export async function getSavedPracticePlans(
       summary: plan.generatedSummary,
       generation: parsePlanGeneration(plan.facilityJson.generation),
       sourceSessionId: plan.sourceSessionId,
+      sourcePractice: parsePracticeSourceSnapshot(plan.contextJson.latestPractice),
       activityProgress: parsePracticeActivityProgress(plan.contextJson.activityProgress),
       blocks,
       result: result
         ? {
+            sourceSessionId: result.sourceSessionId,
             verdict: result.verdict,
             nextAction: result.nextAction,
             practiceScore: result.practiceScore,
@@ -2499,6 +2609,17 @@ export async function getSavedPracticePlan(userId: string, planId: string) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(planId)) return null;
   const plans = await getSavedPracticePlans(userId, 1, planId);
   return plans[0] ?? null;
+}
+
+export async function getPracticeSourceSession(userId: string, sessionId: string) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId))
+    return null;
+  const [session] = await getDb()
+    .select({ id: sessions.id })
+    .from(sessions)
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+    .limit(1);
+  return session ?? null;
 }
 
 export async function getPracticeImportOptions(
@@ -4328,6 +4449,7 @@ export function savedPracticePlanToPracticePlan(
     postSessionRules: [],
     sourceContext: {
       ...context,
+      latestPractice: saved.sourcePractice ?? emptyLatestPractice(),
       generatedAt: saved.plannedAt,
     },
     generation: saved.generation,
@@ -4526,6 +4648,38 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+function parsePracticeSourceSnapshot(
+  value: unknown,
+): PracticePlannerContext["latestPractice"] | undefined {
+  if (!isRecord(value) || typeof value.dateLabel !== "string" || !Array.isArray(value.clubs))
+    return undefined;
+  const number = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const string = (v: unknown) => (typeof v === "string" ? v : null);
+  return {
+    sessionId: string(value.sessionId),
+    dateLabel: value.dateLabel,
+    bestPerformer: string(value.bestPerformer),
+    biggestOpportunity: string(value.biggestOpportunity),
+    scoringIssue: string(value.scoringIssue) ?? "Review the saved source evidence.",
+    straightRate: number(value.straightRate),
+    playableRate: number(value.playableRate),
+    offlineAverageYd: number(value.offlineAverageYd),
+    clubs: value.clubs
+      .filter(isRecord)
+      .filter((club) => typeof club.clubType === "string")
+      .map((club) => ({
+        clubType: String(club.clubType),
+        label: string(club.label) ?? formatClubType(String(club.clubType)),
+        shotCount: number(club.shotCount) ?? 0,
+        score: number(club.score) ?? 0,
+        playableRate: number(club.playableRate),
+        straightRate: number(club.straightRate),
+        offlineAverageYd: number(club.offlineAverageYd),
+        bigMissRate: number(club.bigMissRate),
+      })),
+  };
+}
+
 function plannerContextSnapshot(context: PracticePlannerContext) {
   return {
     generatedAt: context.generatedAt,
@@ -4646,8 +4800,8 @@ async function awardPracticePlannerAchievements(
   event: "created" | "completed",
   score?: PracticeScore,
   context: PracticePlannerAchievementAwardContext = {},
+  db: Pick<ReturnType<typeof getDb>, "insert" | "select"> = getDb(),
 ) {
-  const db = getDb();
   const now = new Date();
   const [planCountRow] = await db
     .select({ count: sql<number>`count(*)::int` })

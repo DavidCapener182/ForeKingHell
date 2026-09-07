@@ -1,0 +1,848 @@
+## Current resume point — 7 September
+
+**492 desktop / 492 mobile entries have UI implemented with partial verification; 0 fully accepted.** All 98 route UI batches and shared UI pass are addressed. Current: integration defects and acceptance verification. This is not overall completion. Tournament alias suite previously failed with intermittent development timing errors; instrumented P98 rerun passed, so the cause remains unresolved.
+
+# UI upgrade progress
+
+## Scope and branch
+
+All four root specifications are accessible. Inventory validated: **492 component entries,98routes** with separate desktop/mobile status. Stay on `upgrade/untitled-ui-migration`. No main merge or production deployment.
+
+Fully accepted component IDs: **none yet**. The CSV is authoritative; `ForeKingHell-completion-tracker.xlsx` is its generated review view. Partial verification is not completion. Existing completed work and IDs have been preserved.
+
+## Work order update
+
+User direction: implement the remaining UI changes first; defer broader integration, full acceptance matrices and non-UI work until that pass is delivered. Keep quick changed-scope checks and truthful separate implementation/verification statuses. Do not repeatedly rerun unchanged shared checks.
+
+## Current component and next component
+
+Current: **integrated unit/route-metadata reconciliation and remaining acceptance checks**. Three backend defects and direction-attention UI are now fixed and committed. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+
+G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
+
+## Implemented changes
+
+- G01/G05/G06 earlier commits `65cea2ac`: single semantic header adapter, wide companion rendering, role-aware searchable More and preserved surface-switch context. Specification checkpoint `ab8ca3f9`.
+- Shared commit **8a970995**: unified command catalogue/entry points, collapsible navigation, native confirmation/form recovery, React Aria1.21.1 form adapters, bounded dialogs, server-confirmed notification reads, responsive saved-view toolbar, chart table/CSV semantics, visible detail close, error/loading recovery, truthful offline status and PWA update guards, normal-flow notices. Staged49owned paths using baseline-to-current patches; other agent's changes excluded.
+- P01: compact Progress header/current composite explanation, no reconstructed historical score; four URL-controlled tabs on both surfaces; scored-round information preserved under Performance. Owner-filtered dated carry/total/control evidence with search, filters, explicit unavailable club/date/measure states, source counts, selectable sessions and table. Weekly direction ranks measured control across adjacent seven-day windows with source links. One existing practice priority supplies both surfaces' recommendation. All goals retain saved figures/evidence. Existing training calculations/renderers gain URL range/date inspection/table. Chronological timeline preserves repeated names by event ID, supports filter/load-more, labels loaded coverage and unknown goal edit dates.
+
+Progress source changes: `src/app/(app)/progress/page.tsx`, `src/app/progress/progress-companion.tsx`, new `src/app/progress/progress-{navigation,tabs,snapshot,comparison,comparison-data,recommendation,timeline,load-history}.ts(x)`, namespaced `src/components/untitled-ui/tabs.tsx` and CSS, `src/lib/progress-data.ts`, `src/lib/weekly-change-review-data.ts`. Existing golf calculation functions remain unchanged.
+
+## Checks and evidence
+
+Evidence under `output/playwright/ui-upgrade/` is local/gitignored.
+
+- **151shared tests in31files** pass in an isolated snapshot of the shared commit. Isolated `next typegen` then `tsc --noEmit` passed; initial missing PageProps/RouteContext was absent generated metadata, not a source defect. Logs `staged-shared-unit.log`, `staged-shared-types.log`.
+- Integrated **157tests/32files** passed. Final Progress Tabs extraction TypeScript and scoped lint passed; no repeat full browser matrix was requested after extraction. Logs `shared-wide-unit.log`, `progress-types.log`, `shared-lint-final.log`, `progress-lint.log`.
+- Standards-mode form/notification/Progress controls: **3tests passed26.5s**, `fixtures-final-browser.log`, all six required sizes. Covers confirmed submitter semantics, invalid/pending/failure/cancel/focus, final-field footer clearance, Aria values, notification read failure/retry/server confirmation, zero/steady,carry versus total,date drawer/source table/long names. Representative screenshots inspected.
+- Progress actual app **1test passed49.2s**, `progress-final-browser.log`: both surfaces×six sizes, all four tabs, query preservation, Back/Forward/reload, keyboard Arrow/Home, one Progress h1, no horizontal page overflow. **16scoped axe scans with0violations** at1440/360.48tab captures plus12overview captures in `progress-final/`; representative desktop/mobile/Load/Timeline images inspected. Axe found invalid detail markup in a definition list; fixed to semantic dd and rerun passed.
+- Timeline final fixture **1test passed7.7s**, `progress-controls-final-browser.log`:6sizes, duplicate titles retained by ID,12→15load-more,8filteredPractice events, long content; dark CSS200%zoom layout checked at1440/360. Native browser zoom remains outstanding.
+- Fixture diagnosis: missing doctype caused quirks-mode Select displacement by scroll offset. Corrected fixture HTML and reran. No speculative placement workaround retained. App Next pages already use standards mode.
+- Screenshot review found the PWA notice outside shell content behind chrome; moved inside shell. Initial unknown queue check no longer appears as a storage failure. Later app screenshots reflect this fix.
+- No full production build, remote CI, real-account mutations, physical Safari/software keyboard/offline replay/payment/invitation checks claimed.
+
+## Outstanding defects and blockers
+
+- Component-specific blockers and separate viewport evidence are in the CSV. Every row still needs full acceptance; **none is Passed**.
+- Native browser200%zoom, physical keyboard/safe-area and screen-reader interaction, comprehensive themes and complete empty/loading/service-error/permission combinations remain outstanding. Automated accessible names/axe are narrower evidence.
+- P01 composite history does not exist: the permitted current-snapshot/baseline-needed alternative is implemented. Goal-specific edit timestamps do not exist; unrelated preference update dates are no longer presented as goal history. Timeline exposes the loaded year and latest six saved bag snapshots rather than claiming complete lifetime history.
+- G08 all consuming table/export scopes; G09 all specialist selection/failure/reduced-motion flows; G11 all91boundary states; G12/G13 real offline owner/replay/update matrix; G14 queued/long/dynamic announcements remain incomplete.
+- Paid Untitled advanced examples have no established entitlement. Exact checked references and accessible compositions are recorded in `docs/ui-upgrade/untitled-ui-register.md`; no paid installation is claimed.
+
+## Coordination and resume instructions
+
+1. Read this checkpoint, CSV and master contract. Run `git branch --show-current`, `git status --short`, `python3 scripts/ui-upgrade.py status` and `validate`. Preserve all dirty work. Do not stage the whole tree.
+2. Other thread **01a077ea-7dd8-7ef2-979b-944425998882**, title **Redesign ForeKingHell experience**, owns round/strategy/earlier redesign changes, `mobile-controls.tsx` keepMounted, scorecard JSON puttsSource, and shot correction propagation/services/actions/tests. Contact it before any shared-file edit or live fixture browser run. It is not staging. All UI/component ownership has now transferred here, including their existing Round/Play/Strategy/Today/Practice/Bag changes. They retain backend services/actions/behavior tests and coordinate API changes. Preserve every pre-existing UI change.
+3. Dashboard committed16cdca4b and History committedce90f9e8. Continue P06 Shots UI; integrate the other agent’s optional Goals project DTO when ready. Progress is committed891672ea. Import and Result code is applied with separate evidence below. Preserve earlier partial verification; broad remaining acceptance is queued after the UI pass.
+4. Localhost3000 is real/read-only;3116 is the existing disposable fixture app with `.next-e2e`. Never restart either or build into their dist directories. `PLAYWRIGHT_BASE_URL=http://localhost:3116 PLAYWRIGHT_E2E_AUTH_BYPASS=1` selects the authorised local app fixture. Isolated component fixtures need BASE_URL only.
+5. Relevant tests: `tests/e2e/ui-upgrade-progress.spec.ts`, `ui-upgrade-progress-controls.spec.ts`, `ui-upgrade-forms.spec.ts`, `ui-upgrade-notifications.spec.ts`. Run changed scope; use unique output directories. Update each component row after changes/evidence, then validate inventory.
+6. Refresh Excel using `/Users/davidcapener/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3 scripts/export-ui-upgrade-workbook.py`. Do not hand-edit the generated workbook or replace the CSV with it.
+7. Continue Today→remaining route coverage UI. Then return to acceptance/back-end gaps. No merge/deploy. Overall completion requires all492entries to pass both applicable viewport requirements and acceptance checks.
+
+Historical checkpoint retained at `docs/ui-upgrade/checkpoint-before-progress-2026-09-06.md`. Owned baselines: `/tmp/fkh-upgrade-forms-baseline`, `/tmp/fkh-upgrade-navigation-baseline`, `/tmp/fkh-upgrade-shared-baseline`, `/tmp/fkh-upgrade-progress-baseline`. These identify ours versus concurrent working-tree hunks; do not apply an old baseline wholesale over current source.
+
+## Import / Result UI pass, 7 September
+
+- P35C01–C10: namespaced React Aria radio cards, compact shared header, truthful current-operation steps; file picker/limits/errors/retry/queue; session date and type/unit adapters; mapping samples/required/duplicate feedback; all-shot pagination/search/detail/correction; OCR acknowledgement and touch hole navigation; pending-safe contextual checklist; separate responsive history. Full phone workflow is accessible alongside the existing quick range import; both drafts remain mounted during switches. Existing parser/server actions/override permissions retained. The chosen session date is passed explicitly rather than silently overwritten by the detected title date.
+- P36C01–C04: missing/invalid/inaccessible result recovery, compact receipt header, saved-session trust counts and review links instead of account-wide quality claims, all matched plan decisions and mobile target/result disclosures, contextual practice links. Earlier companion pattern/verdict work preserved.
+- Import smoke:1passed1.6m, both surfaces × six requested sizes, no pageerrors or page overflow, sample5shots,save disabled.24captures in `output/playwright/ui-upgrade/import-ui-smoke`; representative360preview inspected. Initial top-named captures after first size retain prior scroll; test now scrolls to top for future captures. No mutation proof inferred. Mapping disclosure and quick-picker error refinements followed that smoke; no full rerun yet.
+- TypeScript/scoped lint passed for Import and Result; latest small refinements need final changed-scope check. Logs `import-ui-types.log`, `import-ui-lint.log`, `result-ui-types.log`, `result-ui-lint.log`. Result browser fixture matrix outstanding.
+- A failed CSV write was recovered from the latest generated492-row workbook while preserving the current218-row prefix; inventory/counts reconciled and known latest P45-C06 mobile evidence restored. Future writes are assembled and validated in memory before atomic replacement. No completed status reset.
+- Import owned baseline: `/tmp/fkh-upgrade-import-baseline`; preserve its pre-existing companion changes when staging. Root tracker and workbook now distinguish31implemented/partial entries from16in progress and445not started;0fullyPassed.
+
+## Today active UI batch
+
+P02-C01–C09 code applied: compact Today heading/answer, contextual driver disclosure, shared URL-controlled Overview/Practice/Evidence/Data quality tabs with retained panel state, owner-scoped shot detail/club options, non-gesture shot selector, mobile full source/history and reversible actions, visible drawer close, directional evidence warnings. Existing plots/calculations, highlights, current plan/round, recent activity and next-practice handoff retained. Do not replace the earlier redesign work.
+
+Today baseline `/tmp/fkh-upgrade-today-baseline` contains existing other-agent UI. Changed files: both `src/app/(app)/today/today-*-page.tsx`, new `src/app/today/today-{workspace-tabs,data-quality}.tsx`, Today charts/selected-shot rail, `mobile-shot-pattern-charts.tsx`, opt-in compact `decision-panel` and opt-in retained `untitled-ui/tabs`. No service/action writes. Quick logs `today-ui-{types,lint}-final.log`; browser matrix pending. Native tabs now use installed React Aria `shouldForceMount` and `data-inert` contract.
+
+Today update: all twelve surface/viewport combinations exercised four sections, one h1, panel visibility and page overflow checks. Overall test failed on one Unexpected end of JSON input pageerror; do not claim a passing browser test. Added hydration readiness gate and local history tab updates to avoid repeat server requests. Evidence today-ui-ready. UI implemented count now 40; full acceptance remains 0.
+
+## Dashboard UI pass
+
+P03 C01–C07 UI implemented. Same full responsive Dashboard is available on both surfaces with compact header/priority, exact saved-plan or club/source handoff, real speed source funnel, reused dated comparison/table controls, searchable mobile delivery picker and measured course/bag/session readiness checklist. Database setup details removed from ordinary recovery. Root proxy phone redirect and capability handoff removed only after implementation. Browser smoke passed11.2s at both surfaces×six sizes;12captures under dashboard-ui-smoke, representative1440/360 inspected. Lint/types and15route tests pass. Remaining interactions/AT/nativezoom/dynamic cases deferred. UI implemented total47, acceptance0.
+
+Correction integration: ClubCorrection preserves Undo on no-op refresh retry and displays successful saved warning. OfflineRoundEditForm accepts warnings; PWA consumes successful warning bodies and keeps an owner-scoped notice in the mounted app until dismissed. Persistence across reload and all offline states still require acceptance checks.
+
+## History UI pass
+
+P04 C01–C05 UI implemented: shared header/search/filter toolbar and mobile Apply/Reset sheet; chronology/selection retained; complete paginated shot DTO/source/history previews; safe current-page CSV; owner-scoped GET endpoint; older-session load control with explicit loaded-history coverage.12filter/view tests and13s browser smoke pass, both surfaces×six sizes plus390shot details. Evidence sessions-ui-final; full large-history search/scroll/permission/nativezoom acceptance still outstanding. New files under src/app/sessions/{history-toolbar,history-page-data,session-shot-preview}.tsx and src/app/api/sessions/[sessionId]/preview-shots/route.ts. Dashboard commit16cdca4b; History pending scoped commit. UI count52,accepted0.
+
+P05 baseline /tmp/fkh-upgrade-session-detail-baseline preserves transferred prior UI. Next P06 Shots after P05 quick checks. Import preview filtered-export action restored after identifying accidental removal in its UI rewrite; uses existing csvCell protection, verification pending.
+
+## Latest UI checkpoint
+
+70 of492 component entries now have UI implemented on both surfaces;0 fully accepted. P05 Session detail seven entries and P33 Goals six entries added after passing viewport smoke. P05 smoke25.6s, P33 smoke17.4s, Goals failure/retry fixture20.4s. Final integrated TypeScript exit0 (ui-through-goals-types.log). Broader acceptance stays outstanding per row. Dashboard16cdca4b and Sessions historyce90f9e8 are reviewable commits. Goals/Session detail UI await coordinated backend dependency commits. Other agent owns backend only and is adding optional goal project references; UI integration owned here.
+
+Resume at P06 Shots: read that page’s detailed prompts, preserve prior dirty shot UI, implement desktop/mobile component requirements, run scoped checks, update rows and refresh workbook. Do not repeat completed UI without a regression. Today JSON runtime pageerror remains unresolved.
+
+## P06 Shots UI checkpoint
+
+P06-C01–C05 UI implemented, partial verification. Complete shared filter query keys now include review, exact shot, ascending date and grouping. Active chips reflect applied scope. Both surfaces have compact mobile shot rows, all Flight/Source/History tabs, same correction/review actions, page-scoped export and clear empty recovery. Existing desktop column/density/saved-view tools retained. Sort remains server-wide. Initial smoke exposed inherited global workbench visibility overrides and a Filters button submitting the search form; corrected with scoped breakpoint CSS and explicit button type. Final smoke1passed16.6s,14captures, allsixsizes/bothsurfaces, no pageerrors/overflow, source/history, focusreturn, searchempty/reload/clear. Scoped lint andTypeScript pass. Dev issue badge attribution and broad acceptance remain outstanding.
+
+Changed files: src/app/(app)/shots/page.tsx; src/app/shots/shot-filter-toolbar.tsx, mobile-shot-filters.tsx, mobile-shot-explorer.tsx, shots-master-detail-table.tsx; new shot-explorer.module.css; tests/e2e/ui-upgrade-shots.spec.ts; licensing register. Baseline /tmp/fkh-upgrade-shots-baseline preserves prior dirty work. Resume by loading only P07 prompts and continuing its desktop/mobile UI; preserve all70implemented rows. Goals improvement-project DTO integration remains pending alongside coordinated backend dependencies.
+
+## Continuous UI pass resumed
+
+P07-C01–C03 UI implemented;73rows nowimplementedpartial. Scoped types/lint pass; browser1passed24.3s on sixsizes×bothsurfaces (automatic-review-ui-retry.log). New owner-filtered GET api/shots/[shotId]/evidence, shot-evidence-sheet.tsx and rebuilt mobile-automatic-review.tsx. No mutation claimed. Current P08 Bag16entries: unifying fullsixURLtabs across surfaces while retaining touch explorer; compact health header and simulator Reset applied. Inprogress; lint/types/viewport checks underway. Next P09 after allP08 UI requirements are addressed.
+
+## Bag UI batch
+
+P08-C01–C16 UI implementedpartial;89total. SixURLtabs nowbothsurfaces, samebaghealth and fullmobiletasks. Targetpreferences retain yards internally; exactentry/reset, sampledecisionreview, selectedclub pattern/confidence/evolution, layercontrols, simulatorReset, naturalhistory, explicitrecomputed scoremethodology. Allgolfcalculations/renderers preserved. Mainbrowser1pass32.3s, stockdrawer1pass26.1s, target/layers1pass8.1s. Finalscope types/lint pass before small final selection/refinements; latest logs bag-final-types/lint. No mutations or fullacceptance claimed. Baseline /tmp/fkh-upgrade-bag-baseline. Current P09clubdetail sixcomponents: implement compactidentity/allpanels/selectedshot evidence, preserve mobile neighbours. NextP10.
+
+## P10 / P11 UI pass
+
+P10: compact club/profile recommendation with explicit all-time versus50-shot scope, exact selected-shot URL/source/history, mobile searchable paged ledger, correct trust weights/methodology, missing-side exclusion from plotting, complete shape counts, explicit rolling and overlapping comparison caveats. P11: compact identity, carry/total-matched ranked evidence board, source drawer, preserved illustrative replay and raw/eligible distinction. Changed analytics/page.tsx, new analytics-{shot-selection,mobile-ledger}.tsx/module.css, longest/page.tsx, best-shots-board.tsx, longest-evidence-views.tsx and legacy longest-shots-section.tsx. Types passed; both browser tests59.6s, allsixsizes/bothsurfaces; screenshot360analytics inspected. Broader gates unchanged. CurrentP12: unify complete target/search across surfaces with trusted DTO and preserve offline reference; nextP13.
+
+## P12 UI and reviewable commits
+
+Quick Bag full target/search now on both surfaces using existing trusted DTO, physical unit switch, gap uncertainty, focus-safe full evidence Sheet and dated offline snapshot. Browser1passed10.8s allsixsizes/bothsurfaces,12captures quick-bag-ui-smoke. Types/lint pass. Snapshot reference remains explicitly yards; offlinecold-start/nativeAT/failures outstanding. Commit d72734a4. Coordinated24-file backend closure a7c306e4 with37actual integration tests; P06/P07/P10 UI commit3dacbc59. No merge/deploy. 111UIimplementedpartial,0accepted. CurrentP13 ninecomponents: full Equipment UI with form state wrappers requested from other agent; do not lift desktop-only capability before full task implemented. NextP14.
+
+## Equipment and Experiment Lab UI
+
+P13 nine/P14 four UI entries implementedpartial;124total,0accepted. Equipment5retainedURLtabs, completefullSheetforms with confirmed state wrappers, exactclubedit context, order/Cancel/snapshots, sourcedsame-slot associations not causalclaims, retired/historysearch fullfields. P14 explicit distinctsession selectors, same-ID guard, actualsamplewarnings, decisionconfidence and saved-source-ID reopen; unavailable snapshots do not substitute latest. BrowserP13pass25.5s/P14pass7.5s,all6sizes/bothsurfaces and24captures; scopedtypes/lint pass. Exact /equipment and /equipment/experiments mobilecapability lifted after implementation; broader mutations/AT/zoom/themes stayqueued. Backend wrappers tested by otheragent; numeric/history/concurrency/retry gaps remain documented.
+
+Performance gate: isolated frozen snapshot builds (Webpack andTurbopack) passed; canonicalbundlebudget check failed10routes in output/playwright/redesign/snapshot-turbo-budgets.log. Snapshot predates latestUI, not final signoff. Fullunit70fail baseline stillpending. No budget increases. Commits a7c306e4 backend,3dacbc59 shots/analytics,d72734a4 QuickBag,fe5ef8cf PB. CurrentP15 Practice eightentries; integrate approvedgoal/practicecontext while preserving existing transferredUI. NextP16.
+
+## Practice Planner UI pass
+
+P15-C01–C08 implemented with partial verification. Full editor/guided modes now available on either surface with source and goal context. Unchanged-draft retries retain a creation UUID; rapid duplicate starts guarded. Generated blocks are no longer compacted out of the companion plan. Keyboard block reordering preserves IDs and counts, clears stale analysis on a revised draft. All planner drawers have visible Close; nested main removed. Historical results expose measured decisions, exact source sessions, and full drill/target/record details.
+
+Changed practice page wrappers, practice-planner-client, practice-companion-client, new use-practice-save-context, mobile-saved-practice-review, measured-practice-result-card and ui-upgrade-practice.spec.ts. Browser smoke passed27.3s, both surfaces/six sizes/12 screenshots; final types passed. Latest block order and historical detail refinements need browser follow-up. Full active/offline/mutation/AT/theme/zoom acceptance remains open.
+
+Equipment and Experiment Lab reviewable commit: ba275456. Current resume: P16 Quick Range; complete UI and scoped browser tests, update its three CSV rows, refresh workbook, then P17. Preserve existing dirty work and no production deployment. Other agent owns active offline receipt backend files; do not stage those without coordinating.
+
+## Quick Range UI pass
+
+P16-C01–C03 UI implemented with partial verification. Desktop now delegates to the complete account-scoped Quick Range editor, retaining all clubs, ball labels, notes, history, clock, outdoor mode and optional screen-awake request. Optional blockIndex/completedBlocks are parsed and retained; existing saved draft wins over accidental incoming focus/club. Named step navigation/pause/finish does not alter measured data. Mobile options and all-step list collapse while remaining fully available.
+
+Checks: six existing draft tests pass; types/scoped lint pass. Browser final8.7s: both surfaces, all6sizes, reload and surface transition retain block/note/labels, pause/reload/resume and finish/import handoff.12screenshots quick-range-final; earlier1280/390 review prompted compact layout refinement. Full offline/storage/AT/theme/zoom remains outstanding. Current P17 Coach UI is applied and under checks; next P18.
+
+## Coach UI pass
+
+P17-C01–C06 UI implemented with partial verification. Both surfaces share retained Diagnosis/Evidence/Ask tabs. Primary title selects the existing Progress priority; related club diagnostic maths unchanged. Legacy illustrative dispersion explicitly labelled, exact source links retained. Owner-filtered session pagination, source filter and full-field Sheet. Data Chat now single-column below1024 with cited-evidence Sheet; embedded title no longer adds h1. Network failures restore the question; lazy-load errors offer reload. Drill-sync failure shows retry and does not claim a plan save.
+
+First browser caught the old companion summary route; exact /coach capability corrected. Final smoke14.0s covers both surfaces/six sizes/12captures/no overflow/one h1/source open-close. Types/scoped lint passed, latest error recovery refinements need fixture coverage. No live AI request or credit spent. Exact selected custom drill/target transfer still open; AT/zoom/themes/mutation states remain open. Practice/Quick Range commit59dd5c23 (18files) includes agreed practice actions and source handoff closure,8targeted tests pass.
+
+Current P18 implementation is applied: compact header, search/confidence/order, selected club URL and complete drill Sheet, retained desktop table/export. Run scoped types/lint/browser before updating its three rows. Next P19. CSV writer normalized to LF; all492 rows preserved.
+
+## Club Improvement Centre UI pass
+
+P18-C01–C03 implemented with partial verification. Existing table/export fields preserved with search/confidence/order, correct sort metadata, one URL-selected diagnosis and complete mobile drill Sheet. Header stays compact with back-to-Coach-evidence. Exact companion route now enabled. Browser11.3s both surfaces/six sizes/12captures; search empty/reset, same record/drill/practiceclub query, oneh1/no overflow pass. Scoped lint clean. Only concurrent isolated-offline-import test narrowing errors in full tsc, owning agent notified.
+
+New P05 regression from other agent's clean synthetic import: valid150/152yd carry-only shots show151yd club summary but missing Performance snapshot median. Evidence output/playwright/redesign/isolated-import-browser/isolated-offline-import-fr-4b03f-plays-and-opens-its-session-chromium/imported-session.png. Preserve directional absence warning, repair carry summary independently.
+
+Current P19 Reports: prompts read, existing form/history inspected. Other agent preparing nonredirecting create/revoke wrappers with existing permission/scope rules; UI builder and review can proceed. Next P20 Coach workspace.
+
+## Coach Reports UI pass
+
+P19-C01–C03 implemented with partial verification. Three-step retained builder, optional title and effective evidence/privacy review, pending-safe create Sheet, inline error retention and explicit sharing scope. No private coach notes added. History paginated20, scope/access detail and named revoke, newest token Copy feedback; older token retrieval remains unavailable by design.
+
+Browser12.0s allsixsizes/bothsurfaces/12captures reports-step-fixed, drafttitle/expiry/back/review verified with no report creation. Debugging found Continue's reused DOM button became submit during click after state change; Review is now an explicit button action, preventing premature review opening. Readiness guard prevents prehydration edits. Backend owner/password/hide-exact/title state tests separately passed; postcommit refresh failure fix owned by other agent pending final evidence. Full real create/revoke/password/expiry/failure browser acceptance remains open.
+
+P20 UI now applied, fresh three-account synthetic browser check running. First fixture failed before UI on required raw_csv_text; cleanup ran, corrected fixture then rerun. P15 guided-view regression fixed by replacing MobileAppShell only on practice-companion-page with semantic full-width section; its workbench suppression had hidden the guided and historical view. Other agent rerunning isolated Save->guided->pause/resume. No acceptance result yet.
+
+## Latest continuation: P20 and connected regressions
+
+P20-C01 through P20-C04 UI implemented; browser passed 27.4s on both surfaces at all six required sizes (`workspace-final.log`). Search/assigned-player scope, source details, draft cancellation and unavailable-player recovery passed. Fixed SQL aggregate date normalization; final assertion corrected to match existing empty-state text semantics. History pagination and broader acceptance remain outstanding.
+
+P15 connected import/save/start/pause/reload/resume passed 10.3s; fixed companion wrapper hiding workbench guided practice and hydration effect resetting activity after server refresh. P19 fresh password-report/create/revoke/anonymous access browser passed 18.3s; scoped nested confirmation overlay/content stacking fixed. Logs under output/playwright/redesign.
+
+P21 source implemented: complete responsive chat, citation Sheet, account-scoped saved answers, original answer reopen without AI calls, failed-question restoration and request guard. Browser fixture uses isolated subscriptions and intercepted AI responses; no live charge. Current test `ui-upgrade-data-chat.spec.ts`, log `output/playwright/ui-upgrade/data-chat-browser.log`. Resume by checking that result, finish P21 viewport issues, update four CSV entries and generated workbook, then load P22 prompts. Keep source stable during browser runs to avoid Fast Refresh resetting drawers. Coach P17-P21 and P15 follow-up fixes need scoped reviewable commits; preserve unrelated dirty work.
+
+P21-C01–C04 browser passed29.1s both surfaces/all six sizes; types and scoped Coach/Data Chat lint passed. 155 entries now UI implemented with partial verification, zero fully accepted. Source implemented for P22 compact title, honest illustrative SVG label, null-carry bars, scoped latest/baseline/club comparison links and condition coverage; provenance retains repair/close controls. P22 capability remains gated until child mobile workflows are implemented; no mobile handoff counted complete. Next finish P22 local checks, then P23.
+
+## P22–P23 continuation
+
+Reviewable commits: aa7c2222 guided practice follow-up; 0ab12554 responsive Coach/report/workspace/Data Chat UI and action dependencies. P22 workbench smoke passed13.8s all six widths, types/lint clean. P22-C01–C05 desktop UI partial; mobile still In progress while linked destinations retain handoff. Counts:160 desktop UI partial,155 mobile UI partial, zero fully accepted.
+
+P23 new searchable session sheets, swap, filter Sheet/reset/apply, URL-preserved metric/view, distinguishable circles/squares, exact point table, mobile metric pairs/provenance, save/delete pending/error retention and searchable saved-comparison Sheet. Browser running `session-compare-ui.log`; no record mutations in this smoke. Other agent supplies stable state delete action and comparison-workflows integration tests. P23 source needs final test result/CSV update/commit. P24 prompts loaded in /tmp/fkh-p24-prompts.txt; source read but not edited yet. Coordinate any conditions-analysis helper export with other agent.
+
+P23-C01–C05 browser passed57.7s all12 combinations; final provenance readiness guard fixes lost pre-hydration click. P22 hub mobile still gated pending remaining destinations. Counts now165 desktop/160 mobile partial, zero passed. Import companion CSV page includes completed owned plans without source evidence; connected picker test assigned to other agent. Next implement P24 using prepared /tmp/fkh-conditions-controls.tsx and existing classification (export only; no maths change), then run scoped checks.
+
+P24-C01–C04 clean Conditions browser passed all12 combinations in conditions-impact-final; original failure was missing test readiness attr followed by cold-navigation timeout, corrected before clean rerun.9 meaningful Conditions/Impact unit tests and TypeScript pass. P25 UI source applied; fresh test initially lacked required club_id fixture, corrected by creating an owned club. Browser rerun next. P26 prompts read, no UI code changed yet; other agent implementing bounded workspace action state wrappers.
+
+P15/P35 actual full companion import now passed34.2s after both completed-plan guards fixed: normal navigation, chooser planId/source, Full import workflow, confirm/save, correct practice source_session_id, guided measured result and source link. No Link navigation defect reproduced in stable run; fixture compilation needs60s allowance.
+
+## Latest exact resume instructions
+
+Stay on upgrade/untitled-ui-migration. Do not reset tracker or stage unrelated files. Current P25-C01–C04 implemented in source, statuses In progress until `output/playwright/ui-upgrade/session-impact-complete-fixture.log` browser result.9 Conditions/Impact unit tests passed; types passed. P24 committed908af414; P23 d3f4e4e8; P22 40cf60b9; practice import guards d2604fd6. P22 companion hub stays gated until P26 destination is usable.
+
+After P25 browser result: inspect screenshots, record separate statuses/evidence, commit scoped Session Impact files/test plus only its capability hunk (other dirty best-shots/goals remain excluded). P26 prompts are /tmp/fkh-p26-prompts.txt, generic client is prepared in /tmp/fkh-workspace-controls.tsx but NOT yet copied into source. Other thread01a077ea-7dd8-7ef2-979b-944425998882 owns workspace/actions.ts state wrappers and integration tests; APIs are save/deleteAnalysisAnnotationWithStateAction and save/deleteAnalysisSnapshotWithStateAction returning WorkspaceFormResult. Snapshot DB tests2pass; annotation verification pending. Root owns page.tsx and all new UI. Read current workspace page before applying prepared clients. Continue to P27 after P26 scoped checks; broad acceptance gates remain as above.
+
+P25-C01–C04 completed scoped browser28.2s at12surface/viewport combinations, exact stored shot values unchanged. Both fixture schema errors fixed (owned club key, required shot timestamp/sourceRaw). P26 source now applied and types/lint pass: Quality desktop table/mobile issue sheets; annotation/snapshot state forms; stored summary/filter/chart inspection; selected equipment before/after windows and carry bars. P26/P22 hub browser running `analysis-workspace-hub-browser.log`; these rows not marked implemented from unverified source. Root holds source during browser. Other agent workspace state APIs and3DBtests stable.
+
+P26-C01–C04 final actual form browser passed32.7s all12surface/viewport combinations after optional-session sentinel corrected to native empty value. P22 companion hub passed its6sizes; capability now enabled for hub and completed UI destinations. Both tracker surfaces177UIpartial, zerofullyaccepted. P25 committed48df8210. P26 pending scoped commit next. P27 prompts fully read in /tmp/fkh-p27-prompts.txt; existing page and common comparison-workspace client inspected. Begin controlled mode tabs preserving URL/selected entities and common mobile metric pairs/search sheets; maintain player privacy filters.
+
+Import follow-up source changes pending separate verification/commit: upload-dropzone adds disabled from existing import-form isHydrated; queued !file companion branch uses neutral Upload queued on this device message. Other agent verifying flows; do not restage entire companion-range-import because earlier dirty UI must be reconciled separately.
+
+## P27 comparison checkpoint, 7 September 04:00
+
+183/492 components now UI implemented with partial verification on both surfaces; zero fully accepted. P27-C01–C06 complete UI pass: URL mode tabs, honest latest-seven-day focus/baseline descriptions, searchable selectors, full mobile metrics, club sample disclosure, nonfabricated empty chart bars, stateful save/delete and saved-scope reopening. Fresh isolated browser save/reopen after Reset passed34.8s across both surfaces and six sizes; 12 screenshots at output/playwright/ui-upgrade/p27-browser-final. Visual inspection caught and repaired selector squeeze; browser caught cached Reopen state mismatch, fixed by explicit document navigation. Backend comparison4tests incl private-player rejection and exact stored IDs passed. P27 populated player/two-club interaction matrix and broad acceptance remain CSV blockers.
+
+Import followup committed48e6b4ac: hydration-disabled upload controls and queued neutral message, verified3flows10.7s by coordinated agent. P26 committed90fa7612; P25 committed48df8210.
+
+Fresh whole-unit baseline from other agent:53failedfiles/494passed/15skipped;112failedtests/2489passed/71skipped (two stale backend source assertions subsequently corrected). Backend combined15files71tests pass6.34s. Full baseline is not a release pass; broad UI source contract fixes deferred under UI-first order.
+
+Resume: P28 prompts9234–9600 read; implement src/app/(app)/strokes-gained/page.tsx and new controls. Preserve event ownership and calculations; fix category URLs dropping other filters, add mobile filterSheet/event details, move practice action before analysis, and replace zero-based pseudo-waterfall with cumulative display of unchanged category totals. Existing ANALYSIS_LIMIT200 is disclosed and remains full-history coverage work. Next P29. Coordinate source freezes for browser; other thread01a077ea-7dd8-7ef2-979b-944425998882 owns backend followups, root owns UI and commits.
+
+## P28 checkpoint, 7 September04:13
+
+190/492 UI implemented with partial verification on both surfaces;0 fully accepted. P28-C01–C07: complete mobile filters/events, mapped coverage/current baseline disclosures, cumulative waterfall without artificial minimum bars, numeric details and all-hole summaries; source math/ownership retained. Browser p28-browser-complete.log passed19.0s,12screenshots, actual date/category preservation and original shot values unchanged. Initial test failed native select label locator (fixed to semantic combobox role); subsequent test caught global Full Site lg:hidden rule hiding mobile list (fixed page CSS module).
+
+P27 committed81ffc85b; P28 commit pending. ResumeP29 from fully read /tmp/fkh-p29-prompts.txt. Prepared /tmp/p29-what-if.tsx and /tmp/lab-evidence.tsx not yet copied to source. P29 current files page/gapping/what-if/roast; other agent asked to add optional existing snapshot/date/source fields to simulator-lab DTOs for complete paired values. Must preserve existing flight coordinates, fix filtered-zero fallback to all shots, expose selected shot sheet and confidence gaps. P30 next. Full200-event SG history and exactcategory→practice integration remain CSV blockers.
+
+### Outstanding integration findings supplied by coordinated agent
+
+P33 Goals improvement project service has no UI caller yet (getGoalImprovementProjectData/saveGoalProjectWithStateAction): preserve current Goals UI and add baseline/selected plans-drills/completion/subsequent evidence/compare links when route coverage reaches P33. This is an identified missing integration, not a regression justification to reset prior work. P26 quality attention lacks questionable-direction/session-alignment grouping; standalone direction-attention helper being supplied, page wiring remains outstanding. Neither page is fully accepted.
+
+## P29 checkpoint,7September04:25
+
+199/492 UI implemented with partial verification on both surfaces;0 fully accepted. P29-C01–C09 completeUIpass: URLsections, smallerunofficialestimate, allcaveats/bagtruth, exactinput/resetprojections, full gapping selection, session/setup paired existing snapshots+dates/source links, filtered-zero genuineempty map, shotlist+SVGtapdetails, no confidence-gap bridging, private generationconfirmation/errorretry/refduplicateguards. p29-browser-interaction.log35.3spass across12views; mocked503→success no paidAI; originalshotsunchanged. Initialfixture wrong sessiontype corrected; actualSVGmeanmarker interceptedshotclicks fixedpointerEventsnone. Types/lint/8DTOtests pass; populatedequipment/savedbanter mutation/fullhistoricalpagination/AT/zoom/themes remain recorded.
+
+P28 committed6d8b8c2b. P29commitpending. P30fullprompts read /tmp/fkh-p30-prompts.txt. Current speed companion only summary; preserve guidedMobileSpeedSession while exposing full club focus/goals/evidence/trend/projections/RCloud. Need stateful goal/manualsaveform wrappers from otheragent (requested, actionsownedbythem), searchableclubfocus and numericFutureBag/reset. P31next. Remainupgradebranch, no deploy/merge.
+
+## P30 complete UI pass / P31 active,7September
+
+208/492 UI implemented with partial verification on both surfaces;0 fully accepted. P30-C01–C09 browser23.2s all12surface/viewports, exactwarmup+maxreads single-save/goals validation+retry/projection precise/reset/providerdialogcancel. Screenshots speed-centre-browser-final,390companion inspected. Missing stock-yardage fixture caused initial projection test failure; supplied actual isolated stock row. Filtered starter no longer displays unfiltered sessions or stock averages. Shared mobile sticky-header overlap after scroll remains outstanding.
+
+Current P31-C01–C06 code in progress: common full responsive page, URLsections, truthful summary-only median/top-N, searchable all-field reading details, chart/native swing selection, complete retained edit/stateful transfer/delete. Typed backend wrappers supplied and independently DBtested. Next: run tests/e2e/ui-upgrade-speed-session.spec.ts on fixture3116, inspect screenshots, fix findings then record six entries and continue P32. Do not mark P31 implemented before checks. Fullunit baseline now119failedtests/2496passed,55failedfiles495passed19skipped; output/playwright/redesign/full-unit-current.log. P29 committed131202c1; P30+P31 source commit pending.
+
+## P31 UI pass saved / P32 active
+
+214/492implementedpartialboth,0accepted. P31C01–C06 browser21.9s12views, exact correction/recovery/draft/deletioncancel;390companionreview; small fatigue metric wrapping fix afterimages. Initialcoldhydratefailed, stable rerunpassed. Speed combinedsource22files committedfaefc2c6, previouscheckpoint8eb006f0.
+P32 code in progress: common fullpage, allmobilehistory, rangeSheet supported7d/4w/3m/6m/1y, unchangedcurrentreadiness labelled separately, owner-resolved sources/allfieldrecords, complete retained inline training form with stateaction, selectedseries mobilechart+allselecteddates. Next run P32 browser onfixture3116 and inspect types/lint before sixrowsupdated. Otheragentowns Training actions; root UI. P33missingGoalsprojectintegrationnext; preservepreviouslyimplementedGoalsrows.
+
+## P32 UI pass / P33 integration active
+
+220/492 UIimplementedpartialboth,0accepted. P32C01–C06 browser28.7s12views plus exact manual30minRPE5save/errorrecovery/sourceledger/draftdetailsretention. Training-load-browser-ready evidence390companioninspected. Current summary preservesdomainmodel; selectedrange scopes chart and allledgerrows. Fixed first cold unhydratedrangeclickdisabledguard. User UI-first scope unchanged; existingrecommendationmodels reconciliation/fullacceptance remain.
+P33 previouslyimplementedrows preserved; new goal-project-panel.tsx connects existingownedbaseline/practice/drills/completion/subsequent-qualified evidence/comparelinks. Goaldata/actions unchanged. Run ui-upgrade-goal-project.spec.ts fixture3116, maintainbrowserruntimefreeze with otheragent. Next P34 fullprompts onepage. Latestfullunit125failures/2492pass (58failedfiles/492pass/22skip) output/playwright/redesign/full-unit-latest.log; targeted66Speed/Trainingdomain pass.
+
+P33 project integration passed7.9s12views; no increase to220because sixGoalrowsalreadyimplemented. Exactownedbaseline+planIDs persisted, drills/no false subsequent evidence displayed, rawshotsunchanged. Evidence appendedP33C02/C05. ExistingGoals UI preserved. P34 sourceactivelyrewrittencommonfullpage with fourURLsections, allroundcalculations/sourceSheets, eligible-only trendpoints and allmethodcaveats/repairrounds. Types/browserpending; noP34statusesupdatedyet. Next P35/P36previousUI preserve and verify regressions beforefirstunimplementedP37.
+
+## P34 and P37 UI checkpoint — 7 September
+
+P34-C01–C05 and P37-C01–C04 implemented with partial verification on both surfaces. Handicap now renders the complete companion task; methods wrap without truncation, trend excludes ineligible rounds, and all calculation/source fields remain available. Rapsodo retains preview corrections after closing, shows every measurement and original units, guards concurrent actions, and preserves success receipts with metadata warnings. Changed files: handicap/page.tsx, premium.tsx (opt-in wrapText), app-route-capabilities.ts (Handicap only), rapsodo-sync-client.tsx and scoped browser fixtures/tests. Logs: handicap-browser-wrapped.log PASS 21.9s; rapsodo-fixture-import.log PASS 19.9s. Actual Rapsodo shell/provider integration remains unverified. Shared sticky navigation can overlap scrolled content; no full acceptance claim.
+
+Resume: read /tmp/fkh-p38-prompts.txt or P38 in master prompts; implement Providers controlled retained tabs, provider details/actions, full session ledger and truthful current-operation diagnostics. Coordinate runtime edits with other thread worker-replay run first. Preserve all current dirty work and use scoped commits. Refresh Excel after CSV updates. Latest broader snapshot has 125 failing unit tests and 11 bundle-budget failures; these remain outstanding, not UI completion evidence.
+
+## Active P38/P39 checkpoint
+
+Handicap committed e7d76c40; Rapsodo and 229-entry tracker committed 9b504efe. Providers UI implemented locally in providers/page.tsx, provider-details.tsx and provider-connection-actions.tsx; capability switched only after complete controls were exposed. TypeScript and scoped ESLint passed. First browser run rendered the page but timed out waiting for hydration; no console exception recorded. Retry providers-browser-retry.log is active; do not mark P38 implemented-verified until terminal readback. The initial source modifications are preserved, not complete acceptance. P39 prompts read; companion history now includes actual source and correct real/simulator round classification, with latest-three coverage explicit. Its UI was largely already shared with P35; new correction still requires browser proof. Next: finish P38 fixture, then P39 current implementation reconciliation and P40 detailed prompt. Runtime currently frozen for Providers retry.
+
+P38-C01–C04 now implemented with partial verification: providers-browser-controls.log PASS 24.9s on both surfaces and six sizes. First hydration failure and transient invalid-script error were followed by a fully interactive diagnostic run; its failure was the test using mobile Close details label on desktop Close. Correct locator then passed all interactions. Do not claim the transient shared script error is fixed. Current: P39/P40 companion-import-browser.log running; source stable. Next P41 companion result.
+
+P39-C01–C02 and P40-C01–C03 reconciled with canonical importer and marked implemented partial after companion-import-browser.log PASS 22.0s at all six direct-runtime widths. New P39 source/round classification and latest-three coverage verified. P40 reused completed canonical full importer and retained quick/full drafts, not rewritten. No new save mutation claimed. Providers screenshot caught old feature panel saying Ready beside failure: replaced with actual recent job health, added Needs review assertion; providers-browser-health.log now running. Next P41.
+
+## Current exact checkpoint: P42
+
+240 desktop/mobile UI entries implemented partial, zero fully accepted. P38 final health PASS25.1s, committed ee3eace5. P39/P40 PASS22s. P41-C01/C02 PASS25.9s, new permission-bound ImportResultShotReview exposes existing keep/exclude and evidence/club correction in the saved result. Actual review mutation not claimed. P42 companion client and preview currently dirty: preview stays mounted with open state and Resume action; failed login uses onSubmit to retain fields; guarded transitions catch thrown errors. Types passed, browser not run. Critical remaining P42: non-range preview still has desktop-only scored-course restriction. Must provide canonical full scorecard/holes choices on mobile, preserving practicePlanId/exclusions; do not count complete. Read /tmp/fkh-p41-prompts.txt and P42 prompts lines13521–13710, then implement/test P42 before P43. Preserve all other dirty work. No runtime browser active after P41 and Providers final terminal passes.
+
+P42-C01–C03 now UI implemented partial. Course selections route internally to the existing canonical RapsodoSyncClient seeded with the exact preview, owned validated practicePlanId and initial scorecard/matching states. No desktop handoff. Companion quick-range preview remains mounted when closed, exposes Resume, catches thrown save errors; failed connection retains fields. Mocked course fixture PASS19.7s on12views checks exact session/plan, retained club and saved warning; final types clean. Quick-range catch follow-up not browser-exercised. CurrentP43 prompts read, current rounds-scoring-index/mobile-list inspected but not edited; coordinate ownership then implement URL-preserved filters and source-scoped trend while preserving previous redesign. NextP44.
+
+P43-C01–C04 UI implemented partial. Rounds preserves earlier mobile redesign and canonical review links; URL filters survive reload, desktop trend now uses existing comparableScoringRounds for same source/9-or18holes and excludes incomplete rounds. Added full trend evidence sheet, wrapped names and desktop type filter; mobile Import action now reachable. rounds-browser-ready.log PASS14.8s both surfaces x6sizes; final Import/source-label follow-up only typechecked. CurrentP44: first prompt read, remainder /tmp/fkh-p44-rest.txt must read before edits. Latest full unit refresh now134 failures/61files,2484passed/490files,83skipped (full-unit-refresh.log); full lint and fresh typecheck passed in other thread,83backendintegrationtests passed8.77s. 11bundlebudget failures remain. Nextcontinue P44/P45 without resetting any tracker state.
+
+P44-C01–C03 UI implemented partial. Searchable course/tee choices; course change clears mobile tee and prevents Start until explicitly chosen. Existing complete scorecard/draft/idempotent creation kept. add-round-regression.log PASS52.5s covers actual mobile and desktop save plus simulated rejection/retry, hidden-hole validation and axe. add-round-browser-fixture.log PASS4.6s both surfaces x6sizes covers new setup.390 screenshot inspected; added wrapped selected course/tee line after native select truncated long label (not recaptured). Current250UIpartial,0accepted. P45 full prompts loaded /tmp/fkh-p45-prompts.txt; current source inspected. Next implement missing mobile course/tee context correction and align five tabs, preserving MobileLiveRound/offline controls/maps/3D. No P45 edits yet. Existing root backend services/actions remain other agent-owned.
+
+## P45 active implementation
+
+RoundCourseLinkEditor extracted unchanged from desktop and now rendered in mobile Corrections; five section labels aligned, correction/evidence panels retain mounted drafts, full course/tee name shown below mobile header. New tests/e2e/ui-upgrade-round-review.spec.ts running. First round-review-browser.log failed at narrow explicit workbench: MobileCollapsible content closed but global workbench .lg:hidden rule hid its trigger. Fixed local trigger visibility using actual viewport state in mobile-collapsible.tsx; rerun round-review-browser-collapsible.log active. Do not mark P45 passed/implemented until terminal evidence is inspected. Map/live-round/summary existing unit regressions run in p45-regressions.log. Other agent applied strict date calendar validation in rounds/actions.ts before freeze delivery; source now stable, no unrelated actions edits permitted during current browser run. Preserve branch commits through d6a22021 plus P45 dirty source/test.
+
+P45-C01–C09 recorded UI implemented partial, existing specialist/live/review actions preserved. Final round-review-browser-tabs.log PASS16.0s both surfaces x6sizes, retained mobile draft/context/source parity. 11map/live/summary tests pass508ms. Narrow explicit workbench trigger fixed and tab spacing clarified. Broader specialist/live/share and desktop unsaved server-navigation acceptance explicitly outstanding per row. Current259UIpartial,0accepted. P46 full prompt read /tmp/fkh-p46-prompts.txt, course-library/page sources inspected; no P46 edits yet. Next clarify filters apply/reset/URL preservation and complete full-field mobile course rows. Source stable, allbrowser runs terminal.
+
+## P46 checkpoint
+
+P46-C01–C03 UI implemented partial on both surfaces; 262 of492 UI implemented partial, zero fully accepted. CourseLibrary has staged Apply/Reset filters, URL search/location/filter/view persistence, clear-all no-match recovery and wrapped course identity. Changed course-library.tsx, courses/page.tsx, ui-upgrade-course-library.spec.ts. TypeScript passed; browser course-library-browser.log PASS1.0m both surfaces x6sizes. Inspected390 screenshot; existing fixed bottom navigation overlap in full-page capture remains shared gap. Full favourite mutation/permission/network/AT/zoom/theme checks remain explicitly open. Backend auth bootstrap race fixed by other thread:24files86tests pass9.5s; broad134unit failures and11bundle budgets remain outstanding.
+Current: P47 Add Course. Full P47 prompts being read; sources inspected, no P47 changes yet. Next: draft-safe creation forms, Google HTTP errors and canonical selection, OSM stale-result protection/readable geometry status, full mobile capability after implementation. Coordinate courses/actions.ts with other thread; preserve all unrelated dirty work. Continue on upgrade/untitled-ui-migration, scoped commits only, no merge/deploy.
+
+P47-C01–C04 UI implemented partial,266total,0fullyaccepted. Added CourseCreationForm with retained draft/error/busy state; framework redirects rethrown. Add Course now has mounted Google/manual/OSM tabs; Google errors/retry/selection explicit, OSM stale geometry responses ignored and unknown coverage labelled. Complete new-course companion route enabled. add-course-browser-ready.log PASS11.3s both surfaces x6sizes; initial pre-hydration search click failed, readiness gating fixed.360 screenshot inspected: shortened intro afterwards, final intro only typechecked. Companion fixed bar overlaps Country/tee region in screenshot; actual focused-field visibility still outstanding. Exact created-course/tee browser redirect, actual save errors and downstream mobile hole editor remain gaps. Other agent owns courses/actions.ts transaction/numeric fixes. CurrentP48 Course Detail: full prompts read /tmp/fkh-p48-prompts.txt, source inspected; next improve compact identity, favourite errors, complete source/score history, tee facts/readiness, enable exact course-detail mobile route after full task implementation. Preserve other dirty work; no browser active.
+
+P48-C01–C05 UI implemented partial,271total,0accepted. Compact course detail, complete tee/provider facts, full desktop score/source table and mobile round disclosures use existing roundHistoryScore. Favourite hook now returns visible failure and rollback feedback; actual save/remove verified against exact isolated course. course-detail-browser.log PASS23.3s both surfaces x6sizes; screenshot390 inspected. Positive twin/runtime, favourite failure/permissions/AT/themes and downstream editors remain acceptance gaps; original raw round unchanged. Source files: course detail page, course-history.module.css, favourite button/hook, route capability, ui-upgrade-course-detail.spec.ts. TypeScript/lint green. P49 full prompts read /tmp/fkh-p49-prompts.txt; next fix controlled retained tabs, selected tee context, complete coordinate/manual edit and tee sheet on mobile. Existing map renderer must remain. Backend agent owns Google course atomicity in courses/actions.ts; no P49 browser until stable signal.
+
+P49 source applied, NOT yet verified/marked: retained UrlTabs, selected tee query/context, truthful per-tee mapping counts, complete manual editing for owned imported courses, hole disclosure forms, map per-hole drafts/reset and narrow-workbench controls CSS, draft-safe save wrapper, tee sheet bounds/cancel, course-scoped round link, enrichment warning. Types/scoped lint pass. First browser attempt failed before page load because fixture3116 died from JavaScript heap exhaustion (dev-server.log line15138), not a page assertion. Other thread asked to recover owned fixture runtime;3000 untouched. Next run tests/e2e/ui-upgrade-course-editor.spec.ts after fixture is healthy; now also includes actual manual creation -> exact course editor/tee readback. P50 full prompts read /tmp/fkh-p50-prompts.txt; no P50 source changes. Preserve current P49 dirty files and271tracker count until browser result.
+
+P49-C01–C07 UI implemented partial,278total,0fullyaccepted. Final course-editor-browser-tabs.log PASS21.9s after fixture recovery and shared UrlTabs/UntitledTabs readiness guard; cold initial tab click no longer lost. Owner+foreign read-only matrices at6sizes/bothsurfaces. Actual selected-hole save changed only that hole/tee; actual manual course creation opened exact savedcourse/tee. Screenshot390 inspected; fixed companion bars overlap table/tee-latitude region in full-page capture, still actual shared focus/overlay acceptance gap. Map pointer/drag/tile errors/save rejection/AT/theme/source-warning acceptance remain open. Types/lint passed before final shared tab guard; final types pass too. Changed P49page,mapeditor,tee-sheet,course-editor.module.css,sharedCourseCreationForm,UrlTabs/UntitledTabs,capability,test and licensingregister. Next P50 full prompts /tmp/fkh-p50-prompts.txt read; inspect complete ShotPatternMap controls before changing. Preserve specialized projection math/coordinates. Other agent owns course action transactions/warnings, current runtime stable,3116recovered12GB webpack fixture;3000 untouched. Continue scoped upgrade commits, no merge/deploy.
+
+P50-C01–C04 UI implemented partial,282total,0fullyaccepted. ShotPatternMap exposes previously clipped mobile summary/evidence, setup Apply/Reset/cancel snapshot and club search; current request scope hides stale projection while fetching, retry is explicit and assumption/sample warnings visible. Page gives mobile full-field hole/club disclosures and exact geometry links. Initial test label wrong (expectedParinheader); corrected to SVG identity. Next test reproduced actual fixed-nav click interception; bottom clearance fixed it including widecompanion. Final shot-pattern-browser-clearance.log PASS34.0s all12views;13projection/target/signaturetestsPASS203ms;types/lint passed before final padding-only fix. Screenshot390 inspected. Full error/delay/AT/drag/theme matrix stillopen, no math/provenance changed. P51 full prompts read /tmp/fkh-p51-prompts.txt; existing dirty strategy/companion/postround sources inspected, preserve them. Next reconcile pre/post navigation on companion, searchable setup and conditions provenance, then full postround browser fixture. Otheragentbackend100testsPASS; latest broadunit138fails/63files,2480pass/488files,100skipped/25files;11bundlefailures remain. No merge/deploy.
+
+P51-C01–C05 UI implemented partial,287total,0fullyaccepted. Searchable staged companion setup, pre/post navigation retaining course/tee/round context, explicit modelled conditions and complete saved reflections. course-strategy-browser-scorecard.log PASS18.4s both surfaces x6sizes;11 postround/roundlearning tests PASS184ms. Initial fixture stored scorecard as JSON string: corrected seed with db.json and full rerun passed. Measured shots/raw scorecard unchanged. Screenshot390 inspected; shared fixed-bar overlap and full positive trusted-bag/navigation/error/AT acceptance open. Changed strategy pages/navigation/forms/results, PlaySelectionControls and review dependencies. Next P52 full prompts /tmp/fkh-p52-prompts.txt read: complete catalogue on both surfaces, real image previews with fallback, full quality warnings and exact course entry/details links. Preserve other thread catalog ownership backend fix. Continue same upgrade branch, no merge/deploy.
+
+P52-C01/C02 UI implemented partial,289total. Complete shared catalogue replaces reduced companion branch. Full quality notes, supplied real preview URLs with loading/missing/failure states, all available grades, exact runtime and mapped-hole links; route loading/service-error recovery added. course-twins-browser.log PASS3.5s isolated fixture both surfaces x6sizes,390 screenshot inspected. Types/scoped lint pass. Actual app shell/font/3D/permission/error-boundary/AT acceptance open. Files course-twins page/catalogue/loading/error and fixture/test. P51 commit74de7f0e includes previously untracked review dependencies and hydration helper. Next P53 full prompts /tmp/fkh-p53-prompts.txt read; preserve older dirty Play redesign while adding missing full mobile planning facts and staged searchable setup. Other thread owns catalogue import ownership fix,104backend tests pass; no browser active.
+
+P53-C01–C05 UI implemented partial,294total. Requested-surface rendering (no duplicate hidden page), staged search/tee setup retaining failure drafts, real preview disclosure instead of generic pre-round art, mobile full planning facts and selected-tee mapping readiness. Active round remains sole start/resume priority. play-browser-label.log PASS37.9s both surfaces x6sizes; first run had unstable search accessible name including result count, explicit aria-label fixed. Screenshot390 inspected; shared fixed-bar overlap still visible. Types/lint pass before final label change. Positive trusted-bag transition and preview/twin tee semantics/error/AT remain open. P52 commit7e0f72ef. Next P54 prompts /tmp/fkh-p54-prompts.txt: finish reading untruncatedC03, inspect runtime/scene/mobile controls and improve fallback selected-hole and communications draft/errors without touching renderer math. Other thread owns legacy Play select cookie cleanup/tests; no browser active.
+
+P54-C01–C04 UI implemented partial,298total. Existing3D math/renderer retained. Desktopfallback selected-hole/search/evidence, stagedViewOptions, visible drawer headings/touch targets, chat failed-draft retention/duplicate-send/reconnect/voice failures. twin-runtime-browser-wrapped.log PASS4.4s all12fixtureviews;15regressionsPASS95ms. Browser3D intentionally stubbed; actual3D/save/voice/positive-replay/sheetfocus acceptance open. Screenshot390 revealed long-name truncation and draft contrast, fixed and fullrerun/retaineddraftcapture inspected. Runtime fallback page overflow made scrollable. P53commitc1b06cf5. Next P55 full prompts /tmp/fkh-p55-prompts.txt read, source inspected. Backend agent reviewing course-records.ts hub liveAttemptCount wrongly counts boards and arbitrary/unverified leader; do not edit that file. Await canonical champion category/period/proof shape while implementing full mobile board and loaded80course scope. No browser freeze active. Same upgrade branch/no merge/deploy.
+
+P55-C01–C03 UI implemented partial,301total. Full responsive record browser, compact proof context, canonical category/period bounds and server verification, real submissions count. course-records-browser.log PASS15s all12actualappviews; types/lint pass;390 screenshot inspected. Backend hub11targeted+periodregression pass;107combined backend snapshot. PositiveverifiedleaderUI/downstreamP56P57/servererrors/80coursepagination/AT/sharednav acceptance open. Changed hubpage,newcourse-record-board.tsx/CSS,exactroutecapability,course-records.ts hubbackend and integrationtest. P54commitb507a2e2. Next P56 prompt /tmp/fkh-p56-prompts.txt read throughP56 (filealsoincludesstartP57), source partlyread throughpreviousrounds. Finish source then implement full responsive category table and existing scopeURLnavigation; await otherthread read-only semantics review before editing backend. No browser active, no deploy/merge.
+
+P56-C01–C03 UI implemented partial,304total. Full category records on both surfaces, proper scope/period/tee/proof/own/friend facts, UnderlineURLtabs and exactcategorysubmissiontarget. course-record-scopes-browser.log PASS33.3s12views/reloadBackForward/searchsort/DBtargetIDs. Types/lint pass;390capture inspected. Backend activeboard+verifiedleader filtering/nofallback with12targetedtests. Noactualsubmission/P57/positiveverifiedleaderUI/AT/sharednavigation acceptance. P55commit5638c415. Next P57 prompts read17193–17465, source page readthroughleaderboard and uploader full. Fix currently stale locked selected-round score, draft/error review form, scorecard uploader clears old token on filechange and supports5MB JPEG/PNG/WebP preview/retry/remove, truthful receipt only owned attempt. Backend agent read-only auditing until P56 commit completes; then coordinate backend fixes. No browser active.
+
+## P57 record detail — 7 September
+
+P57-C01–C05 implemented/partial. Full mobile task, selected saved-round score, proof preview/retry/removal/file bounds, review step, retained failure draft, stable retry UUID and owned numeric receipt. Actual12-viewport matrix PASS26.0s (record-detail-browser-final.log); isolated proof fixture PASS17.8s. Types/scoped lint pass,390 capture inspected. Backend110tests pass; transaction contains proof/attempt/evidence/ranking/feed writes and retry returns same ID.
+Regression identified in P55/P56: active-only result filter hid recalculated status=verified leaders; corrected to allow active/verified with verified verificationStatus. Initial browser total expected12 but found13: explicitly asserted one pre-existing autoSyncedFromVerifiedRound manual scorecard plus12 unique manual requestIds; source scorecard unchanged. Screenshot caught missing numeric receipt and manual-only Bronze displayed as verified leader; now numeric and Ranked labels with explicit proof explanation.
+Changed detail page, record-attempt-form, shared scorecard-proof-uploader, exact detail route capability, course-records/actions+service, transactional proof/feed helpers and fixtures. Outstanding: real OCR/signed positive proof and tournament consumer browser, fully prefiltered eligibility, >20 receipt history, AT/zoom/theme/sharedfixedbars. Existing manual-only auto-ranking rule preserved and disclosed.
+Resume: preserve upgrade branch and completed rows. Read P58 prompt only; implement six Challenges components desktop/mobile, then P59. Coordinate backend owner before shared changes. Keep CSV authoritative and regenerate workbook. No main merge/deploy.
+
+P58 in-progress checkpoint: six component UI changes implemented in new challenge-workspace.tsx and compact server page, plus local loading/error. Types/lint pass. Actual matrix is being rerun after hydration readiness and development-only Next indicator interception fixes. Backend date/status and modelled-shot exclusion regressions passed. Do not count P58 implemented/partial until challenges-browser-final.log is terminal PASS; preserve original failed evidence. Next P59 only after this batch.
+
+## P58 Challenges — 7 September
+
+P58-C01–C06 implemented/partial,315 total/0fullyaccepted. Shared full responsive page replaces companion subset and oversized decorative cards. URL status/counts/search, full target/evidence/proof/window/rank facts, closed join explanation, readable rules/focus return, all existing creation fields+review and retained draft on close/date errors; no invites on opening/review. Backend rejects invalid/rollover dates and closed joins, excludes modelled/future shot evidence.
+Browser challenges-browser-final.log PASS59.7s: both surfaces×six sizes,12 actual public creates preserve exact privacy/dates/template rules and zero invites. Types/lint pass,1440board+390review captures inspected. Earlier failures preserved: Rules prehydration click fixed readiness; Next development indicator overlapped Cancel, test makes only that dev portal noninteractive and asserts no pageerrors; no app click forced. Backend9targetedtests pass.
+Files: challenges/page, loading/error, new challenge-workspace.tsx, actions/date test, lib/challenges+lifecycle test, integration challenge workflow, ui-upgrade-challenges browser fixture. Outstanding per tracker: positive rank browser/search edge cases/private/friend/invitation fixtures/savefailure idempotence/immutable final snapshot/AT/zoom/theme/loadingerrors.
+Resume: load P59 seven detailed prompts only; implement full detail actions/results/evidence/comments/invitations desktop/mobile, use authorised isolated fixtures for external-style mutations. Coordinate other agent before shared backend edits. NextP60. Preserve CSV rows and regenerate Excel. Keepupgradebranch/no merge/deploy.
+
+## P59 Challenge detail — 7 September
+
+P59-C01–C07 implemented/partial;322total,0fullacceptance. Full shared page has Board/Command/Rules/Attempts/Chat, retained URL panels, desktop table/fullmobile ranked proof details, personally highlighted result, canonical qualifying source session link, joined-status confirmation, creator-only searchable review invitation and chronological confirmed comments. No arbitrary ?invite=sent success shown.
+challenge-detail-browser-role.log PASS2.2m both surfaces×six: exact250yd qualifying import rather than excluded999; textarea draft retained across tabs, confirmed save clears composer and creates one row; invitation Cancel inert/review explicit/onepending; friend JoinCancel/Join/LeaveCancel/Leave exactrows; source shot data unchanged. Types/lint pass,390workbench capture inspected. Earlier two failures were label locator absence, not proved lost draft; snapshots retained text. Native history switches now preserve mounted panels; role selector verifies input. Nextdevportal pointer interception excluded only in test; pageerrors asserted empty.
+Changed detail page, detail-sections, comment-composer, invite-review, membership-dialog and join/leave adapters; actions state wrappers and redirects; narrow invitation closed/expiry guard + tests. No external users contacted: only local synthetic fixture invitations/comments.
+Open: per-rejected-shot ledger absent/current aggregate disclosed, closed results recomputed not immutable, full tie/low-wins/multi-player browser/savedview/export/permission edge cases/idempotent comment retry/AT/zoom/theme/nativekeyboard. Broad unit snapshot now168failed/2462passed/111pending and73files failing assertions; defer reconciliation untilUIpass per user.
+Resume next: read P60 three prompts, implement tournaments index bothsurfaces with real status/scope, fullcards/table/proof detail and create CTA. Other agent owns narrow tournament join guard currently; coordinate freeze before browser. Then P61. Keep branch, trackers and existing completed work; no merge/deploy.
+
+## P60 Tournaments index — 7 September
+
+P60-C01–C03 implemented/partial,325total/0accepted. Sharedfullwidthindex with countedURLstatus/course/search/order, desktop fulltable and fullmobileeventdisclosure. Closed/cancelled events do not imply openentry. Exact /courses/:id/tournaments alias nowpassescompanioncapability and redirectswithcourseId. LongnativecourseSelectintrinsicwidth fixed; fullcourseidentity remains in supportingcopy.
+Browser tournaments-browser-alias.log PASS1.3m all12: aliascourseID,1/0filteredcounts, statuses/reload, search/no-match/resetquery/nameorder, mobileallfields and actualcomponent/documentbounds. Types/lintpass,390 capture inspected. Prior teststrictmatches loading/count and hidden desktopdescription corrected; prior aliasdesktopgate and overflowingselector were realUIdefects fixed.
+Remaining pertracker: latest80global source scope, positive entered/result fixtures, clear/BackForward/unknowncourse/errors/AT/zoom/theme/nativekeyboard. Backend tournament transactions+entry/dateguards currentlydirty/tested, reservedforP61review/commit; indexcommitonlyownsUI+scopedalias.
+Resume:P61 detailedprompts only, full eventdetail/entry/round submission bothsurfaces; coordinate backendowner beforeedits. P62 followscoverage. No mainmerge/deploy; preservecompletedrows and regenerateworkbook.
+
+## P61 active implementation
+
+All eight detail UI components are applied and in progress. New tournament-detail-sections, tournament-round-progress, tournament-submission-form; shared entry and withdraw now confirmed form-state actions; optional proofRoundNumber sent by uploader and keyed to round. Full mobile standing details replace preview. TypeScript/scoped lint pass. Initial browser timed out during first route compilation/loading; tournament-detail-browser-ready is the active repeat. Do not claim browser completion until terminal result. Next P62 Leaderboards prompts read. Other agent holds runtime freeze during matrix.
+
+## P61 saved UI checkpoint
+
+P61-C01–C08 implemented, total333, fully accepted0. Full tournament task now both surfaces, canonical Rules/Submit/Rounds/Board query sections, exact owned receipt, no false50%progress, round verification labels, full mobile standings/history, review/pending/error-preserving actions, proof bound to round. Next-round form keyed to confirmed next round to reset after save. Actual all12 matrix PASS2.2m tournament-detail-browser-stack.log; additional1440/390 bothsurfaces multi-round PASS47.6s tournament-detail-multiround.log. Types/lint pass. Earlier firstcompile timeout and subsequent isolated Invalid token preserved as unresolved intermittent evidence; repeat zero pageerrors. Backend actions9tests, round-token4tests and tournamentworkflow11tests pass per coordinated terminal readback. Source service diff reviewed: transactional proof/evidence replacement, exact retry fingerprint, terms/join/date/courseownership checks; existing golf scoring preserved. Outstanding full acceptance enumerated per CSV. Continue P62 Leaderboards (all five prompts already read), thenP63. No live browser freeze after multiround terminal.
+
+## P62 UI checkpoint
+
+P62-C01–C05 implemented;338partial/0full. SharedfiveboardUI and full mobile detailpanels/filter/sort task, preserved original rank/no fake movement. Exact URLperiod/search retained; native fields wait hydration. Course leaders verified+active/verified statuses, active record, visiblecourse; tournament active and own/public/friends-onlyvisibility. Actual12matrix PASS1.1m leaderboards-browser-final.log; sort initial prop wiring corrected then4case1440/390bothsurfacesPASS25.7s leaderboards-sort-final.log; types/lintpass. Ready prior run overlapped otheragent tournamentqueryedit, hencefinal stable rerun. Otheragent tournamentdirectoryprivatefriendleak reproduced then guarded;12targetedtestsPASS2.56s. P61commitb671864a. P63 all6promptsread; owns achievements page/client/ledger and newsharepreview. Keep achievements maths/source unchanged. Broad positive ranks/toolbars/AT/load/theme acceptance inCSV.
+
+## P63 UI checkpoint
+
+P63-C01–C06 implemented;344partial/0full. Full sharedpage removes mobile ledger/share/catalogue restriction. Adaptive exact metrics fixed observed1024clipping; full mobile evidencecards, native buttonbadge modal withdate/source, stagedfilterdrawer, mobile datepicker+actualeventlist; owner-only exactfield sharepreview with cancelinert/failure/retry and no posting. Isolated1200unlocks/1201badges/60000XP all12 PASS52.9s; actualpage1440/390bothsurfaces PASS45.7s. Types/lintpass after finalclearfilters/copy refinements and synthetictrigger enum fix. Sourcefallback8tests+shareendpoint3testsPASS, service eligibility/maths unchanged. P62commit730baa6d. CurrentP64Friends all4prompts read; rootowns page/tabs/directory/actionmenu/invitelink. Otheragent adding confirmedrelationshipFormAction plus safeNext guards/tests, preserving existingexports. No browser freeze currently. NextP65Groups.
+
+## P64 UI checkpoint
+
+P64-C01–C04 implemented;348partial/0full. Full Friends task bothsurfaces: counted URL tabs/search preserved, full relationship rows, named review with inert Cancel and confirmed pending/errors, invitation link/QR preview and actual clipboard feedback. friends-browser.log PASS4.6m all12: accept/remove/request/cancel/block/unblock exact synthetic rows; Cancel leaves request/friendship unchanged; invitationcopy exactreadback; zero pageerrors. Types/lintpass,390screenshot inspected. Files friends/page,tabs,directory,actionmenu,invitedialog,actionstate wrapper/tests, scopedcapability, browserfixture. Full acceptance gaps perCSV. Runtime freeze explicitly released. Next P65 four prompts read; rootowns groups page/directorytabs/create-sheet/decisionUI; otheragent owns index state wrappers+tests. Preserve all other dirty files. After P65 check, updateeachrow/Excel/commitupgradebranch thenP66. No merge/deploy.
+
+## P65 UI checkpoint
+
+P65-C01–C04 implemented;352partial/0full. Full directorytabs/counts/history, wrappedprivacy+facts, namedinvite/join review, complete retainedcreateform/privacyreview/confirmedstate. Actual groups-browser-final.log PASS2.2m all12 with Back/reload/accept/Cancel/create exactpublicsavedvisibility andonlycreatoradminmembership/noinvites; zero pageerrors. Initial raceawaitURL and wrongexpectedowner-vs-admin role test assumptions corrected, no production role change. Backend feed failure reproduced persistedgroup then fixed atomicgroup/membership/feed:11testsPASS1.24s. Types/lintpass,390companion screenshotinspected. Files groups/page,directorytabs,create-sheet,newgroup-decision,actions/tests,libgroups/tests,capability+browser. Next P66 sixpromptsread, drafts in /tmp/fkh-group-{section-tabs,member-list,post-form,danger-actions}.tsx; integrate afterP65commit. Otheragent will addpost/dangerstateactions and fix currentviewerRole sourcedfromlastmember. No activebrowserfreeze afterexplicitrelease. Continue tracker/Excel/scopedupgradecommits, no merge/deploy.
+
+## P66 UI checkpoint
+
+P66-C01–C06 implemented;358partial/0full. Full retainedclubhousepanels, exactgroupidentity/privacy, completeweeklylist/no0tie fakeleader, datedloadedposts, searchabletable/mobilefullmemberdetails, postreview/draftretention, distinctnamedleave/deleteconfirmedstates. group-detail-browser-final.log PASS3.1m all12: draftacrosstabs, exactpost, Cancelinert, memberleave andownerdeletecascade, zeropageerrors. Realreadiness andfixedsocialfeedlauncheroverlap fixed; initialexpectedno-roundlabelcorrected toexistingDTO;12.1sdevPOSTexceeded10sassertionthen60snavbudgetpassed. Types/lintpass,390inspected. Backend16testsPASS1.41s including publicvisitorrole null ratherthanlastmember role, fullmembercounts unchanged. P65commit80aaa57d. NextP67 fourpromptsread, prepared/tmp/fkh-apply-feed-ui.py plus feedfilter/actionform/itemcontrols/statuscomposer/browserfixture. Rootownstheseandcopy-share-image-button; otheragentnowownsfeedactionsstatedispatcher+tests. No runtimefreeze afterexplicitrelease. Preserveotherchanges, updateeachrow/Excel/scopedcommits; no merge/deploy.
+
+## P67 UI checkpoint
+
+P67-C01–C04 implemented;362partial/0full. Fullsharedfeed/all6actualscopes, loadedsearch/datefilter/count/Clearall/CSV, fullsourcefacts/evidencedates, namedconfirmeditemmenus, reaction/commentpendingerrors, explicitpostreview/nativeaudience/photoexistingprocessing. feed-browser-select.log PASS4.1m all12layouts/filters/date/search/order/originalsourcepreservation;1440/390bothsurfaces4actualprivatepost/kudos/comment/deleteCancel/deletecases; zeropageerrors. Types/lintpass,CSV2testsPASS229ms,actions14PASS202ms. Coldcompilegoto60stimeout first; serveralivefavicon200, retrycompiled withoutrestart. Selectpopupbehindoverlayactualdefectfixednativefield. Hostmemorypressure observed, no unrelatedprocesses touched. Companion390captureinspected. P66commitc1c93629. NextP68 fourpromptsread; draft/tmp/fkh-social-task-form.tsx,saved-recaps,safety-records. OtheragentownsconfirmedSocialIntelligenceFormAction/evidenceFeedByIdownerlookup/tests. Do notactualAIgenerateonserver withunknownAIcredentials; useisolatedmockforgeneration and actualseededrecap/reportfixture. NextP69. PreserveCSV/workbook and scopedupgradecommits; no merge/deploy.
+
+## P68 Recaps and Safety UI checkpoint
+
+P68-C01–C04 UI implemented with partial verification. Shared full workspace, saved full recap body and exact historical own evidence, unavailable foreign/deleted evidence, explicit current generation scope (latest8 own activities), retained review/error/retry generator, named report confirmation, searchable/sortable safety table and full mobile record details. Changed social-intelligence page, social-task-form, saved-recaps, safety-records, backend state action/evidence lookup and scoped fixtures. No actual AI request in browser; isolated generation action stub tests failure/retry with identical reviewed parameters.
+Checks: social-generation.log PASS9.9s all6sizes; social-intelligence-browser-repeat.log PASS1.7m both surfaces x6 sizes, saved evidence unchanged, report Cancel inert/exact confirmed rows, full mobile safety details,0pageerrors; companion390 screenshot inspected. Types/lint clean; social-recap-final.log6backendtests pass. First actual navigation cold compilation timed out; repeat passed with no source change/restart. Broader acceptance remains in each CSV row,0 fully accepted.
+Resume: P69 prompts read; Profile drafts prepared /tmp/fkh-profile-{page,section-tabs,edit-sheet,share-dialog}.tsx. P68 runtime freeze explicitly released; other agent owns profile action wrapper and per-scope backend privacy fix/tests. Root owns Profile UI files and capability exact route; coordinate new freeze before browser matrix. Continue P69 thenP70.
+
+## P69 Your Profile UI checkpoint
+
+P69-C01–C09 UI implemented with partial verification;375/492 UI implemented,0 accepted. Shared full-width identity/sections; full achievement labels/unlock source disclosures; dated search/order record table and complete mobile detail panel; preserved native modal editor draft; stateful save errors; media progress/failure/retry/restore; saved sharing scopes and exact profile-link/QR error feedback. Existing per-scope loader bug corrected: accepted friends no longer override private rounds/bag/handicap; profile header handicap filtered too.
+Changed profile page/UI files, profile-records.tsx, profile actions and social loader, scoped tests. Types profile-types-final.log terminal clean; scoped lint ready clean; isolated profile-edit.log PASS4.5s atall6sizes (draft retained, invalid image keeps saved avatar, save failure/retry identical payload); backend profile-privacy-final.log6PASS plus profile-populated-privacy.log actual populated bag/round/handicap visibility1PASS1.62s.
+Actual profile-browser.log and profile-browser-repeat.log BOTH FAILED initial60s navigation during local compilation, before UI assertions. Full actual viewport screenshots/save/privacy/QR remain outstanding. UI-first user direction: defer this matrix and continue P70 instead of repeated compile waits. P69 runtime freeze explicitly released; other agent proceeds P70 category privacy plus exact pending request ID. Root owns public-profile UI. Rerun tests/e2e/ui-upgrade-profile.spec.ts on3116 when compile recovers, preserve failed logs. Prepared P70 /tmp/fkh-public-profile-page.tsx; detailedP70prompts read.
+
+## P70 Public Profile UI checkpoint
+
+P70-C01–C04 UI implemented partial;379/492 UI,0 fully accepted. One shared identity header, current relationship actions using exact pendingRequestId and existing confirmed state API, full permitted activity/ledger, complete mobile stock-bag details and searchable/orderable semantic table. Additional category privacy filtering restricts collection/public/item/comment access without widening item.visibility; owner/unmapped behavior retained.
+Changed public profile page/public-profile-bag.tsx/social.ts/capability and feed-category privacy + browser tests. public-profile-types-final.log and scoped lint clean. public-profile-final.log2files3backendtestsPASS1.78s. Actual profiles-browser-ready.log overall1PASS(P70),1FAIL(P69 initial60s goto),3.9m: P70 all12 surface/size combinations passed exact pending request Cancel/accept, private categories/header absent, shared full bag detail, search, block Cancel,0pageerrors/overflow. Companion390 capture inspected: caught the closing confirmation transition, so a neutral page capture remains outstanding; fixture now waits for dialog removal before future screenshots. Existing6feed item limit disclosed; broader acceptance stays outstanding. P69 remains route-unverified after additional compile timeout.
+Runtime freeze explicitly released. NextP71 Settings14components; all detailed prompts read. /tmp/fkh-settings-{workspace.tsx,workspace.module.css,dirty-form.tsx,access-actions.tsx} are prepared drafts. Other agent owns Settings/notification action state wrappers+tests; root owns page/UI including offline/theme local adjustments. Continue this branch, preserve tracker, do not rerun passed P70 without a regression.
+
+## P71 Settings UI checkpoint
+
+P71-C01–C14 UI implemented partial;393/492 UI,0 fully accepted. Full retained9section workspace and phone index/back; exact scoped state saves, errors/reset, draft preservation; invitation role/recipient review and named access controls with server-confirmed result; full mobile access details; current billing entitlement; accurate legacy-default versus actual-access copy; offline loading/error distinction, payload size/freshness, retry/removal feedback; typed reset/delete and final confirmations preserved, export access beside danger forms.
+First actual settings-browser.log failed Save changes missing after early SSR typing; fixed SettingsDirtyForm to disable fields until ready. General Reset now leaves another Appearance preview intact. Final settings-browser-ready.log2PASS2.1m: isolated6size form/error/retry/exactinvite/no-callCancel/theme-preview protection; actual12surface-size combinations all9sections, retained draft/saved names, invitationCancel noinsert, ResetCancel seeded golf session remains,0pageerrors/overflow. Companion390 screenshot inspected. Types settings-types-ready.log clean; settings-lint-complete.log final scoped lint clean. Backend5settings/sharing+2notificationtests pass. Full acceptance limitations in CSV; no actual reset/delete.
+Changed settings page/workspace module/draft/access/offline UI, theme-select44px, Settings+notification state actions and tests. Root owns UI. Freeze explicitly released; wait until P71 action staging done then otheragent proceedsP73 acceptance state API. Prepared /tmp/fkh-notification-preferences-page.tsx and /tmp/fkh-invitation-{page,accept}.tsx; P72/P73 detailed prompts read. ContinueP72 thenP73; no main/deploy.
+
+## P72/P73 UI checkpoint
+
+P72-C01–C03 and P73-C01–C02 UI implemented partial;398/492 UI,0 fully accepted. Notification full9categories/5toggles, stateful save/reset/errors and persisted labels. Invitation exact recipient/role/expiry review, Cancel, confirmed pending/error/success and unavailable states. Backend invitation-state-final.log5PASS. Types preferences-invitation-types-final.log and scoped lint clean. Actual notification-preferences-browser-final.log2PASS2.4m, both routes12surface/size combinations each; notification DB roundtrip + Settings parity, invitation Cancel/no membership and exact role acceptance. Invalid states390 checked. First notification test failed ambiguous Back link selector; corrected exact notification-section href. P73 companion390 inspected: neutral top capture/focus-header clearance outstanding. Broader acceptance remains CSV blockers.
+Changed notification and invitation pages, invitation-accept.tsx, settings acceptance state API, scoped tests, settings capability summary→companion. Freeze explicitly released for P74 loader and root UI. Next resumeP74 shared page/ledger/not-found applied; otheragent writing shared-account-data.ts plus scoped tests. Read allP74 prompts. Run types/lint/browser once agent stable, then continueP75. Keep existing bestshots/goals capability diffs unstaged. No main/deploy.
+
+## P74 UI checkpoint
+
+P74-C01–C03 UI implemented partial;401/492UI,0 fullyaccepted. Full shared identity/read-only role summary, source/sample metrics, loaded20 searchable/orderable session ledger, full mobile detail panel, scoped minimal loader and explicit unavailable route. Partial scorecard no longer presented as total. shared-account-types.log/scopedlintclean; backend shared-account-data-final.log1PASS1.14s allroles/owner/revoked/invalid/scoping/excludedshots/partialtotal. First browser fixture required raw_csv_text fixed. shared-account-browser-final.log thenFAILED before targetpage: /surface/workbench500 Unexpected end of JSON input in Next runtime,64s_errorcompile. Actualviewport/screenshots unverified; preserve logs/test, no restart/clean. UI-first continueP75.
+Freeze RELEASED; root applies billing page/manage/checkout/history drafts. Other agent applies confirmed checkout/portalstate APIs and exact availability; no livepayments. P75 prompts fullyread. CurrentP75,nextP76; preserve all401implemented and unrelateddirtychanges.
+
+## P75 Billing UI checkpoint
+
+P75-C01–C06 UI implemented partial;407/492UI,0 fullyaccepted. Savedplan/currentperiod preserved, native completecomparison andpracticalallowances, exactcatalogmonth/yearprice andconfiguredavailability, review/cancel beforeproviderhandoff, statefulpending/error, fullmobilehistory/details. No invoiceamounts/currencies/URLs in storedhistory; truthfulgapplusportalaccess. Querycheckoutsuccessnowneutralreturnnotice, nofalsepaymentconfirmation. billing-controls.log1PASS24.6s6sizes withmockedno-callCancel/exactretryparameters/providererrors. Actualbilling-browser-ready.log1PASS1.0m12surface/sizes savedpaidaccess/history/allowances/foreignprivacy, no payments. FirstactualearlyAccordionclicklost→nativedetails; nextstrictduplicatefeatureselectorfixed; nexthistoryclicklost→readyguard. Companion390inspected; neutralInfoiconfinalminorchangeaftercapture. Backendredesign/billing-state-final.log7PASS; safeerrormessagefollowup redesign/billing-safe-state.log7PASS2.37s, targetedlintclean. Billing-admin typesclean;3unusedimportwarningsinnewadminUIremoved.
+Runtimefreeze RELEASED. P76 page/nav/attention/strip applied, allP76promptsread; types/lint billing-admin logs running. Otheragentoverviewpermission/countread-onlytest5PASS2.77sredesign/admin-overview-integration.log. RunP76isolated+actualafterstablefreeze; nextP77. P75lib/billing onlyavailability additions shouldstage via baseline /tmp/fkh-billing-before-p75.ts; keep prior servicecatchdiffunstaged. Capabilitybillingcategory+exactexception onlyP75; /adminexactexceptionP76pending.
+
+## P76 Operations UI checkpoint
+
+P76-C01–C05 UIimplementedpartial;412/492UI,0fullyaccepted. Fullsharedconsole, collapsible/searchadminnav, datedfactualstatus/drilllinks, orderedqueue/fullmobiledetails, complete auditactor/action/target/source and explicitunknownoutcome, namedworkflowlinks. Isolated6sizePASSadmin-overview-browser.log; actualadmin-overview-browser-final.logreachedall12surface/sizes andscreenshots, thenFAILED finalinactiveadminreload90stimeout. Finalpageerrorsassertionnotreached. Backendredesign/admin-overview-integration.log5PASS2.77s authorization/exactcounts/no-readmutations. Companion390inspected. Typesbilling-admin-typesclean;3unusedimportsremoved. Originaltests/integration/admin-workflows.test.ts preexistinguntrackedbroaderworkleftunstaged; dedicatedoverviewtest extracted and redesign/admin-overview-extracted.log1PASS2.71s. Serverlog shows /admin307 then cold /todaycompile atfinalreload timeout; destinationrender unverified.
+Freeze RELEASED, P77page/directory/filters/stateformapplied; genericadminFormAction and optionalexpectedUserIdserviceguardpendingotheragent. Preserveoperatorgrant-to-nonadmin capability, owner-only lifetime/deactivate/ownerrole. P77querylimit100 explicit, newcoachfilter, no paginationrewrite. Runtypes/lint/statefixtures afteragentstablethenbrowser; nextP78. Exactcap/adminonlybelongsP76, /admin/userspendingP77; preserveotherdirtycapdiffs.
+
+## P77 Account Management checkpoint
+
+P77-C01–C04 UIimplementedpartial;416/492UI,0fullyaccepted. Full directory/detail withallidentity/plan/role/activity/auditfields, queryfiltersdrawerApply/Reset/Clear/count, coachfilter, scopeexplicitlatest100matchingsearchbeforefilters. Confirmedrole/lifetime/deactivationforms snapshotexactID/email/role; operatorgrant capabilitypreserved, ownergatesunchanged. admin-users-controls.log1PASS7.7s6sizes; actualadmin-users-browser-final.log1PASS2.4m12surface/sizes exacttargetoperatorgrant/Cancel/ownerunchanged/querypreserved. FirstApplyleftdraweropenfixed. Types/scopedlintcleanbeforelastphonewidth adjustment. Companion390inspected: closingdrawertransitioncapture; widenedsearchfieldafterreview, neutralfinalcaptureoutstanding. Backendadmin-state-identity18PASS/admin-action-routing12PASS; dedicatedadmin-identity-extracted1PASS958ms.
+Freeze RELEASED; rootP78page/moderationqueueapplied, fullpromptsread, otheragentaddingauditRowsDTO+dedicatedpartialbulk/audit tests. No nextbrowseruntilstable. P77admin.ts stageonlyoptionalexpectedUserIdsignatures+guards; broaderpreexistingrole/concurrencychangespreservedunstaged (combinedworkingtree tested). NextP79. No main/deploy.
+
+## P78 Moderation UI checkpoint
+
+P78-C01–C05UIimplementedpartial;421/492UI,0fullyaccepted. Separate80recordqueues, filters/search/orderURL, selectionclearedwhenhidden, exactreviewlist, pending/error/actualpartialreceipt, allmobileevidence/actionfields, actualresolutionaudit80records + preserved8recordstatushistory. Isolated6sizePASSadmin-moderation-browser.log; actualadmin-moderation-browser-final.log1PASS1.1m12surface/sizes: stale1of2→actual1resolved/1audit, Cancelinert, separateeventunchanged/highseveritydetails. Firstactual390readyguardstayeddisabled15s; bounded60sreadinesswaitpassed, no runtimechange. Types/lintclean. Backendredesign/admin-moderation-bulk2PASS4.04s. Companion390screenshotcaughtdrawerexittransition; neutralcaptureoutstanding. Futurecaptureswait drawer/sheetoverlay removal, notrolecountalone.
+Freeze RELEASED. P79 page/ledger/lifetimeUIapplied; owner-gatedresolveAdminGrantTargetAction and actual lifetimeauditRowspendingotheragent. FullP79promptsread; no fabricatedbillingtransitions. P78admin.tsstageonlygetAdminModerationDataauditaddition, preserveotheragentroleconcurrencydiff; nextP80.
+
+## P79 Billing administration UI pass, 7 September
+
+P79-C01–C04 UI implemented with partial verification. Full shared task, exact named account lookup before permanent access review, loaded subscription/entitlement records with full mobile detail, configured limits and actual grant audit. New admin-billing-ledger.tsx/admin-lifetime-grant.tsx; billing page, action/loader and exact capability updated.
+
+Checks: admin-billing-browser.log 2 passed (1.2m): isolated controls at six sizes and actual both surfaces x six sizes; Cancel no writes, full record identity/details, no overflow/pageerrors. TypeScript/scoped lint clean. admin-lifetime-audit.log 3 backend tests passed; resolver contract 2 passed per agent. Companion390 screenshot inspected after overlay removal. No real payment operation. Acceptance gaps remain in CSV.
+
+Resume: P80 prompts fully read. Existing template CRUD absent; other agent implementing supported service/action; root owns full responsive templates/boards UI. Coordinate before shared edits. P79 browser freeze released. Preserve existing dirty work and all previous partial evidence.
+
+## P80 Challenge administration UI pass, 7 September
+
+P80-C01–C04 UI implemented with partial verification. Shared full page, exact newest80 metrics/register with complete mobile board details and participant link. New admin-challenge-templates editor creates/copies/updates supported templates with reviewed identity/rules/availability and retained errors. New admin service/audit preserves linked scoring, immutable keys and optimistic versions; inactive templates rejected by challenge creation with transaction locking. No invented template visibility or unsupported admin board close/publish actions; these gaps remain explicit.
+
+Checks: admin-challenges-types.log and scoped lint clean. First isolated browser test failed short-label selector; corrected to include help-text accessible name. admin-challenges-controls-final.log passed 5.7s across six sizes. Actual all12 passed in combined admin-challenges-browser.log 3.6m (combined exit failed for original isolated selector only), Cancel unchanged and no overflow/pageerrors. Companion390 template list inspected after overlay removal. Backend template plus existing workflows 3 passed; concurrent edits exactlyone commit. Full browser-confirmed save and broad acceptance remain outstanding.
+
+Resume: P81 prompts read and root page/register/retry/data extraction applied; other agent implementing actual recorded-check refresh/audit history. P80 freeze released. P79 commit a19fd319; preserve all unrelated work.
+
+## P81 System checks UI pass, 7 September
+
+P81-C01–C04 UI implemented partial: current service evidence distinct from unverified live checks, searchable/sortable desktop register/full mobile diagnostics, named refresh review with pending/error and real database-record read followed by saved audit snapshot. Native full historical details preserve exact actor/time/scope/metrics across newer snapshots. New service/action and extracted data/register; no fabricated provider health probes.
+
+Checks: admin-system-browser.log1passed35.7s both surfaces/all6sizes; Cancel no write, one confirmed refresh adds one record, old seven-failure fixture retained, unverified auth remains unverified; no overflow/pageerrors. Companion390 inspected. Types/lintclean; service/action3PASS587ms. Native keyboard/screenreader/theme/error matrices and live health execution remain outstanding.
+
+Resume: P82 all5prompts read. Root forms draft /tmp/p82-forms.tsx; other agent implementing canonical click, recoverable sponsor/offer state and all-owned sponsor choices. P81 freeze released. P80 commit6abd93a6. Continue then P83 without resetting tracker.
+
+## P82 Partner workspace UI pass, 7 September
+
+P82-C01–C05 UI implemented partial. Full shared responsive forms with exact sponsor/offer review and recovery; whole sponsored/affiliate terms/context/coupon/destination, actual scoped summaries, searchable complete sponsor register/detail. All-owned sponsors queried independently. Canonical active stored offer URL controls click redirect; rendering previews records no click. Commercial plan/campaign approvals not inferred.
+
+Checks: partners-browser.log isolated six-size test passed; actual failed on sponsor metadata object rendering. Fixed JSON serialization, partners-browser-final.log1PASS53.4s all12, full identity/details/forms Cancel, no previewclick, no overflow/pageerrors. Companion390 inspected. Types/lint clean before small serialization fix; final rerun queued. Backend creation/canonicalclick4PASS600ms; validation4PASS; old-owned-sponsor beyond newest40 regressionPASS547ms. Full browser actual create/destination and broad acceptance outstanding.
+
+Resume: P83 all13prompts read; marketing files clean/owned by root. Preserve existing art/renderers. Concrete gaps: full pricing features/terms, stale FAQ mobile nav, screenshot full-image access, feature links, no-JS FAQ, readable mobile header/hero. Other agent read-only pricing/FAQ audit complete; no marketing edits. P82 freeze released. P81 commit092a8dcc.
+
+## P83 Public home UI pass, 7 September
+
+P83-C01–C13 addressed with existing art/3D preserved: skip/focus-safe public header, searchable mobile links close on navigation, normal-flow mobile title/CTA, precise preview captions/fullimage access, real authenticated feature routes, full billing-catalogue feature/price/term lists, shared FAQ native disclosures including noJS, modelled Twin full static detail and explicit interactive launch. Existing brand/practice/privacy/beta/footer sections retained with readable shared controls/copy. FAQ mobile labels corrected from actual nav.
+
+Checks: public-home-browser.log1PASS17.4s but screenshot exposed animationdelay in reducedmotion keeping hero copy hidden. Added explicit animationnone/opacity1 and new checks. public-home-browser-final.log1PASS10.5s at6sizes with noJSFAQ, exactJSONLD/pricingfeatures, anchors/menu, staticTwin, nooverflow/pageerrors. Final390hero/1440pricing inspected; small cream mobileheadline contrast rule added afterward, recapturepending. Types/scopedlintclean; liveWebGL/normalmotion/nativezoom/fullstate acceptance not claimed.
+
+Resume P84 fourprompts read. Root owns login page/form UI; preserve email/password, Google and secureemail-link auth contracts. Otheragent read-only auth mode audit requested; no serverchanges yet. P83freeze released. P82commita4ee8701.
+
+## P84 Sign in/join UI pass, 7 September
+
+P84-C01–C04 UI implemented partial: one formh1, visible safe returncontext, retained email/password/magic fields, password visibility with readinessguard, direct error descriptions, polite securelinkreceipt, pendingOAuth, concise actual accountprivacy and neutral query-only deletionreturn. Existing email/password/Google/magic-link contract preserved; no invented passwordsignup/resetendpoint. OAuth/callback errors nowretain safelocalnext; configuration errors userfriendly.
+
+Checks: isolated six-size mocked errors/retainedinputs/transport recovery passed in login-browser.log. Actual initiallyfailed earlyhydrationtoggle, then wrongexpected2visibleprivacylinks; readinessguard/testwait and correctvisiblecount. login-browser-ready.log1PASS5.8s6sizes, safenext/oneh1/visibility/autofill/querytruth/nooverflow/pageerrors.390 screenshot inspected. Types/lintclean; sixfileauth regressions18PASS563ms, no liveauth/email. Fullacceptance and beforehydrationinputretention remain outstanding.
+
+Resume P85 all3promptsread. Shared WelcomeJourney/WelcomeSkip applied, companion/workbench wrappers consume identicalfulltask; agent applying scoped skipstateerror wrapper. Activationjourney math untouched; known incomplete measurement/club eligibility backendgap retained. Unknown progress is not0/0complete; review-ready doesnotclaim viewed. P84freeze released. P83commit4b54c0f6.
+
+## P85 First-run onboarding UI pass, 7 September
+
+P85-C01–C03 UI implemented on both surfaces. Shared complete six-step evidence checklist, saved current task/resume, unavailable-data recovery and stateful skip feedback. Continue retains real task URLs; review-ready is not described as a completed review. Existing eligibility calculation preserved; measured-evidence defect deferred explicitly. Changed welcome journey/skip, both wrappers and state action; tests/fixtures added. welcome-browser-ready.log terminal PASS13.6s all12 surface/viewport combinations after required synthetic profile fields corrected. Initial three fixture setup failures occurred before navigation. Isolated controls pass all6 including failure and unknown state. welcome-types-fix.log clean; lint passed. Dismissal backend3 unit/1 DB tests pass, no unrelated account changes.390 companion screenshot inspected. No full acceptance claimed. Resume P86 privacy page then P87; preserve all concurrent dirty work.
+
+## P86 Data notice UI pass, 7 September
+
+P86-C01–C03 UI implemented on both viewports. One semantic title/right action, full factual sections and exact data/sharing/privacy/danger settings links with practical scope descriptions. Removed ordinary developer environment setup and public-launch checklist; did not invent retention or legal promises. src/app/privacy/page.tsx and ui-upgrade-privacy.spec.ts changed. privacy-browser-final.log PASS2.1s all6 required sizes, full essential sections, keyboard focus,44px links, anchors/no overflow/page errors. Initial test expected legacy brand, corrected to actual LM World Tour. Types/lint clean;390 full-page capture inspected. Policy approval/signed-in browser/native accessibility and actual destructive outcomes remain outstanding. Other agent export-pagination-db.log1PASS confirms5000+1 owned rows with continuation; no whole-export transaction promise. Resume P87, coordinate offline files and preserve renderers/local conflict process.
+
+## P87 Offline saved golf UI pass, 7 September
+
+P87-C01–C05 UI implemented with partial verification; existing complete specialist renderers reused. Changed offline-companion.tsx/offline.module.css and ui-upgrade-offline.spec.ts. Local-only banner remains visible during activities; source dates/unknown legacy freshness, searchable saved-resource panel, wide-screen grouping/navigation and existing five phone destinations. Quick Range menu now uses its real parser so invalid copies are not offered. Local practice writes add actual savedAt without changing conflict/sync semantics. offline-browser-final.log1PASS6.1s all6 sizes search/close/failure recovery/owned resources/no overflow; exact round reload retains score and dirty state, account switch clears private view. Types/lint clean;390 screenshot reviewed. Initial browser run interrupted to correct blocked connection-probe fixture URL; no mutation API allowed. Broader task/device/offline-sync acceptance explicitly remains per CSV. Next P88 wrappers/boundaries; suppress display of differential for incomplete scorecard without changing golf calculation.
+
+## P88 Shared round UI pass, 7 September
+
+P88-C01–C03 UI implemented with partial verification. Full shared Workbench scorecard now serves both surfaces; semantic pinned row headings/totals, partial score and putt counts, manual putt source, public identity/scope, complete allowed details. Existing roundCompletionIssue plus9/18gate suppresses incomplete differential display; loader/calculation unchanged and backend defect retained. Added route-local loading/error/not-found. shared-round-browser.log1PASS6.5s all12 sizes/surfaces using synthetic owner/link/card, revocation removes scorecard, noedit/delete/noindex/nooverflow/pageerrors. Types/lint clean and390 capture inspected. Access test separately covers revoked/expired/mismatched owner. Full native and all state acceptance outstanding. Next P89, preserve canonical renderer and token scoping.
+
+## P89 Shared Course Twin UI pass, 7 September
+
+P89-C01–C03 UI implemented with partial verification. Extracted shared-twin-view and scoped CSS retain canonical readOnly runtime while showing one public title/scope/exit on all sizes. Route adds noindex and local invalid/loading/service-error recovery; token loader unchanged. shared-twin-browser-final.log1PASS2.1s6sizes using synthetic manifest/canonical2D fallback, selected hole navigation, no private mutation controls or overflow/errors;390 inspected. Initial isolated router lacked replaceState notification, fixture corrected. Page handoff2unitPASS506ms;types/lint clean. shared-twin-access.log1DBPASS542ms exactowner/session/type plus expired/revoked/foreignowner failclosed before mocked loaders. No actual3D/real shared-route browser success claimed. Next P90 report UI; otheragent owns requested action-state adapter, root owns view/form/boundaries; leave dirty report/page.tsx untouched.
+
+## P90 Shared coach report UI pass, 7 September
+
+P90-C01–C03 implemented partial on both surfaces. Full frozen report view reused on mobile, table regions labelled/focusable/pinned identity with units/rawquality, selectedscope/date, publicreturn and dedicated safe404/error/loading. Passwordstate adapter preserves exactservervalidation and cookieredirect; controlled draft/visibility/pending/inlineerror/reducedmotion. shared-report-browser-ready.log1PASS16.5s all12 surface/viewports actualsyntheticreport, wrongpassword draft retained, no prior report data, correct unlock, selectedevidence only, nooverflow/errors and revoked link hidesreport. Initial tests corrected broadNextalert locator then newadapterwording; no corresponding runtime failure. Types/lint clean;390capture inspected. Backend6unit/1DBaccess/2DBhistory tests pass; fullsection/physical/theme/AT states outstanding. Changed view/form/localboundaries/actionadapter; preserve otheragent dirty report/page.tsx/viewhistory helper. Resume P91 thenP92 then canonicalredirect routes, finally revisit7shared in-progress UI rows before broaderacceptance.
+
+## P91 Desktop handoff UI pass, 7 September
+
+P91-C01–C02 UI implemented partial. Removed mobile-only wrapper; onefullwidth title/actions/context and usefulalternatives. Existingnowdirect98documented route patterns +actualproxycapabilitygates redirect tocanonical, normalize/rejectexternal/internalself/backslash/control paths andretainquery/repeatedfilters/hash. Newcompanion-destination.ts and3unitPASS;unknown descendants do not implyknownpage. Actualbrowserall6fallback/nooverflow andexactProgressURLassertions passed, but handoff-browser-ready.log overallFAIL finalpageerror: Next Performance.measure CompanionHandoffPage negative timestamp. Sameerror repeatedafterwarmrun, no suppression/workaround; earliestredirect testtimeout wascoldrender. Types/lint clean;390capture inspected. Preserve this outstandingruntimeverificationdefect while continuing UI-first. Next P92 reusehelper/fullcontext; thenP93–P98 then7sharedUIstatus reconciliation.
+
+## P92 Companion summary UI pass, 7 September
+
+P92-C01–C02 UIimplemented partial. Shared safe documented-route helper opens promotedfulltask; remaining summary has onefullwidth header/primary, exactrequestedquery context, semanticrows, clear limitation andfullworkspace/Todayreturn. Driverpanel nowonly explicitdriverquery andnative supportingdisclosure. Existingdata/math preserved. summary-browser.log1PASS20.8s all12size/surface actualemptyachievementfixture, correctfullhref/noirrelevantdriver/nooverflow/errors;390reviewed. Types/lint clean. Populated/state/physical/AT/themes remain; P91redirectruntimeerror notresolved. ResumeP93–P98 sequentialprompts, thenG04parentbreadcrumbs/44px,G13retry44px,G14wrap/dismiss44px andsource-reconciledG08/G09/G11/G12verificationgaps.
+
+P92 visual regression follow-up: screenshot showed SummaryActionLink swallowed Button props. Replaced intermediary with native Link/AppSurfaceLink children; added44pxprimaryassertion. summary-browser-final.log1PASS11.9s all12 sizes/surfaces. Both rows retain earlier evidence and record correction; no completion reset.
+
+## P93 Course record alias UI contract, 7 September
+
+P93-C01 implementedpartial. EncodedrecordId andsharedqueryhelper retain repeatedfilters; exactcompanionproxyexception allowscanonicalrecordtask instead ofhandoff. record-alias-browser.log1PASS53.3s bothsurfaces6sizes, canonicalrecord/form/query,390reload/Back, nooverflow/errors ornewattempts; syntheticcourse/round cleaned. Queryhelper2unitPASS;typesclean. Invalid/foreign/Forward/nativeacceptance remains. Stageonlynewcapabilityexception, preserve otherdirtycapabilityhunks. NextP94 preserveforcedcoursefilter thenP95–P98 namedtabs.
+
+## P94 Course tournament alias UI contract, 7 September
+
+P94-C01 implementedpartial. Sharedqueryhelper preservesfilters, pathcourseId overridesconflictingquery. Browserall12surface/viewports exactcanonicalURL/activepanel/visiblecoursefilter/matchingeventonly/nooverflow passed, overallcourse-tournament-alias-browser-final.logFAILsolely NextPerformance.measure CourseTournamentsPage negative timestamp. SameframeworktimingfamilyasP91; unsuppressed andqueued. EarlierfirsthiddenDesktop-copyassertion corrected tovisiblemobilepresentation. Queryhelper3unitPASS/typesclean. NextP95–P98 retainnamedtabs/query; then7sharedUIrows.
+
+P95-C01 UI alias applied: required tab=board, exact encoded ID/query preserved. Unit checks pass; combined browser evidence pending. Next: P96 Tournament rounds alias.
+
+P96-C01 UI alias applied: required tab=submit, exact encoded ID/query preserved. Unit checks pass; combined browser evidence pending. Next: P97 Tournament rules alias.
+
+P97-C01 UI alias applied: required tab=rules, exact encoded ID/query preserved. Unit checks pass; combined browser evidence pending. Next: P98 Tournament submit alias.
+
+P98-C01 UI alias applied: required tab=submit, exact encoded ID/query preserved. Unit checks pass; combined browser evidence pending. Next: P95–P98 combined browser verification; then shared UI gaps.
+
+### P95–P98 canonical tournament aliases
+
+All four preserve event identity and repeated source query while forcing their documented tab. Combined browser exercises both surfaces at all six sizes; exact destination, selected tab, query, 390 reload/Back, no overflow and no entry mutation assertions pass. Final page-error assertions fail with Next development Performance.measure negative timestamps. No browser pass claimed. Seven canonical query unit tests pass. Continue shared UI controls, then investigate the timing error in an isolated production runtime.
+
+### Final shared UI pass
+
+G04/G13/G14: entity breadcrumb parents, 44px recovery/dismiss controls and readable achievement content implemented. Actual component fixture passes all six sizes (final-shared-browser.log, 1 test/5.3s); 360 screenshot inspected. Initial fixture lacked process.env stub and could not mount; corrected fixture only. Three breadcrumb plus seven canonical-query tests pass (540ms), two PWA policy tests pass (184ms), scoped lint and TypeScript pass. G08/G09/G11/G12 reconciled against existing shared implementation: their remaining work is acceptance, not unimplemented UI. Every row remains partial.
+
+Changed final shared files: desktop-workbench-chrome.tsx (only owned delta), workbench-breadcrumbs.tsx, workbench-breadcrumbs.ts and tests, companion-sync-status.tsx, achievement-notifications.tsx; isolated final-shared fixture/test. Preserve other agent dirty changes.
+
+Exact next steps: release only weekly-change-review-data.ts, activation-journey.ts and share/[token]/page.tsx to the coordinated backend agent for their three known failing regressions. Root must continue acceptance/integration, starting with redirect Performance.measure stack capture and isolated production-runtime comparison. Keep tracker partial until each full acceptance is evidenced. Do not rerun unchanged failing broad suites or deploy.
+
+### Integration: three deferred evidence defects fixed
+
+Coordinated backend changes filter positive finite carry before personal-best ranking; require positive finite measurement and same-owner active mapped club for activation evidence; suppress differential for incomplete/duplicate-hole shared rounds. Real disposable-DB tests: three-backend-fixes.log 4 passed/2.15s; expanded shared-round-completion-final.log 2 passed/9.67s. Agent full TypeScript and scoped lint pass. Root reviewed source and regression assertions. Existing activation review-label change remains separately owned and is not included in this backend commit. Overall acceptance remains partial; native/browser matrices still open.
+
+### Connected direction review UI — in verification
+
+Analysis workspace now fetches getDirectionAttention with its existing data, shows a separate exact direction-session metric and searchable session links. Labels newest100 scope explicitly, preserves valid carry/speed and existing unrelated issue groups. Six-size component fixture passes3.6s; 390 capture inspected. Types/lint clean. Actual-page owned/foreign fixture passed51.5s in direction-workspace-browser.log, all12surface/viewports, exact session href, no foreign flags, correction→empty, no overflow/errors; 390 companion screenshot inspected. New source helper was provided by coordinated agent and must be staged with UI integration.
+
+P98 instrumented rerun passed3.3m all12contexts; earlier Performance.measure failure was not reproduced, so still intermittent/unresolved. Root should not suppress errors or repeat unchanged reruns. Current unit snapshot: 2479pass/288failed/146pending (112failedfiles); other agent is reconciling obsolete source assertions and test harnesses while retaining functional checks.
+
+Current: integrated test-failure reconciliation (other agent) and remaining acceptance gaps. Direction helper/UI integration is now reviewed and verified within the scope above; no full acceptance claimed. Maintain current branch, tracker and pending dirty redesign changes.
+
+### G14 zoom regression resolved
+
+Expanded browser acceptance caught actual internal clipping of achievement header, footer and tier at360 CSSzoom2 despite page-level overflow passing. Wrapped header icon/dismiss/name, footer text and tier group; added descendant clipping assertion. shared-acceptance-final.log PASS6.6s all6sizes,13s focused notification retention,2axe scans0violations and darkCSSzoom2 at1440/360. Final360zoom screenshot inspected. Nativezoom/AT still outstanding. Scoped lint clean before final class-only tier adjustment.
+
+Current ownership: other agent owns app-route-capabilities.ts metadata reconciliation + tests, preserving exact direct-route exceptions and unknown-nested handoffs; root owns UI/acceptance/tracker. Continue integrated failure queue. No active root browser or production build.
+
+### Integration checks in progress — 15:16
+
+Fixed Challenges loading missing skeleton/busy semantics (core4PASS); replaced ordinary club dispersion premium-card with named shared Card while retaining map/selection (native+loading25PASS203ms). Scoped lint clean. Post-change browser checks outstanding for these wrappers.
+
+Handicap saved-view link now selects rounds via canonical URL and preserves query. Actual functional workflow PASS1.5m all12contexts, but emitted Unexpected end JSON pageerror that old test only logged. Test now asserts no errors and captures stacks; must rerun before claiming clean browser validation. Do not suppress error.
+
+Isolated production snapshot /tmp/fkh-ui-production-check-20260907: first build failed omitted root proxy (snapshot fixed), second compiled41s but hit route-audit test copied before agent type fix. Refreshed that test; third build running exec80296 in isolated-production-build-types-fixed.log. Snapshot excludes .env, uses disposableDB/synthetic auth config, symlinks deps/public, webpack and4GBheap; no live server/output changed. It predates latest Handicap/Challenges/Card changes, so production pass cannot verify those latest edits.
+
+Exact resume: read terminal build log; await other agent unit/metadata reconciliation; run strengthened Handicap browser after build ends; inspect/fix JSON stack if reproduced. Preserve branch/CSV/workbook and all other dirty source. Stage only owned card delta via /tmp/fkh-club-card-owned.patch; other agent prior club edits remain separate.
+
+Isolated production build terminal PASS: compiled2.3m, TypeScript17.7s,25static pages1.9s, traces/routes complete (isolated-production-build-types-fixed.log). This is webpack snapshot validation with synthetic auth/localDB; no live deployment or authenticated production runtime acceptance. Snapshot predates latest Handicap/Challenges/Card changes.
+
+### Integration checkpoint — Handicap and metadata
+
+handicap-link-no-errors.log PASS29.1s after strengthening pageerror assertions: all12contexts, saved-view exactURL/retainedquery/selectedtab, original shot values unchanged, zero browser errors. Earlier JSON error not reproduced, root cause unproven; do not repeat unchanged tests. Route metadata reconciled to canonical companion implementations while preserving hidden/admin nav and unknown-nested fallback fields/gates;20testsPASS1.51s plus types/lint. Root reviewed diff; prior best-shots/goals gate changes preserved.
+
+Current: other agent continues targeted unit/source-contract reconciliation; root continues acceptance and integration. No active root browser/build. Isolated production snapshot passed as qualified above. Latest source wrappers need representative UI checks; full native/AT/state matrices remain outstanding. All492rows still partial,0fullyaccepted.
+
+### Latest verification and active component
+
+Club-card actual browser PASS3.0m all12surface/viewports,6analysis tabs, selected-shot full source and tab reload, zero pageerrors;390companion capture inspected. G11 boundary component browser PASS4.2s all6sizes: keyboardRetry→visible busy challenge skeleton→fixture recovery, one main,2axe scans0violations;360capture inspected. This does not inject failures into all91real routes.
+
+Current P58 status regression: Available excludes closed/expired/nonopen unjoined entries; new Closed to entry tab preserves those records/rules/history with disabled Join and explanation. Active/joinedCompleted unchanged. Browser first run caught absent disabledcontrol on newtab; restored same canonical JoinChallenge disabled state. Final challenge-status-browser-final.log running exec70247; read terminal before updating P58 rows/committing. Files challenge-workspace.tsx and ui-upgrade-challenges.spec.ts. Types/lint passed before final tiny condition change.
+
+Other agent fresh full-unit-reconciled.json:2921total,2532pass,243failed,146pending,93failedfiles. Continues targeted reconciliation; coordinate every shared file. No overall completion.
+
+### Active challenge recheck and alias contracts
+
+P93–P98 obsolete source-string tests replaced with real async route invocation assertions for encoded IDs, repeated filters and required context; no duplicate PageShell/hash destinations retained. alias-contract-reconciled.log13PASS/4files501ms.
+
+P58 new Closed to entry UI remains uncommitted while browser finishes. First revised run caught missing disabled Join explanation (fixed); next create navigation exceeded10s while destination compiled22s; next reached final companion matrix iteration but remained in visible pending navigation beyond10s. All assertions retained; local fixture assertions now bounded60s and matrix360s. Current run challenge-status-browser-verified.log, exec1397. If this fails again, diagnose exact pending/error rather than increasing timeouts. No runtime timeout/guard changed.
+
+### P58 status regression and shared contracts verified
+
+challenge-status-browser-verified.log PASS2.1m all12surface/viewports: Available1 joinable, Closed1 retained, disabled Join/reason, URLclosed+reload, rules focus, create validation/draft/review/exact DBfields/noinvites, zero pageerrors. No source eligibility or challenge-action change. Earlier fixture cold waits documented above; bounded60s assertions, no performance acceptance. P58-C01/C03 tracker updated without resetting previous work.
+
+Shared report/twin source-contract reconciliation7PASS175ms: retain expiry/revocation/ownerjoin/token scope, canonical readOnly renderer, full mobile report reuse, password invalid-description relationship/alert semantics. Root-owned3testfiles now match current composition; prior DB/browser checks remain separate. No security gate removed.
+
+Current: continue other-agent integration queue and remaining acceptance matrices. No root browser/build running. Latest full-unit snapshot243failed/93files is historical relative to new targeted passes; do not subtract counts or claim clean suite without rerun. User instruction is keep implementing/verifying, not end with status-only response.
+
+### Shared selected-tab resize fix
+
+Settled-page geometry check confirmed selected Closed tab clipped after1440→390resize (selected-tab-resize.log). UntitledTabs now observes strip/list size and reveals selected label without changing selection, URL or vertical scrolling. Actual regression PASS38.0s bothsurfaces×6sizes +390reload; types/lint clean (selected-tab-resize-final.log). Earlier per-viewport fullreload test exceeded180s after7passingcontexts; refactored test to test actualresize rather than repeatedcoldloads. No source workaround for hydration added.
+
+Current root: reviewed backend integration manifest, starting billing network recovery. Other agent continues source/behavioral unit reconciliation. No active root browser/build. Billing diff only catches rejected fetch/invalidJSON into existing error destinations; original realDB/mockedStripe7tests pass logbilling-state-final. No live payment or subscription creation claimed.
+
+### Backend integration: billing recovery reviewed
+
+Reviewed remaining billing.ts diff: catches checkout/portal fetch rejection, keeps existing structurederror destination and existing owner/customer/price handling. tests/integration/billing-workflows.test.ts uses disposableDB and mockedStripe; unconfigured calls never fetch, network failures return recovery, subsequent success retains owner/customer and creates no subscription row. Existing billing-state-final.log7PASS2.20s is evidence; no hosted payment proof. Group staged independently from other services/UI. Continue backend manifest next: completed-import notification failure and equipment postcommit refresh; contact peer before touching their source.
+
+### Integrated saved-outcome recovery passed
+
+Root reviewed import action notification catches and equipment path refresh helper; existing actual save failures/validation/ownership remain unchanged. Fresh postcommit-recovery-integration.log6PASS/3files1.92s: import single/batch receipt retention with mocked persistence; real disposable equipment persistence/invalid inputs/retire/history/snapshot with refresh success/failure; billing transport recovery with mockedStripe and no subscription mutation. Files import/actions.ts/actions-outcome.test.ts, equipment/actions.ts/equipment-workflows.test.ts; billing alreadycommitted. Browser postcommit refresh-failure presentation remains separate acceptance. Continue manifest: course atomicity/catalog ownership, offline commit markers, speed archive and account bootstrap.
+
+## 7 September — Course persistence integration
+
+Reviewed and integrated course action transactions for manual, Google and OSM setup, validation of initial numeric inputs, saved-course enrichment warning recovery, ownerless-shared catalogue update restriction and stale selected-tee cookie removal. Files: src/app/courses/actions.ts, src/lib/course-twin-catalog-import.ts, src/app/play/select/route.ts and their three associated regression files. Fresh authorised fixture run: output/playwright/ui-upgrade/course-integration-reviewed.log — 21 tests, 3 files passed in 2.19s. Provider calls mocked. Updated P47-C01/C02/C03 and P49-C05 evidence; no acceptance status promoted.
+
+Current integration: course group verified; next: offline transaction markers and retry ledger from docs/redesign/BACKEND_INTEGRATION_MANIFEST.md. Resume by inspecting remaining diffs, coordinating ownership with the redesign thread and running bounded fixture regressions. Preserve all other dirty hunks. All 492 entries remain partial verification, zero fully accepted; native/browser fault matrices, intermittent development timing errors and remaining full-unit failures are outstanding.
+
+## 7 September — Offline persistence integration
+
+Reviewed five manifest runtime files: offline-operation-ledger.ts, api/offline/imports/route.ts, rounds/actions.ts, shot-club-correction.ts, imports/save-rapsodo-import.ts. Round receipts now commit with their domain transaction; expired attempts cannot complete newer claims. Transient imports return retryable status; duplicate import receipts retain saved session IDs. Strict round calendar-date validation retained. Fresh offline-integration-reviewed.log: 33 tests/3 files passed in 2.99s using authorised local fixtures; tests cover rollback, post-save recovery, replay, account isolation and original evidence preservation. Physical offline/browser reconnection remains outstanding; statuses remain partial.
+
+Next: repair the newly identified comparison-to-practice link losing selected context, then resume remaining backend manifest groups. Other agent notified of ownership. Latest other-agent full unit snapshot reported 2570 passed, 211 failed, 146 pending, with further targeted passes separate; overall completion remains zero accepted entries.
+
+## 7 September — Comparison practice handoff fixed
+
+Changed src/app/(app)/analyse/compare/page.tsx and added ui-upgrade-comparison-practice-handoff.spec.ts. Build practice plan now uses the selected club type and actual single focus session, only for session/same-condition comparisons; period and condition groups do not invent a single-session source. Fresh actual browser run comparison-practice-handoff-recovered.log passed49.8s across both surfaces and six required sizes, exact source-session link on arrival, original shot values unchanged, zero page errors. 390 companion screenshot inspected; TypeScript and scoped lint pass. First run failed initial navigation due stalled fixture server; read-only health probe also timed out. Recovered only PID61010/port3116, new PID28219, same .next-e2e/local fixture DB; log dev-server-recovered-1645.log. Port3000 untouched.
+
+Next: integrate reviewed speed archive group, then restore saved views, columns and CSV export on /course-records and /courses/[courseId]/records. Other agent notified; root owns these UI files. All492 rows still partial, zero fully accepted; retain broader outstanding acceptance and existing failures.
+
+## 7 September — Speed original-evidence integration
+
+Reviewed speed/actions.ts, speed-training-data.ts, speed session detail page and speed-state-workflows.test.ts. Imported original swings/raw provider payload are archived under transaction lock before correction, retained across later corrections and exposed separately from current calculations. Fresh DB workflow speed-archive-integration-reviewed.log passes980ms. New disclosure viewport/keyboard verification remains outstanding; no acceptance status promoted.
+
+Current UI regression work: CourseRecordBoard and CourseCategoryList now include shared saved-view/column/export controls and URL-backed local filters. record-view-query.ts and record-controls browser test added. Types/scoped lint passed; initial browser selector missed Columns8/8 count, corrected; labels run currently active. Next finish this browser matrix, address any defects, update P55/P56 evidence and commit only scoped files. Then assess ShotPreview saved-view/column gap and remaining backend manifest. Preserve all unrelated dirty work.
+
+## 7 September — Course record controls restored and verified
+
+Changed course-record-board.tsx, course-category-list.tsx and new record-view-query.ts. Restored shared saved-view/column/density/export/copy controls on both board routes; search/sort live in URL, optional mobile fields match column choices and identity/category/proof remain fixed. record-controls-browser-hydrated.log PASS1.5m:24route/surface/size combinations, actual CSV download contents, saved-view restoration, column persistence/reload, no page overflow or errors. Settled360 companion category screenshot inspected. TypeScript/scoped lint passed. P55-C02/P56-C01 evidence updated, still partial broader acceptance. Two initial failures were test selectors for column count and Remove-vs-restore menu items; retained failure logs. Other agent reconciling the two old source tests separately.
+
+Next/current: restore Import ShotPreview local saved views/columns without navigating away or replacing filtered-batch export with page-only export. Root owns shot-preview.tsx and optional transient-view extension to desktop-workbench-controls.tsx, coordinated with other thread. Goals weekly positive-finite measurement query fix ready from other agent, tests pass1.17s but not yet integrated by root. Continue remaining manifest/acceptance work;492partial/0accepted, no merge/deploy.
+
+## 7 September — Goals weekly measured-evidence fix
+
+Reviewed other-agent two-file patch: Goals weekly counter now requires positive finite carry, total or ball speed instead of merely non-null. Ownership, date and review predicates unchanged. Actual page/local fixture regression reproduced false1/4 count before; goal-weekly-fixed.log passes1.17s, now0/0 then1/1 after valid reading. Agent types/lint pass; root inspected diff/test/log. P33-C01 evidence updated; browser acceptance still separate.
+
+Current: Import Preview saved views/columns implemented but not yet verified. Shared controls support optional local-state restore without navigation, retain default route behavior, and allow the import's existing full filtered export to remain authoritative. New isolated fixture tests cover26rows/filter25, correction retention, saved search/column restore and export beyond first20. Initial command attempted default server startup and failed existing-dev lock without replacing3000; rerun uses explicit3116 configuration. Test selector for React Aria club picker corrected from native select to actual button/listbox; verification pending. Preserve current source/test files and continue this test, then actual import smoke, tracker update and commit.
+
+## 7 September — Import local views and modal picker verified
+
+Updated shot-preview.tsx, desktop-workbench-controls.tsx and form-controls.tsx, plus new isolated preview fixture/test and reconciled source test. Saved views restore local search/columns without navigating away from pending files/corrections. Full filtered CSV export remains independent of the20-row preview page and optional hidden columns. Mobile metric values stay with units. Browser found a real React Aria popup outside Radix modal could not receive clicks; installed Popover UNSTABLE_portalContainer now targets the closest dialog, retaining modal focus/pointer behavior. No forced clicks or suppressed errors.
+
+Validation: import-preview-controls-final.log PASS8.1s, six sizes with actual corrected-club persistence, saved view restore, filtered25-row CSV frompage2, zero errors/overflow;360image inspected. import-preview-actual-and-forms.log2PASS36.8s covers actual import both surfaces/all required sizes plus shared form/recovery/dialog suite. Types/lint clean, source contracts8PASS379ms. Course source reconciliation plus shared controls10PASS140ms also reviewed and included. Failed native-select selector and popup-interception logs retained. P35-C08/G10 remain partial overall acceptance.
+
+Next: review remaining admin/current-user/notification-read-state backend manifest groups and other-agent full-unit queue; newly reported actual UI defects take priority. Latest complete unit JSON:2926total,2608passed,171failed,147pending; do not subtract targeted passes without a full rerun. All492entries partial, zero fully accepted. Runtime3116 PID28219 remains isolated fixture, dev-server-recovered-1645.log; no production/main changes. Continue scoped upgrades, preserve all unrelated dirty files and workbook lock.
+
+## 7 September — Account and admin integrity integrated
+
+Reviewed current-user.ts identity bootstrap collision handling and admin.ts role/transaction/audit diff. Concurrent requests confirm the exact owned profile; operators cannot demote owners through an upsert; authorisation is rechecked under owner lock; changed moderation rows drive audit counts. Tests use only synthetic local fixture accounts. account-admin-integration-reviewed.log11PASS1.47s; admin-bulk-integration-reviewed.log3PASS1.30s. Auth bypass and production guard unchanged. Notification runtime diff inspected and found formatting-only; leave it separate, no new read-state functionality claimed.
+
+Next/current: review remaining companion evidence/state module diffs from backend manifest (mobile-session-review, mobile-today-briefing/review, today-primary-state, session-history, pwa-notice-policy, remaining activation copy), coordinating ownership before edits. Then integrate their related UI hunks and existing tests in scoped batches. Many earlier peer UI/test/config files remain dirty; do not blanket-stage. Full-unit171failures/147pending remain latest complete count; preserve492partial/0accepted status and outstanding viewport/native/AT/integration acceptance.
+
+## 7 September — Today UI dependency group integrated
+
+Reviewed both Today pages and their explicit dependencies: TodayWorkspaceTabs/DataQuality, selected-shot rail/chart adapters, mobile shot drawer, TodayPrimaryAnswer, DriverDevelopmentSignal, DecisionPanel and TodayHighlightCard CSS/components, BestShotsEntry, today-highlights and Today evidence/state helpers. Preserved detailed panels and source links; state labels separate activity completion from measured evidence, unknown handicap from form, and carry changes from improvement. Removed invented confidence percentage conversion. Finite highlight regression reproduced Infinity selected as longest; now non-finite carry/side cannot become a highlight.
+
+Validation: Today actual four-section browser matrix both surfaces/six sizes PASS24.4s, zero errors/overflow, single visible panel/heading.390 companion quality screenshot inspected.31evidence/state tests PASS2.11s,16highlight-related tests PASS327ms after finite fix. Types/lint clean. Browser correction/delete actions, full highlight keyboard/AT and broader themes/native acceptance remain separate. P02allnine rows retain partial status with precise added evidence.
+
+Next: Dashboard aggregate recommendation incorrectly attaches the latest practice session without supporting identity. Root owns dashboard/page.tsx and existing dashboard browser spec, will remove inferred sourceSessionId while preserving club/source/time/saved-plan links, then verify arrival. Afterward resume session-history and session-detail remaining integration; preserve all unrelated dirty files and the153remaining failures from latest other-agent full-unit-current snapshot (2627passed/147pending).
+
+## 7 September — Dashboard aggregate handoff corrected
+
+Removed unconditional latestPractice sourceSessionId from Dashboard aggregate recommendation. Club/source/time and existing saved-plan branch preserved. Added actual fixture browser regression with older iron/newer Driver sessions; dashboard-practice-handoff.log PASS37.7s across both surfaces/six sizes, exact Practice arrival, no invented source parameter, original iron rows unchanged, zero page errors/overflow. Scoped lint passed. P03-C01/C03 evidence updated, still partial acceptance.
+
+Next/current: restore saved views, columns and filtered CSV controls to SharedSessionLedger (/shared/[userId]) while retaining permission/revocation gates and complete details. Root owns UI/test; other agent owns shared-account-data.ts finite-longest metric fix. Continue after this with session history/detail integration and remaining defects.
+
+## 2026-09-07 — Shared account controls and finite metrics
+
+- P74-C01/C02/C03 UI implemented; broader acceptance remains partial. SharedSessionLedger now has owner-path-scoped URL saved views, column visibility, density and filtered loaded-list CSV. Source file remains in cards/table and complete details.
+- Fixed premature interactions by disabling controls before hydration. Bounded long compact mobile titles so they cannot cover navigation buttons; retained existing brand constant edits in mobile-nav.
+- Checks: shared-ledger-controls-final.log PASS1.4m, both surfaces × all six sizes, saved view/filter reload, CSV inclusion/exclusion, incomplete scorecard and real access revocation; 390 companion screenshot inspected. Types/scoped lint passed. Reviewed other agent finite shared longest-drive fix: shared-finite-fixed.log2PASS2.69s, counts retained.
+- Changed: shared-session-ledger.tsx, mobile-nav.tsx, shared-account-data.ts, shared-account-data.test.ts, ui-upgrade-shared-account.spec.ts, tracker/workbook/checkpoint.
+- Current: P88 mobile shared scorecard restored as independent complete composition; browser verification running. Next: finish P88 browser/checkpoint/commit, then session history and session-detail integration.
+- Resume: preserve492 entries and upgrade branch; inspect shared-round-companion-browser.log and current scoped diffs, repair failures before recording pass. No overall acceptance claim: native AT/device/theme/zoom and wider error matrices remain open.
+
+## 2026-09-07 — Independent public mobile scorecard
+
+- P88-C01/C02/C03 verified current UI in both surfaces/six sizes; full acceptance remains partial. Restored independent companion graph, native pinned-hole scorecard with every permitted field, manual putt provenance, partial-result gates and native round-details disclosure. No workbench dependency or breakpoint-hidden public body.
+- Fixed actual first-run blank wide companion (MobileAppShell required private-shell surface marker) by using explicit public layout. Replaced hydration-sensitive disclosure with native details/summary.
+- shared-round-companion-native.log PASS6.2s; four source graph/privacy assertions PASS, scoped lint/types clean;360px screenshot inspected. Revoked link, noindex, no mutations, missing scores and all18rows checked. Native AT/device/theme and wider error/empty/expired cases remain open.
+- Changed: shared-round-companion.tsx, page-source.test.ts, ui-upgrade-shared-round.spec.ts, tracker/workbook/checkpoint.
+- Current/next: integrate session-history deduplication and session-detail UI. New session-history-plan-links.test.ts already PASS932ms against disposable DB; verifies2distinctsessions despite2linkedplans, latest80/100result,3shots unchanged and separate foreign history. Review remaining session-page diff/dependencies and run session-detail browser before committing that UI group.
+
+## 2026-09-07 — User review: Rounds regression and visual refinement
+
+- User saw actual Rounds summary/list overlap on localhost3000. rounds-scoring-index.tsx retained two-column layout after adding a third full-width evidence list. Replaced with explicit vertical flow, full-width explanatory paragraph before list. Actual user page read-only screenshot/bounds verified, rounds-trend-layout.log PASS30.3s both surfaces/six sizes with explicit nonoverlap/minwidth assertions. Golf rows unchanged.
+- User now requests more selected hero imagery/gradient cards. Analyse hero uses existing generated lmwt-range-hero.png via Next Image and scoped overlay; selected insight/conditions/quality card gradients. Browser check currently running in analyse-atmosphere.log; not yet marked accepted.
+- User explicitly requested hosted preview. Vercel linkedproject lm-world-tour, projectIdprj_TrisfI126I1U8a5cK3f7tupcIllv. deploy_to_vercel was rejected by automatic approval review requiring explicit source/config upload permission to Vercel. No deployment occurred; no workaround attempted. Clean deployment package not yet prepared; finish current visible fixes then prepare package and request precise approval. Original no-production/main boundary remains.
+- Pending session integration source/test edits remain uncommitted; session-history-plan-links.log1DBPASS932ms. Other agent found Best Shots carousel metric-selection race and owns expanded test; root must repair runtime after current visual pass.
+
+## 2026-09-07 — Analyse atmosphere visual pass
+
+- User requested selected hero imagery and gradient card backgrounds. Analyse now uses existing generated golf asset via Next Image, dark overlay, responsive header and subtle insight/conditions/quality gradients. No data/calculation/permission changes; decorative empty alt, forced-colors fallback.
+- analyse-atmosphere.log PASS34.9s: both surfaces/six sizes, loaded image/no overflow and existing provenance drawer/links. 1440desktop/360mobile screenshots inspected; types/lint clean. P22 entries remain partial acceptance.
+- Changed: Analyse page, analyse-atmosphere.module.css, ui-upgrade-analyse.spec.ts, tracker/workbook/checkpoint.
+- Next: prepare clean preview deployment snapshot for explicit Vercel upload approval (previous automatic review rejected unspecified source/config upload). Continue Best Shots selection race and session-review integration while deployment permission is unresolved.
+
+## 2026-09-07 — Preview deployment authorised and uploaded
+
+- User explicitly approved uploading application source, configuration and public assets to Vercel preview. Earlier automatic-review permission blocker is resolved.
+- Isolated package /tmp/fkh-upgrade-preview-20260907 contains1595 files from base5bbd6205 plus recorded working-tree UI; exact manifest output/deployment/preview-upload-manifest.json. No local credentials, fixtures, logs, git history or workbooks uploaded.
+- Explicit Vercel team selection resolved initial CLI Not authorized. Upload succeeded; preview build in progress at https://lm-world-tour-mhfaukjqw-capener182-gmailcoms-projects.vercel.app (deployment dpl_APisVN9UaM3VhvaQUMfqR2ZTXNZX). Production remains unchanged.
+- Resume: check this deployment build result before claiming ready. Local Best Shots selection race and session-review integration remain pending and are not fixed by deploying this snapshot.
+
+## 2026-09-07 — Hosted preview READY
+
+- https://lm-world-tour-r9rxjuxun-capener182-gmailcoms-projects.vercel.app/analyse
+- Deployment dpl_B3rfcHEvcQYMDxiTMQ8pyHGr3sUa verified READY through CLI exit0 and Vercel API; target:null confirms preview. No production alias/main changes.
+- Build compiled57s; TypeScript67s;25staticpages generated. Initial package build failed on omitted root proxy.ts; added unchanged file, verified no unresolved relative imports, manifest now1596files. No local credentials/test data uploaded.
+- Full hosted interaction/permission acceptance remains outstanding; this preview is for user review, not492-entry overall completion. Pending UI defects include Best Shots selected metric race, session-history Focus selector and remaining session-review integration.
+
+## Follow-up — Best Shots selection integrity
+
+- Fixed stale carousel callback overwriting the selected carry/total metric. Callback only updates club from current URL; record controls disabled until hydrated.
+- Other agent expanded ui-upgrade-longest.spec.ts; reviewed exact pressed-state/URL/evidence/source assertions. longest-all-clubs-retest.log PASS18.6s, allfixtureclubs/bothmetrics/bothsurfaces/sixsizes. Types/lint clean; settled carousel screenshot/AT remains open.
+- P11 entries updated but remain partial. Hosted preview predates this local fix. Current: History Focus selector restored; history-focus-browser.log running. Next: finish Focus and session-review integration, then three missing admin register control groups.
+
+## Follow-up — History Focus restored
+
+- P04-C02/C04: Focus selector restored in desktop toolbar and mobile filter drawer, with latest matching session and filtered session options. Native URL state survives reload; Clear all removes focus.
+- history-focus-browser-final.log PASS16.7s across both surfaces/six sizes; session-history query/view unit checks12PASS; scoped lint/types clean. 360companion screenshot inspected. Initial test selector mismatch corrected; full acceptance remains partial.
+- Changed history-toolbar.tsx, ui-upgrade-sessions.spec.ts, tracker/workbook/checkpoint. Hosted preview predates this fix.
+- Current: session-review integration. Resume by reviewing pending session-detail/source-history diffs and running tests/e2e/ui-upgrade-session-detail.spec.ts against disposable3116 fixture. Then restore saved views, columns and CSV controls for admin system, billing and challenge registers. Coordinate shared files with the other agent; preserve their verification work.
+
+## Follow-up — Health register retained controls
+
+- P81-C02: restored DesktopWorkbenchControls for admin-system-health, filtered export table, optional evidence/timestamp columns and URL-backed search/result/order. Labelled keyboard table region; mobile timestamp follows column selection. Existing diagnostics and admin server guards preserved.
+- Scoped prettier/eslint passed. Browser save/restore, CSV contents and desktop/mobile columns remain outstanding, assigned to verification agent in thread01a077ea-7dd8-7ef2-979b-944425998882. Type result: output/playwright/ui-upgrade/admin-system-controls-types.log. Not in hosted preview.
+- Current: health register verification. Next: restore equivalent retained controls in admin billing and challenge boards, Partners and both moderation queues; preserve precise selected-record confirmation/audit history. Session integration also remains pending as above. No overall acceptance status changed.
+
+## Main release authorised — 7 September 2026
+
+- User authorised current upgrade integration/push to main, superseding original branch-only delivery boundary. No full migration completion claim. See docs/UI-UPGRADE-MAIN-RELEASE.md for exact passing/failing checks.
+- Isolated production webpack build PASS; lint0errors/1warning;14targeted regression tests PASS; health-register controls12variant browser PASS1.4m. Full suite2702PASS/81FAIL/149pending. Session-detail browser navigation timed out during dev compilation; no interaction acceptance claimed. Current webpack budget diagnostics unavailable; previous default-build13budgetfailures still outstanding.
+- Next: confirm remote main SHA after nonforce push, then resume remaining register controls and source-contract reconciliation; preserve all partial acceptance statuses. Workbook lock file belongs to user and remains outside git.
+
+- Final release formatting check PASS: all matched files use Prettier style (/tmp/fkh-main-format-confirm.log).
+
+## GitHub release outcome
+
+- Upgrade commit81e41a71 pushed and remote parity verified. Direct atomic main push rejected by GitHub protected branch GH006: pull request and six required checks mandatory. Main remains cf9de4018e0273a7f86a0ae69791af4ff414d29c. No bypass attempted.
+- Open PR59: https://github.com/DavidCapener182/ForeKingHell/pull/59 targets main from upgrade/untitled-ui-migration. Not merged. Continue by inspecting PR checks and fixing documented acceptance/source-contract and budget failures; do not claim main or production updated.
+
+## PR59 follow-up — Billing controls
+
+- Implemented independent scopes for subscriptions and current entitlements; complete field columns/filtered CSV, scoped local saved-view restore and URL query/sort/direction. Desktop table and mobile records expose selected columns; full diagnostics and server limits retained. P79-C03/C04 remain partial.
+- Runtime files: admin-billing-ledger.tsx and (admin)/admin/billing/page.tsx. Scoped lint/types PASS; browser readback assigned to verification agent on3116. No grants/payments performed.
+- Reviewed source-test reconciliation: sidebar whitespace and complete/partial round summary12PASS; billing confirmation2PASS with2other assertions still failing until register reconciliation. Do not publish batch until current browser result is recorded.
+
+## Billing retained controls verified
+
+- Final browser PASS1.5m (/tmp/fkh-billing-restored-final.log),12surface/size combinations. Complete filtered CSV and cross-register isolation, optional Email excluded from UI/CSV, scoped saved search/columns restored through reload, exact-account cancel and no grant audit writes. Companion390register screenshot inspected in test-results/ui-upgrade-admin-billing-B-fecde--without-granting-on-review-chromium/P79-register-companion-390.png.
+- Real retry failure: mobile-apple.css replaced collision-aware menu height with70dvh. Fixed max-height to also respect Radix dropdown/popover/select available-height variables, preserving scrolling and every item. Final Show all columns action reachable.
+- Combined billing/round/sidebar/mobile-theme source tests33PASS99ms; scoped types/lint passed. Publishing runtime, browser, source-test and tracker batch to PR59; overall upgrade still partial and main protected. Next: remaining admin challenge/Partners/moderation retained controls, remaining source contracts and route budgets.
+
+- Fresh full suite after billing batch: 2710 passed, 74 failed, 149 pending of 2933. /tmp/fkh-main-unit-billing.json; main remains blocked until required checks pass.
+
+## Challenge register retained controls — in verification
+
+- P80-C03 runtime now uses scoped saved views and optional columns with query/status/sort/direction in URL. Full board identity, owner/template, visibility/state, counts and timestamps exported from filtered rows. Both surfaces retain diagnostics and template operations; table scroll region is focusable.
+- Scoped lint/types passed. Authorised browser /tmp/fkh-challenge-register-restored.log running; do not mark accepted before terminal result. Runtime and test remain unpublished until this batch finishes.
+
+## Challenge register functional verification passed
+
+- P80-C03 browserPASS1.4m,12surface/sizevariants, scoped full-field CSV and excluded-board check, optionalOwner hidden fromUI/CSV, saved query/columns restored through reload, Showallreachable, boardidentity/templatecancel/auditpreserved.3source testsPASS75ms independently.
+- Companion390screenshot inspected but caught menu closing transition; clean settled visual acceptance outstanding. Test now waits menu removal before screenshot, not rerun solely for screenshot. No runtime defect inferred from transition frame.
+- Publishing challenge runtime/test/tracker batch to PR59. Nextactualcontrols: moderation reports/events andPartners; main remains protected pending required checks.
+
+## Moderation retained controls — in verification
+
+- P78-C02/C03: independent report/event scopes for saved views, full-field filtered CSV and optional columns. Existing URL filters persist; saved restore clears selected records. Existing review snapshot, explicit confirmation, duplicate guard and audit actions untouched. Focusable table and mobile fields retain all record context.
+- Scoped lint/types clean; authorised browser verification owned by other agent on3116. Runtime unpublished until terminal result.
+- Challenge settled rerun PASS1.3m (/tmp/fkh-challenge-register-settled.log) and clean390companion screenshot inspected by verification agent; earlier transient screenshot limitation now resolved for that fixture.
+
+## Moderation functional verification passed
+
+- /tmp/fkh-moderation-recovered.log PASS1.5m,12variants; isolated report/event CSV, optionalEvidencehidden, saved ownviewrestore/reload, exactIDselection/partialresolution and audit checks. Initial Nextdev /surface/workbench JSONparse500 disappeared on direct307readback; no application change/error suppression used to rerun.
+- Publishing moderationqueue+source/browser tests+tracker. Latestuserinstruction is finish actualCI failures and merge main normally; wrap-only request superseded. Otheragentowns remaining source-test reconciliation batch; thisagentowns runtime Partners/performance andsolepublisher.
+
+## Release failure fixes — Partners and loading boundaries
+
+- P82-C05: Partners filtered CSV, column visibility and saved views passed the 12-variant fixture browser check in /tmp/fkh-partners-restored.log (1.7m). Source checks: 6 passed. Permissions, ownership and preview/create cancellation preserve stored counts. Broader acceptance remains partial.
+- Current: P77-C02 account directory retained controls implemented, awaiting browser verification. Other agent owns the remaining source-contract test batch.
+- Performance: full import workspace loads on first use and remains mounted after switching; sample mode starts with full workflow. Hidden analytical routes no longer load the unused social feed preview. Production budget measurement is running in the isolated build directory.
+- Next: finish source tests and browser checks, run full required validation, publish one combined fix batch to PR59, then merge normally only when required checks pass. Main has not changed.
+
+## Release validation — source failures resolved
+
+- Full Vitest run: 2,785 passed, 0 failed, 149 skipped/pending (2,934 total), recorded in /tmp/fkh-main-source-batch-final.json. Tests now follow extracted components and complete mobile workflows while retaining ownership, provenance, filters, export and confirmation assertions.
+- Full lint passed with one existing unused-variable warning; full formatting passed. Inventory remains 492 components across 98 routes. No entry has been upgraded to fully accepted on the strength of source tests alone.
+- Import first-use and retained-draft browser check passed in 1.2 minutes across all six sizes: /tmp/fkh-import-lazy-browser-retry.log. First sandboxed browser launch was denied by macOS; the authorised retry ran successfully.
+- Normal production build passed. Twelve routes still exceed original JavaScript budgets. No limits or CI gates changed. See docs/UI-UPGRADE-BUNDLE-RELEASE-DECISION.md for exact measurements and the proposed tradeoff awaiting the user's answer.
+- Current: admin account controls browser verification. Next: integrate this batch in PR59, resolve the performance decision, then verify all required GitHub checks and merge through branch protection. Main is still unchanged.
+
+## Account register functional verification passed
+
+- P77-C02: /tmp/fkh-admin-users-restored.log passed in 1.7 minutes across both surfaces and six sizes. Filtered export, optional Email, per-account saved view/query/plan/columns with reload, exact-account role review/cancel/apply all passed. First screenshot caught a closing-panel transition; settled visual proof remains outstanding. No full-matrix rerun solely for that screenshot.
+- Current runtime and source-test fixes are ready for publication to PR59. The original 12 bundle-limit failures remain; the performance tradeoff question is pending. Both agents must avoid new feature scope and preserve the current passing evidence.
+
+## Published fix checkpoint
+
+- Pushed and verified remote parity: 9ccd4507fd0d567ffc98bc4b9d62c6f7b31fa9fd on upgrade/untitled-ui-migration. PR59 remains open; main is cf9de4018e0273a7f86a0ae69791af4ff414d29c.
+- Current GitHub runs: CI 34155129252, Security 34155129253. Format/lint and migrations passed when last inspected; other steps were running. Do not infer their final outcome.
+- Admin account settled rerun was already running when the stop-extra-checks instruction arrived; it passed in 1.4 minutes (/tmp/fkh-admin-users-settled.log), fixture cleanup completed, and the verification agent inspected the clean 390px screenshot. No remaining account runtime defect identified.
+- The optional-select lazy-loading experiment in /private/tmp/fkh-budget-20260907-183257 reduced four more budget failures, leaving eight, but it is NOT applied or behavior-validated. Its form fallback and focus semantics require further review; do not copy it into the repository as a verified fix. Log: /tmp/fkh-lazy-select-budgets.log. The repository still has 12 measured budget failures.
+- Exact next steps: read the user's answer to the pending performance-limit question. If larger bundles are explicitly accepted, apply only the documented route caps, clearly record the deviation, rerun the normal production checker and required CI, then merge PR59 with the exact verified head SHA. If original caps remain required, continue measured loading optimisation and functional verification; do not weaken the gate. Preserve 2,785 passing tests, existing fixture evidence, and all partial tracker statuses. No new feature scope. Other agent is idle; this agent alone publishes.
+
+## Parallel performance completion — ownership transferred
+
+- User requested safe shutdown of the previous agent and explicit parallel assistance to finish the bundle fixes. Previous agent confirmed no active process, complete fixture cleanup, and no further edits or polling.
+- Unpublished budget increases have been withdrawn. Original caps remain enforced; no release tradeoff is presumed accepted.
+- Primary agent owns integration, isolated production measurement, CI and main publication. Three bounded agents own optional-select loading; Today/Sessions/Bag loading; and import-result/Rapsodo/round-detail/Speed loading respectively. Coordinate shared files before edits and retain complete mobile workflows and drafts.
+- Current head remains 9ccd4507. Full unit suite and other required jobs previously passed; original 12 bundle failures remain until measured fixes prove otherwise.
+
+## Parallel loading fixes — intermediate verification
+
+- Former external agent is safely stopped; primary agent coordinates three bounded workers and is the sole publisher. Original route budgets are unchanged.
+- Implemented first-use loading for optional Select menus, session evidence, stock sample review, Bag tools, Rapsodo extended workflow and Speed projection. Isolated club correction imports avoid loading the complete shot explorer. Tabs retain React Aria accessibility using public hooks.
+- Sessions and session detail passed both surfaces at all six requested sizes; browser caught and fixed carousel position loss when returning to a retained tab, and History Clear all pre-hydration readiness. Stock drawer filters survive reopening; the warmed stock rerun passed after an initial dev compile timeout. Evidence: `/tmp/fkh-session-bag-lazy-fixed.log`, `/tmp/fkh-stock-lazy-settled.log`.
+- Select/form suites passed after module separation; tabs keyboard/draft checks passed; Rapsodo, Speed and receipt first-use workflows passed. Full unit run found one source-path assertion following filter extraction; updated it to inspect the new module with identical acceptance assertions, then all 17 tests in that file passed.
+- Normal production build passes. Latest original-cap measurement `/tmp/fkh-module-boundaries-check.log` has four failures: Today 1089/1035 KiB, History 948/938 KiB, session detail 948/913 KiB, import receipt 909/908 KiB. Agents own those exact remaining loading boundaries; no limit increase is authorised or applied.
+- Current: final four bundle reductions. Next: integrate stable files, rerun production budgets and final project checks, update tracker/workbook, push PR59, verify all six required checks at the exact new head, then merge normally into main. Do not claim main changed before remote readback. All 492 tracker entries retain partial acceptance.
+
+## Original bundle limits passed — release integration
+
+- Normal production build and TypeScript passed: `/tmp/fkh-final-route-build.log`. All24 configured route budgets passed: `/tmp/fkh-final-route-check.log`. Existing caps are unchanged. Today public workbench1028/1035KiB and internal companion951/1035KiB now compile separately; proxy preserves the publicURL/query and existing authenticated surface selection.
+- Genuine loading reductions retain full task access and visited state. Today evidence/comparison drawers passed six-size first-open/reopen, Done/Escape and exact-trigger focus restoration in `/tmp/fkh-today-drawers-fixed-browser.log`. An actual focus-return defect was fixed during that check.
+- Current: final Today public-route fixture, full unit rerun after internal-route inventory additions, and release metadata. Primary agent alone publishes. No previous budget proposal was applied.
+- Next: if final browser/unit checks pass, stage the performance source/tests/docs/tracker/workbook while excluding the user's spreadsheet lock; commit and push PR59; verify all six required GitHub jobs at the exact new SHA; merge normally into main and verify remote readback. Main is not yet changed.
+- Remaining migration acceptance: all492 entries are still partially verified. Do not reset their accumulated evidence or label the full upgrade complete from a release gate pass.
+
+## Performance batch ready to publish
+
+- Final full suite:2788passed,0failed,149skipped/pending of2937 (`/tmp/fkh-release-unit-complete.json`). Formatting passed, lint has0errors and one existing unused-variable warning. Build/types and all24 original/equal-cap budget checks passed.
+- Public Today route browser PASS20.3s (`/tmp/fkh-today-route-isolation-retry.log`):12surface/viewport variants, URL/query/history retained, ownedevidence200/foreignevidence404, noJSerrors/overflow; fixture cleaned up. Earlier navigation timeout was a stalled disposable dev compile, resolved by restarting only3116. User app3000untouched.
+- Source/tests/runtime are frozen. Primary agent will publish this batch to PR59 and merge only after all required latest-head checks pass. Full492-component acceptance remains partial.
+
+## Published performance batch — final smoke selector correction
+
+- Pushed6ea9d12219c22f26faa67389f8987ed8cb1245e9 and confirmed remote parity. PR59 remains open. GitHub Security34158134552 passed all3jobs; CI34158134591 passed CorePlaywright and migrations. Its validate job passed formatting/lint/types/fullunits/audit/productionbuild/allroutebudgets, then failed3authentication smoke cases.
+- All3failures were the same strict locator ambiguity: `getByLabel("Email")` matched both the password email and separate secure-link email fields. Runtime labels remain distinct. Updated tests to use exact Email and separately assert the secure-link field; no assertion skipped or auth behaviour changed.
+- Current: rerun full authentication smoke against disposable CI-like auth configuration. Next: publish only the selector correction plus this checkpoint after it passes; verify all6requiredjobs at the newSHA; merge PR59 with expectedhead and verify remote main. No bundle issue remains.
+
+- Authentication selector correction verified:7passed,1existing live-fixture skip,0failed in10.4s (`/tmp/fkh-auth-release-browser.log`). Includes both distinct email fields, protected redirect, wrong/short password errors, dropped-request retry and native JavaScript-disabled POST. Isolated3130 used synthetic auth pointed at127.0.0.1:9; server/buildfiles cleaned,3000and3116untouched. Publishing correction now; required CI rerun remains necessary.
+
+## Final inline review fixes
+
+- All6required checks passed at46921d5f, but GitHub required unresolved review threads to be addressed before squash merge. Merge commits are disabled; use squash with expectedhead. Partners/moderation threads were already addressed by verified retained controls and have been resolved.
+- Quick Bag now separates canonical yard targets from rounded unit display. Presets stay selected and ranking does not drift across unit switches. BrowserPASS14.9s all12surface/size variants;6sourcechecks/lintpassed. `/tmp/fkh-quick-bag-canonical-browser.log`.
+- Training now loads its closed full ledger on first use and retains column state, while the CSS-hidden desktop chart is no longer mounted on phones. Visible phone history/evidence/forms remain fully available as the user requires. BrowserPASS38.3s all12variants including7dayfilteredCSV/retainedNotes/formsave/sourcepreservation;11sourcechecks/lintpassed. `/tmp/fkh-training-lazy-browser-fixed.log`.
+- Final fullunits2788passed,0failed,149pending; `/tmp/fkh-review-fixes-unit-final.json`. Finalnormalbuild/types andall24budgetsPASS: `/tmp/fkh-review-final-build.log`, `/tmp/fkh-review-final-budgets.log`. Formatting/diffchecks passed.
+- Current: publish finalreviewfixes, resolve remaining2threads afterpublication, verify all6requiredjobs atnewSHA, squashmergePR59 normally and verifyorigin/main. No agent has further runtime edits in flight. All492componentacceptance statuses remain partial; maintainexistingtrackedblockers.

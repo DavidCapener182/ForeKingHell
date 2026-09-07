@@ -3,6 +3,18 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/settings/page.tsx"), "utf8");
+const workspaceSource = readFileSync(
+  join(process.cwd(), "src/app/settings/settings-workspace.tsx"),
+  "utf8",
+);
+const workspaceCss = readFileSync(
+  join(process.cwd(), "src/app/settings/settings-workspace.module.css"),
+  "utf8",
+);
+const dirtyFormSource = readFileSync(
+  join(process.cwd(), "src/app/settings/settings-dirty-form.tsx"),
+  "utf8",
+);
 const sectionsSource = readFileSync(join(process.cwd(), "src/lib/settings-sections.ts"), "utf8");
 const actionsSource = readFileSync(join(process.cwd(), "src/app/settings/actions.ts"), "utf8");
 const notificationActionsSource = readFileSync(
@@ -31,26 +43,24 @@ describe("settings information architecture", () => {
       previousIndex = index;
     }
 
-    expect(source).toContain("data-settings-section-navigation");
-    expect(source).toContain('aria-current={active ? "page" : undefined}');
-    expect(source).toContain("href={`/settings?section=${section.value}`}");
-    expect(source).toContain('className="mt-4 border-t border-border pt-4"');
+    expect(source).toContain("items={settingsSections.map");
+    expect(workspaceSource).toContain('aria-label="Settings sections"');
+    expect(workspaceSource).toContain('aria-current={active === i.id ? "page" : undefined}');
+    expect(workspaceSource).toContain('url.searchParams.set("section", key)');
+    expect(workspaceSource).toContain('window.addEventListener("popstate", sync)');
   });
 
-  it("uses a mobile settings index and drills into one selected section", () => {
-    expect(source).toContain('surface === "companion" && !hasSelectedMobileSection');
-    expect(source).toContain("<MobileSettingsIndex");
-    expect(source).toContain('href="/settings?section=general"');
-    expect(source).toContain('href="/settings?section=appearance"');
-    expect(source).toContain('href="/settings?section=privacy"');
-    expect(source).toContain('href="/settings?section=sharing"');
-    expect(source).toContain('href="/settings?section=notifications"');
-    expect(source).toContain('href="/settings?section=data"');
-    expect(source).toContain('href="/settings?section=offline"');
-    expect(source).toContain('href="/settings?section=billing"');
-    expect(source).toContain('href="/settings?section=danger"');
+  it("uses a mobile index while retaining mounted section drafts", () => {
+    expect(source).toContain("<SettingsWorkspace");
+    expect(source).toContain(
+      "initialSection={isSettingsSection(params?.section) ? activeSection : null}",
+    );
+    expect(workspaceSource).toContain("All settings sections");
+    expect(workspaceSource).toContain("{items.map((i) => (");
+    expect(workspaceSource).toContain('style={{ display: active === i.id ? "block" : "none" }}');
+    expect(workspaceCss).toContain("@media (max-width: 1023px)");
+    expect(workspaceCss).toContain('.workspace[data-has-selection="true"] > .navigation');
     expect(source).toContain("switch (activeSection)");
-    expect(source).not.toContain("SettingsMobileDisclosure");
   });
 
   it("groups controls with whitespace and dividers instead of cards per input", () => {
@@ -62,9 +72,13 @@ describe("settings information architecture", () => {
 });
 
 describe("settings save and error feedback", () => {
-  it("uses dirty forms for editable sections and a toast for successful saves", () => {
+  it("uses dirty forms with retained errors and accessible save feedback", () => {
     expect(source.match(/<SettingsDirtyForm/g)?.length).toBeGreaterThanOrEqual(4);
-    expect(source).toContain("<SettingsStatusToast");
+    expect(dirtyFormSource).toContain('<p role="status">Settings saved.</p>');
+    expect(dirtyFormSource).toContain('role="alert"');
+    expect(dirtyFormSource).toContain("Your draft is retained.");
+    expect(dirtyFormSource).toContain("if (lock.current) return;");
+    expect(dirtyFormSource).toContain("disabled={pending || !ready}");
     expect(source).toContain('name="settingsSection" value="general"');
     expect(source).toContain('name="settingsSection" value="appearance"');
     expect(source).toContain('name="settingsSection" value="privacy"');
@@ -91,9 +105,11 @@ describe("settings save and error feedback", () => {
 describe("settings danger zone", () => {
   it("is strongly separated and requires AlertDialog-backed confirmation", () => {
     expect(source).toContain('id="danger-zone"');
-    expect(source).toContain("border-destructive/45");
-    expect(source).toContain('confirmTitle="Reset all golf data?"');
-    expect(source).toContain('confirmTitle="Delete this account permanently?"');
+    expect(source).toContain("These actions cannot be undone");
+    expect(source).toContain("confirmTitle={`Reset golf data for ${profile.email");
+    expect(source).toContain("confirmTitle={`Delete ${profile.email");
+    expect(source).toContain('label="Type RESET to confirm"');
+    expect(source).toContain("label={`Type ${profile.email ?? profile.id} to confirm`}");
     expect(source).toContain("<ConfirmSubmitButton");
   });
 

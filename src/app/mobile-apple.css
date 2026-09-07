@@ -967,7 +967,13 @@
       [data-slot="select-content"]
     ) {
     max-width: calc(100vw - 2rem);
-    max-height: min(70dvh, 34rem);
+    max-height: min(
+      70dvh,
+      34rem,
+      var(--radix-dropdown-menu-content-available-height, 100dvh),
+      var(--radix-popover-content-available-height, 100dvh),
+      var(--radix-select-content-available-height, 100dvh)
+    );
     border: 0.5px solid var(--ios-separator) !important;
     border-radius: 0.875rem !important;
     background: var(--ios-grouped-surface) !important;

@@ -93,6 +93,8 @@ export type SpeedShotSession = {
 };
 
 export type SpeedTrendPoint = {
+  sessionId?: string;
+  dateIso?: string;
   label: string;
   value: number;
 };
@@ -287,6 +289,7 @@ export type SpeedCentrePageData = {
 };
 
 export type SpeedSessionDetailPageData = {
+  originalImportedSwings?: Array<{ swingNumber: number; clubSpeedMph: number }>;
   clubOptions: SpeedClubOption[];
   session: SpeedCentreSession;
   swings: Array<{
@@ -1013,6 +1016,17 @@ export async function getSpeedSessionDetailPageData(
   }
 
   return {
+    originalImportedSwings: Array.isArray(session.rawMetadataJson.originalImportedSwings)
+      ? session.rawMetadataJson.originalImportedSwings.flatMap((value: unknown) => {
+          if (!value || typeof value !== "object") return [];
+          const row = value as Record<string, unknown>;
+          return typeof row.swingNumber === "number" &&
+            typeof row.clubSpeedMph === "number" &&
+            Number.isFinite(row.clubSpeedMph)
+            ? [{ swingNumber: row.swingNumber, clubSpeedMph: row.clubSpeedMph }]
+            : [];
+        })
+      : [],
     clubOptions,
     session: {
       id: session.id,
@@ -1340,6 +1354,8 @@ function buildTrendPoints(sessions: SpeedCentreSession[]): SpeedTrendPoint[] {
       new Date(session.sessionDateIso),
     ),
     value: session.avgSpeedMph,
+    sessionId: session.id,
+    dateIso: session.sessionDateIso,
   }));
 }
 

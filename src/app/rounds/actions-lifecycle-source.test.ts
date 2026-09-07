@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/rounds/actions.ts"), "utf8");
+const assignments = readFileSync(join(process.cwd(), "src/lib/round-assignments.ts"), "utf8");
 
 describe("round recalculation lifecycle evidence", () => {
   it("keeps every physical round shot in manual hole-count slicing", () => {
@@ -21,9 +22,9 @@ describe("round recalculation lifecycle evidence", () => {
   });
 
   it("keeps excluded course shots in hole assignments and progress because exclusion is stats-only", () => {
-    const recalculation = source.slice(
-      source.indexOf("async function recalculateRoundAssignments"),
-      source.indexOf("function inferUnmappedShotHoles"),
+    const recalculation = assignments.slice(
+      assignments.indexOf("async function recalculateRoundAssignments"),
+      assignments.indexOf("function inferUnmappedShotHoles"),
     );
 
     expect(recalculation).toContain("const loadedSessionShots = await db");
@@ -40,6 +41,7 @@ describe("round recalculation lifecycle evidence", () => {
 
   it("does not run the stock-evidence eligibility filter in either scorecard path", () => {
     expect(source).not.toContain("filter(isShotEvidenceEligible)");
+    expect(assignments).not.toContain("filter(isShotEvidenceEligible)");
   });
 });
 

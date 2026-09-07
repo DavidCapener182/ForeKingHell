@@ -11,22 +11,15 @@ import {
   Users,
 } from "lucide-react";
 
-import {
-  acceptGroupInviteAction,
-  declineGroupInviteAction,
-  joinGroupAction,
-  joinGroupByInviteCodeAction,
-} from "@/app/groups/actions";
+import { GroupDecision } from "@/app/groups/group-decision";
 import { GroupCreateSheet } from "@/app/groups/group-create-sheet";
 import { GroupDirectoryTabs, type GroupDirectoryTab } from "@/app/groups/group-directory-tabs";
 import { AppEmptyState } from "@/components/app/app-empty-state";
-import { PageShell, StatusPill } from "@/components/premium";
+import { PageShell, PageHeader } from "@/components/premium";
 import { SocialAvatar } from "@/components/social/social-avatar";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { PageArtwork } from "@/components/visuals/page-artwork";
 import { getGroupsPageData, type GroupInviteItem, type GroupListItem } from "@/lib/groups";
 
 export const dynamic = "force-dynamic";
@@ -55,95 +48,73 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
 
   return (
     <PageShell>
-      <header className="premium-hero overflow-hidden" aria-labelledby="groups-heading">
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.38fr)]">
-          <div className="flex flex-col justify-center p-5 sm:p-7 lg:p-8">
-            <StatusPill tone="green">Your golf circle</StatusPill>
-            <h1
-              id="groups-heading"
-              className="mt-4 text-3xl font-semibold tracking-normal sm:text-4xl"
-            >
-              Play better together.
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-              Keep up with your regular fourball, club crew, society or coaching group — and see
-              what everyone is playing for next.
+      <div className="grid min-w-0 gap-6" data-groups-workspace>
+        <PageHeader
+          eyebrow="Your golf circle"
+          title="Groups"
+          description="Find your crew, review invitations and manage your memberships."
+          actions={<GroupCreateSheet groupTypes={data.groupTypes} />}
+        />
+        <section className="grid gap-4" aria-labelledby="group-directory-heading">
+          <p className="text-sm text-muted-foreground">
+            Showing up to 80 recent accessible groups and 40 pending invitations.
+          </p>
+          {params?.invite && !data.invitePreview ? (
+            <p role="status">
+              This invitation link is unavailable. Check the link or ask the group owner for a
+              current invitation.
             </p>
-            <div className="mt-5 flex flex-wrap items-center gap-3">
-              <GroupCreateSheet groupTypes={data.groupTypes} />
-              <span className="text-sm text-muted-foreground">
-                {data.mine.length} {data.mine.length === 1 ? "membership" : "memberships"}
-              </span>
+          ) : null}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-primary">Clubhouse</p>
+              <h2
+                id="group-directory-heading"
+                className="mt-1 text-2xl font-semibold tracking-normal"
+              >
+                {activeTab === "mine"
+                  ? "My groups"
+                  : activeTab === "discover"
+                    ? "Find your next crew"
+                    : "Group invites"}
+              </h2>
             </div>
           </div>
-          <PageArtwork
-            variant="groups"
-            alt=""
-            className="hidden min-h-64 rounded-none border-0 ring-0 lg:block"
-            sizes="(min-width: 1024px) 38vw, 0px"
-            priority
-          />
-        </div>
-      </header>
 
-      {params?.created || params?.joined || params?.left || params?.deleted || params?.declined ? (
-        <Alert>
-          <AlertDescription>
-            {params?.created
-              ? "Your new group is ready."
-              : params?.joined
-                ? "You’re in — welcome to the group."
-                : params?.left
-                  ? "You’ve left the group."
-                  : params?.deleted
-                    ? "The group has been deleted."
-                    : "Invite declined."}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <section className="grid gap-4" aria-labelledby="group-directory-heading">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-primary">Clubhouse</p>
-            <h2
-              id="group-directory-heading"
-              className="mt-1 text-2xl font-semibold tracking-normal"
-            >
-              {activeTab === "mine"
-                ? "My groups"
-                : activeTab === "discover"
-                  ? "Find your next crew"
-                  : "Group invites"}
-            </h2>
-          </div>
-          <GroupDirectoryTabs activeTab={activeTab} inviteCount={data.invites.length} />
-        </div>
-
-        {activeTab === "mine" ? (
-          <GroupClubList
-            groups={data.mine}
-            emptyTitle="Your clubhouse is quiet"
-            emptyDescription="Create a group for your regular game or discover an existing crew."
-            emptyAction={
-              <Button asChild variant="outline">
-                <Link href="/groups?tab=discover" prefetch={false}>
-                  Discover groups
-                </Link>
-              </Button>
-            }
-          />
-        ) : activeTab === "discover" ? (
-          <GroupClubList
-            groups={data.discoverable}
-            discover
-            emptyTitle="No open groups right now"
-            emptyDescription="Public clubs and crews will appear here when they are open to new members."
-          />
-        ) : (
-          <GroupInvites invites={data.invites} invitePreview={data.invitePreview} />
-        )}
-      </section>
+          <GroupDirectoryTabs
+            activeTab={activeTab}
+            counts={{
+              mine: data.mine.length,
+              discover: data.discoverable.length,
+              invites: data.invites.length,
+            }}
+          >
+            {activeTab === "mine" ? (
+              <GroupClubList
+                groups={data.mine}
+                emptyTitle="Your clubhouse is quiet"
+                emptyDescription="Create a group for your regular game or discover an existing crew."
+                emptyAction={
+                  <Button asChild variant="outline">
+                    <Link href="/groups?tab=discover" prefetch={false}>
+                      Discover groups
+                    </Link>
+                  </Button>
+                }
+              />
+            ) : activeTab === "discover" ? (
+              <GroupClubList
+                groups={data.discoverable}
+                discover
+                emptyTitle="No open groups right now"
+                emptyDescription="Public clubs and crews will appear here when they are open to new members."
+              />
+            ) : (
+              <GroupInvites invites={data.invites} invitePreview={data.invitePreview} />
+            )}
+          </GroupDirectoryTabs>
+        </section>
+      </div>
     </PageShell>
   );
 }
@@ -194,15 +165,16 @@ function GroupClubRow({ group, discover }: { group: GroupListItem; discover: boo
               <Link
                 href={`/groups/${group.slug}`}
                 prefetch={false}
-                className="truncate text-lg font-semibold hover:text-primary hover:underline"
+                className="break-words text-lg font-semibold hover:text-primary hover:underline"
               >
                 {group.name}
               </Link>
+              <Badge variant="outline">{label(group.visibility)}</Badge>
               {group.viewerRole ? (
                 <Badge variant="secondary">{label(group.viewerRole)}</Badge>
               ) : null}
             </div>
-            <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-5 text-muted-foreground">
               {group.description ?? label(group.groupType)}
             </p>
           </div>
@@ -219,7 +191,7 @@ function GroupClubRow({ group, discover }: { group: GroupListItem; discover: boo
             label="Latest activity"
             value={
               group.latestActivity
-                ? `${trimLabel(group.latestActivity.label)} · ${activityDateFormatter.format(group.latestActivity.createdAt)}`
+                ? `${group.latestActivity.label} · ${activityDateFormatter.format(group.latestActivity.createdAt)}`
                 : "No posts yet"
             }
           />
@@ -243,10 +215,12 @@ function GroupClubRow({ group, discover }: { group: GroupListItem; discover: boo
 
         <div className="flex gap-2 xl:justify-end">
           {discover ? (
-            <form action={joinGroupAction}>
-              <input type="hidden" name="groupId" value={group.id} />
-              <Button type="submit">Join crew</Button>
-            </form>
+            <GroupDecision
+              name={group.name}
+              visibility={label(group.visibility)}
+              operation="join"
+              identifier={group.id}
+            />
           ) : null}
           <Button asChild variant={discover ? "outline" : "default"}>
             <Link href={`/groups/${group.slug}`} prefetch={false}>
@@ -275,7 +249,7 @@ function GroupFact({
         {icon}
         {factLabel}
       </p>
-      <p className="mt-1 truncate text-sm font-medium" title={value}>
+      <p className="mt-1 break-words text-sm font-medium" title={value}>
         {value}
       </p>
     </div>
@@ -330,10 +304,12 @@ function GroupInvites({
                 </Link>
               </Button>
             ) : (
-              <form action={joinGroupByInviteCodeAction}>
-                <input type="hidden" name="inviteCode" value={invitePreview.inviteCode} />
-                <Button type="submit">Accept invite</Button>
-              </form>
+              <GroupDecision
+                name={invitePreview.name}
+                visibility={label(invitePreview.visibility)}
+                operation="code"
+                identifier={invitePreview.inviteCode}
+              />
             )}
           </div>
         </Card>
@@ -349,7 +325,7 @@ function GroupInvites({
                 size="lg"
               />
               <div className="min-w-0">
-                <p className="truncate text-lg font-semibold">{invite.group.name}</p>
+                <p className="break-words text-lg font-semibold">{invite.group.name}</p>
                 <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   <span>{invite.group.memberCount} members</span>
                   <span aria-hidden="true">·</span>
@@ -363,16 +339,18 @@ function GroupInvites({
               </div>
             </div>
             <div className="flex gap-2">
-              <form action={declineGroupInviteAction}>
-                <input type="hidden" name="inviteId" value={invite.id} />
-                <Button type="submit" variant="outline">
-                  Decline
-                </Button>
-              </form>
-              <form action={acceptGroupInviteAction}>
-                <input type="hidden" name="inviteId" value={invite.id} />
-                <Button type="submit">Accept</Button>
-              </form>
+              <GroupDecision
+                name={invite.group.name}
+                visibility={label(invite.group.visibility)}
+                operation="decline"
+                identifier={invite.id}
+              />
+              <GroupDecision
+                name={invite.group.name}
+                visibility={label(invite.group.visibility)}
+                operation="accept"
+                identifier={invite.id}
+              />
             </div>
           </div>
         </Card>
@@ -382,13 +360,8 @@ function GroupInvites({
 }
 
 function parseDirectoryTab(value?: string, hasInvite = false): GroupDirectoryTab {
-  if (hasInvite) return "invites";
+  if (hasInvite && !value) return "invites";
   return value === "discover" || value === "invites" ? value : "mine";
-}
-
-function trimLabel(value: string) {
-  const normalized = value.replace(/\s+/g, " ").trim();
-  return normalized.length > 46 ? `${normalized.slice(0, 43)}…` : normalized;
 }
 
 function label(value: string) {

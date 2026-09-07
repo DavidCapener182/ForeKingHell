@@ -101,6 +101,7 @@ export type AchievementSession = {
   source: string;
   type: string;
   date: Date;
+  roundStatus?: string | null;
   scorecardJson?: RoundScorecardHole[] | null;
 };
 

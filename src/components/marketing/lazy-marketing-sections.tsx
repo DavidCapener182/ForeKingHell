@@ -2,10 +2,8 @@
 
 import dynamic from "next/dynamic";
 
-const MarketingFaq = dynamic(
-  () => import("@/components/marketing/marketing-faq").then((module) => module.MarketingFaq),
-  { ssr: false, loading: MarketingSectionPlaceholder },
-);
+import { MarketingFaq } from "./marketing-faq";
+
 const SampleProductTour = dynamic(
   () =>
     import("@/components/marketing/sample-product-tour").then((module) => module.SampleProductTour),

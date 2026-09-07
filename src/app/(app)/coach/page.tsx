@@ -18,11 +18,13 @@ import {
   UsersRound,
 } from "lucide-react";
 
+import { CoachSourceRecords } from "@/app/coach/coach-source-records";
 import { CoachDrillAutoSync } from "@/app/coach/coach-drill-auto-sync";
 import { LazyCoachDataChatPanel } from "@/app/coach/lazy-coach-data-chat-panel";
 import { AppEmptyState } from "@/components/app/app-empty-state";
-import { MobileAppShell, MobileTopBar } from "@/components/mobile-sports";
-import { PageShell, StatusPill } from "@/components/premium";
+import { UrlTabs } from "@/components/untitled-ui/url-tabs";
+import { progressRecommendation } from "@/app/progress/progress-recommendation";
+import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,7 +37,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { getAiFeatureEntitlement } from "@/lib/ai/usage";
 import { planAllowsAiFeature } from "@/lib/ai/features";
-import { getRequestAppSurface } from "@/lib/app-surface-server";
 import {
   buildCoachDrillChallenges,
   buildCoachSummary,
@@ -53,7 +54,11 @@ import type { ProgressSignal } from "@/lib/progress-summary";
 
 export const dynamic = "force-dynamic";
 
-type CoachSearchParams = Promise<{ tab?: string | string[] }>;
+type CoachSearchParams = Promise<{
+  tab?: string | string[];
+  source?: string;
+  evidencePage?: string;
+}>;
 type CoachTab = "diagnosis" | "evidence" | "ask";
 
 const dateFormatter = new Intl.DateTimeFormat("en-GB", {
@@ -64,15 +69,19 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
 
 export default async function CoachPage({ searchParams }: { searchParams: CoachSearchParams }) {
   const params = await searchParams;
-  const [userId, surface] = await Promise.all([requireCurrentUserId(), getRequestAppSurface()]);
+  const userId = await requireCurrentUserId();
   const [data, evidence, dataChatEntitlement] = await Promise.all([
     getProgressData(userId),
     getCoachEvidenceBrowserData(userId),
     getAiFeatureEntitlement(userId, "data_chat"),
   ]);
   const coach = buildCoachSummary(data.clubs);
+  const priority = progressRecommendation(coach.summary);
   const topClub =
-    coach.clubCards.find((card) => card.sampleSize >= 3) ?? coach.clubCards[0] ?? null;
+    coach.clubCards.find((card) => card.clubId === priority?.clubId) ??
+    coach.clubCards.find((card) => card.sampleSize >= 3) ??
+    coach.clubCards[0] ??
+    null;
   const secondaryClub =
     coach.clubCards.find((card) => card.clubId !== topClub?.clubId && card.sampleSize >= 3) ??
     coach.clubCards.find((card) => card.clubId !== topClub?.clubId) ??
@@ -90,33 +99,35 @@ export default async function CoachPage({ searchParams }: { searchParams: CoachS
   return (
     <PageShell>
       <CoachDrillAutoSync enabled={shouldSyncDrillAwards} />
-      {surface === "companion" ? (
-        <MobileCoachSummary coach={coach} topClub={topClub} />
-      ) : (
-        <DesktopCoachWorkspace
-          coach={coach}
-          topClub={topClub}
-          secondaryClub={secondaryClub}
-          topClubAnalytics={
-            topClubData
-              ? {
-                  carrySpreadYd: topClubData.analytics.distance.carrySpreadYd,
-                  carryConsistencyScore: topClubData.analytics.consistency.carryConsistencyScore,
-                }
-              : null
-          }
-          evidence={evidence}
-          activeTab={activeTab}
-          canUseDataChat={canUseDataChat}
-          monthlyRemaining={dataChatEntitlement.monthlyRemaining}
-        />
-      )}
+      <DesktopCoachWorkspace
+        accountId={userId}
+        sourceRecords={
+          <CoachSourceRecords userId={userId} source={params.source} page={params.evidencePage} />
+        }
+        coach={coach}
+        topClub={topClub}
+        secondaryClub={secondaryClub}
+        topClubAnalytics={
+          topClubData
+            ? {
+                carrySpreadYd: topClubData.analytics.distance.carrySpreadYd,
+                carryConsistencyScore: topClubData.analytics.consistency.carryConsistencyScore,
+              }
+            : null
+        }
+        evidence={evidence}
+        activeTab={activeTab}
+        canUseDataChat={canUseDataChat}
+        monthlyRemaining={dataChatEntitlement.monthlyRemaining}
+      />
       <DriverDevelopmentPanel compact />
     </PageShell>
   );
 }
 
 async function DesktopCoachWorkspace({
+  accountId,
+  sourceRecords,
   coach,
   topClub,
   secondaryClub,
@@ -126,6 +137,8 @@ async function DesktopCoachWorkspace({
   canUseDataChat,
   monthlyRemaining,
 }: {
+  accountId: string;
+  sourceRecords: ReactNode;
   coach: CoachSummary;
   topClub: CoachClubCard | null;
   secondaryClub: CoachClubCard | null;
@@ -135,11 +148,6 @@ async function DesktopCoachWorkspace({
   canUseDataChat: boolean;
   monthlyRemaining: number;
 }) {
-  const [{ DesktopWorkbenchLayout }, { AiDesktopWorkbench }] = await Promise.all([
-    import("@/components/app/desktop-workbench"),
-    import("@/components/app/ai-desktop-workbench"),
-  ]);
-
   return (
     <>
       <header className="flex justify-end">
@@ -173,29 +181,73 @@ async function DesktopCoachWorkspace({
         </DropdownMenu>
       </header>
 
-      <DesktopWorkbenchLayout scope="coach">
-        <AiDesktopWorkbench
-          defaultTab={activeTab}
-          diagnosis={
-            topClub ? (
-              <CoachDiagnosis
-                coach={coach}
-                topClub={topClub}
-                secondaryClub={secondaryClub}
-                topClubAnalytics={topClubAnalytics}
-                latestRound={evidence.latestRound}
+      <PageHeader
+        title="Coach"
+        description={
+          progressRecommendation(coach.summary)?.title ??
+          "Build a measured baseline for your next practice."
+        }
+        actions={
+          <Button asChild>
+            <Link href={progressRecommendation(coach.summary)?.href ?? "/import"}>
+              {topClub ? "Build focused practice" : "Import a session"}
+            </Link>
+          </Button>
+        }
+      />
+      <UrlTabs
+        label="Coach sections"
+        defaultTabKey={activeTab}
+        tabs={[
+          {
+            id: "diagnosis",
+            label: "Diagnosis",
+            content: (
+              <div className="grid min-w-0 gap-4">
+                {topClub ? (
+                  <CoachDiagnosis
+                    coach={coach}
+                    topClub={topClub}
+                    secondaryClub={secondaryClub}
+                    topClubAnalytics={topClubAnalytics}
+                    latestRound={evidence.latestRound}
+                  />
+                ) : (
+                  <CoachEmptyState />
+                )}
+                <details className="rounded-lg border p-4">
+                  <summary className="min-h-11 cursor-pointer">
+                    Contributing causes and confidence
+                  </summary>
+                  <DiagnosisRail coach={coach} topClub={topClub} />
+                </details>
+              </div>
+            ),
+          },
+          {
+            id: "evidence",
+            label: "Evidence",
+            content: (
+              <div className="grid gap-4">
+                <CoachEvidenceBrowser coach={coach} evidence={evidence} />
+                {sourceRecords}
+                <EvidenceRail coach={coach} evidence={evidence} />
+              </div>
+            ),
+          },
+          {
+            id: "ask",
+            label: "Ask your data",
+            content: (
+              <CoachAsk
+                accountId={accountId}
+                canUseDataChat={canUseDataChat}
+                monthlyRemaining={monthlyRemaining}
               />
-            ) : (
-              <CoachEmptyState />
-            )
-          }
-          evidence={<CoachEvidenceBrowser coach={coach} evidence={evidence} />}
-          ask={<CoachAsk canUseDataChat={canUseDataChat} monthlyRemaining={monthlyRemaining} />}
-          context={<DiagnosisRail coach={coach} topClub={topClub} />}
-          evidenceContext={<EvidenceRail coach={coach} evidence={evidence} />}
-          askStandalone
-        />
-      </DesktopWorkbenchLayout>
+            ),
+          },
+        ]}
+      />
     </>
   );
 }
@@ -221,7 +273,7 @@ function CoachDiagnosis({
         className="overflow-hidden rounded-xl border bg-card shadow-sm"
         data-primary-diagnosis
       >
-        <div className="border-b bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary)_10%,var(--card)),var(--card)_58%)] p-6 xl:p-8">
+        <div className="border-b bg-[linear-gradient(135deg,color-mix(in_srgb,var(--primary)_10%,var(--card)),var(--card)_58%)] p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
               Primary diagnosis
@@ -230,11 +282,12 @@ function CoachDiagnosis({
               {coachEvidenceConfidence(topClub)} · {topClub.sampleSize} clean shots
             </span>
           </div>
-          <h1 className="mt-6 text-lg font-medium tracking-normal text-muted-foreground">
-            Your biggest scoring opportunity is…
-          </h1>
-          <p className="mt-2 max-w-5xl text-4xl font-semibold tracking-[-0.035em] text-balance text-foreground xl:text-6xl">
-            {topClub.clubName} {topClub.issueLabel.toLowerCase()}
+          <h2 className="mt-6 text-lg font-medium tracking-normal text-muted-foreground">
+            Current evidence and practice priority
+          </h2>
+          <p className="mt-2 max-w-5xl text-2xl font-semibold tracking-tight text-balance text-foreground">
+            {progressRecommendation(coach.summary)?.title ??
+              `${topClub.clubName} ${topClub.issueLabel.toLowerCase()}`}
           </p>
         </div>
 
@@ -255,7 +308,7 @@ function CoachDiagnosis({
             <span className="grid gap-3">
               <span>{topClub.drill}</span>
               <Button asChild className="w-fit" size="sm">
-                <Link href={practiceHref("latest_weakness")} prefetch={false}>
+                <Link href={practiceHref("latest_weakness", topClub)} prefetch={false}>
                   Build this practice plan
                   <ArrowRight className="size-4" />
                 </Link>
@@ -307,7 +360,7 @@ function CoachDiagnosis({
           index={1}
           title={`${topClub.clubName} · ${topClub.issueLabel}`}
           detail={topClub.drill}
-          href={practiceHref("latest_weakness")}
+          href={practiceHref("latest_weakness", topClub)}
         />
         <CoachingPriority
           index={2}
@@ -319,7 +372,7 @@ function CoachDiagnosis({
           detail={
             secondaryClub?.reason ?? "Add another comparable session before widening the plan."
           }
-          href={practiceHref("confidence")}
+          href={practiceHref("confidence", secondaryClub)}
         />
         <CoachingPriority
           index={3}
@@ -368,7 +421,12 @@ function DispersionVisual({ card }: { card: CoachClubCard }) {
 
   return (
     <EvidenceVisual label="Dispersion" value={card.usualMiss ?? "Needs data"}>
-      <svg viewBox="0 0 100 86" className="h-36 w-full" role="img" aria-label="Shot dispersion">
+      <svg
+        viewBox="0 0 100 86"
+        className="h-36 w-full"
+        role="img"
+        aria-label="Illustrative dispersion guide; points are not measured shot coordinates"
+      >
         <ellipse cx="50" cy="52" rx="23" ry="31" fill="none" stroke="currentColor" opacity="0.12" />
         <ellipse cx="50" cy="52" rx="11" ry="16" fill="none" stroke="currentColor" opacity="0.2" />
         <path d="M50 15v74M12 52h76" stroke="currentColor" opacity="0.1" />
@@ -384,6 +442,16 @@ function DispersionVisual({ card }: { card: CoachClubCard }) {
           />
         ))}
       </svg>
+      <p className="text-xs leading-5 text-muted-foreground">
+        Illustrative geometry, not individual shot positions. {card.sampleSize} clean shots in the
+        loaded club sample.
+      </p>
+      <Link
+        className="inline-flex min-h-11 items-center text-sm underline"
+        href={`/bag/${card.clubId}`}
+      >
+        Inspect measured club evidence
+      </Link>
       <p className="text-xs leading-5 text-muted-foreground">
         {card.playableRate === null
           ? "No scored window yet"
@@ -464,7 +532,7 @@ function RoundResultVisual({
           </span>
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">
+          <p className="break-words text-sm font-semibold">
             {latestRound?.label ?? "Round evidence waiting"}
           </p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -475,7 +543,7 @@ function RoundResultVisual({
         </div>
       </div>
       <Link
-        href="/rounds"
+        href={latestRound ? `/rounds/${latestRound.id}` : "/rounds"}
         prefetch={false}
         className="text-xs font-semibold text-primary hover:underline"
       >
@@ -553,7 +621,7 @@ function CoachEvidenceBrowser({
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           Evidence browser
         </p>
-        <h1 className="mt-4 text-4xl font-semibold tracking-[-0.03em]">Trace the coaching read</h1>
+        <h2 className="mt-4 text-4xl font-semibold tracking-[-0.03em]">Trace the coaching read</h2>
         <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">
           Move from the diagnosis to the measured sessions, clubs, rounds and source records behind
           it.
@@ -644,9 +712,11 @@ function EvidenceBrowserRow({
 }
 
 function CoachAsk({
+  accountId,
   canUseDataChat,
   monthlyRemaining,
 }: {
+  accountId: string;
   canUseDataChat: boolean;
   monthlyRemaining: number;
 }) {
@@ -655,12 +725,12 @@ function CoachAsk({
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <StatusPill tone={canUseDataChat ? "green" : "amber"}>Data Chat</StatusPill>
-          <h1
+          <h2
             id="coach-data-chat-heading"
             className="mt-4 text-3xl font-semibold tracking-[-0.025em]"
           >
             Ask your data
-          </h1>
+          </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Continue the coaching conversation without leaving this workspace.
           </p>
@@ -670,7 +740,7 @@ function CoachAsk({
         </span>
       </div>
       {canUseDataChat ? (
-        <LazyCoachDataChatPanel monthlyRemaining={monthlyRemaining} />
+        <LazyCoachDataChatPanel accountId={accountId} monthlyRemaining={monthlyRemaining} />
       ) : (
         <Alert className="border-[var(--status-warning-border)] bg-[var(--status-warning-surface)]">
           <ShieldCheck className="size-4" />
@@ -758,71 +828,6 @@ function RailMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MobileCoachSummary({
-  coach,
-  topClub,
-}: {
-  coach: CoachSummary;
-  topClub: CoachClubCard | null;
-}) {
-  return (
-    <MobileAppShell>
-      <MobileTopBar title="Coach" />
-      {topClub ? (
-        <main className="grid gap-5 px-4 pb-8 pt-3" data-mobile-coach-summary>
-          <section className="rounded-[1.4rem] border bg-card p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Main diagnosis
-              </span>
-              <span className="text-xs font-medium text-muted-foreground">
-                {topClub.trustIndex}% confidence
-              </span>
-            </div>
-            <p className="mt-6 text-sm font-medium text-muted-foreground">
-              Your biggest scoring opportunity is…
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.035em] text-balance">
-              {topClub.clubName} {topClub.issueLabel.toLowerCase()}
-            </h1>
-            <div className="mt-6 border-t pt-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Why
-              </p>
-              <p className="mt-2 text-base leading-7 text-foreground/85">{topClub.reason}</p>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {whyItMatters(topClub)}
-              </p>
-            </div>
-            <Button asChild className="mt-6 min-h-12 w-full rounded-xl">
-              <Link href={practiceHref("latest_weakness")} prefetch={false}>
-                <Crosshair className="size-4" />
-                Build practice plan
-              </Link>
-            </Button>
-          </section>
-        </main>
-      ) : (
-        <main className="px-4 pb-8 pt-3">
-          <AppEmptyState
-            icon={<Brain className="size-5" />}
-            title="Your coach needs a measured baseline"
-            description={coach.subhead}
-            primaryAction={
-              <Button asChild>
-                <Link href="/import" prefetch={false}>
-                  <Upload className="size-4" />
-                  Import data
-                </Link>
-              </Button>
-            }
-          />
-        </main>
-      )}
-    </MobileAppShell>
-  );
-}
-
 function CoachEmptyState() {
   return (
     <AppEmptyState
@@ -846,8 +851,11 @@ function parseCoachTab(value: string | string[] | undefined): CoachTab {
   return tab === "evidence" || tab === "ask" ? tab : "diagnosis";
 }
 
-function practiceHref(intent: "latest_weakness" | "confidence" | "scoring") {
-  return `/practice?time=30&intent=${intent}&energy=normal&session=range&balls=50`;
+function practiceHref(
+  intent: "latest_weakness" | "confidence" | "scoring",
+  club?: CoachClubCard | null,
+) {
+  return `/practice?time=30&intent=${intent}&energy=normal&session=range&balls=50${club ? `&club=${encodeURIComponent(club.clubType.toLowerCase().replace(/[^a-z0-9]/g, ""))}` : ""}`;
 }
 
 function whyItMatters(card: CoachClubCard) {

@@ -121,7 +121,7 @@ export const marketingFaqs = [
   {
     question: "Can I use it on mobile?",
     answer:
-      "Yes. The authenticated companion keeps Today, Practice, Strategy, Review and Bag one tap away, with import, account and settings actions behind focused profile controls.",
+      "Yes. The authenticated companion keeps Today, Sessions, Practice, Play and Bag one tap away, with further destinations and account controls in the navigation menu.",
   },
   {
     question: "What is Course Twin?",

@@ -39,7 +39,14 @@ describe("session performance report hierarchy", () => {
     expect(mobile).toContain('label="Best signal"');
     expect(mobile).toContain('"Main problem" : "Next focus"');
     expect(mobile).toContain("href={sessionPractice}");
-    expect(mobile).not.toContain("<PlanVersusActual");
+    const nextPractice = mobile.slice(mobile.indexOf('id: "next"'));
+    expect(mobile).toContain('defaultTabKey="review"');
+    expect(mobile).toContain('label="Session review sections"');
+    expect(nextPractice).toContain("{plan ? (");
+    expect(nextPractice).toContain(
+      "<PlanVersusActual plan={plan} review={planReview} sessionId={sessionId}",
+    );
+    expect(nextPractice).toContain("href={`/practice?planId=${plan.id}`}");
     expect(mobile).not.toContain("<ClubSummary");
     expect(mobile).not.toContain("<EvidenceDisclosure");
   });

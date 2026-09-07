@@ -9,6 +9,7 @@ import {
 } from "@/components/app/chart-accessible-fallback";
 import {
   ComparisonWorkspace,
+  updateComparisonScope,
   type ComparisonTableRow,
   type SavedWorkspaceComparison,
 } from "@/app/compare/comparison-workspace";
@@ -58,6 +59,7 @@ export function ClubCompareClient({
         ? draftClubBId
         : (data.clubs.find((club) => club.id !== nextClubAId)?.id ?? "");
 
+    updateComparisonScope({ clubAId: nextClubAId, clubBId: nextClubBId });
     setSelectedClubAId(nextClubAId);
     setSelectedClubBId(nextClubBId);
     setDraftClubBId(nextClubBId);
@@ -67,6 +69,7 @@ export function ClubCompareClient({
     const fallbackAId = data.clubs[0]?.id ?? "";
     const fallbackBId = data.clubs.find((club) => club.id !== fallbackAId)?.id ?? "";
 
+    updateComparisonScope({ clubAId: fallbackAId, clubBId: fallbackBId });
     setDraftClubAId(fallbackAId);
     setDraftClubBId(fallbackBId);
     setSelectedClubAId(fallbackAId);

@@ -33,6 +33,8 @@ const workbench = readFileSync(
   join(root, "src/app/(app)/import/import-workbench-page.tsx"),
   "utf8",
 );
+const choice = readFileSync(join(root, "src/app/import/import-workspace-choice.tsx"), "utf8");
+const chooser = readFileSync(join(root, "src/app/import/import-source-chooser.tsx"), "utf8");
 const importForm = readFileSync(join(root, "src/app/import/import-form.tsx"), "utf8");
 const uploadDropzone = readFileSync(join(root, "src/app/import/upload-dropzone.tsx"), "utf8");
 const columnMapping = readFileSync(join(root, "src/app/import/column-mapping-panel.tsx"), "utf8");
@@ -63,15 +65,16 @@ describe("surface-specific import centre", () => {
     expect(runtimeEntry).not.toContain("import-workbench-page");
     expect(runtimeEntry).not.toContain("import-companion-csv-page");
     expect(companion).not.toContain("CompanionRangeImport");
-    expect(companionCsv).toContain("CompanionRangeImport");
+    expect(companionCsv).toContain("ImportWorkspaceChoice");
+    expect(choice).toContain("<CompanionRangeImport");
   });
 
   it("keeps the phone source decision short and action-first", () => {
-    expect(companion).toContain("Rapsodo R-Cloud");
-    expect(companion).toContain("Choose CSV from Files");
+    expect(chooser).toContain("Rapsodo R-Cloud");
+    expect(chooser).toContain("Choose CSV files");
     expect(companion).toContain("Add a manual round");
     expect(companion).toContain("Connection status");
-    expect(companion).toContain("Recent imports");
+    expect(companion).toContain("Recent saved sessions");
     expect(companion).toContain("CompanionSyncStatus");
     expect(companion).toContain("<Alert>");
     expect(companion).toContain("<Card");
@@ -86,7 +89,10 @@ describe("surface-specific import centre", () => {
     expect(companion).not.toContain("getFeatureIdeasData");
     expect(companion).not.toContain("MobileImportFirstRun");
     expect(companionSyncStatus).toContain("<Alert");
-    expect(companionSyncStatus).toContain("<Progress");
+    expect(companionSyncStatus).toContain("listOfflineActions(accountId)");
+    expect(companionSyncStatus).toContain("snapshot?.accountId === accountId");
+    expect(companionSyncStatus).toContain("disabled={!isOnline}");
+    expect(companionSyncStatus).toContain('new Event("fkh-offline-retry-requested")');
     expect(companionSyncStatus).toContain("Retry sync");
   });
 
@@ -118,7 +124,7 @@ describe("surface-specific import centre", () => {
   });
 
   it("preserves the exportable configurable workbench library", () => {
-    expect(workbench).toContain("DesktopWorkflowLayout");
+    expect(workbench).toContain("<PageShell>");
     expect(workbench).toContain("DesktopTableWorkbenchControls");
     expect(workbench).toContain('viewKey="import-library"');
     expect(workbench).toContain('exportTableId="import-library"');
@@ -126,8 +132,9 @@ describe("surface-specific import centre", () => {
     expect(workbench).toContain('mainTableLabel="Import file library table"');
     expect(workbench).toContain("ConfirmSubmitButton");
     expect(workbench).toContain('confirmActionLabel="Archive file"');
-    expect(workbench).toContain("<DesktopWorkflowLayout");
-    expect(workbench).toContain("steps={importWorkflowSteps}");
+    expect(workbench).toContain("<ImportSourceChooser");
+    expect(workbench).toContain("Linked session evidence is retained.");
+    expect(workbench).toContain('name="importFileId" value={file.id}');
     expect(workbench).not.toContain("<OperationStepper");
     expect(workbench).toContain('id="csv-import"');
     expect(workbench).toContain('href: "/rapsodo"');
@@ -137,11 +144,17 @@ describe("surface-specific import centre", () => {
     expect(workbench).toContain("<ImportForm");
     expect(workbench).not.toContain('presentation="workbench"');
     expect(uploadDropzone).toContain("data-import-upload-table");
-    expect(uploadDropzone).toContain("<Table");
+    expect(uploadDropzone).toContain("{files.map((file) => (");
   });
 
-  it("keeps ImportForm workbench-only after the companion runtime split", () => {
-    expect(importForm).toContain("CSV import workspace");
+  it("defers the full workflow until selected while retaining each visited draft", () => {
+    expect(choice).toContain('dynamic(() => import("./import-form")');
+    expect(choice).toContain("const [fullVisited, setFullVisited] = useState(sample)");
+    expect(choice).toContain("setFullVisited(true)");
+    expect(choice).toContain("{fullVisited ? (");
+    expect(choice).toContain("<div hidden={!full}>");
+    expect(choice).toContain("<div hidden={full}>");
+    expect(choice).not.toContain("setFullVisited(false)");
     expect(importForm).toContain("<OperationStatus");
     expect(importForm).toContain('status="working"');
     expect(importForm).not.toMatch(/saveState\.status !== "idle" \? \(\s*<Alert/);
@@ -167,7 +180,8 @@ describe("surface-specific import centre", () => {
     expect(importForm).not.toMatch(/<button\b/);
     expect(companion).not.toContain("ImportForm");
     expect(companion).not.toContain("CompanionRangeImport");
-    expect(companionCsv).toContain("CompanionRangeImport");
+    expect(companionCsv).toContain("ImportWorkspaceChoice");
+    expect(choice).toContain("<CompanionRangeImport");
   });
 
   it("uses one workflow stepper and discloses import-quality evidence", () => {

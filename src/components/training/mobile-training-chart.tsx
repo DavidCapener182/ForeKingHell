@@ -151,9 +151,9 @@ export function MobileTrainingChart({
       ) : null}
       <p className="mobile-type-footnote text-muted-foreground">{views[view].detail}</p>
       <details>
-        <summary className="mobile-progress-disclosure">Last 7 days · exact values</summary>
-        <dl className="divide-y">
-          {available.slice(-7).map((p) => (
+        <summary className="mobile-progress-disclosure">Selected period · exact values</summary>
+        <dl className="max-h-80 overflow-y-auto divide-y">
+          {available.map((p) => (
             <div key={p.date} className="flex justify-between py-2 mobile-type-callout">
               <dt>{trainingDisplayDate(p.date)}</dt>
               <dd className="tabular-nums">{p[view].toFixed(1)}</dd>

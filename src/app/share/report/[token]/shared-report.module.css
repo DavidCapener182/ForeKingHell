@@ -1,0 +1,20 @@
+.tableRegion {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+.tableRegion:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.tableRegion th:first-child,
+.tableRegion td:first-child {
+  position: sticky;
+  left: 0;
+  background: var(--card);
+  z-index: 1;
+}
+.tableRegion th:first-child {
+  z-index: 2;
+}

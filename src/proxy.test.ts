@@ -211,7 +211,7 @@ describe("proxy expired-session recovery", () => {
   });
 });
 
-describe("proxy legacy phone dashboard recovery", () => {
+describe("proxy responsive dashboard route", () => {
   const originalBypass = process.env.PLAYWRIGHT_E2E_AUTH_BYPASS;
   const originalBasicAuthPassword = process.env.FKH_BASIC_AUTH_PASSWORD;
   const phoneUserAgent =
@@ -231,7 +231,29 @@ describe("proxy legacy phone dashboard recovery", () => {
     else process.env.FKH_BASIC_AUTH_PASSWORD = originalBasicAuthPassword;
   });
 
-  it("resets an old phone dashboard launch to companion Today", async () => {
+  it.each([undefined, "companion"])(
+    "rewrites companion Today internally and retains its query (%s)",
+    async (surface) => {
+      const response = await proxy(
+        new NextRequest(
+          "https://app.example.com/today?date=2026-09-07&tab=evidence&session=fixture-session",
+          {
+            headers: {
+              cookie: `${bypassCookie}${surface ? `; fkh-app-surface=${surface}` : ""}`,
+              "user-agent": phoneUserAgent,
+            },
+          },
+        ),
+      );
+      expect(response.headers.get("x-middleware-rewrite")).toBe(
+        "https://app.example.com/companion-runtime/today?date=2026-09-07&tab=evidence&session=fixture-session",
+      );
+      expect(response.headers.get("location")).toBeNull();
+      expect(response.cookies.get("fkh-app-surface")).toBeUndefined();
+    },
+  );
+
+  it("preserves the requested Dashboard and explicit workbench on a phone", async () => {
     const response = await proxy(
       new NextRequest("https://app.example.com/dashboard", {
         headers: {
@@ -241,9 +263,10 @@ describe("proxy legacy phone dashboard recovery", () => {
       }),
     );
 
-    expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("https://app.example.com/today");
-    expect(response.cookies.get("fkh-app-surface")?.value).toBe("companion");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    expect(response.cookies.get("fkh-app-surface")).toBeUndefined();
   });
 
   it("leaves explicitly opened phone workbench pages available", async () => {

@@ -4,7 +4,8 @@ import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
+import { reportServerFailure } from "@/lib/server-observability";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
@@ -33,7 +34,7 @@ import { createShareToken, getShareExpiry, hashShareToken } from "@/lib/share-li
 
 const LOOKBACK_DAYS = 28;
 
-export async function createCoachReportAction(formData: FormData) {
+async function persistCoachReport(formData: FormData) {
   const db = getDb();
   const userId = await requireCurrentUserId();
   let selectedSections = parseCoachReportSections(formData.getAll("sections"));
@@ -42,7 +43,7 @@ export async function createCoachReportAction(formData: FormData) {
     selectedSections = selectedSections.filter((section) => section !== "raw_evidence");
 
   if (selectedSections.length === 0) {
-    redirect("/coach/reports?error=select_sections");
+    throw new ReportInputError("Select at least one report section.");
   }
 
   const selected = new Set(selectedSections);
@@ -282,6 +283,10 @@ export async function createCoachReportAction(formData: FormData) {
       sessionDate: shot.sessionDate.toISOString(),
     })),
   });
+  const requestedTitle = String(formData.get("title") ?? "")
+    .trim()
+    .slice(0, 120);
+  if (requestedTitle) snapshot.title = requestedTitle;
   const token = createShareToken();
   const expiryDays = parseExpiryDays(formData.get("expiryDays"));
   const sourceId = randomUUID();
@@ -326,17 +331,17 @@ export async function createCoachReportAction(formData: FormData) {
     });
   });
 
-  revalidatePath("/coach/reports");
-  redirect(`/coach/reports?share=${encodeURIComponent(token)}`);
+  refreshReportListAfterCommit();
+  return token;
 }
 
-export async function revokeCoachReportAction(formData: FormData) {
+async function persistReportRevocation(formData: FormData) {
   const db = getDb();
   const userId = await requireCurrentUserId();
   const shareLinkId = requiredString(formData, "shareLinkId");
   const now = new Date();
 
-  await db
+  const [revoked] = await db
     .update(shareLinks)
     .set({ revokedAt: now, updatedAt: now })
     .where(
@@ -345,9 +350,11 @@ export async function revokeCoachReportAction(formData: FormData) {
         eq(shareLinks.userId, userId),
         eq(shareLinks.resourceType, "coach_report"),
       ),
-    );
+    )
+    .returning({ id: shareLinks.id });
+  if (!revoked) throw new ReportInputError("Report link not found.");
 
-  revalidatePath("/coach/reports");
+  refreshReportListAfterCommit();
 }
 
 async function loadSelectedNotes(userId: string, lookback: Date): Promise<CoachReportNote[]> {
@@ -414,4 +421,58 @@ function cleanSnapshotText(value: unknown, fallback: string) {
 
 function snapshotNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+}
+
+class ReportInputError extends Error {}
+export type CoachReportFormResult =
+  | { ok: true; shareToken?: string }
+  | { ok: false; error: string };
+export async function createCoachReportAction(formData: FormData) {
+  let token: string;
+  try {
+    token = await persistCoachReport(formData);
+  } catch (error) {
+    if (error instanceof ReportInputError) redirect("/coach/reports?error=select_sections");
+    throw error;
+  }
+  redirect(`/coach/reports?share=${encodeURIComponent(token)}`);
+}
+export async function revokeCoachReportAction(formData: FormData) {
+  await persistReportRevocation(formData);
+}
+export async function createCoachReportWithStateAction(
+  formData: FormData,
+): Promise<CoachReportFormResult> {
+  try {
+    return { ok: true, shareToken: await persistCoachReport(formData) };
+  } catch (error) {
+    return reportFormFailure(error);
+  }
+}
+export async function revokeCoachReportWithStateAction(
+  formData: FormData,
+): Promise<CoachReportFormResult> {
+  try {
+    await persistReportRevocation(formData);
+    return { ok: true };
+  } catch (error) {
+    return reportFormFailure(error);
+  }
+}
+function reportFormFailure(error: unknown): CoachReportFormResult {
+  unstable_rethrow(error);
+  if (error instanceof ReportInputError) return { ok: false, error: error.message };
+  reportServerFailure("coach_report_save_failed", error);
+  return {
+    ok: false,
+    error: "The report change could not be saved. Your choices are still here; try again.",
+  };
+}
+
+function refreshReportListAfterCommit() {
+  try {
+    revalidatePath("/coach/reports");
+  } catch (error) {
+    reportServerFailure("coach_report_refresh_failed", error);
+  }
 }

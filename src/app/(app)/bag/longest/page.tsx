@@ -1,6 +1,8 @@
+import { LongestEvidenceViews } from "@/app/bag/longest-evidence-views";
 import Link from "next/link";
 import { ArrowLeft, Upload } from "lucide-react";
-import { and, asc, desc, eq, or, sql } from "drizzle-orm";
+import { getLongestShots } from "@/lib/longest-shot-data";
+import { BestShotsBoard } from "@/app/bag/best-shots-board";
 
 import {
   DesktopWorkbenchLayout,
@@ -20,22 +22,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DataTableFrame, PageShell } from "@/components/premium";
-import { clubs, sessions, shots } from "@/db/schema";
-import { getDb } from "@/db/client";
-import {
-  clubAccent,
-  clubSortValue,
-  formatClubType,
-  isShortGameTouchClubType,
-  isTrackedClubType,
-} from "@/lib/club-format";
-import { getCurrentUserPreferences, requireCurrentUserId } from "@/lib/current-user";
-import {
-  excludedRecordQualityTags,
-  excludedRecordShotCategories,
-  recordDistance,
-} from "@/lib/shot-records";
+import { DataTableFrame, PageShell, PageHeader } from "@/components/premium";
+
+import { formatClubType } from "@/lib/club-format";
+import { getCurrentUserPreferences } from "@/lib/current-user";
+
 import {
   formatStoredApexFeet,
   formatStoredLateralYards,
@@ -91,8 +82,9 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
 });
 
 export default async function LongestShotsPage() {
-  const [longestShots, preferences] = await Promise.all([
-    getLongestShots(),
+  const [longestShots, carryShots, preferences] = await Promise.all([
+    getLongestShots("total"),
+    getLongestShots("carry"),
     getCurrentUserPreferences(),
   ]);
   const preferredUnits = preferences.preferredUnits;
@@ -116,32 +108,68 @@ export default async function LongestShotsPage() {
             </Button>
           </div>
 
-          <header className="premium-hero p-7">
-            <div className="max-w-3xl space-y-2">
-              <Badge variant="secondary" className="w-fit">
-                Shot simulator
-              </Badge>
-              <h1 className="text-2xl font-semibold tracking-normal text-balance sm:text-5xl">
-                Longest shot simulator
-              </h1>
-              <p className="line-clamp-1 text-sm leading-6 text-muted-foreground sm:line-clamp-none sm:text-base sm:leading-7">
-                Replay each club&apos;s best trusted all-time shot, with the raw maximum kept
-                visible whenever it was excluded from the record.
-              </p>
-            </div>
-          </header>
+          <PageHeader
+            title="Best shots by club"
+            eyebrow="Your personal records"
+            description="Longest carry and total are separate records. Choose a club and distance to inspect the exact saved shot."
+          />
+
+          <BestShotsBoard
+            carryShots={carryShots}
+            totalShots={longestShots}
+            preferredUnits={preferredUnits}
+          />
 
           {longestShots.length > 0 ? (
             <>
-              <LongestShotsSection shots={longestShots} preferredUnits={preferredUnits} />
-              <LongestShotEvidenceTable shots={longestShots} preferredUnits={preferredUnits} />
+              <details className="rounded-2xl border border-border p-5">
+                <summary className="min-h-11 cursor-pointer text-base font-semibold">
+                  Explore the illustrative shot replay
+                </summary>
+                <p className="my-3 text-sm text-muted-foreground">
+                  Distance values come from your saved shot. The replay illustrates a flight; it is
+                  not a measured trajectory.
+                </p>
+                <LongestShotsSection shots={longestShots} preferredUnits={preferredUnits} />
+              </details>
+              <LongestEvidenceViews
+                carry={
+                  carryShots.length ? (
+                    <LongestShotEvidenceTable
+                      shots={carryShots}
+                      preferredUnits={preferredUnits}
+                      metric="carry"
+                    />
+                  ) : (
+                    <p>No measured carry records.</p>
+                  )
+                }
+                total={
+                  <LongestShotEvidenceTable
+                    shots={longestShots}
+                    preferredUnits={preferredUnits}
+                    metric="total"
+                  />
+                }
+              />
             </>
+          ) : carryShots.length > 0 ? (
+            <LongestEvidenceViews
+              carry={
+                <LongestShotEvidenceTable
+                  shots={carryShots}
+                  preferredUnits={preferredUnits}
+                  metric="carry"
+                />
+              }
+              total={<p>No measured total records. Carry is not substituted.</p>}
+            />
           ) : (
             <Card className="premium-card">
               <CardContent className="py-12 text-center">
                 <p className="text-lg font-medium">No longest shots yet</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Import launch-monitor shots to build the shot simulator.
+                  Import launch-monitor shots to establish your first club records.
                 </p>
               </CardContent>
             </Card>
@@ -155,27 +183,39 @@ export default async function LongestShotsPage() {
 function LongestShotEvidenceTable({
   shots,
   preferredUnits,
+  metric,
 }: {
   shots: LongestShot[];
   preferredUnits: DistanceUnitPreference;
+  metric: "carry" | "total";
 }) {
-  const bestShot = shots.reduce((best, shot) =>
-    shotDistanceValue(shot) > shotDistanceValue(best) ? shot : best,
+  const rankedShots = [...shots].sort(
+    (a, b) =>
+      (b[metric === "carry" ? "carryYd" : "totalYd"] ?? -Infinity) -
+      (a[metric === "carry" ? "carryYd" : "totalYd"] ?? -Infinity),
   );
+  const bestShot = rankedShots[0];
 
   return (
     <section id="longest-shot-pb-table" className="grid gap-3" data-workbench-scope="longest-shots">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-normal">PB evidence board</h2>
+          <h2 className="text-xl font-semibold tracking-normal">
+            {metric === "carry" ? "Carry" : "Total"} PB evidence board
+          </h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Sort, export and review the launch-monitor proof behind each club&apos;s longest
-            recorded shot.
+            recorded {metric} shot. Values are ranked by measured {metric}; missing values are never
+            substituted.
           </p>
         </div>
         <Badge variant="secondary" className="w-fit">
           Best visible PB: {formatClubType(bestShot.clubType)} ·{" "}
-          {formatStoredYards(shotDistance(bestShot), preferredUnits)}
+          {formatStoredYards(
+            metric === "carry" ? bestShot.carryYd : bestShot.totalYd,
+            preferredUnits,
+          )}{" "}
+          {metric}
         </Badge>
       </div>
 
@@ -235,7 +275,7 @@ function LongestShotEvidenceTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {shots.map((shot) => (
+            {rankedShots.map((shot) => (
               <TableRow key={shot.id} tabIndex={0} className="focus-aaa outline-none">
                 <TableCell
                   data-column="club"
@@ -255,7 +295,7 @@ function LongestShotEvidenceTable({
                 <TableCell data-column="shot">#{shot.shotNumber ?? "-"}</TableCell>
                 <TableCell data-column="date">{formatDate(shot.shotAt)}</TableCell>
                 <TableCell data-column="total" className="text-right font-semibold">
-                  {formatStoredYards(shotDistance(shot), preferredUnits)}
+                  {formatStoredYards(shot.totalYd, preferredUnits)}
                 </TableCell>
                 <TableCell data-column="carry" className="text-right">
                   {formatStoredYards(shot.carryYd, preferredUnits)}
@@ -294,191 +334,6 @@ function LongestShotEvidenceTable({
   );
 }
 
-async function getLongestShots() {
-  const db = getDb();
-  const userId = await requireCurrentUserId();
-  const distanceExpression = sql<number>`coalesce(${shots.totalYd}, ${shots.carryYd})`;
-  const excludedQualityValues = sql.join(
-    [...excludedRecordQualityTags, "warm_up"].map((tag) => sql`${tag}`),
-    sql`, `,
-  );
-  const excludedCategoryValues = sql.join(
-    [...excludedRecordShotCategories, "warm_up"].map((category) => sql`${category}`),
-    sql`, `,
-  );
-  const trustedLifecycleEvidence = or(
-    eq(shots.reviewStatus, "restored"),
-    and(
-      eq(shots.reviewStatus, "included"),
-      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'`,
-      sql`lower(trim(coalesce(${shots.qualityTag}, ''))) not in (${excludedQualityValues})`,
-      sql`lower(trim(coalesce(${shots.shotCategory}, ''))) not in (${excludedCategoryValues})`,
-    ),
-  );
-  const shotSelection = {
-    id: shots.id,
-    clubId: shots.clubId,
-    sessionId: shots.sessionId,
-    sessionSource: sessions.source,
-    sessionFileName: sessions.fileName,
-    shotNumber: shots.shotNumber,
-    shotAt: shots.shotAt,
-    carryYd: shots.carryYd,
-    totalYd: shots.totalYd,
-    sideCarryYd: shots.sideCarryYd,
-    ballSpeedMph: shots.ballSpeedMph,
-    clubSpeedMph: shots.clubSpeedMph,
-    launchAngleDeg: shots.launchAngleDeg,
-    launchDirectionDeg: shots.launchDirectionDeg,
-    apexFt: shots.apexFt,
-    descentAngleDeg: shots.descentAngleDeg,
-    spinRate: shots.spinRate,
-    spinAxis: shots.spinAxis,
-    qualityTag: shots.qualityTag,
-    shotCategory: shots.shotCategory,
-  };
-  const [clubRows, rawRecordRows, trustedRecordRows] = await Promise.all([
-    db
-      .select({
-        id: clubs.id,
-        type: clubs.type,
-        brand: clubs.brand,
-        model: clubs.model,
-      })
-      .from(clubs)
-      .where(and(eq(clubs.userId, userId), eq(clubs.active, true)))
-      .orderBy(asc(clubs.type)),
-    db
-      .selectDistinctOn([shots.clubId], shotSelection)
-      .from(shots)
-      .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(
-        and(eq(shots.userId, userId), eq(sessions.userId, userId), sql`${distanceExpression} > 0`),
-      )
-      .orderBy(shots.clubId, desc(distanceExpression), desc(shots.shotAt)),
-    db
-      .selectDistinctOn([shots.clubId], shotSelection)
-      .from(shots)
-      .innerJoin(sessions, eq(shots.sessionId, sessions.id))
-      .where(
-        and(
-          eq(shots.userId, userId),
-          eq(sessions.userId, userId),
-          sql`${distanceExpression} > 0`,
-          trustedLifecycleEvidence,
-          sql`lower(${sessions.source}) not in ('manual', 'manual_edit')`,
-        ),
-      )
-      .orderBy(shots.clubId, desc(distanceExpression), desc(shots.shotAt)),
-  ]);
-
-  const rawRecordByClubId = new Map(rawRecordRows.map((shot) => [shot.clubId, shot]));
-  const trustedRecordByClubId = new Map(trustedRecordRows.map((shot) => [shot.clubId, shot]));
-
-  return clubRows
-    .filter((club) => isTrackedClubType(club.type) && !isShortGameTouchClubType(club.type))
-    .map((club) => {
-      const rawRecord = rawRecordByClubId.get(club.id) ?? null;
-      const trustedRecord = trustedRecordByClubId.get(club.id) ?? null;
-      const longestShot = trustedRecord ?? rawRecord;
-
-      if (!longestShot) {
-        return null;
-      }
-
-      const brandModel = [club.brand, club.model].filter(Boolean).join(" ") || "Unspecified model";
-
-      return toLongestShot({
-        shot: longestShot,
-        clubId: club.id,
-        clubType: club.type,
-        brandModel,
-        accent: clubAccent(club.type),
-        recordTrust: trustedRecord ? "trusted" : "raw",
-        rawMaximumYd: rawRecord ? recordDistance(rawRecord, "total") : null,
-      });
-    })
-    .filter((shot): shot is LongestShot => shot !== null)
-    .sort((left, right) => clubSortValue(left.clubType) - clubSortValue(right.clubType));
-}
-
-type LongestShotRow = {
-  id: string;
-  clubId: string;
-  sessionId: string;
-  sessionSource: string;
-  sessionFileName: string | null;
-  shotNumber: number | null;
-  shotAt: Date;
-  carryYd: number | null;
-  totalYd: number | null;
-  sideCarryYd: number | null;
-  ballSpeedMph: number | null;
-  clubSpeedMph: number | null;
-  launchAngleDeg: number | null;
-  launchDirectionDeg: number | null;
-  apexFt: number | null;
-  descentAngleDeg: number | null;
-  spinRate: number | null;
-  spinAxis: number | null;
-  qualityTag: string | null;
-  shotCategory: string | null;
-};
-
-function toLongestShot({
-  shot,
-  clubId,
-  clubType,
-  brandModel,
-  accent,
-  recordTrust,
-  rawMaximumYd,
-}: {
-  shot: LongestShotRow;
-  clubId: string;
-  clubType: string;
-  brandModel: string;
-  accent: string;
-  recordTrust: "trusted" | "raw";
-  rawMaximumYd: number | null;
-}): LongestShot {
-  return {
-    id: shot.id,
-    clubId,
-    clubType,
-    brandModel,
-    accent,
-    sessionId: shot.sessionId,
-    sessionSource: shot.sessionSource,
-    sessionFileName: shot.sessionFileName,
-    qualityTag: shot.qualityTag,
-    shotCategory: shot.shotCategory,
-    recordTrust,
-    rawMaximumYd,
-    shotNumber: shot.shotNumber,
-    shotAt: shot.shotAt.toISOString(),
-    carryYd: shot.carryYd,
-    totalYd: shot.totalYd,
-    sideCarryYd: shot.sideCarryYd,
-    ballSpeedMph: shot.ballSpeedMph,
-    clubSpeedMph: shot.clubSpeedMph,
-    launchAngleDeg: shot.launchAngleDeg,
-    launchDirectionDeg: shot.launchDirectionDeg,
-    apexFt: shot.apexFt,
-    descentAngleDeg: shot.descentAngleDeg,
-    spinRate: shot.spinRate,
-    spinAxis: shot.spinAxis,
-  };
-}
-
-function shotDistance(shot: LongestShot) {
-  return shot.totalYd ?? shot.carryYd ?? null;
-}
-
-function shotDistanceValue(shot: LongestShot) {
-  return shotDistance(shot) ?? 0;
-}
-
 function formatDate(value: string) {
   return dateFormatter.format(new Date(value));
 }
@@ -493,7 +348,7 @@ function proofTierForShot(shot: LongestShot) {
   }
 
   if (shot.ballSpeedMph !== null || shot.clubSpeedMph !== null) {
-    return "Speed verified";
+    return "Speed recorded";
   }
 
   return "Distance only";

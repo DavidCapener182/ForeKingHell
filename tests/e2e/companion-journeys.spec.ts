@@ -32,42 +32,43 @@ test.describe("phone companion journeys", () => {
   });
 
   test("1-6: builds, runs, uploads and immediately reviews measured practice", async ({ page }) => {
+    page.setDefaultTimeout(15_000);
     test.skip(!canRunMutatingCompanionE2e, mutatingCompanionSkipReason);
     mutatingFixture = new MutatingCompanionFixture();
     await openCompanion(
       page,
       "/practice?intent=latest_weakness&club=driver&time=30&source=e2e",
-      /Recommended session|Active Range Mode/i,
+      /Recommended for you/i,
     );
-    await expectPageReady(page, /Recommended session/i);
-    await expect(page.getByRole("button", { name: /Quick adjustments/i })).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
-    await page.getByRole("button", { name: "30 min", exact: true }).click();
+    await expectPageReady(page, /Recommended for you/i);
+    await expect(page.getByRole("button", { name: "Start practice", exact: true })).toBeEnabled();
+    await page.getByText("Adjust or build a new plan", { exact: true }).click();
+    await page.getByRole("button", { name: /Quick adjustments/i }).click();
+    await expect(page.getByRole("dialog", { name: "Quick adjustments" })).toBeVisible();
+    await page.getByRole("radio", { name: "30 min", exact: true }).click();
     await page.getByRole("button", { name: "Apply adjustments" }).click();
-    await expect(page.locator("[data-current-practice-plan]")).toContainText("30 min");
+    await expect(page.locator("[data-current-practice-plan]")).toContainText(/30\s*min/);
     await expect(page.locator("[data-practice-block-carousel] button[aria-pressed]")).toHaveCount(
       3,
     );
-    await page.getByRole("button", { name: "Save & Start Practice" }).click();
+    await page.getByRole("button", { name: "Start practice", exact: true }).click();
     const rangeMode = page.locator("[data-active-range-mode]");
     await expect(rangeMode).toBeVisible();
     mutatingFixture.trackPracticePlan(await rangeMode.getAttribute("data-practice-plan-id"));
-    await expect(page.getByText(/Range Mode · Block 1 of 3/i)).toBeVisible();
+    await expect(rangeMode.getByText("Block 1 of 3", { exact: true })).toBeVisible();
     await expect(page.getByText(/activity only/i)).toBeVisible();
 
     await page.getByRole("button", { name: "Complete Block" }).click();
-    await expect(page.getByText(/Range Mode · Block 2 of 3/i)).toBeVisible();
+    await expect(rangeMode.getByText("Block 2 of 3", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Session options", exact: true }).click();
     await page.getByRole("button", { name: /Skip block/ }).click();
-    await expect(page.getByText(/Range Mode · Block 3 of 3/i)).toBeVisible();
+    await expect(rangeMode.getByText("Block 3 of 3", { exact: true })).toBeVisible();
     await expect(page.getByRole("progressbar")).toHaveAttribute(
       "aria-label",
-      "1 of 3 practice blocks complete",
+      "Practice blocks completed",
     );
     await page.getByRole("button", { name: "Previous practice block" }).click();
-    await expect(page.getByText(/Range Mode · Block 2 of 3/i)).toBeVisible();
+    await expect(rangeMode.getByText("Block 2 of 3", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Session options" }).click();
     await page.getByRole("button", { name: "Finish practice", exact: true }).click();
@@ -108,6 +109,7 @@ test.describe("phone companion journeys", () => {
     ].join("\n");
     const fileName = `companion-range-${importToken}.csv`;
     mutatingFixture.trackFileName(fileName);
+    await expect(page.locator("#companion-csv-file")).toBeEnabled();
     await page.locator("#companion-csv-file").setInputFiles({
       name: fileName,
       mimeType: "text/csv",
@@ -124,40 +126,55 @@ test.describe("phone companion journeys", () => {
     const saveImport = confirmation.getByRole("button", { name: "Save and build review" });
     await expect(saveImport).toBeVisible();
     await expect(saveImport).toBeEnabled();
-    await saveImport.dispatchEvent("click");
+    await saveImport.click();
     await expect(page).toHaveURL(/\/import\/result\?sessionId=[0-9a-f-]+/, { timeout: 120_000 });
     const savedSessionId = new URL(page.url()).searchParams.get("sessionId");
     expect(savedSessionId).toBeTruthy();
     mutatingFixture.trackSession(savedSessionId);
 
     await expect(page.locator("[data-session-verdict]")).toBeVisible();
+    await page.getByRole("button", { name: "Show shot pattern", exact: true }).click();
     await expect(page.locator("[data-mobile-shot-pattern]")).toHaveAttribute(
       "data-mobile-shot-pattern-hydrated",
       "true",
     );
     await expect(page.getByRole("img", { name: /Dispersion chart/i })).toBeVisible();
-    await page.getByRole("button", { name: "Flight", exact: true }).click();
+    await page.getByRole("radio", { name: "Flight", exact: true }).click();
     await expect(page.getByRole("img", { name: /Flight chart/i })).toBeVisible();
-    await expect(page.getByText("Plan versus actual", { exact: true })).toBeVisible();
+    await expect(page.locator("[data-plan-versus-actual]")).toContainText("Plan versus actual");
     await expect(page.getByRole("link", { name: "Build next plan" })).toBeVisible();
     await expect(page.getByRole("link", { name: /Bag confidence|Shot rows/i })).toHaveCount(0);
 
     await page.goto("/sessions", { waitUntil: "commit" });
     await expectPageReady(page, /Sessions/i);
-    await page.getByRole("button", { name: "Practice", exact: true }).click();
+    await page.getByRole("radio", { name: "Practice", exact: true }).click();
     const measuredReview = page.locator(`a[href="/sessions/${savedSessionId}"]`).first();
     await expect(measuredReview).toBeVisible();
     await measuredReview.click();
-    await expectPageReady(page, /Practice review/i);
-    await expect(page.getByRole("heading", { name: "Four important numbers" })).toBeVisible();
+    await expect(page.locator("[data-practice-session-review]")).toBeVisible();
     await expect(page.locator("[data-mobile-shot-pattern]")).toHaveAttribute(
       "data-mobile-shot-pattern-hydrated",
       "true",
     );
     await expect(page.getByRole("img", { name: /Dispersion chart/i })).toBeVisible();
-    await page.getByRole("button", { name: "Flight", exact: true }).click();
+    await page.getByRole("radio", { name: "Flight", exact: true }).click();
     await expect(page.getByRole("img", { name: /Flight chart/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Build next plan" })).toBeVisible();
+    await page.getByRole("tab", { name: "Clubs & shots", exact: true }).click();
+    await expect(page.getByRole("region", { name: "Session metric story" })).toBeVisible();
+    await page.getByRole("tab", { name: "Next practice", exact: true }).click();
+    await expect(page.locator(`a[href*="sourceSessionId=${savedSessionId}"]`)).toBeVisible();
+
+    // Retrying the exact file must return the same record, including its practice result.
+    await page.goto("/import?source=csv", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#companion-csv-file")).toBeEnabled();
+    await page.locator("#companion-csv-file").setInputFiles({
+      name: fileName,
+      mimeType: "text/csv",
+      buffer: Buffer.from(csvRows),
+    });
+    await page.getByRole("button", { name: "Open saved review", exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/import/result\\?sessionId=${savedSessionId}`));
+    await expect(page.locator("[data-plan-versus-actual]")).toBeVisible();
   });
 
   test("7-10: prepares a course, changes holes, opens Strategy and checks Quick Bag", async ({

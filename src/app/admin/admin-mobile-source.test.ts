@@ -9,7 +9,7 @@ const bulkActionSource = readFileSync(
 );
 
 describe("shared admin desktop composition", () => {
-  it("keeps the desktop-only admin graph free of the obsolete companion shell", () => {
+  it("keeps the responsive admin graph free of the obsolete companion shell", () => {
     expect(source).not.toContain("AdminMobileShell");
     expect(source).not.toContain("MobileAppShell");
     expect(source).not.toContain("MobileTopBar");
@@ -19,7 +19,13 @@ describe("shared admin desktop composition", () => {
     expect(source).not.toContain("IOSInlineStatus");
     expect(source).toContain("AdminNav");
     expect(source).toContain("AdminNotice");
-    expect(source).toContain('className="hidden lg:block"');
+    expect(source).toContain("<AdminNavigation active={active}");
+    const navigation = readFileSync(
+      join(process.cwd(), "src/app/admin/admin-navigation.tsx"),
+      "utf8",
+    );
+    expect(navigation).toContain('aria-label="Admin sections"');
+    expect(navigation).toContain('aria-current={link.href === active ? "page" : undefined}');
   });
 
   it("uses semantic tokens for shared admin metrics", () => {

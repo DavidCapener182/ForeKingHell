@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -45,20 +47,44 @@ export function WhatIfClient({
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">What if?</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Model likely upside from the biggest leaks.
+            Read-only projection from the existing range model. Adjustments are assumptions, never
+            saved measurements.
           </p>
         </div>
         <SlidersHorizontal className="size-5 text-primary" />
       </div>
+      <Button variant="outline" className="mt-3" onClick={() => setValues(groups.map(() => 15))}>
+        Reset assumptions
+      </Button>
       <div className="mt-4 grid gap-4">
         {groups.map((group, index) => (
-          <label key={`${group.clubLabel}-${group.mainMiss}`} className="grid gap-2">
+          <div key={`${group.clubLabel}-${group.mainMiss}`} className="grid gap-2">
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="font-medium">
                 {group.clubLabel} {group.mainMiss.toLowerCase()}
               </span>
               <span className="font-mono text-muted-foreground">{values[index]}%</span>
             </div>
+            <label className="grid gap-1 text-sm">
+              Improvement percentage (0–30%, steps of 5)
+              <Input
+                aria-label={`${group.clubLabel} ${group.mainMiss} improvement percent`}
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={30}
+                step={5}
+                value={values[index] ?? 0}
+                onChange={(event) => {
+                  const next = [...values];
+                  next[index] = Math.max(
+                    0,
+                    Math.min(30, Math.round(Number(event.target.value) / 5) * 5),
+                  );
+                  setValues(next);
+                }}
+              />
+            </label>
             <Slider
               aria-label={`${group.clubLabel} ${group.mainMiss} improvement`}
               min={0}
@@ -71,29 +97,33 @@ export function WhatIfClient({
                 setValues(next);
               }}
             />
-          </label>
+          </div>
         ))}
       </div>
-      <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
-        <div className="rounded-lg bg-muted/55 p-3">
-          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Current</p>
+      <div
+        aria-live="polite"
+        aria-label="Projected outcome"
+        className="sticky bottom-20 z-10 mt-4 grid grid-cols-3 gap-2 rounded-xl border bg-card p-2 text-sm lg:static"
+      >
+        <div className="min-w-0 rounded-lg bg-muted/55 p-2">
+          <p className="text-xs text-muted-foreground">Current estimate</p>
           <p className="mt-1 text-2xl font-semibold">
             {estimate === null ? "--" : estimate.toFixed(1)}
           </p>
         </div>
         <div
           className={cn(
-            "rounded-lg p-3",
+            "min-w-0 rounded-lg p-2",
             predicted !== null ? "bg-[var(--status-success-surface)]" : "bg-muted/55",
           )}
         >
-          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Projected</p>
+          <p className="text-xs text-muted-foreground">Projected</p>
           <p className="mt-1 text-2xl font-semibold text-[var(--status-success-foreground)]">
             {displayPredicted === null ? "--" : displayPredicted.toFixed(1)}
           </p>
         </div>
-        <div className="rounded-lg bg-background p-3 ring-1 ring-border">
-          <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Four rounds</p>
+        <div className="min-w-0 rounded-lg bg-background p-2 ring-1 ring-border">
+          <p className="text-xs text-muted-foreground">Modelled four rounds</p>
           <p className="mt-1 text-2xl font-semibold text-[var(--status-success-foreground)]">
             {shotsSaved === null ? "--" : `${Math.round(shotsSaved)} shots`}
           </p>

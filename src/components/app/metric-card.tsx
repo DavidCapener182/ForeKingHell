@@ -60,10 +60,10 @@ export function AppMetricCard({
     >
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <CardDescription className="truncate">{label}</CardDescription>
+          <CardDescription className="text-sm font-medium">{label}</CardDescription>
           <CardTitle
             data-operational-value
-            className="truncate text-2xl font-semibold tracking-normal"
+            className="mt-2 break-words text-3xl font-semibold tracking-tight [font-variant-numeric:tabular-nums]"
           >
             {value}
           </CardTitle>
@@ -74,9 +74,12 @@ export function AppMetricCard({
             <span
               data-tone={tone}
               data-tone-role="surface"
-              className={cn("grid size-8 place-items-center rounded-md ring-1", toneClasses[tone])}
+              className={cn(
+                "grid size-11 place-items-center rounded-xl ring-1 shadow-xs",
+                toneClasses[tone],
+              )}
             >
-              <Icon className="size-4" />
+              <Icon className="size-5" aria-hidden />
             </span>
           ) : null}
         </CardAction>
@@ -96,7 +99,10 @@ export function AppMetricCard({
     <Link
       href={href}
       prefetch={false}
-      className={cn("group block self-start", stretch && "h-full self-stretch")}
+      className={cn(
+        "group block self-start rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4",
+        stretch && "h-full self-stretch",
+      )}
     >
       {content}
     </Link>

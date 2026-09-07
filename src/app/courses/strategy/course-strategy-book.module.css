@@ -38,7 +38,7 @@
   text-transform: uppercase;
 }
 
-.bookHeader h1 {
+.bookHeader h2 {
   margin-top: 0.28rem;
   font-family: var(--font-display), Georgia, serif;
   font-size: clamp(1.55rem, 2vw, 2.15rem);
@@ -689,7 +689,7 @@
   justify-content: space-between;
   gap: 1rem;
 }
-.mobileClubCarry h3 {
+.mobileClubCarry h2 {
   font-size: 24px;
   line-height: 1.2;
   font-weight: 700;

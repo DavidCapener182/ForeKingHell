@@ -342,10 +342,36 @@ export async function getProfilePageData(username: string) {
     ? await getVisibleFeedItemsForViewer(viewerUserId, { ownerUserId: profile.userId, limit: 6 })
     : await getPublicFeedItemsForProfile(profile.userId, 6);
   const stats = await getProfileStats(profile.userId, profile.visibilitySettingsJson, relationship);
+  const [pendingRequest] =
+    viewerUserId && (relationship === "incoming" || relationship === "outgoing")
+      ? await getDb()
+          .select({ id: friendRequests.id })
+          .from(friendRequests)
+          .where(
+            and(
+              eq(friendRequests.status, "pending"),
+              eq(
+                friendRequests.requesterUserId,
+                relationship === "outgoing" ? viewerUserId : profile.userId,
+              ),
+              eq(
+                friendRequests.recipientUserId,
+                relationship === "outgoing" ? profile.userId : viewerUserId,
+              ),
+            ),
+          )
+          .limit(1)
+      : [];
 
   return {
+    pendingRequestId: pendingRequest?.id ?? null,
     viewerProfile: viewerProfile ? profileSummary(viewerProfile, "self") : null,
-    profile: profileSummary(profile, relationship, { isFollowing: isFollowingProfile }),
+    profile: {
+      ...profileSummary(profile, relationship, { isFollowing: isFollowingProfile }),
+      handicapBand: canViewProfileScope(profile.visibilitySettingsJson?.handicap, relationship)
+        ? profile.handicapBand
+        : null,
+    },
     stats,
     recentFeed,
   };
@@ -548,6 +574,22 @@ export async function acceptFriendRequest(requestId: string) {
   const [userAId, userBId] = sortedUserPair(request.requesterUserId, request.recipientUserId);
 
   await db.transaction(async (tx) => {
+    const [claimed] = await tx
+      .update(friendRequests)
+      .set({
+        status: "accepted",
+        respondedAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(friendRequests.id, request.id),
+          eq(friendRequests.recipientUserId, userId),
+          eq(friendRequests.status, "pending"),
+        ),
+      )
+      .returning({ id: friendRequests.id });
+    if (!claimed) throw new Error("Friend request not found.");
     await tx
       .insert(friendships)
       .values({
@@ -558,15 +600,6 @@ export async function acceptFriendRequest(requestId: string) {
       .onConflictDoNothing({
         target: [friendships.userAId, friendships.userBId],
       });
-
-    await tx
-      .update(friendRequests)
-      .set({
-        status: "accepted",
-        respondedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(friendRequests.id, request.id));
   });
 
   revalidateSocialPaths();
@@ -581,7 +614,13 @@ export async function declineFriendRequest(requestId: string) {
       respondedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(and(eq(friendRequests.id, requestId), eq(friendRequests.recipientUserId, userId)));
+    .where(
+      and(
+        eq(friendRequests.id, requestId),
+        eq(friendRequests.recipientUserId, userId),
+        eq(friendRequests.status, "pending"),
+      ),
+    );
   revalidateSocialPaths();
 }
 
@@ -594,7 +633,13 @@ export async function cancelFriendRequest(requestId: string) {
       respondedAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(and(eq(friendRequests.id, requestId), eq(friendRequests.requesterUserId, userId)));
+    .where(
+      and(
+        eq(friendRequests.id, requestId),
+        eq(friendRequests.requesterUserId, userId),
+        eq(friendRequests.status, "pending"),
+      ),
+    );
   revalidateSocialPaths();
 }
 
@@ -624,9 +669,8 @@ export async function blockUser(blockedUserId: string) {
       .onConflictDoNothing({
         target: [userBlocks.blockerUserId, userBlocks.blockedUserId],
       });
-    await tx
-      .delete(friendships)
-      .where(and(eq(friendships.userAId, userAId), eq(friendships.userBId, userBId)));
+    // Resolve pending acceptance before deleting its possible friendship. Acceptance
+    // locks this same request row before inserting the relationship.
     await tx
       .delete(friendRequests)
       .where(
@@ -641,6 +685,9 @@ export async function blockUser(blockedUserId: string) {
           ),
         ),
       );
+    await tx
+      .delete(friendships)
+      .where(and(eq(friendships.userAId, userAId), eq(friendships.userBId, userBId)));
     await tx
       .delete(userFollows)
       .where(
@@ -732,8 +779,18 @@ export async function getVisibleFeedItemsForViewer(
     )
     .orderBy(desc(feedItems.createdAt))
     .limit(limit * 3);
+  const owners = await profilesByUserId([...new Set(rows.map((item) => item.userId))]);
   const visible = rows
-    .filter((item) => canViewFeedItem(item, viewerUserId, socialIds, blockedIds, hiddenTypeSet))
+    .filter((item) =>
+      canViewFeedItem(
+        item,
+        viewerUserId,
+        socialIds,
+        blockedIds,
+        hiddenTypeSet,
+        owners.get(item.userId)?.visibilitySettingsJson,
+      ),
+    )
     .slice(0, limit);
 
   return hydrateFeedItems(visible, viewerUserId);
@@ -753,7 +810,12 @@ export async function getPublicFeedItemsForProfile(ownerUserId: string, limit = 
     .orderBy(desc(feedItems.createdAt))
     .limit(Math.min(Math.max(limit, 1), 20));
 
-  return hydrateFeedItems(rows, "");
+  const owners = await profilesByUserId([ownerUserId]);
+  const settings = owners.get(ownerUserId)?.visibilitySettingsJson;
+  return hydrateFeedItems(
+    rows.filter((item) => canViewFeedCategory(item, "", new Set(), settings)),
+    "",
+  );
 }
 
 export async function addFeedReaction(feedItemId: string) {
@@ -1085,23 +1147,26 @@ export async function createStatusUpdate(input: {
   revalidatePath(`/profile/${profile.username}`);
 }
 
-export async function createFeedItem(input: {
-  userId: string;
-  itemType: string;
-  headline: string;
-  metricLabel?: string | null;
-  metricValue?: string | null;
-  context?: string | null;
-  proofUrl?: string | null;
-  sourceType?: string | null;
-  sourceId?: string | null;
-  visibility?: SocialVisibility | null;
-  verificationLabel?: string | null;
-  dedupeKey?: string | null;
-  metadataJson?: Record<string, unknown>;
-}) {
-  const profile = await ensureSocialProfileForUser(input.userId);
-  const visibility = input.visibility ?? parseVisibility(profile.feedVisibilityDefault, "private");
+export async function createFeedItem(
+  input: {
+    userId: string;
+    itemType: string;
+    headline: string;
+    metricLabel?: string | null;
+    metricValue?: string | null;
+    context?: string | null;
+    proofUrl?: string | null;
+    sourceType?: string | null;
+    sourceId?: string | null;
+    visibility?: SocialVisibility | null;
+    verificationLabel?: string | null;
+    dedupeKey?: string | null;
+    metadataJson?: Record<string, unknown>;
+  },
+  db: Pick<ReturnType<typeof getDb>, "insert"> = getDb(),
+) {
+  const profile = input.visibility == null ? await ensureSocialProfileForUser(input.userId) : null;
+  const visibility = input.visibility ?? parseVisibility(profile?.feedVisibilityDefault, "private");
   const now = new Date();
   const values = {
     userId: input.userId,
@@ -1121,7 +1186,7 @@ export async function createFeedItem(input: {
   };
 
   if (values.dedupeKey) {
-    await getDb()
+    await db
       .insert(feedItems)
       .values(values)
       .onConflictDoUpdate({
@@ -1132,14 +1197,15 @@ export async function createFeedItem(input: {
           metricValue: values.metricValue,
           context: values.context,
           proofUrl: values.proofUrl,
-          visibility: values.visibility,
+          // Replaying an event refreshes its evidence, not its chosen audience.
+          // Audience changes go through the ownership-checked visibility action.
           verificationLabel: values.verificationLabel,
           metadataJson: values.metadataJson,
           updatedAt: now,
         },
       });
   } else {
-    await getDb().insert(feedItems).values(values);
+    await db.insert(feedItems).values(values);
   }
 }
 
@@ -1332,7 +1398,15 @@ async function getVisibleFeedItem(feedItemId: string, viewerUserId: string) {
     getHiddenFeedTypes(viewerUserId),
   ]);
   const socialIds = new Set([viewerUserId, ...friendIds]);
-  return canViewFeedItem(item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes))
+  const owners = await profilesByUserId([item.userId]);
+  return canViewFeedItem(
+    item,
+    viewerUserId,
+    socialIds,
+    blockedIds,
+    new Set(hiddenTypes),
+    owners.get(item.userId)?.visibilitySettingsJson,
+  )
     ? item
     : null;
 }
@@ -1358,7 +1432,15 @@ async function getVisibleFeedComment(commentId: string, viewerUserId: string) {
     getHiddenFeedTypes(viewerUserId),
   ]);
   const socialIds = new Set([viewerUserId, ...friendIds]);
-  return canViewFeedItem(row.item, viewerUserId, socialIds, blockedIds, new Set(hiddenTypes))
+  const owners = await profilesByUserId([row.item.userId]);
+  return canViewFeedItem(
+    row.item,
+    viewerUserId,
+    socialIds,
+    blockedIds,
+    new Set(hiddenTypes),
+    owners.get(row.item.userId)?.visibilitySettingsJson,
+  )
     ? row.comment
     : null;
 }
@@ -1481,12 +1563,35 @@ async function hydrateFeedItems(
     .filter((item): item is FeedItemView => Boolean(item));
 }
 
+function canViewFeedCategory(
+  item: FeedItemRow,
+  viewerUserId: string,
+  socialIds: Set<string>,
+  settings?: ProfileRow["visibilitySettingsJson"],
+) {
+  if (item.userId === viewerUserId) return true;
+  const categories: Record<string, "pbs" | "achievements" | "rounds" | "practice"> = {
+    new_pb: "pbs",
+    longest_drive: "pbs",
+    achievement_unlock: "achievements",
+    level_up: "achievements",
+    round_completed: "rounds",
+    post_round_recap: "rounds",
+    practice_completed: "practice",
+  };
+  const category = categories[item.itemType];
+  if (!category) return true;
+  const visibility = settings?.[category] ?? defaultProfileVisibilitySettings()[category];
+  return visibility === "public" || (visibility === "friends" && socialIds.has(item.userId));
+}
+
 function canViewFeedItem(
   item: FeedItemRow,
   viewerUserId: string,
   socialIds: Set<string>,
   blockedIds: Set<string>,
   hiddenTypes: Set<string> = new Set(),
+  ownerSettings?: ProfileRow["visibilitySettingsJson"],
 ) {
   if (blockedIds.has(item.userId)) {
     return false;
@@ -1502,6 +1607,10 @@ function canViewFeedItem(
 
   if (item.userId === viewerUserId) {
     return true;
+  }
+
+  if (!canViewFeedCategory(item, viewerUserId, socialIds, ownerSettings)) {
+    return false;
   }
 
   if (item.visibility === "public") {
@@ -1656,15 +1765,25 @@ async function getRelationship(
   return request.requesterUserId === viewerUserId ? "outgoing" : "incoming";
 }
 
+function canViewProfileScope(
+  visibility: SocialVisibility | undefined,
+  relationship: SocialProfileSummary["relationship"],
+) {
+  return (
+    relationship === "self" ||
+    visibility === "public" ||
+    (visibility === "friends" && relationship === "friend")
+  );
+}
+
 async function getProfileStats(
   userId: string,
   visibilitySettings: ProfileRow["visibilitySettingsJson"],
   relationship: SocialProfileSummary["relationship"],
 ) {
-  const canSeePublic = relationship === "self" || relationship === "friend";
-  const canSeeRounds = canSeePublic || visibilitySettings?.rounds === "public";
-  const canSeeBag = canSeePublic || visibilitySettings?.bag === "public";
-  const canSeeHandicap = canSeePublic || visibilitySettings?.handicap === "public";
+  const canSeeRounds = canViewProfileScope(visibilitySettings?.rounds, relationship);
+  const canSeeBag = canViewProfileScope(visibilitySettings?.bag, relationship);
+  const canSeeHandicap = canViewProfileScope(visibilitySettings?.handicap, relationship);
   const [roundCountRow, gapRows, handicapProfile] = await Promise.all([
     canSeeRounds
       ? getDb()

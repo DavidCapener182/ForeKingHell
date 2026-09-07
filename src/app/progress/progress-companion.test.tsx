@@ -59,7 +59,7 @@ describe("mobile Progress goal acceptance", () => {
     expect(html).toContain('href="/goals"');
     if (process.env.FKH_GOAL_QA_PATH) writeFileSync(process.env.FKH_GOAL_QA_PATH, html);
   });
-  it("keeps the overview bounded and provides an honest empty state", () => {
+  it("keeps every saved goal accessible and provides an honest empty state", () => {
     const html = renderToStaticMarkup(
       <MobileProgressGoals
         goals={Array.from({ length: 5 }, (_, i) => ({
@@ -69,8 +69,8 @@ describe("mobile Progress goal acceptance", () => {
         }))}
       />,
     );
-    expect(html.match(/<article/g)).toHaveLength(4);
-    expect(html).not.toContain("QA goal 4");
+    expect(html.match(/<article/g)).toHaveLength(5);
+    expect(html).toContain("QA goal 4");
     expect(html).toContain("All goals");
     const empty = renderToStaticMarkup(<MobileProgressGoals goals={[]} />);
     expect(empty).toContain("Set your next target");

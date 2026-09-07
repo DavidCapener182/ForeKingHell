@@ -2,22 +2,25 @@ import { DriverDevelopmentPanel } from "@/components/analysis/driver-development
 import { PracticeCompanionClient } from "@/app/practice/practice-companion-client";
 import { notFound } from "next/navigation";
 import { MobileSavedPracticeReview } from "@/app/practice/mobile-saved-practice-review";
-import { MobileAppShell } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { practiceSourceSessionId } from "@/lib/practice-handoff";
 import {
   generatePracticePlan,
   getCurrentPracticePlanSummary,
   getSavedPracticePlan,
   getPracticeImportOptions,
   getPracticePlannerContext,
+  getPracticeSourceSession,
   savedPracticePlanToPracticePlan,
   selectPracticePlannerInitialSavedPlan,
   type GeneratePracticePlanOptions,
 } from "@/lib/practice-planner";
 
 type PracticeSearchParams = Promise<{
+  goalId?: string;
   planId?: string;
+  sourceSessionId?: string;
   club?: string;
   time?: string;
   intent?: string;
@@ -39,6 +42,8 @@ export default async function PracticeCompanionPage({
   )
     notFound();
   const options = practiceCompanionOptions(params);
+  if (options.sourceSessionId && !(await getPracticeSourceSession(userId, options.sourceSessionId)))
+    notFound();
   const requestedPlan = params?.planId ? await getSavedPracticePlan(userId, params.planId) : null;
   if (params?.planId && !requestedPlan) notFound();
   if (requestedPlan && ["completed", "analysed", "match_found"].includes(requestedPlan.status)) {
@@ -46,9 +51,9 @@ export default async function PracticeCompanionPage({
       requestedPlan.status === "match_found" ? await getPracticeImportOptions(userId) : [];
     return (
       <PageShell>
-        <MobileAppShell>
+        <section className="grid min-w-0 gap-4">
           <MobileSavedPracticeReview plan={requestedPlan} importOptions={importOptions} />
-        </MobileAppShell>
+        </section>
       </PageShell>
     );
   }
@@ -57,13 +62,14 @@ export default async function PracticeCompanionPage({
     getPracticePlannerContext(userId, {
       compactTraining: true,
       includeSpeed: options.intent === "speed",
+      sourceSessionId: options.sourceSessionId,
     }),
     requestedPlan ?? getCurrentPracticePlanSummary(userId),
   ]);
   if (params?.planId && !currentPlan) notFound();
   const selectedPlan = params?.planId
     ? currentPlan
-    : !explicitSpeedRequest && !options.focusClub && currentPlan
+    : !explicitSpeedRequest && !options.focusClub && !options.sourceSessionId && currentPlan
       ? selectPracticePlannerInitialSavedPlan([currentPlan], null)
       : null;
   const initialPlan = selectedPlan
@@ -72,17 +78,26 @@ export default async function PracticeCompanionPage({
 
   return (
     <PageShell>
-      <MobileAppShell className="gap-4" data-practice-companion>
+      <section className="grid min-w-0 gap-4" data-practice-companion>
         <PracticeCompanionClient
-          key={selectedPlan?.id ?? `recommended:${options.focusClub ?? "auto"}`}
+          key={
+            selectedPlan?.id ??
+            `recommended:${options.sourceSessionId ?? "latest"}:${options.focusClub ?? "auto"}`
+          }
+          goalId={
+            params?.goalId && /^[0-9a-f-]{36}$/i.test(params.goalId) ? params.goalId : undefined
+          }
           accountId={userId}
           context={context}
           initialPlan={initialPlan}
-          initialOptions={options}
+          initialOptions={{
+            ...options,
+            sourceSessionId: selectedPlan?.sourcePractice?.sessionId ?? options.sourceSessionId,
+          }}
           measuredResult={selectedPlan?.result ?? null}
         />
-      </MobileAppShell>
-      <DriverDevelopmentPanel compact />
+      </section>
+      <DriverDevelopmentPanel variant="practice" />
     </PageShell>
   );
 }
@@ -97,6 +112,7 @@ function practiceCompanionOptions(
   const session = params?.session;
 
   return {
+    sourceSessionId: practiceSourceSessionId(params),
     focusClub: /^[a-z0-9]{1,12}$/i.test(params?.club ?? "")
       ? params?.club?.toLowerCase()
       : undefined,

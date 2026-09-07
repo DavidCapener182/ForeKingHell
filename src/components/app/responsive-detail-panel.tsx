@@ -21,6 +21,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 type ResponsivePanelMode = "drawer" | "sheet" | "inline";
 
@@ -77,6 +78,14 @@ export function ResponsiveDetailPanel({
           data-responsive-detail-panel="drawer"
         >
           <DrawerHeader className="text-left">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 justify-self-end"
+              onClick={() => onOpenChange(false)}
+            >
+              Close details
+            </Button>
             <DrawerTitle>{title}</DrawerTitle>
             {description ? <DrawerDescription>{description}</DrawerDescription> : null}
           </DrawerHeader>

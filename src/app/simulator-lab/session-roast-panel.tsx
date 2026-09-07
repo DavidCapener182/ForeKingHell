@@ -1,9 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { CircleCheck, Flame, Radio, Save, TriangleAlert } from "lucide-react";
 
 import { createSessionRoastFeedItemAction } from "@/app/simulator-lab/actions";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -29,6 +37,9 @@ export function SessionRoastPanel({
   facts: SessionRoastFact[];
 }) {
   const [pending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const busy = useRef(false);
   const [draft, setDraft] = useState<RoastDraft | null>(null);
   const [notice, setNotice] = useState<RoastNotice | null>(null);
 
@@ -43,6 +54,8 @@ export function SessionRoastPanel({
   const activeSession = session;
 
   function generateRoast() {
+    if (busy.current) return;
+    busy.current = true;
     setNotice(null);
     startTransition(async () => {
       try {
@@ -65,20 +78,25 @@ export function SessionRoastPanel({
         }
 
         setDraft(payload.roast);
+        setSaved(false);
+        setOpen(false);
       } catch {
         setNotice({
           kind: "error",
           message: "Roast generation could not connect. Try again after the page reloads.",
         });
+      } finally {
+        busy.current = false;
       }
     });
   }
 
   function saveDraft() {
-    if (!draft) {
+    if (!draft || busy.current || saved) {
       return;
     }
 
+    busy.current = true;
     setNotice(null);
     startTransition(async () => {
       try {
@@ -89,6 +107,7 @@ export function SessionRoastPanel({
           shortCaption: draft.shortCaption,
         });
 
+        if (result.ok) setSaved(true);
         setNotice(
           result.ok
             ? { kind: "success", message: "Saved as a private feed draft." }
@@ -99,12 +118,47 @@ export function SessionRoastPanel({
           kind: "error",
           message: "Could not save draft. Try again after the page reloads.",
         });
+      } finally {
+        busy.current = false;
       }
     });
   }
 
   return (
     <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Optional generated humour for {session.fileName ?? "this session"}. Private to your account;
+        not measured coaching advice.
+      </p>
+      <Dialog
+        open={open}
+        onOpenChange={(value) => {
+          if (!busy.current) setOpen(value);
+        }}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Generate private session banter?</DialogTitle>
+            <DialogDescription>
+              Use {session.fileName ?? "this saved session"} to generate an optional humorous draft.
+              Nothing is published. Existing AI access rules apply.
+            </DialogDescription>
+          </DialogHeader>
+          {notice?.kind === "error" && (
+            <p role="alert" className="text-sm text-destructive">
+              {notice.message}
+            </p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" disabled={pending} onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button disabled={pending} onClick={generateRoast}>
+              {pending ? "Generating…" : "Generate private banter"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="flex flex-wrap items-center gap-2">
         {facts.length > 0 ? (
           facts.map((fact) => (
@@ -149,13 +203,23 @@ export function SessionRoastPanel({
       ) : null}
 
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button type="button" onClick={generateRoast} disabled={pending} className="rounded-lg">
+        <Button
+          type="button"
+          onClick={() => setOpen(true)}
+          disabled={pending}
+          className="rounded-lg"
+        >
           <Flame className="size-4" />
           {pending ? "Working" : "Roast this session"}
         </Button>
-        <Button type="button" variant="outline" onClick={saveDraft} disabled={pending || !draft}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={saveDraft}
+          disabled={pending || !draft || saved}
+        >
           <Save className="size-4" />
-          Save private draft
+          {saved ? "Private draft saved" : "Save private draft"}
         </Button>
       </div>
     </div>

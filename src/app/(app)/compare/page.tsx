@@ -13,7 +13,7 @@ import {
 
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
+import { UrlTabs } from "@/components/untitled-ui/url-tabs";
 import { DesktopInsightRail, DesktopWorkbenchLayout } from "@/components/app/desktop-workbench";
 import {
   defaultClubCompareFilters,
@@ -212,41 +212,50 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
             }
           />
 
-          <ButtonGroup
-            aria-label="Comparison view"
-            className="max-w-full justify-start overflow-x-auto"
-            data-compare-active-view
-          >
-            {(["progress", "clubs", "players"] as const).map((view) => {
-              const active = activeView === view;
-
-              return (
-                <Button key={view} asChild size="sm" variant={active ? "secondary" : "outline"}>
-                  <Link href={`/compare?view=${view}`} aria-current={active ? "page" : undefined}>
-                    {view === "progress" ? "Progress" : view === "clubs" ? "Clubs" : "Players"}
-                  </Link>
-                </Button>
-              );
-            })}
-          </ButtonGroup>
-          <div className="grid gap-4 pt-2">
-            {activeView === "progress" ? (
-              <ProgressCompareClient
-                data={data.progress}
-                savedComparisons={savedComparisons.filter((item) => item.view === "progress")}
-              />
-            ) : activeView === "clubs" ? (
-              <ClubCompareClient
-                data={data}
-                savedComparisons={savedComparisons.filter((item) => item.view === "clubs")}
-              />
-            ) : (
-              <PlayerCompareClient
-                data={playerData}
-                savedComparisons={savedComparisons.filter((item) => item.view === "players")}
-              />
-            )}
-          </div>
+          <UrlTabs
+            label="Comparison view"
+            queryKey="view"
+            defaultTabKey={activeView}
+            tabs={[
+              {
+                id: "progress",
+                label: "Progress",
+                content: (
+                  <ProgressCompareClient
+                    key={stringParam(params.focusId)}
+                    initialMonth={
+                      stringParam(params.focusId) === "last-30" ||
+                      stringParam(params.baselineId) === "previous-30"
+                    }
+                    data={data.progress}
+                    savedComparisons={savedComparisons.filter((item) => item.view === "progress")}
+                  />
+                ),
+              },
+              {
+                id: "clubs",
+                label: "Clubs",
+                content: (
+                  <ClubCompareClient
+                    key={`${data.filters.clubAId}:${data.filters.clubBId}`}
+                    data={data}
+                    savedComparisons={savedComparisons.filter((item) => item.view === "clubs")}
+                  />
+                ),
+              },
+              {
+                id: "players",
+                label: "Players",
+                content: (
+                  <PlayerCompareClient
+                    key={`${playerData.filters.playerAId}:${playerData.filters.playerBId}`}
+                    data={playerData}
+                    savedComparisons={savedComparisons.filter((item) => item.view === "players")}
+                  />
+                ),
+              },
+            ]}
+          />
         </DesktopWorkbenchLayout>
       </div>
     </PageShell>
@@ -294,8 +303,18 @@ function savedWorkspaceComparison(
   const view = row.chartStateJson.compareView;
   if (view !== "progress" && view !== "clubs" && view !== "players") return [];
 
+  const query = new URLSearchParams({ view });
+  const keys =
+    view === "clubs"
+      ? ["clubAId", "clubBId"]
+      : view === "players"
+        ? ["playerAId", "playerBId"]
+        : ["focusId", "baselineId"];
+  for (const key of keys)
+    if (typeof row.filtersJson[key] === "string") query.set(key, row.filtersJson[key] as string);
   return [
     {
+      href: `/compare?${query.toString()}`,
       id: row.id,
       view,
       name: row.name,

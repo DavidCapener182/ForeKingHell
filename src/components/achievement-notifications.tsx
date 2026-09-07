@@ -94,12 +94,11 @@ export function AchievementNotificationProvider({ children, initialNotifications
 
   return (
     <>
-      {children}
       <div
         data-achievement-toast-viewport
         aria-live="polite"
         aria-atomic="true"
-        className="pointer-events-none fixed right-4 top-24 z-50 flex w-[min(420px,calc(100vw-2rem))] flex-col gap-3"
+        className="mx-4 my-3 flex min-w-0 flex-col gap-3 empty:hidden"
       >
         {toasts.map((toast) => (
           <AchievementToastCard
@@ -111,6 +110,7 @@ export function AchievementNotificationProvider({ children, initialNotifications
           />
         ))}
       </div>
+      {children}
     </>
   );
 }
@@ -124,6 +124,7 @@ function AchievementToastCard({
 }) {
   const hiddenCount = toast.totalCount - toast.notifications.length;
   const [open, setOpen] = useState(true);
+  const [paused, setPaused] = useState(false);
   const onDismissRef = useRef(onDismiss);
   const dismissTimerRef = useRef<number | null>(null);
 
@@ -147,10 +148,11 @@ function AchievementToastCard({
   }, []);
 
   useEffect(() => {
+    if (paused) return;
     const autoDismissTimer = window.setTimeout(beginDismiss, AUTO_DISMISS_MS);
 
     return () => window.clearTimeout(autoDismissTimer);
-  }, [beginDismiss]);
+  }, [beginDismiss, paused]);
 
   useEffect(
     () => () => {
@@ -163,32 +165,37 @@ function AchievementToastCard({
 
   return (
     <div
-      data-mobile-preserve-dark
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setPaused(false);
+      }}
       data-open={open ? "true" : "false"}
       className={cn(
-        "t-toast pointer-events-auto overflow-hidden rounded-[8px] border border-emerald-300 bg-[#0f172a] text-white shadow-2xl",
+        "t-toast pointer-events-auto overflow-hidden rounded-[8px] border border-border bg-card text-foreground shadow-sm",
         open && "is-open",
       )}
     >
-      <div className="flex items-start gap-3 border-b border-white/10 px-4 py-3">
-        <div className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-emerald-400/15 text-emerald-300">
+      <div className="flex flex-wrap items-start gap-3 border-b border-border px-4 py-3">
+        <div className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-primary/10 text-primary">
           <Award className="size-5" />
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="order-last min-w-0 basis-full break-words">
           <p className="text-sm font-semibold">
             {toast.totalCount === 1
               ? "Achievement unlocked"
               : `${toast.totalCount} achievements unlocked`}
           </p>
-          <p className="mt-0.5 text-xs leading-5 text-slate-300">
+          <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
             XP has been added and the latest unlocks are in Achievements.
           </p>
         </div>
         <Button
           type="button"
           variant="ghost"
-          size="icon-sm"
-          className="shrink-0 text-slate-300 hover:bg-white/10 hover:text-white"
+          size="icon"
+          className="ml-auto size-11 shrink-0 text-muted-foreground hover:bg-muted hover:text-foreground"
           onClick={beginDismiss}
           aria-label="Dismiss achievement notification"
         >
@@ -200,27 +207,29 @@ function AchievementToastCard({
           <Link
             key={notificationKey(notification)}
             href={achievementUnlockHref(notification.achievementId)}
-            className="block rounded-[8px] border border-white/10 bg-white/5 px-3 py-2 transition-colors hover:bg-white/10"
+            className="block rounded-[8px] border border-border bg-muted/40 px-3 py-2 transition-colors hover:bg-muted"
           >
-            <div className="flex items-center justify-between gap-3">
-              <p className="truncate text-sm font-medium">{notification.name}</p>
-              <div className="flex shrink-0 items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="min-w-0 max-w-full break-words text-sm font-medium">
+                {notification.name}
+              </p>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Badge className={cn("border capitalize", tierToastStyles[notification.tier])}>
                   {notification.tier}
                 </Badge>
-                <ExternalLink className="size-3.5 text-slate-300" />
+                <ExternalLink className="size-3.5 text-muted-foreground" />
               </div>
             </div>
-            <div className="mt-1 flex items-center justify-between gap-3 text-xs text-slate-300">
-              <span className="truncate">{notification.description}</span>
-              <span className="shrink-0 font-medium text-emerald-300">
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span className="min-w-0 break-words">{notification.description}</span>
+              <span className="min-w-0 break-all font-medium text-primary">
                 +{notification.xpAwarded.toLocaleString("en-GB")} XP
               </span>
             </div>
           </Link>
         ))}
         {hiddenCount > 0 ? (
-          <p className="px-1 text-xs text-slate-300">
+          <p className="px-1 text-xs text-muted-foreground">
             +{hiddenCount.toLocaleString("en-GB")} more unlocks
           </p>
         ) : null}
@@ -228,10 +237,10 @@ function AchievementToastCard({
           asChild
           variant="outline"
           size="sm"
-          className="w-full border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+          className="h-auto min-h-11 w-full flex-wrap whitespace-normal break-words border-border bg-muted/40 text-foreground hover:bg-muted hover:text-foreground"
         >
           <Link href="/achievements">
-            View achievements
+            <span className="min-w-0 break-words">View achievements</span>
             <ExternalLink className="size-3.5" />
           </Link>
         </Button>
@@ -241,12 +250,12 @@ function AchievementToastCard({
 }
 
 const tierToastStyles = {
-  bronze: "border-amber-400/30 bg-amber-400/15 text-amber-100",
-  silver: "border-slate-300/30 bg-slate-300/15 text-slate-100",
-  gold: "border-yellow-300/30 bg-yellow-300/15 text-yellow-100",
-  platinum: "border-cyan-300/30 bg-cyan-300/15 text-cyan-100",
-  diamond: "border-indigo-300/30 bg-indigo-300/15 text-indigo-100",
-  hidden: "border-zinc-300/30 bg-zinc-300/15 text-zinc-100",
+  bronze: "border-border bg-muted text-foreground",
+  silver: "border-border bg-muted text-foreground",
+  gold: "border-border bg-muted text-foreground",
+  platinum: "border-border bg-muted text-foreground",
+  diamond: "border-border bg-muted text-foreground",
+  hidden: "border-border bg-muted text-foreground",
 } as const;
 
 function notificationKey(notification: AchievementUnlockNotification) {

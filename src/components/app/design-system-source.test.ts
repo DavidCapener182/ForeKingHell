@@ -20,7 +20,7 @@ describe("composable analysis design primitives", () => {
     expect(impact).toContain("@/components/app/segmented-control");
     expect(map).toContain("@/components/app/segmented-control");
     expect(impact).not.toContain("function SegmentedControl(");
-    expect(impact).toContain('<ToggleGroup\n              type="single"');
+    expect(impact).toMatch(/<ToggleGroup\s+type="single"/);
     expect(impact).not.toContain("<button");
     expect(map).not.toContain("function SegmentedControl(");
   });
@@ -90,7 +90,7 @@ describe("composable analysis design primitives", () => {
   });
 
   it("keeps app shells full-width and centralises semantic surface tokens", () => {
-    const premium = source("src/components/premium.tsx");
+    const premium = source("src/components/app/page-shell.tsx");
     const globals = source("src/app/globals.css");
 
     expect(premium).toContain('"!max-w-none"');

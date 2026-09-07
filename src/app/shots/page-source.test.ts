@@ -25,21 +25,24 @@ describe("Shot Explorer analytics workbench", () => {
     expect(pageSource).not.toContain("DesktopInsightRail");
   });
 
-  it("uses the requested shadcn primitives in one horizontal filter bar", () => {
-    expect(filterSource).toContain("<Command>");
-    expect(filterSource).toContain('role="combobox"');
-    expect(filterSource).toContain("<Select");
-    expect(filterSource).toContain("<Popover");
+  it("uses labelled shared filters with explicit apply and reversible filter removal", () => {
+    expect(filterSource).toContain("<UntitledSelect");
     expect(filterSource).toContain("<Sheet");
-    expect(filterSource).toContain('aria-label="Search shots"');
-    expect(filterSource).toContain('aria-label="Club filter"');
-    expect(filterSource).toContain('label="Session"');
-    expect(filterSource).toContain('label="Shot type"');
-    expect(filterSource).toContain('aria-label="Date filter"');
-    expect(filterSource).toContain('aria-label="Evidence status"');
-    expect(filterSource).toContain("More filters");
+    expect(filterSource).toContain('label="Search shots"');
+    expect(filterSource).toContain('select("club", "Club", clubs');
+    expect(filterSource).toContain('select("sessionId", "Session", sessions');
+    expect(filterSource).toContain('select("category", "Shot type", categories');
+    expect(filterSource).toContain('select("trust", "Evidence", [');
+    expect(filterSource).toContain('type="date"');
+    expect(filterSource).toContain("max={value.to || undefined}");
+    expect(filterSource).toContain("min={value.from || undefined}");
+    expect(filterSource).toContain("navigate(sheetDraft)");
+    expect(filterSource).toContain("if (v) setSheetDraft(draft)");
+    expect(filterSource).toContain('params.delete("page")');
     expect(filterSource).toContain('aria-label="Active filters"');
-    expect(filterSource).toContain("removeFilter(filter.id)");
+    expect(filterSource).toContain(
+      "navigate({ ...initial, [key]: defaults[key as keyof ShotFilterState] })",
+    );
   });
 
   it("backs trusted and untrusted filters with the shared evidence rules", () => {

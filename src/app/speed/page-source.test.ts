@@ -19,21 +19,16 @@ describe("speed centre desktop evidence ledger", () => {
     expect(source).not.toContain("What is driving the distance loss?");
   });
 
-  it("uses the speed artwork variant in the desktop header", () => {
-    expect(source).toContain('variant="speed"');
-    expect(source).toContain("visual={<PageArtwork");
-    expect(source).toContain("min-h-36");
+  it("leads with measured playing speed and keeps no-ball training distinct", () => {
+    expect(source).toContain('title="Speed"');
+    expect(source).toContain('label: "Playing speed"');
+    expect(source).toContain("currentSpeedSourceText(summary.currentSpeedSource)");
+    expect(source).toContain("No-ball training stays separate from driver performance");
   });
 
-  it("expands the existing centre with the shared Driver development programme first", () => {
-    expect(source).toContain(
-      'import { DriverSpeedDevelopment } from "@/components/speed/driver-speed-development"',
-    );
-    expect(source).toContain('title="Driver Speed Development"');
-    expect(source).toContain("<DriverSpeedDevelopment data={data.development} />");
-    expect(source.indexOf("<DriverSpeedDevelopment data={data.development} />")).toBeLessThan(
-      source.indexOf("<CompactReadoutGrid", source.indexOf("export default")),
-    );
+  it("retains the shared Driver development programme in its named section", () => {
+    expect(source).toContain('label: "Driver development"');
+    expect(source).toContain("content: <DriverSpeedDevelopment data={data.development} />");
   });
 
   it("keeps speed coaching on clean measured fields and preserves ordered swing evidence", () => {
@@ -140,7 +135,7 @@ describe("speed centre desktop-only bundle", () => {
   });
 
   it("keeps imported speed selectors and readouts on semantic shadcn controls", () => {
-    for (const selectorSource of [clubFocusSource, futureBagSource]) {
+    for (const selectorSource of [futureBagSource]) {
       expect(selectorSource).toContain(
         'import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"',
       );
@@ -151,10 +146,13 @@ describe("speed centre desktop-only bundle", () => {
       expect(selectorSource).toContain("onValueChange=");
       expect(selectorSource).not.toContain('role="tablist"');
       expect(selectorSource).not.toContain("aria-pressed=");
-      expect(selectorSource).not.toContain('import { Button } from "@/components/ui/button"');
+      expect(selectorSource).toContain("[selectedRow.clubId]: selectedSpeedModel.defaultSpeed");
     }
 
-    expect(clubFocusSource).toContain('aria-label="Speed club focus"');
+    expect(clubFocusSource).toContain("<ComparisonSearchSheet");
+    expect(clubFocusSource).toContain('label="Speed club focus"');
+    expect(clubFocusSource).toContain("value={clubRowKey(selectedRow)}");
+    expect(clubFocusSource).toContain("replaceSelectedClub(router, row.clubId)");
     expect(clubFocusSource).toContain("var(--status-success-surface)");
     expect(clubFocusSource).not.toMatch(/bg-white|text-slate-|border-emerald|bg-emerald/);
 

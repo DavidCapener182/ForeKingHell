@@ -2,6 +2,7 @@
 
 import { lazy, Suspense, useMemo, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
+import { UntitledSelect } from "@/components/untitled-ui/form-controls";
 import { Check, Eye } from "lucide-react";
 
 import type { TodayChartShot } from "@/app/today/today-shot-types";
@@ -140,11 +141,13 @@ export function TodayShotCharts({
   clubStatuses = [],
   patternInsight = "Dispersion is the main diagnostic; trajectory adds ball-flight context.",
   variant = "default",
+  correctionClubs = [],
 }: {
   shots: TodayChartShot[];
   clubStatuses?: TodayChartClubStatus[];
   patternInsight?: string;
   variant?: "default" | "editorial";
+  correctionClubs?: Array<{ value: string; label: string }>;
 }) {
   const clubGroups = useMemo(() => buildClubGroups(shots), [shots]);
   const statusByClub = useMemo(
@@ -316,6 +319,20 @@ export function TodayShotCharts({
           </Button>
         </div>
 
+        <UntitledSelect
+          label="Inspect a shot"
+          name="today-selected-shot"
+          value={selectedShot?.id ?? ""}
+          onValueChange={setSelectedShotId}
+          options={[
+            { value: "", label: "Choose a measured shot" },
+            ...visibleShots.map((shot) => ({
+              value: shot.id,
+              label: `${shot.clubLabel} · Shot ${shot.shotNumber ?? "unavailable"} · ${shot.carryYd === null ? "carry unavailable" : `${numberFormatter.format(shot.carryYd)} yd carry`}`,
+            })),
+          ]}
+          description="Select here or tap a plotted shot to inspect the same source record."
+        />
         <div
           className={cn(
             "grid items-start gap-4",
@@ -352,6 +369,7 @@ export function TodayShotCharts({
               <TodaySelectedShotRail
                 key={selectedShot.id}
                 shot={selectedShot}
+                correctionClubs={correctionClubs}
                 onClose={() => setSelectedShotId(null)}
               />
             </Suspense>

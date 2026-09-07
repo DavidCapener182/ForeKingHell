@@ -1,18 +1,28 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-
-const source = readFileSync(
-  join(process.cwd(), "src/app/(app)/courses/[courseId]/tournaments/page.tsx"),
-  "utf8",
-);
-
+import { describe, expect, it, vi } from "vitest";
+vi.mock("next/navigation", () => ({
+  redirect: (href: string) => {
+    throw new Error(href);
+  },
+}));
+import Route from "@/app/(app)/courses/[courseId]/tournaments/page";
 describe("course tournament alias route", () => {
-  it("redirects course tournament links to the filterable tournament workbench", () => {
-    expect(source).toContain('import { redirect } from "next/navigation";');
-    expect(source).toContain("const { courseId } = await params;");
-    expect(source).toContain("redirect(`/tournaments?courseId=${encodeURIComponent(courseId)}`)");
-    expect(source).not.toContain("PageShell");
-    expect(source).not.toContain("DesktopWorkbenchLayout");
+  it("retains filters and forces the requested course in the canonical workspace", async () => {
+    await expect(
+      Route({
+        params: Promise.resolve({ courseId: "course id" }),
+        searchParams: Promise.resolve({
+          courseId: "wrong",
+          q: "club event",
+          filter: ["open", "mine"],
+        }),
+      }),
+    ).rejects.toThrow("/tournaments?courseId=course+id&q=club+event&filter=open&filter=mine");
+    const source = readFileSync(
+      join(process.cwd(), "src/app/(app)/courses/[courseId]/tournaments/page.tsx"),
+      "utf8",
+    );
+    expect(source).not.toMatch(/PageShell|DesktopWorkbenchLayout/);
   });
 });

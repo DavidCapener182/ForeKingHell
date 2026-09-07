@@ -10,16 +10,14 @@ export async function GET(request: NextRequest) {
   const next = safeNextPath(requestUrl.searchParams.get("next") ?? "") ?? "/dashboard";
 
   if (!code) {
-    return NextResponse.redirect(new URL("/login?error=Missing%20auth%20code", requestUrl.origin));
+    return loginErrorRedirect(requestUrl, "Missing auth code", next);
   }
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    return NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(error.message)}`, requestUrl.origin),
-    );
+    return loginErrorRedirect(requestUrl, error.message, next);
   }
 
   const {

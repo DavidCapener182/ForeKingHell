@@ -3,8 +3,9 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
+import { correctShotClub } from "@/lib/shot-club-correction";
 import { getDb } from "@/db/client";
-import { clubs, rapsodoSyncSessions, sessions, shotReviewEvents, shots } from "@/db/schema";
+import { rapsodoSyncSessions, sessions, shotReviewEvents, shots } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { recordProductWorkflowEvent } from "@/lib/product-events";
 import { refreshPracticeEvidenceForReviewedSessions } from "@/lib/practice-planner";
@@ -26,58 +27,11 @@ import { refreshStockYardagesForClubs } from "@/lib/stock-yardage-refresh";
 /** Club corrections retain raw measurements and rebuild both clubs' trusted evidence. */
 export async function correctShotClubAction(shotId: string, clubId: string) {
   const userId = await requireCurrentUserId();
-  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuid.test(shotId) || !uuid.test(clubId))
-    throw new Error("Choose a shot and a club from your bag.");
-  const changed = await getDb().transaction(async (tx) => {
-    const [shot] = await tx
-      .select()
-      .from(shots)
-      .where(and(eq(shots.id, shotId), eq(shots.userId, userId)))
-      .for("update");
-    const [club] = await tx
-      .select({ id: clubs.id, type: clubs.type })
-      .from(clubs)
-      .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId)));
-    if (!shot || !club) throw new Error("The shot or club is unavailable. Refresh and try again.");
-    if (shot.clubId === club.id && shot.clubType === club.type)
-      return { sessionId: shot.sessionId, previousClubId: shot.clubId };
-    await tx
-      .update(shots)
-      .set({ clubId: club.id, clubType: club.type })
-      .where(and(eq(shots.id, shotId), eq(shots.userId, userId)));
-    await tx.insert(shotReviewEvents).values({
-      userId,
-      shotId,
-      previousStatus: shot.reviewStatus,
-      status: shot.reviewStatus,
-      reason: `Club corrected from ${shot.clubType} (${shot.clubId}) to ${club.type} (${club.id}). Measurements retained.`,
-      confidence: 1,
-      source: "user",
-      previousQualityTag: shot.qualityTag,
-      resultingQualityTag: shot.qualityTag,
-    });
-    await refreshStockYardagesForClubs(tx, {
-      userId,
-      clubContexts: [
-        { clubId: shot.clubId, playContext: shot.playContext },
-        { clubId: club.id, playContext: shot.playContext },
-      ],
-      calculatedAt: new Date(),
-    });
-    return { sessionId: shot.sessionId, previousClubId: shot.clubId };
-  });
-  try {
-    await refreshPracticeEvidenceForReviewedSessions(userId, [changed.sessionId]);
-  } catch (error) {
-    reportServerFailure("shot_club_correction_practice_refresh_failed", error, {
-      "app.shot_count": 1,
-    });
-  }
+  const changed = await correctShotClub({ userId, shotId, clubId });
   revalidateShotDerivedRoutes([changed.sessionId]);
   revalidatePath("/quick-bag");
   revalidatePath(`/rounds/${changed.sessionId}`);
-  return { previousClubId: changed.previousClubId };
+  return { previousClubId: changed.previousClubId, warning: changed.warning };
 }
 
 export async function reviewShotsAction(input: ShotReviewActionInput) {

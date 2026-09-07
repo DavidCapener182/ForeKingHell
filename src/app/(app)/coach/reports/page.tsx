@@ -9,25 +9,22 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-import { createCoachReportAction, revokeCoachReportAction } from "@/app/coach/reports/actions";
-import { ConfirmSubmitButton } from "@/components/app/confirm-submit-button";
+import { ReportBuilder } from "@/app/coach/reports/report-builder";
+import {
+  CopyReportLink,
+  ReportHistoryDetail,
+  RevokeReport,
+} from "@/app/coach/reports/report-controls";
 import { PageHeader, PageShell, StatusPill } from "@/components/premium";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { getDb } from "@/db/client";
 import { contentExports, shareLinks } from "@/db/schema";
-import { coachReportSectionIds, type CoachReportSectionId } from "@/lib/coach-report";
+import { parseCoachReportSections, type CoachReportSectionId } from "@/lib/coach-report";
 import { coachReportTemplates, parseCoachReportAccessConfig } from "@/lib/coach-report-access";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getSiteOrigin } from "@/lib/site-origin";
@@ -103,10 +100,11 @@ const sectionCopy: Record<
 export default async function CoachReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ share?: string; error?: string; include?: string }>;
+  searchParams: Promise<{ share?: string; error?: string; include?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const userId = await requireCurrentUserId();
+  const historyPage = Math.min(100000, Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1));
   const links = await getDb()
     .select({
       id: shareLinks.id,
@@ -128,7 +126,8 @@ export default async function CoachReportsPage({
     )
     .where(and(eq(shareLinks.userId, userId), eq(shareLinks.resourceType, "coach_report")))
     .orderBy(desc(shareLinks.createdAt))
-    .limit(20);
+    .limit(21)
+    .offset((historyPage - 1) * 20);
   const sharedUrl = params.share
     ? `${getSiteOrigin()}/share/report/${encodeURIComponent(params.share)}`
     : null;
@@ -136,9 +135,8 @@ export default async function CoachReportsPage({
 
   return (
     <PageShell>
-      <div>
+      <div className="grid gap-5">
         <PageHeader
-          eyebrow={<StatusPill tone="sky">Selective sharing</StatusPill>}
           title="Coach reports"
           description="Create a frozen evidence report, choose exactly what it contains, and revoke access whenever you want."
           actions={
@@ -173,6 +171,7 @@ export default async function CoachReportsPage({
                 <p className="mt-2 text-xs text-muted-foreground">
                   This token is shown once. Save it before leaving the page.
                 </p>
+                <CopyReportLink url={sharedUrl} />
               </div>
               <Button asChild className="premium-action min-h-11 rounded-xl">
                 <Link href={sharedUrl} target="_blank" rel="noreferrer">
@@ -193,100 +192,11 @@ export default async function CoachReportsPage({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form action={createCoachReportAction} className="grid gap-4">
-                <div className="grid gap-2 sm:max-w-md">
-                  <Label htmlFor="template">Report template</Label>
-                  <Select name="template" defaultValue="coach">
-                    <SelectTrigger id="template" className="h-11 w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {coachReportTemplates.map((template) => (
-                        <SelectItem key={template.value} value={template.value}>
-                          {template.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <fieldset className="grid gap-3 sm:grid-cols-2">
-                  <legend className="mb-2 font-semibold">Include these sections</legend>
-                  {coachReportSectionIds.map((section) => {
-                    const copy = sectionCopy[section];
-                    return (
-                      <label
-                        key={section}
-                        className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border/70 bg-secondary/35 p-4"
-                      >
-                        <Checkbox
-                          name="sections"
-                          value={section}
-                          defaultChecked={
-                            copy.checked ||
-                            (section === "saved_comparisons" && params.include === "comparisons")
-                          }
-                          className="mt-1"
-                        />
-                        <span>
-                          <span className="block font-semibold">{copy.title}</span>
-                          <span className="mt-1 block text-sm leading-5 text-muted-foreground">
-                            {copy.detail}
-                          </span>
-                        </span>
-                      </label>
-                    );
-                  })}
-                </fieldset>
-
-                <div className="grid gap-2 sm:max-w-xs">
-                  <Label htmlFor="expiryDays">Link expires after</Label>
-                  <Select name="expiryDays" defaultValue="14">
-                    <SelectTrigger id="expiryDays" className="h-11 w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="7">7 days</SelectItem>
-                      <SelectItem value="14">14 days</SelectItem>
-                      <SelectItem value="30">30 days</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid gap-3 rounded-2xl border border-border bg-secondary/35 p-4 sm:grid-cols-2">
-                  <label className="grid gap-2 text-sm font-semibold sm:col-span-2">
-                    Optional password
-                    <Input
-                      name="password"
-                      type="password"
-                      minLength={8}
-                      maxLength={128}
-                      autoComplete="new-password"
-                      placeholder="At least 8 characters"
-                    />
-                  </label>
-                  <PrivacyCheck
-                    name="disableDownload"
-                    title="Disable download"
-                    detail="Keep the report view-only."
-                  />
-                  <PrivacyCheck
-                    name="hideExactShotData"
-                    title="Hide exact shot data"
-                    detail="Raw evidence is omitted even if selected above."
-                    defaultChecked
-                  />
-                  <PrivacyCheck
-                    name="hideSocialInformation"
-                    title="Hide social information"
-                    detail="No friends, groups or feed information."
-                    defaultChecked
-                  />
-                </div>
-
-                <Button type="submit" className="premium-action min-h-11 rounded-xl sm:w-fit">
-                  Generate private link
-                </Button>
-              </form>
+              <ReportBuilder
+                templates={coachReportTemplates}
+                copy={sectionCopy}
+                includeComparisons={params.include === "comparisons"}
+              />
             </CardContent>
           </Card>
 
@@ -317,8 +227,12 @@ export default async function CoachReportsPage({
           </div>
           {links.length > 0 ? (
             <div className="grid gap-3">
-              {links.map((link) => {
+              {links.slice(0, 20).map((link) => {
                 const access = parseCoachReportAccessConfig(link.renderConfig);
+                const rawSections = link.renderConfig?.selectedSections;
+                const includedSections = parseCoachReportSections(
+                  Array.isArray(rawSections) ? rawSections : [],
+                );
                 const expired = Boolean(link.expiresAt && link.expiresAt <= now);
                 const status = link.revokedAt ? "Revoked" : expired ? "Expired" : "Active";
                 return (
@@ -340,22 +254,37 @@ export default async function CoachReportsPage({
                             : ""}
                         </p>
                       </div>
-                      {!link.revokedAt && !expired ? (
-                        <form action={revokeCoachReportAction}>
-                          <input type="hidden" name="shareLinkId" value={link.id} />
-                          <ConfirmSubmitButton
-                            variant="outline"
-                            className="min-h-11 rounded-xl"
-                            confirmTitle="Revoke this report link?"
-                            confirmMessage="Anyone using this private link will immediately lose access to the frozen report."
-                            confirmActionLabel="Revoke link"
-                          >
-                            Revoke link
-                          </ConfirmSubmitButton>
-                        </form>
-                      ) : (
-                        <StatusPill tone="slate">{status}</StatusPill>
-                      )}
+                      <ReportHistoryDetail title={link.title ?? "Coach report"}>
+                        <p>
+                          Created {formatDate(link.exportCreatedAt)} · {status}
+                          {link.expiresAt ? ` · expires ${formatDate(link.expiresAt)}` : ""}
+                        </p>
+                        <p>
+                          {access.passwordHash ? "Password protected" : "Anyone with the token"} ·{" "}
+                          {access.disableDownload ? "Download disabled" : "Download allowed"}
+                        </p>
+                        <p>
+                          {access.accessHistory.length} recorded views.{" "}
+                          {access.accessHistory.at(-1)
+                            ? `Last ${formatDate(new Date(access.accessHistory.at(-1)!))}`
+                            : "No recorded view yet."}
+                        </p>
+                        <h3 className="font-semibold">Frozen sections</h3>
+                        <ul className="list-inside list-disc">
+                          {includedSections.map((section) => (
+                            <li key={section}>{sectionCopy[section]?.title ?? section}</li>
+                          ))}
+                        </ul>
+                        <p className="text-sm">
+                          The original token cannot be recovered. Use the link saved when this
+                          report was created to open or copy it.
+                        </p>
+                        {!link.revokedAt && !expired ? (
+                          <RevokeReport id={link.id} title={link.title ?? "Coach report"} />
+                        ) : (
+                          <StatusPill tone="slate">{status}</StatusPill>
+                        )}
+                      </ReportHistoryDetail>
                     </CardContent>
                   </Card>
                 );
@@ -366,33 +295,27 @@ export default async function CoachReportsPage({
               No coach reports have been created yet.
             </div>
           )}
+          <nav className="flex flex-wrap gap-4" aria-label="Report history pages">
+            {historyPage > 1 ? (
+              <Link
+                className="inline-flex min-h-11 items-center underline"
+                href={`/coach/reports?page=${historyPage - 1}`}
+              >
+                Previous reports
+              </Link>
+            ) : null}
+            {links.length > 20 ? (
+              <Link
+                className="inline-flex min-h-11 items-center underline"
+                href={`/coach/reports?page=${historyPage + 1}`}
+              >
+                Next reports
+              </Link>
+            ) : null}
+          </nav>
         </section>
       </div>
     </PageShell>
-  );
-}
-
-function PrivacyCheck({
-  name,
-  title,
-  detail,
-  defaultChecked = false,
-}: {
-  name: string;
-  title: string;
-  detail: string;
-  defaultChecked?: boolean;
-}) {
-  return (
-    <label className="flex items-start gap-3 rounded-xl bg-background p-3">
-      <Checkbox name={name} defaultChecked={defaultChecked} className="mt-1" />
-      <span>
-        <span className="block font-semibold">{title}</span>
-        <span className="mt-1 block text-xs font-normal leading-5 text-muted-foreground">
-          {detail}
-        </span>
-      </span>
-    </label>
   );
 }
 

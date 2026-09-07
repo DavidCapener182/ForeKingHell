@@ -5,19 +5,11 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync(join(process.cwd(), "src/app/(app)/handicap/page.tsx"), "utf8");
 
 describe("handicap desktop score differential table", () => {
-  it("branches companion and workbench trees at request time", () => {
-    expect(source).toContain("getRequestAppSurface()");
-    expect(source).toContain(
-      'surface === "workbench" ? await import("@/components/app/desktop-workbench") : null',
-    );
-    expect(source).toContain('surface === "companion" ? (');
-    expect(source).toContain(
-      'surface === "workbench" && DesktopWorkbenchLayout && DesktopTableWorkbenchControls ? (',
-    );
-    expect(source).not.toMatch(
-      /import \{[^}]*Desktop(?:TableWorkbenchControls|WorkbenchLayout)[^}]*\} from "@\/components\/app\/desktop-workbench"/,
-    );
-    expect(source).not.toContain('className="hidden lg:grid"');
+  it("renders a single full-width evidence workspace", () => {
+    expect(source.match(/<PageShell/g)).toHaveLength(1);
+    expect(source).toContain('<DesktopWorkbenchLayout scope="handicap">');
+    expect(source).toContain("<LabEvidenceList");
+    expect(source).not.toMatch(/max-w-(?:6xl|7xl|\[1500px\])/);
   });
 
   it("keeps score differentials in a desktop workbench table", () => {
@@ -47,42 +39,44 @@ describe("handicap desktop score differential table", () => {
 
     expect(ordinarySource).toContain("var(--status-warning-surface)");
     expect(ordinarySource).toContain("var(--status-success-surface)");
-    expect(ordinarySource).toContain("color-mix(in_oklab,var(--border)");
+    expect(ordinarySource).toContain("bg-card/80");
     expect(ordinarySource).not.toMatch(
       /(?:bg|text|border)-(?:white|slate|emerald|green|amber|orange|red|rose|sky|blue|indigo|violet|purple)(?:-\d+|\/)|bg-\[#/,
     );
-    expect(chartSource).toContain('stroke="#22c55e"');
+    expect(chartSource).toContain('stroke="var(--primary)"');
   });
 });
 
 describe("handicap mobile information architecture", () => {
-  it("leads with the conservative playing estimate and visible confidence tasks", () => {
-    const mobileBlock =
-      source.match(/function HandicapMobileOverview[\s\S]*?function rangeRealityMobileTone/)?.[0] ??
-      "";
-
-    expect(mobileBlock).toContain("data-handicap-mobile-overview");
-    expect(mobileBlock).toContain('title="Handicap"');
-    expect(mobileBlock).toContain('label="Playing estimate"');
-    expect(mobileBlock).toContain('label="Movement"');
-    expect(mobileBlock).toContain('label="Rating or slope needed"');
-    expect(mobileBlock).toContain("data-primary-action");
-    expect(mobileBlock.indexOf('label="Playing estimate"')).toBeLessThan(
-      mobileBlock.indexOf('title={<span id="handicap-depth-mobile">Evidence</span>}'),
-    );
+  it("separates unofficial best form from conservative playing and range estimates", () => {
+    const header = source.slice(source.indexOf("<PageHeader"), source.indexOf("<UrlTabs"));
+    expect(header).toContain("Unofficial scoring estimates");
+    expect(header).toContain('label: "Realistic playing"');
+    expect(header).toContain("formatHandicapValue(playingHandicap.value)");
+    expect(header).toContain("rangeReality.estimate.confidenceLabel");
+    expect(header).toContain("not an official Handicap Index");
+    expect(source).toContain("missingRatingRounds.length");
+    expect(source).toContain("need rating/slope");
   });
 
-  it("progressively discloses calculation, trend, range and score history", () => {
-    const mobileBlock =
-      source.match(/function HandicapMobileOverview[\s\S]*?function rangeRealityMobileTone/)?.[0] ??
-      "";
-
-    expect(mobileBlock).toContain("<IOSDisclosureGroup");
-    for (const value of ["method", "trend", "range", "rounds", "quality"]) {
-      expect(mobileBlock).toContain(`value: "${value}"`);
+  it("keeps calculation, trend, range and score history in persistent evidence sections", () => {
+    expect(source).toContain("<UrlTabs");
+    expect(source).toContain('label="Handicap evidence sections"');
+    expect(source).toContain('defaultTabKey="estimates"');
+    for (const id of ["estimates", "trend", "quality", "rounds"]) {
+      expect(source).toContain(`id: "${id}"`);
     }
-    expect(mobileBlock).toContain("<HandicapTrendChart");
-    expect(mobileBlock).toContain('label="Score differential history"');
-    expect(source).toContain('<DesktopWorkbenchLayout scope="handicap">');
+    expect(source).toContain("<PlayingHandicapPanel summary={playingHandicap}");
+    expect(source).toContain("<RangeRealityDetailPanel reality={rangeReality}");
+    expect(source).toContain("<HandicapTrendChart");
+    expect(source).toContain('title="Round calculations"');
+    expect(source).toContain('label: "Reason / assumptions"');
+    expect(source).toContain("href: `/rounds/${round.id}`");
+    const tabs = readFileSync(
+      join(process.cwd(), "src/components/untitled-ui/url-tabs.tsx"),
+      "utf8",
+    );
+    expect(tabs).toContain("keepMounted");
+    expect(tabs).toContain("window.history.pushState");
   });
 });

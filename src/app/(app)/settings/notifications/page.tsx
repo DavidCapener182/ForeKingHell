@@ -1,26 +1,16 @@
 import Link from "next/link";
-import { ArrowLeft, BellRing, CheckCircle2, ShieldCheck } from "lucide-react";
-
-import { saveNotificationPreferencesAction } from "@/app/settings/notifications/actions";
-import { IOSDisclosureGroup } from "@/components/app/ios-mobile";
-import { PageHeader, PageShell, StatusPill } from "@/components/premium";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SettingsDirtyForm } from "@/app/settings/settings-dirty-form";
+import { saveNotificationPreferencesFormAction } from "@/app/settings/notifications/actions";
+import { PageHeader, PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { getProductPreferences } from "@/lib/product-preferences";
-import type { NotificationCategory, NotificationDelivery } from "@/lib/product-preferences";
-
+import {
+  getProductPreferences,
+  type NotificationCategory,
+  type NotificationDelivery,
+} from "@/lib/product-preferences";
 export const dynamic = "force-dynamic";
-
 const options = [
   {
     key: "weeklyReview",
@@ -89,159 +79,84 @@ const deliveryLabels: Record<NotificationDelivery, string> = {
   off: "Off",
 };
 
-export default async function NotificationSettingsPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ saved?: string }>;
-}) {
-  const params = await searchParams;
-  const userId = await requireCurrentUserId();
-  const preferences = (await getProductPreferences(userId)).notifications;
-
+export default async function NotificationSettingsPage() {
+  const preferences = (await getProductPreferences(await requireCurrentUserId())).notifications;
   return (
     <PageShell>
-      <PageHeader
-        eyebrow={<StatusPill tone="sky">Preferences</StatusPill>}
-        title="Notifications"
-        description="Choose which evidence and activity appears in your in-app notification centre."
-        actions={
-          <span className="hidden lg:inline-flex">
-            <Button asChild variant="outline" className="min-h-11 rounded-xl">
-              <Link href="/settings">
-                <ArrowLeft className="size-4" aria-hidden />
-                Settings
+      <div className="grid min-w-0 gap-5 pb-28">
+        <PageHeader
+          title="Notifications"
+          description="Choose delivery preferences separately from the categories shown in your in-app notification centre."
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/settings?section=notifications" prefetch={false}>
+                Back to Settings
               </Link>
             </Button>
-          </span>
-        }
-      />
-      {params?.saved === "1" ? (
-        <Alert role="status">
-          <CheckCircle2 className="size-5" aria-hidden />
-          <AlertDescription>Notification preferences saved.</AlertDescription>
-        </Alert>
-      ) : null}
-      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <Card className="border-0 bg-transparent shadow-none lg:rounded-3xl lg:border lg:border-border lg:bg-card lg:shadow-sm">
-          <CardHeader className="hidden lg:flex">
-            <CardTitle className="flex items-center gap-2">
-              <BellRing className="size-5 text-primary" aria-hidden />
-              In-app notification centre
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-0 pb-20 lg:px-6 lg:pb-6">
-            <form action={saveNotificationPreferencesAction} className="grid gap-5 lg:gap-3">
-              <fieldset className="ios-grouped-list grid overflow-hidden lg:gap-3 lg:overflow-visible lg:bg-transparent">
-                <legend className="mb-2 px-1 text-[13px] font-semibold uppercase tracking-[0.035em] text-muted-foreground lg:mb-1 lg:px-0 lg:text-base lg:normal-case lg:tracking-normal lg:text-foreground">
-                  Delivery by category
-                </legend>
-                {deliveryOptions.map((option) => (
-                  <label
-                    key={option.key}
-                    htmlFor={`delivery-${option.key}`}
-                    className="ios-grouped-row grid min-h-16 cursor-pointer grid-cols-[minmax(0,1fr)_8.75rem] items-center gap-3 px-4 py-2.5 lg:min-h-20 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-secondary/45 lg:grid-cols-[minmax(0,1fr)_12rem] lg:py-3"
-                  >
-                    <span>
-                      <span className="block text-[15px] font-medium leading-5 lg:font-semibold">
-                        {option.title}
-                      </span>
-                      <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground lg:text-sm lg:leading-5">
-                        {option.detail}
-                      </span>
-                    </span>
-                    <Select name={option.key} defaultValue={preferences.delivery[option.key]}>
-                      <SelectTrigger
-                        id={`delivery-${option.key}`}
-                        className="min-h-11 w-full bg-background text-sm font-medium lg:font-semibold"
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(deliveryLabels).map(([value, label]) => (
-                          <SelectItem key={value} value={value}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </label>
-                ))}
-              </fieldset>
-
-              <fieldset className="ios-grouped-list grid overflow-hidden lg:mt-4 lg:gap-3 lg:overflow-visible lg:border-t lg:border-border lg:bg-transparent lg:pt-4">
-                <legend className="mb-2 px-1 text-[13px] font-semibold uppercase tracking-[0.035em] text-muted-foreground lg:mb-0 lg:text-base lg:normal-case lg:tracking-normal lg:text-foreground">
-                  In-app feed compatibility
-                </legend>
-                {options.map((option) => (
-                  <label
-                    key={option.key}
-                    htmlFor={`legacy-${option.key}`}
-                    className="ios-grouped-row flex min-h-16 cursor-pointer touch-manipulation items-center justify-between gap-4 px-4 py-2.5 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-secondary/45 lg:py-3"
-                  >
-                    <span>
-                      <span className="block text-[15px] font-medium leading-5 lg:font-semibold">
-                        {option.title}
-                      </span>
-                      <span className="mt-0.5 block text-[13px] leading-[1.15rem] text-muted-foreground lg:text-sm lg:leading-5">
-                        {option.detail}
-                      </span>
-                    </span>
-                    <Switch
-                      id={`legacy-${option.key}`}
-                      name={`legacy_${option.key}`}
-                      defaultChecked={preferences[option.key]}
-                      aria-label={option.title}
-                    />
-                  </label>
-                ))}
-              </fieldset>
-              <Button
-                type="submit"
-                className="premium-action sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-20 mt-1 min-h-12 rounded-xl shadow-lg lg:static lg:mt-2 lg:min-h-11 lg:shadow-none"
+          }
+        />
+        <p className="rounded-xl border p-4 text-sm">
+          These are the same saved preferences used in Settings. Email selections record a delivery
+          preference; saving this form does not send an email or enable push notifications.
+        </p>
+        <SettingsDirtyForm action={saveNotificationPreferencesFormAction} className="grid gap-5">
+          <fieldset className="grid gap-3">
+            <legend className="mb-3 text-lg font-semibold">Delivery by category</legend>
+            {deliveryOptions.map((option) => (
+              <div
+                key={option.key}
+                className="grid min-w-0 gap-3 rounded-xl border p-4 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-center"
               >
-                Save preferences
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-        <div className="lg:hidden">
-          <IOSDisclosureGroup
-            label="Notification guidance"
-            items={[
-              {
-                value: "quiet-by-choice",
-                title: "Quiet by choice",
-                summary: "About",
-                description: "What can be turned off and what remains essential",
-                content: (
-                  <div className="grid gap-3 text-sm leading-6 text-muted-foreground">
-                    <p>
-                      Turning a category off removes it from the in-app feed. Essential account and
-                      security messages are never hidden by these controls.
-                    </p>
-                    <p>
-                      Security and billing can stay immediate while social and progress updates
-                      remain in-app or weekly.
-                    </p>
-                  </div>
-                ),
-              },
-            ]}
-          />
-        </div>
-        <aside className="hidden rounded-3xl border border-border bg-card p-5 lg:block">
-          <ShieldCheck className="size-6 text-primary" aria-hidden />
-          <h2 className="mt-4 font-display text-xl font-semibold">Quiet by choice</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            Turning a category off removes it from the in-app feed. Essential account and security
-            messages are never hidden by these controls.
-          </p>
-          <p className="mt-4 rounded-2xl bg-secondary/55 p-3 text-sm leading-5 text-muted-foreground">
-            Email modes are saved as delivery instructions. Security and billing can stay immediate
-            while social and progress updates remain in-app or weekly.
-          </p>
-        </aside>
-      </section>
+                <div>
+                  <label htmlFor={`delivery-${option.key}`} className="font-medium">
+                    {option.title}
+                  </label>
+                  <p className="mt-1 text-sm text-muted-foreground">{option.detail}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Saved: {deliveryLabels[preferences.delivery[option.key]]}
+                  </p>
+                </div>
+                <select
+                  id={`delivery-${option.key}`}
+                  name={option.key}
+                  defaultValue={preferences.delivery[option.key]}
+                  className="min-h-11 w-full rounded-lg border bg-background px-3"
+                >
+                  {Object.entries(deliveryLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </fieldset>
+          <fieldset className="grid gap-3">
+            <legend className="mb-3 text-lg font-semibold">In-app notification categories</legend>
+            {options.map((option) => (
+              <label
+                key={option.key}
+                htmlFor={`legacy-${option.key}`}
+                className="flex min-h-16 items-center justify-between gap-4 rounded-xl border p-4"
+              >
+                <span className="min-w-0">
+                  <span className="block font-medium">{option.title}</span>
+                  <span className="mt-1 block text-sm text-muted-foreground">{option.detail}</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Saved: {preferences[option.key] ? "On" : "Off"}
+                  </span>
+                </span>
+                <Switch
+                  id={`legacy-${option.key}`}
+                  name={`legacy_${option.key}`}
+                  defaultChecked={preferences[option.key]}
+                  aria-label={option.title}
+                />
+              </label>
+            ))}
+          </fieldset>
+        </SettingsDirtyForm>
+      </div>
     </PageShell>
   );
 }

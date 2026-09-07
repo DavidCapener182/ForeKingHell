@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ChevronRight, Cuboid, Flag, ShieldCheck, Target } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -15,17 +15,31 @@ export function DigitalCaddieBook({
   strategies,
   course,
   teeName,
+  teeSetId,
   courseTwinAvailable,
   courseMap,
 }: {
   strategies: HoleStrategy[];
   course: { id: string; name: string };
   teeName?: string | null;
+  teeSetId?: string;
   courseTwinAvailable: boolean;
   courseMap?: CourseStrategyMap | null;
 }) {
-  const [index, setIndex] = useState(0);
-  const [modeId, setModeId] = useState<HoleStrategyMode["id"]>("normal");
+  const params = useSearchParams();
+  const index = Math.max(
+    0,
+    strategies.findIndex((hole) => hole.holeNumber === Number(params.get("hole"))),
+  );
+  const requestedMode = params.get("option");
+  const modeId: HoleStrategyMode["id"] =
+    requestedMode === "safe" || requestedMode === "aggressive" ? requestedMode : "normal";
+  const setSelection = (hole: number, option: HoleStrategyMode["id"]) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("hole", String(hole));
+    url.searchParams.set("option", option);
+    window.history.replaceState(window.history.state, "", url);
+  };
   const strategy = strategies[index];
   if (!strategy) return null;
 
@@ -38,14 +52,16 @@ export function DigitalCaddieBook({
       <header className={styles.bookHeader}>
         <div>
           <p>Digital caddie book</p>
-          <h1>{course.name}</h1>
+          <h2>{course.name}</h2>
           <span>
             {teeName ?? "Selected tees"} · {strategies.length} mapped holes · Personal bag model
           </span>
         </div>
         <div className={styles.bookHeaderActions}>
           <Button asChild variant="outline">
-            <Link href="/rounds/new">
+            <Link
+              href={`/rounds/new?${new URLSearchParams({ courseId: course.id, ...(teeSetId ? { teeSetId } : {}) })}`}
+            >
               <Flag aria-hidden /> Prepare round
             </Link>
           </Button>
@@ -76,8 +92,7 @@ export function DigitalCaddieBook({
                 type="button"
                 data-active={holeIndex === index ? "true" : "false"}
                 onClick={() => {
-                  setIndex(holeIndex);
-                  setModeId("normal");
+                  setSelection(hole.holeNumber, "normal");
                 }}
                 aria-label={`Hole ${hole.holeNumber}, par ${hole.par}, ${hole.yards} yards`}
                 aria-current={holeIndex === index ? "true" : undefined}
@@ -99,7 +114,7 @@ export function DigitalCaddieBook({
           </div>
         </nav>
 
-        <main className={styles.mapZone}>
+        <section className={styles.mapZone} aria-label={`Hole ${strategy.holeNumber} plan`}>
           <div className={styles.zoneHeading}>
             <div>
               <span>Hole {strategy.holeNumber}</span>
@@ -110,7 +125,7 @@ export function DigitalCaddieBook({
             <span className={styles.modeReadout}>{mode.label} line</span>
           </div>
           <HoleStrategyVisual strategy={strategy} mode={mode} courseMap={courseMap} />
-        </main>
+        </section>
 
         <aside className={styles.strategyPanel} aria-label="Strategy panel">
           <div className={styles.zoneLabel}>
@@ -126,7 +141,7 @@ export function DigitalCaddieBook({
                   type="button"
                   disabled={!supported}
                   data-active={mode.id === id ? "true" : "false"}
-                  onClick={() => setModeId(id)}
+                  onClick={() => setSelection(strategy.holeNumber, id)}
                   title={
                     supported
                       ? `${id} strategy`

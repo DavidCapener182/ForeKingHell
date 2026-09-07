@@ -52,9 +52,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           </Link>
 
           <div className="max-w-xl pb-1">
-            <h1 className="text-[2.125rem] font-bold leading-[1.08] tracking-[-0.03em] text-[var(--ios-label)] text-balance sm:text-[2.5rem]">
-              Sign in or join.
-            </h1>
+            <p className="text-[2.125rem] font-bold leading-[1.08] tracking-[-0.03em] text-[var(--ios-label)] text-balance sm:text-[2.5rem]">
+              Your golf account.
+            </p>
             <p className="mt-2 max-w-lg text-[17px] leading-[1.47] tracking-[-0.01em] text-[var(--ios-secondary-label)]">
               Your rounds, records and range work in one clubhouse.
             </p>
@@ -69,9 +69,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
 
           <div className="max-w-2xl">
             <StatusPill tone="green">Private golf analytics</StatusPill>
-            <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight tracking-normal text-white text-balance sm:text-5xl lg:text-6xl">
+            <p className="mt-4 max-w-3xl text-4xl font-semibold leading-tight tracking-normal text-white text-balance sm:text-5xl lg:text-6xl">
               Your rounds, records and range work in one clubhouse.
-            </h1>
+            </p>
             <p className="mt-4 max-w-xl text-base leading-7 text-white/78 sm:text-lg">
               Sign in or create an account to keep scorecards, practice sessions, PBs and course
               records tied to your own golf profile.
@@ -87,7 +87,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           <div className="grid max-w-2xl gap-3 sm:grid-cols-3">
             <GolfProof
               icon={<LockKeyhole className="size-4" />}
-              label="Private by default"
+              label="Account-scoped records"
               value="Your shot data stays scoped to your account."
             />
             <GolfProof
@@ -108,15 +108,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           aria-label="Sign in options"
         >
           <div className="absolute inset-x-0 top-0 hidden h-1 bg-[linear-gradient(90deg,#0B7A3B,#A7F3D0,#C7972B)] lg:block" />
-          <div className="mb-5 hidden rounded-lg border border-emerald-100 bg-emerald-50/70 p-4 lg:block">
+          <div className="mb-5 rounded-lg border border-emerald-100 bg-emerald-50/70 p-4">
             <div className="flex items-center gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-[10px] bg-[var(--ios-fill)] text-[var(--ios-tint)] lg:rounded-lg lg:bg-[#0B7A3B] lg:text-white">
                 <ShieldCheck className="size-5" aria-hidden />
               </span>
               <div className="min-w-0">
-                <h2 className="text-[1.375rem] font-semibold leading-7 tracking-[-0.02em] lg:text-2xl lg:leading-8 lg:tracking-normal">
+                <h1 className="text-[1.375rem] font-semibold leading-7 tracking-[-0.02em] lg:text-2xl lg:leading-8 lg:tracking-normal">
                   Sign in or join
-                </h2>
+                </h1>
                 <p className="mt-0.5 text-[15px] leading-5 text-[var(--ios-secondary-label)] lg:mt-1 lg:text-sm lg:leading-6 lg:text-slate-600">
                   Use email and password, Google or a secure email link.
                 </p>
@@ -144,12 +144,18 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
           {first(params.accountDeleted) ? (
             <Alert className="mb-4">
               <ShieldCheck className="size-4" />
-              <AlertTitle>Account permanently deleted</AlertTitle>
+              <AlertTitle>Account deletion return</AlertTitle>
               <AlertDescription>
-                Your deletion receipt is {first(params.receipt) || "available in this confirmation"}
-                . Keep it if you need to contact support.
+                Returned receipt reference: {first(params.receipt) || "not supplied"}. This return
+                link alone does not confirm deletion. Keep a confirmed receipt if you need to
+                contact support.
               </AlertDescription>
             </Alert>
+          ) : null}
+          {safeNextPath(first(params.next)) ? (
+            <p className="mb-4 break-all text-sm text-muted-foreground">
+              After sign-in, continue to <code>{safeNextPath(first(params.next))}</code>.
+            </p>
           ) : null}
           <LoginForm error={first(params.error) || null} next={safeNextPath(first(params.next))} />
         </section>
@@ -177,7 +183,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
             <GolfProof
               mobile
               icon={<LockKeyhole className="size-[18px]" />}
-              label="Private by default"
+              label="Account-scoped records"
               value="Your shot data stays scoped to your account."
             />
             <GolfProof

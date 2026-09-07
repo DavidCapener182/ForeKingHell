@@ -23,7 +23,11 @@ export async function saveRapsodoImportAction(input: SaveRapsodoImportInput) {
   const result = await saveRapsodoImport(input);
 
   if (result.ok) {
-    await setAchievementUnlockFlash(result.achievementUnlockNotifications);
+    try {
+      await setAchievementUnlockFlash(result.achievementUnlockNotifications);
+    } catch {
+      console.error("Import notification failed after the import completed.");
+    }
   }
 
   return result;
@@ -33,7 +37,11 @@ export async function saveRapsodoImportBatchAction(inputs: SaveRapsodoImportInpu
   const result = await saveRapsodoImportBatch(inputs);
 
   if (result.ok) {
-    await setAchievementUnlockFlash(result.achievementUnlockNotifications);
+    try {
+      await setAchievementUnlockFlash(result.achievementUnlockNotifications);
+    } catch {
+      console.error("Import notification failed after the import completed.");
+    }
   }
 
   return result;

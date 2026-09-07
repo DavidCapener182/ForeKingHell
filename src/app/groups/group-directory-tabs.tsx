@@ -1,38 +1,48 @@
-import Link from "next/link";
-
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
+"use client";
+import { useTransition, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { UntitledTabs } from "@/components/untitled-ui/tabs";
+import { useClientReady } from "@/hooks/use-client-ready";
 export type GroupDirectoryTab = "mine" | "discover" | "invites";
-
-const tabs: Array<{ value: GroupDirectoryTab; label: string }> = [
-  { value: "mine", label: "My Groups" },
-  { value: "discover", label: "Discover" },
-  { value: "invites", label: "Invites" },
-];
-
 export function GroupDirectoryTabs({
   activeTab,
-  inviteCount,
+  counts,
+  children,
 }: {
   activeTab: GroupDirectoryTab;
-  inviteCount: number;
+  counts: Record<GroupDirectoryTab, number>;
+  children: ReactNode;
 }) {
+  const ready = useClientReady();
+  const router = useRouter();
+  const [pending, start] = useTransition();
   return (
-    <Tabs value={activeTab}>
-      <TabsList className="h-auto w-full justify-start bg-muted/70 p-1 sm:w-fit">
-        {tabs.map((tab) => (
-          <TabsTrigger key={tab.value} value={tab.value} asChild>
-            <Link href={`/groups?tab=${tab.value}`} prefetch={false}>
-              {tab.label}
-              {tab.value === "invites" && inviteCount > 0 ? (
-                <span className="grid min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
-                  {inviteCount}
-                </span>
-              ) : null}
-            </Link>
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+    <section className="grid min-w-0 gap-3" aria-busy={pending}>
+      <p className="text-sm text-muted-foreground">
+        Swipe the section strip to find your groups, discover crews and review invitations.
+      </p>
+      <UntitledTabs
+        label="Group directory sections"
+        selectedKey={activeTab}
+        disabled={!ready || pending}
+        onSelectionChange={(key) => {
+          const query = new URLSearchParams(window.location.search);
+          query.set("tab", key);
+          for (const key of ["created", "joined", "left", "deleted", "declined"]) query.delete(key);
+          start(() => router.push(`/groups?${query}`));
+        }}
+        items={(
+          [
+            ["mine", "My groups"],
+            ["discover", "Discover"],
+            ["invites", "Invitations"],
+          ] as const
+        ).map(([id, label]) => ({
+          id,
+          label: `${label} (${counts[id]})`,
+          content: id === activeTab ? children : null,
+        }))}
+      />
+    </section>
   );
 }

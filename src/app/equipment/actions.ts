@@ -2,7 +2,8 @@
 
 import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
+import { reportServerFailure } from "@/lib/server-observability";
 
 import { ballModels, clubEquipmentHistory, clubs, equipmentSnapshots } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -10,7 +11,7 @@ import { normalizeEquipmentHistory } from "@/lib/equipment-history";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { buildEquipmentSnapshotPayload } from "@/lib/witb-snapshots";
 
-export async function createBallModelAction(formData: FormData) {
+async function persistCreateBallModel(formData: FormData) {
   const userId = await requireCurrentUserId();
   const brand = nullableString(formData, "brand");
   const model = requiredString(formData, "model");
@@ -33,11 +34,10 @@ export async function createBallModelAction(formData: FormData) {
       },
     });
 
-  revalidatePath("/equipment");
-  redirect("/equipment?saved=ball");
+  refreshEquipmentPathAfterCommit("/equipment");
 }
 
-export async function saveEquipmentHistoryAction(formData: FormData) {
+async function persistSaveEquipmentHistory(formData: FormData) {
   const userId = await requireCurrentUserId();
   const clubId = requiredString(formData, "clubId");
   const db = getDb();
@@ -99,12 +99,11 @@ export async function saveEquipmentHistoryAction(formData: FormData) {
     });
   });
 
-  revalidatePath("/equipment");
-  revalidatePath("/bag");
-  redirect("/equipment?saved=spec");
+  refreshEquipmentPathAfterCommit("/equipment");
+  refreshEquipmentPathAfterCommit("/bag");
 }
 
-export async function retireClubAction(formData: FormData) {
+async function persistRetireClub(formData: FormData) {
   const userId = await requireCurrentUserId();
   const clubId = requiredString(formData, "clubId");
   const db = getDb();
@@ -148,15 +147,14 @@ export async function retireClubAction(formData: FormData) {
       );
   });
 
-  revalidatePath("/equipment");
-  revalidatePath("/bag");
-  revalidatePath("/dashboard");
-  revalidatePath("/progress");
-  revalidatePath("/rapsodo");
-  redirect("/equipment?saved=retired");
+  refreshEquipmentPathAfterCommit("/equipment");
+  refreshEquipmentPathAfterCommit("/bag");
+  refreshEquipmentPathAfterCommit("/dashboard");
+  refreshEquipmentPathAfterCommit("/progress");
+  refreshEquipmentPathAfterCommit("/rapsodo");
 }
 
-export async function saveBagOrderAction(formData: FormData) {
+async function persistSaveBagOrder(formData: FormData) {
   const userId = await requireCurrentUserId();
   const clubIds = formData
     .getAll("clubId")
@@ -192,10 +190,9 @@ export async function saveBagOrderAction(formData: FormData) {
   });
 
   revalidateEquipmentSurfaces();
-  redirect("/equipment?saved=bag-order");
 }
 
-export async function captureEquipmentSnapshotAction(formData: FormData) {
+async function persistCaptureEquipmentSnapshot(formData: FormData) {
   const userId = await requireCurrentUserId();
   const label = nullableString(formData, "label") ?? "Bag snapshot";
   const db = getDb();
@@ -219,13 +216,12 @@ export async function captureEquipmentSnapshotAction(formData: FormData) {
   });
 
   revalidateEquipmentSurfaces();
-  redirect("/equipment?saved=snapshot");
 }
 
 function revalidateEquipmentSurfaces() {
-  revalidatePath("/equipment");
-  revalidatePath("/bag");
-  revalidatePath("/dashboard");
+  refreshEquipmentPathAfterCommit("/equipment");
+  refreshEquipmentPathAfterCommit("/bag");
+  refreshEquipmentPathAfterCommit("/dashboard");
 }
 
 function requiredString(formData: FormData, key: string) {
@@ -275,4 +271,89 @@ function cleanBagPosition(value: FormDataEntryValue | null) {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.max(0, Math.min(999, Math.round(parsed))) : 100;
+}
+
+export type EquipmentFormResult = { ok: true } | { ok: false; error: string; code?: string };
+
+async function equipmentResult(save: () => Promise<void>): Promise<EquipmentFormResult> {
+  try {
+    await save();
+    return { ok: true };
+  } catch (error) {
+    unstable_rethrow(error);
+    const message = error instanceof Error ? error.message : "";
+    if (
+      /^(model|clubId) is required\.$|^(Club|Ball model) not found for this account\.$|^No clubs supplied for bag order\.$|^Equipment effective end date cannot be before the start date\.$|^(Loft|Lie) must be between/.test(
+        message,
+      )
+    )
+      return { ok: false, error: message, code: "equipment_validation" };
+    reportServerFailure("equipment_save_failed", error);
+    return {
+      ok: false,
+      error: "We could not confirm the save. Your entries are still here; please try again.",
+      code: "equipment_save_failed",
+    };
+  }
+}
+
+export async function createBallModelAction(formData: FormData) {
+  await persistCreateBallModel(formData);
+  redirect("/equipment?saved=ball");
+}
+
+export async function createBallModelWithStateAction(
+  formData: FormData,
+): Promise<EquipmentFormResult> {
+  return equipmentResult(() => persistCreateBallModel(formData));
+}
+
+export async function saveEquipmentHistoryAction(formData: FormData) {
+  await persistSaveEquipmentHistory(formData);
+  redirect("/equipment?saved=spec");
+}
+
+export async function saveEquipmentHistoryWithStateAction(
+  formData: FormData,
+): Promise<EquipmentFormResult> {
+  return equipmentResult(() => persistSaveEquipmentHistory(formData));
+}
+
+export async function retireClubAction(formData: FormData) {
+  await persistRetireClub(formData);
+  redirect("/equipment?saved=retired");
+}
+
+export async function retireClubWithStateAction(formData: FormData): Promise<EquipmentFormResult> {
+  return equipmentResult(() => persistRetireClub(formData));
+}
+
+export async function saveBagOrderAction(formData: FormData) {
+  await persistSaveBagOrder(formData);
+  redirect("/equipment?saved=bag-order");
+}
+
+export async function saveBagOrderWithStateAction(
+  formData: FormData,
+): Promise<EquipmentFormResult> {
+  return equipmentResult(() => persistSaveBagOrder(formData));
+}
+
+export async function captureEquipmentSnapshotAction(formData: FormData) {
+  await persistCaptureEquipmentSnapshot(formData);
+  redirect("/equipment?saved=snapshot");
+}
+
+export async function captureEquipmentSnapshotWithStateAction(
+  formData: FormData,
+): Promise<EquipmentFormResult> {
+  return equipmentResult(() => persistCaptureEquipmentSnapshot(formData));
+}
+
+function refreshEquipmentPathAfterCommit(path: string) {
+  try {
+    revalidatePath(path);
+  } catch (error) {
+    reportServerFailure("equipment_refresh_after_commit_failed", error);
+  }
 }

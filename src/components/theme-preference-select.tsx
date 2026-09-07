@@ -84,7 +84,7 @@ export function ThemePreferenceSelect({ defaultValue }: { defaultValue: ThemePre
             value={selectedTheme}
             onValueChange={(value) => previewThemePreference(value as ThemePreference)}
           >
-            <SelectTrigger id="desktop-theme-preference" className="w-full">
+            <SelectTrigger id="desktop-theme-preference" className="min-h-11 w-full">
               <SelectValue placeholder="Choose a desktop theme" />
             </SelectTrigger>
             <SelectContent>

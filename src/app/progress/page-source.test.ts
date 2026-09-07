@@ -3,6 +3,15 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/app/(app)/progress/page.tsx"), "utf8");
+const tabsSource = readFileSync(join(process.cwd(), "src/app/progress/progress-tabs.tsx"), "utf8");
+const navigation = readFileSync(
+  join(process.cwd(), "src/app/progress/progress-navigation.ts"),
+  "utf8",
+);
+const history = readFileSync(
+  join(process.cwd(), "src/app/progress/progress-load-history.tsx"),
+  "utf8",
+);
 const loadChartSource = readFileSync(
   join(process.cwd(), "src/components/progress/progress-training-load-chart.tsx"),
   "utf8",
@@ -10,52 +19,41 @@ const loadChartSource = readFileSync(
 
 describe("progress direction story source", () => {
   it("uses the requested four-part story instead of the retired analytics wall", () => {
-    expect(source).toContain('aria-label="Progress story"');
+    expect(source).toContain("<ProgressTabs");
+    expect(tabsSource).toContain('label="Progress sections"');
     for (const tab of ["performance", "goals", "load", "timeline"]) {
-      expect(source).toContain(`value="${tab}"`);
+      expect(navigation).toContain(`value: "${tab}"`);
+      expect(source).toContain(`${tab}:`);
     }
-    expect(source).toMatch(/<TabsTrigger[^>]*value="performance"[\s\S]*?>\s*Performance\s*</);
-    expect(source).toMatch(/<TabsTrigger[^>]*value="goals"[\s\S]*?>\s*Goals\s*</);
-    expect(source).toMatch(/<TabsTrigger[^>]*value="load"[\s\S]*?>\s*Load\s*</);
-    expect(source).toMatch(/<TabsTrigger[^>]*value="timeline"[\s\S]*?>\s*Timeline\s*</);
-
-    for (const retired of [
-      "WeeklyRecapPanel",
-      "ProgressRoadmapPanel",
-      "ProgressTrendsPanel",
-      "BagMovementPanel",
-      "CoachTimelinePanel",
-      "DesktopInsightRail",
-      "ConnectedMetricBar",
-      "DistanceLossDiagnosisPanel",
-    ]) {
-      expect(source).not.toContain(retired);
-    }
+    expect(tabsSource).toMatch(/content:\s*panels\[tab\.value\]/);
+    expect(source).not.toContain("DesktopInsightRail");
   });
 
   it("leads Performance with one score, useful-period movement, confidence and why", () => {
     expect(source).toContain("data-performance-story");
-    expect(source).toContain("Progress score / 100");
-    expect(source).toContain("from first clean baseline");
-    expect(source).toContain("Why it moved");
+    expect(source).toContain(
+      "<ProgressSnapshot score={score} cleanShots={summary.totals.trackedCleanShots} />",
+    );
     expect(source).toContain("progressConfidence(summary, scoringEvidence)");
-    expect(source).toContain("data-performance-primary-trend");
-    expect(source).toContain("No forecast is added.");
-    expect(source).not.toMatch(/\bGauge\b/);
+    expect(source).toContain("<ProgressComparison clubs={comparisons} />");
+    expect(source).toContain("<WeeklyEvidenceStrip");
+    expect(source).toContain("{confidence.detail}");
   });
 
   it("turns the strongest improvement and main blocker into exactly two editorial calls", () => {
     const editorial =
       source.match(/data-performance-editorial-calls[\s\S]*?<\/section>/)?.[0] ?? "";
     expect(editorial.match(/<EditorialCallout\b/g)).toHaveLength(2);
-    expect(editorial).toContain('eyebrow="Strongest improvement"');
+    expect(editorial).toContain('eyebrow="Club evidence to review"');
     expect(editorial).toContain('eyebrow="Main blocker"');
-    expect(source).toContain("diagnosis.headline");
-    expect(source).toContain("diagnosis.summary");
+    expect(source).toContain("progressRecommendation(summary)");
+    expect(source).toContain("blocker.reason");
+    expect(source).toContain("blocker?.evidence");
   });
 
-  it("shows no more than four real saved goals with the required horizontal treatment", () => {
-    expect(source).toContain("preferences.goals.slice(0, 4)");
+  it("shows all saved goals with current values and evidence limitations", () => {
+    expect(source).toContain("const activeGoals = preferences.goals");
+    expect(source).toContain("automatically verified against a new session.");
     expect(source).toContain("goalProgress(goal)");
     for (const label of ["Current", "Target", "Deadline"]) {
       expect(source).toContain(`label="${label}"`);
@@ -67,8 +65,9 @@ describe("progress direction story source", () => {
 
   it("embeds the important Training Load chart without duplicating its full workbench", () => {
     expect(source).toContain('getTrainingOverTimeData(userId, "1y")');
-    expect(source).toContain('selectTrainingRangeData(trainingData, "3m")');
-    expect(source).toContain("<ProgressTrainingLoadChart");
+    expect(history).toContain("selectTrainingRangeData(data, range)");
+    expect(source).toContain("<ProgressLoadHistory data={data} />");
+    expect(history).toContain("<ProgressTrainingLoadChart");
     expect(source).toContain("Golf Form");
     expect(source).toContain("Training Fitness");
     expect(source).toContain("Recent Load");
@@ -83,14 +82,15 @@ describe("progress direction story source", () => {
   });
 
   it("builds one chronology from practice, rounds, PBs, goals, bag changes and confidence", () => {
-    expect(source).toContain("data-progress-timeline-story");
+    expect(source).toContain("<TimelineStory items={timeline} />");
     for (const category of ["Practice", "Round", "PB", "Goal change", "Bag change", "Confidence"]) {
       expect(source).toContain(`"${category}"`);
     }
-    expect(source).toContain("trainingData.sessions.slice(0, 8)");
+    expect(source).toContain("for (const session of trainingData.sessions)");
     expect(source).toContain("summary.journey");
     expect(source).toContain("equipmentSnapshots");
-    expect(source).toContain("goalPlanUpdatedAt");
+    expect(source).toContain("Change date unavailable");
+    expect(source).toContain("a goal-specific change history is not recorded");
   });
 
   it("keeps the route full-width and serves a dedicated companion story beside the workbench", () => {
@@ -101,16 +101,12 @@ describe("progress direction story source", () => {
     expect(source).not.toContain("IOSDisclosureGroup");
   });
 
-  it("fits all four story tabs within a phone viewport", () => {
-    const tabs = source.slice(
-      source.indexOf('aria-label="Progress story"'),
-      source.indexOf("</TabsList>"),
-    );
-
-    expect(tabs).toMatch(/className="[^"]*grid[^"]*w-full[^"]*min-w-0[^"]*grid-cols-4/);
-    expect(tabs).toContain("min-w-0");
-    expect(tabs).not.toContain("min-w-max");
-    expect(tabs).not.toMatch(/min-w-(?:20|24|28)/);
-    expect(tabs).toContain("sm:w-fit");
+  it("keeps tab selection URL-backed in the shared responsive control", () => {
+    expect(tabsSource).toContain('className="min-w-0"');
+    expect(tabsSource).toContain("<UntitledTabs");
+    expect(tabsSource).toContain("items={progressTabs.map((tab)");
+    expect(tabsSource).toContain('selectedKey={progressTab(query.get("tab"))}');
+    expect(tabsSource).toContain("progressTabUrl(window.location.href, progressTab(key))");
+    expect(tabsSource).not.toContain("min-w-max");
   });
 });

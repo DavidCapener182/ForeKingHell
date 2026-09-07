@@ -143,6 +143,7 @@ const ensureUserProfileByIdentity = cache(async function ensureUserProfileByIden
         name: fallbackName,
         updatedAt: now,
       })
+      .onConflictDoNothing({ target: users.id })
       .returning({
         id: users.id,
         email: users.email,
@@ -150,6 +151,14 @@ const ensureUserProfileByIdentity = cache(async function ensureUserProfileByIden
       });
 
     appUser = insertedUser;
+    if (!appUser) {
+      // Another request may have initialized this identity while we were reading.
+      [appUser] = await db
+        .select({ id: users.id, email: users.email, name: users.name })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+    }
   } else {
     const repairedName =
       !safeDisplayName(appUser.name) || isSharedDatabaseArtifact(appUser.name)
@@ -188,18 +197,33 @@ const ensureUserProfileByIdentity = cache(async function ensureUserProfileByIden
     .limit(1);
 
   if (!socialProfile) {
-    const canonicalUsername = await uniqueDefaultUsernameForUser(
-      defaultUsernameForProfile(canonicalDisplayName, appUser?.email ?? email, userId),
-      userId,
-    );
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const canonicalUsername = await uniqueDefaultUsernameForUser(
+        defaultUsernameForProfile(canonicalDisplayName, appUser?.email ?? email, userId),
+        userId,
+      );
 
-    await db.insert(userProfiles).values({
-      userId,
-      username: canonicalUsername,
-      displayName: canonicalDisplayName,
-      updatedAt: now,
-    });
-    return;
+      const [created] = await db
+        .insert(userProfiles)
+        .values({
+          userId,
+          username: canonicalUsername,
+          displayName: canonicalDisplayName,
+          updatedAt: now,
+        })
+        .onConflictDoNothing()
+        .returning({ userId: userProfiles.userId });
+      if (created) return;
+      // A concurrent bootstrap can conflict on either unique index. Only treat
+      // that as success after confirming this user's own profile exists.
+      const [concurrentProfile] = await db
+        .select({ userId: userProfiles.userId })
+        .from(userProfiles)
+        .where(eq(userProfiles.userId, userId))
+        .limit(1);
+      if (concurrentProfile) return;
+    }
+    throw new Error("Your profile could not be initialized. Please try again.");
   }
 
   const needsDisplayRepair = !safeDisplayName(socialProfile.displayName);

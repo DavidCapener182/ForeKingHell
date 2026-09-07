@@ -1,3 +1,5 @@
+"use client";
+import { useState } from "react";
 import { AlertTriangle, CheckCircle2, Gauge } from "lucide-react";
 
 import { ChartAccessibleFallback } from "@/components/app/chart-accessible-fallback";
@@ -27,6 +29,7 @@ const speedFormatter = new Intl.NumberFormat("en-GB", {
 });
 
 export function SpeedFatigueChart({ readings }: { readings: SpeedFatigueReading[] }) {
+  const [selectedSwing, setSelectedSwing] = useState<number | null>(null);
   const orderedReadings = [...readings]
     .filter((reading) => Number.isFinite(reading.clubSpeedMph))
     .sort((left, right) => left.swingNumber - right.swingNumber);
@@ -62,7 +65,7 @@ export function SpeedFatigueChart({ readings }: { readings: SpeedFatigueReading[
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="grid min-w-0 gap-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <FatigueMetric
               label="Peak"
               value={formatSpeed(analysis.peakSpeedMph)}
@@ -160,10 +163,28 @@ export function SpeedFatigueChart({ readings }: { readings: SpeedFatigueReading[
                 {chart.points.map((point, index) => {
                   const state = fatiguePointState(point, analysis);
                   return (
-                    <g key={`${point.swingNumber}-${index}`} aria-hidden="true">
+                    <g key={`${point.swingNumber}-${index}`}>
                       <circle
                         cx={point.x}
                         cy={point.y}
+                        r={14}
+                        fill="transparent"
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Select swing ${point.swingNumber}: ${formatSpeed(point.clubSpeedMph)}`}
+                        onClick={() => setSelectedSwing(point.swingNumber)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedSwing(point.swingNumber);
+                          }
+                        }}
+                      />
+                      <circle
+                        cx={point.x}
+                        cy={point.y}
+                        pointerEvents="none"
+                        aria-hidden="true"
                         r={state === "peak" ? 6 : 5}
                         fill={fatiguePointFill(state)}
                         stroke="var(--card)"
@@ -232,6 +253,33 @@ export function SpeedFatigueChart({ readings }: { readings: SpeedFatigueReading[
         />
       </div>
 
+      <div className="grid gap-3">
+        <label className="grid gap-2 text-sm font-medium">
+          Selected swing
+          <select
+            className="min-h-11 rounded-lg border bg-background px-3"
+            value={selectedSwing ?? orderedReadings[0]?.swingNumber ?? ""}
+            onChange={(event) => setSelectedSwing(Number(event.target.value))}
+          >
+            {orderedReadings.map((reading) => (
+              <option key={reading.swingNumber} value={reading.swingNumber}>
+                Swing {reading.swingNumber} · {formatSpeed(reading.clubSpeedMph)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {orderedReadings
+          .filter(
+            (reading) => reading.swingNumber === (selectedSwing ?? orderedReadings[0]?.swingNumber),
+          )
+          .map((reading) => (
+            <p key={reading.swingNumber} role="status" className="rounded-lg border p-3 text-sm">
+              Swing {reading.swingNumber}: {formatSpeed(reading.clubSpeedMph)}.{" "}
+              {accessiblePointSignal(reading, analysis)}.{" "}
+              {formatDeltaFromPeak(reading.clubSpeedMph, analysis.peakSpeedMph)} from peak.
+            </p>
+          ))}
+      </div>
       <ChartAccessibleFallback
         title="Speed fatigue"
         summary={summary}
@@ -314,8 +362,8 @@ function FatigueMetric({ label, value, detail }: { label: string; value: string;
       <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 truncate text-lg font-semibold tabular-nums text-foreground">{value}</p>
-      <p className="mt-1 truncate text-xs text-muted-foreground" title={detail}>
+      <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground" title={detail}>
         {detail}
       </p>
     </div>

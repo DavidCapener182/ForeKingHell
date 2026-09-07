@@ -10,134 +10,103 @@ export type MobileRouteCapability = {
 
 export const mobileCapabilities = {
   today: companionPrimary(),
-  dashboard: desktopOnly("Today", "/today", "The dashboard is a full analytical command centre."),
+  dashboard: companionMore(),
   sessions: companionPrimary(),
-  rounds: { mobileExperience: "summary" },
+  rounds: { mobileExperience: "companion" },
   import: companionMore(),
   courses: companionMore(),
   "course-twins": { mobileExperience: "companion" },
   "course-strategy": companionPrimary(),
   "play-companion": companionPrimary(),
-  analyse: desktopOnly(
-    "Review latest session",
-    "/sessions",
-    "Deep analysis needs detailed filters and comparison workspaces.",
-  ),
-  "session-impact": desktopOnly(
+  analyse: companionMore(),
+  "session-impact": companionHidden(
     "Review latest session",
     "/sessions",
     "Session-impact comparison is available in the full workbench.",
   ),
   shots: companionMore(),
   bag: companionPrimary(),
-  compare: desktopOnly(
-    "Review sessions",
-    "/sessions",
-    "Multi-session comparison is available in the full workbench.",
-  ),
+  "best-shots": { mobileExperience: "companion" },
+  compare: companionMore(),
   progress: companionMore(),
-  "strokes-gained": desktopOnly(
-    "Review latest round",
-    "/sessions?type=rounds",
-    "Strokes Gained needs detailed shot-event tables.",
-  ),
-  "simulator-lab": desktopOnly(
-    "Review latest session",
-    "/sessions",
-    "Simulator Performance Lab is a full analytical workspace.",
-  ),
-  handicap: summaryMore(),
-  coach: {
-    mobileExperience: "summary",
-    mobileFallbackRoute: "/practice",
-    mobileFallbackLabel: "Build recommended practice",
-  },
+  "strokes-gained": companionMore(),
+  "simulator-lab": companionMore(),
+  handicap: companionMore(),
+  coach: companionMore(),
   practice: companionPrimary(),
   "quick-bag": companionPrimary(),
   "quick-range": { mobileExperience: "companion" },
   speed: companionMore(),
   "training-load": companionMore(),
-  goals: summaryMore(),
-  "data-chat": desktopOnly(
-    "Build recommended practice",
-    "/practice",
-    "Long-form Data Chat is available in the full workbench.",
-  ),
+  goals: companionMore(),
+  "data-chat": companionMore(),
   challenges: companionMore(),
-  tournaments: summaryMore(),
-  leaderboard: summaryMore(),
-  "course-records": desktopOnly(
+  tournaments: companionMore(),
+  leaderboard: companionMore(),
+  "course-records": companionHidden(
     "Prepare for a round",
     "/play",
     "Record administration and proof review are available in the workbench.",
   ),
-  groups: desktopOnly(
+  groups: companionHidden(
     "Open current challenges",
     "/challenges",
     "Group management is available in the full workbench.",
   ),
-  achievements: summaryMore(),
-  friends: desktopOnly(
+  achievements: companionMore(),
+  friends: companionHidden(
     "Open profile",
     "/profile",
     "Social management is available in the full workbench.",
   ),
-  feed: desktopOnly(
+  feed: companionHidden(
     "Open profile",
     "/profile",
     "The activity feed is available in the full workbench.",
   ),
-  "social-intelligence": desktopOnly(
+  "social-intelligence": companionHidden(
     "Open profile",
     "/profile",
     "Social Intelligence is available in the full workbench.",
   ),
-  profile: summaryMore(),
-  equipment: desktopOnly(
-    "Open Quick Bag",
-    "/quick-bag",
-    "Equipment setup and experiments are available in the full workbench.",
-  ),
+  profile: companionMore(),
+  equipment: companionMore(),
   rapsodo: companionMore(),
-  providers: desktopOnly(
-    "Import or sync",
-    "/import",
-    "Provider operations are available in the full workbench.",
+  providers: companionMore(),
+  billing: companionMore(),
+  settings: companionMore(),
+  notifications: companionMore(),
+  admin: companionHidden(
+    "Go to Today",
+    "/today",
+    "Administration is available in the full workbench.",
   ),
-  billing: desktopOnly(
-    "Open settings",
-    "/settings",
-    "Billing operations are available in the full workbench.",
-  ),
-  settings: summaryMore(),
-  notifications: summaryMore(),
-  admin: desktopOnly("Go to Today", "/today", "Administration is available in the full workbench."),
-  partners: desktopOnly(
+  partners: companionHidden(
     "Go to Today",
     "/today",
     "Partner operations are available in the full workbench.",
   ),
-  "admin-system": desktopOnly(
+  "admin-system": companionHidden(
     "Go to Today",
     "/today",
     "System checks are available in the full workbench.",
   ),
-  "admin-users": desktopOnly(
+  "admin-users": companionHidden(
     "Go to Today",
     "/today",
     "User administration is available in the full workbench.",
   ),
-  "admin-moderation": desktopOnly(
+  "admin-moderation": companionHidden(
     "Go to Today",
     "/today",
     "Moderation is available in the full workbench.",
   ),
-  "admin-billing": desktopOnly(
+  "admin-billing": companionHidden(
     "Go to Today",
     "/today",
     "Billing operations are available in the full workbench.",
   ),
-  "admin-challenges": desktopOnly(
+  "admin-challenges": companionHidden(
     "Go to Today",
     "/today",
     "Challenge operations are available in the full workbench.",
@@ -147,14 +116,12 @@ export const mobileCapabilities = {
 const desktopOnlyPrefixes = [
   "/admin",
   "/partners",
-  "/dashboard",
   "/analyse",
   "/compare",
   "/strokes-gained",
   "/simulator-lab",
   "/data-chat",
   "/equipment",
-  "/providers",
   "/billing",
   "/social-intelligence",
   "/groups",
@@ -167,23 +134,56 @@ const desktopOnlyPrefixes = [
   "/coach/workspace",
 ] as const;
 
-const companionExactRoutes = ["/courses"] as const;
-const companionExceptions = ["/courses/strategy"] as const;
-const summaryOnlyPrefixes = [
-  "/coach",
-  "/handicap",
-  "/goals",
-  "/leaderboard",
+const companionExactRoutes = [
+  "/partners",
+  "/admin/system-checks",
+  "/admin/challenges",
+  "/admin/billing",
+  "/admin/moderation",
+  "/admin/users",
+  "/admin",
+  "/billing",
+  "/profile",
+  "/social-intelligence",
+  "/feed",
+  "/groups",
+  "/friends",
   "/achievements",
+  "/leaderboard",
+  "/course-records",
+  "/simulator-lab",
+  "/strokes-gained",
+  "/compare",
+  "/analyse",
+  "/analyse/workspace",
+  "/analyse/session-impact",
+  "/analyse/conditions",
+  "/analyse/compare",
+  "/data-chat",
+  "/coach/workspace",
+  "/coach/reports",
+  "/coach/diagnosis",
+  "/coach",
+  "/courses",
+  "/courses/new",
+  "/equipment",
+  "/equipment/experiments",
 ] as const;
+const companionExceptions = ["/profile", "/groups", "/courses/strategy"] as const;
+const summaryOnlyPrefixes = ["/coach", "/leaderboard", "/achievements"] as const;
 
 export function isDesktopOnlyCompanionPath(pathname: string) {
+  if (/^\/courses\/[^/]+\/records\/[^/]+$/.test(pathname)) return false;
+  if (/^\/course-records\/[^/]+$/.test(pathname)) return false;
+  if (/^\/courses\/[^/]+(?:\/(?:holes|shot-pattern|records|tournaments))?$/.test(pathname))
+    return false;
   if (companionExactRoutes.some((route) => pathname === route)) return false;
   if (companionExceptions.some((route) => pathMatches(pathname, route))) return false;
   return desktopOnlyPrefixes.some((route) => pathMatches(pathname, route));
 }
 
 export function isSummaryOnlyCompanionPath(pathname: string) {
+  if (companionExactRoutes.some((route) => pathname === route)) return false;
   return summaryOnlyPrefixes.some((route) => pathMatches(pathname, route));
 }
 
@@ -199,17 +199,15 @@ function companionMore(): MobileRouteCapability {
   return { mobileExperience: "companion", mobileNav: "more" };
 }
 
-function summaryMore(): MobileRouteCapability {
-  return { mobileExperience: "summary", mobileNav: "more" };
-}
-
-function desktopOnly(
+// These pages are available directly, but remain outside the mobile navigation.
+// Route authorization and unknown nested-path handoffs are controlled separately.
+function companionHidden(
   fallbackLabel: string,
   fallbackRoute: string,
   explanation: string,
 ): MobileRouteCapability {
   return {
-    mobileExperience: "desktop-only",
+    mobileExperience: "companion",
     mobileNav: false,
     mobileFallbackLabel: fallbackLabel,
     mobileFallbackRoute: fallbackRoute,

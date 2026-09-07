@@ -1,0 +1,278 @@
+{
+  "audited_commit": "cf9de4018e0273a7f86a0ae69791af4ff414d29c",
+  "note": "Pre-existing changes from concurrently active redesign thread; do not stage or revert these as migration work. Hashes are a starting snapshot, not file locks.",
+  "tracked_dirty": [
+    {
+      "path": ".github/workflows/nightly.yml",
+      "sha256": "116025bb1cf159740c0ff0b7a83f097f79642b1b398ede011303f85fcde99f89"
+    },
+    {
+      "path": "docs/DESIGN_SYSTEM.md",
+      "sha256": "c835cc640ba3f3e0fb1dea647e021dc161b06a327392a72b07a2193b76685489"
+    },
+    {
+      "path": "src/app/(app)/bag/longest/page.tsx",
+      "sha256": "15596f3c81ae8ce1de40d1653b08a3f31e112243b045673c88750e0c3f060d2d"
+    },
+    {
+      "path": "src/app/(app)/bag/page.tsx",
+      "sha256": "752283b18665e774690df0b9bdddd90a0e6a2b95fe6abf476b503a4c853bf21d"
+    },
+    {
+      "path": "src/app/(app)/courses/strategy/course-strategy-companion-page.tsx",
+      "sha256": "cb3609f7461ef93279aff3087310256bbecedd0b75d477118937037fc3086d66"
+    },
+    {
+      "path": "src/app/(app)/courses/strategy/course-strategy-workbench-page.tsx",
+      "sha256": "6b40cc182e620be40a3c67d6cad192f6e6f8dc6bf4abe719e1607f49265fb87f"
+    },
+    {
+      "path": "src/app/(app)/import/result/result-companion-page.tsx",
+      "sha256": "be46024add001b031fc4abaa69578bb783826c108fbda589985ebd74e1db1c3f"
+    },
+    {
+      "path": "src/app/(app)/play/page.tsx",
+      "sha256": "5151bce6fe44a40256d15ecbd16ae166d4160996fbcea62fc2b967cee9da3fd6"
+    },
+    {
+      "path": "src/app/(app)/practice/practice-companion-page.tsx",
+      "sha256": "2978f8297e97970055e55c6260db73af7b7d81c9b955d6ba756c690821044e2d"
+    },
+    {
+      "path": "src/app/(app)/practice/practice-workbench-page.tsx",
+      "sha256": "f3c015dcd73fd9509ad5bbd2ce29012d86a52d87622d8a489f8e1b198867f894"
+    },
+    {
+      "path": "src/app/(app)/rounds/[sessionId]/page.tsx",
+      "sha256": "a3552cdda4fee4bde7531831e251b55f8823bf8ce9d793ac007352b7bf6edc2f"
+    },
+    {
+      "path": "src/app/(app)/rounds/new/page.tsx",
+      "sha256": "ab786d6a2ea420f7b3ed1b8fc6b26613154fbfde8d69bd1949e2be618ba567c3"
+    },
+    {
+      "path": "src/app/(app)/sessions/[sessionId]/page.tsx",
+      "sha256": "8444a00df07ed9d774e8e62606240f332ed86891bb943f8a52397f63777f08a7"
+    },
+    {
+      "path": "src/app/(app)/shots/page.tsx",
+      "sha256": "1692feb26055b5f3322b4998eb3d750ad13877ea172daf03f98d149a8972d046"
+    },
+    {
+      "path": "src/app/(app)/today/today-companion-page.tsx",
+      "sha256": "e8a76c8b08217c922fd2cefe2e37efe9ffdca8972c1b1040fc1b47dd7130d37b"
+    },
+    {
+      "path": "src/app/(app)/today/today-workbench-page.tsx",
+      "sha256": "e4451f31a8b50916e23f59b4d7a42ffbedc6dfb73b4a9328c08e01ce4049fe33"
+    },
+    {
+      "path": "src/app/bag/longest/page-source.test.ts",
+      "sha256": "61cb12e4dc9cfaaacf94d1ce3e2c9093c08e1d523188447f90f205cb1babff1e"
+    },
+    {
+      "path": "src/app/courses/strategy/actions.ts",
+      "sha256": "e946419d423b53661b040d2459e0419337bea71da5b858829e1670968dfb7023"
+    },
+    {
+      "path": "src/app/courses/strategy/course-strategy-book.module.css",
+      "sha256": "416008a94d6a6b47ed456efd1b1567a6359c4bbbd004531953b0b60449d471b0"
+    },
+    {
+      "path": "src/app/courses/strategy/digital-caddie-book.tsx",
+      "sha256": "642d0ee840f18c9717234f78730b55fda222bf74aa761ba3b376971fd7baf306"
+    },
+    {
+      "path": "src/app/courses/strategy/mobile-hole-strategy.tsx",
+      "sha256": "d23ff2105c87fa13d3e078ab2461645a48a7063e934ce397d5ea28b5f32fe843"
+    },
+    {
+      "path": "src/app/globals.css",
+      "sha256": "2773e4aff241dd5d70f557f30660339627bf3e546650582eb168e6cbfbd74d16"
+    },
+    {
+      "path": "src/app/import/companion-range-import.tsx",
+      "sha256": "38d36172b26cf4a2ab586f75a62aa3d98ca4607d0f676d7a5f17ca4bcc9921e6"
+    },
+    {
+      "path": "src/app/practice/actions.ts",
+      "sha256": "e39837d1888f9f402f9aecd5858143e86c5970fb27b77c2d98ae4eb3999de819"
+    },
+    {
+      "path": "src/app/practice/page-source.test.ts",
+      "sha256": "78e494411b47e4107b106dc1088a9640eb89193a9308822b25aeef0caa4575da"
+    },
+    {
+      "path": "src/app/practice/practice-companion-client.tsx",
+      "sha256": "a4dd7b852a475650d12029d4abed5615219f0d9943b735952fc1e42e934fddb7"
+    },
+    {
+      "path": "src/app/practice/practice-planner-client.tsx",
+      "sha256": "5911bbb6582f3397c21ffae61be1bf45ab2d4c0d830b538a1e5c37e712e5ccbe"
+    },
+    {
+      "path": "src/app/rounds/[sessionId]/page-source.test.ts",
+      "sha256": "3794593f47e34caca22df95235a33064c39b6aca0dc0af7119788fba9f4b7869"
+    },
+    {
+      "path": "src/app/rounds/actions.ts",
+      "sha256": "4b3eb48ea1b2125b71c4efbf56479a9195e49ffca4562292313bc5e4d40df485"
+    },
+    {
+      "path": "src/app/rounds/new/mobile-start-round.tsx",
+      "sha256": "9b1a0dd4c65b8c3f82097953af278f38a31769958a26985a9be35044ffbb6599"
+    },
+    {
+      "path": "src/app/rounds/new/new-round-form-source.test.ts",
+      "sha256": "4c5760bbb07a8084ced8753b20e2dec664721daebb4b7b6d629223ea61efd137"
+    },
+    {
+      "path": "src/app/rounds/new/new-round-form.tsx",
+      "sha256": "d2e6572f644b5d21b221b1ceee758548d6ef17049e59239695f49b31bca2a986"
+    },
+    {
+      "path": "src/app/sessions/mobile-session-story.tsx",
+      "sha256": "33cb14bc5c3a488b23ca5de9e39c6535b55eceeb79c43acca766b8839aa67ee8"
+    },
+    {
+      "path": "src/app/today/page-source.test.ts",
+      "sha256": "cd68dd2d616d2aef0429cbaec2d5f7b4f2b87f938ea56122f616a070446121a1"
+    },
+    {
+      "path": "src/components/analysis/driver-development-panel.tsx",
+      "sha256": "594bb0d2c74beaaeea76fbc8d7eeb153682a2cdd0fc1ae4040c8589d3d8ed68e"
+    },
+    {
+      "path": "src/components/app/connected-metric-bar.tsx",
+      "sha256": "c54f7434018f6b0020307d47a8b1bed3f19dbb19e4950c580413af2ffae7cf18"
+    },
+    {
+      "path": "src/components/app/desktop-workbench-chrome.tsx",
+      "sha256": "1d25818a23793883e26c704f37d3fbe6c930ec041722ad7fef384823275878cd"
+    },
+    {
+      "path": "src/components/app/metric-card.tsx",
+      "sha256": "ac45a72f67d7753056942afe7c963f97f7df133f8bf4492714dd4019c002c0bc"
+    },
+    {
+      "path": "src/components/app/mobile-companion.module.css",
+      "sha256": "e5829ed39e23a9e2d24795da2c47de05ab933cc41554e3950eee892117160565"
+    },
+    {
+      "path": "src/components/app/mobile-nav.tsx",
+      "sha256": "52ffd1abd95944b93a014367ab149f26126fdb2ec9e249f6deabf1f744a09ceb"
+    },
+    {
+      "path": "src/components/app/nav-items.ts",
+      "sha256": "c813bf31e99ab6485cc79b7448a5fc6be5696a8ba61811be307049622751303f"
+    },
+    {
+      "path": "src/components/app/route-metadata.ts",
+      "sha256": "30e75b403a95b273165a475ee734361e09d822fee37f7b28a9476b9a9c9bb8df"
+    },
+    {
+      "path": "src/components/app/today-primary-answer.tsx",
+      "sha256": "934286a90836f4d6b8ccf3c4bf050c83fec342ea0a3b2f3ad49030ac866824f3"
+    },
+    {
+      "path": "src/components/ui/button.tsx",
+      "sha256": "2edbb77846f93f823dbd4bdc8c857823cdbff1a6d53c1c9a2ad0e082c869e98b"
+    },
+    {
+      "path": "src/components/ui/card.tsx",
+      "sha256": "96562a964cd49cedd3df17423dc0e9242f3c4b65cbe36f63202d55412181afa0"
+    },
+    {
+      "path": "src/components/ui/input.tsx",
+      "sha256": "b51a0531f411898de1015add926c07aff5dfbbe142ac4f8d6a0e9036739d0dd8"
+    },
+    {
+      "path": "src/components/ui/tabs.tsx",
+      "sha256": "2fba23f053f5928a5c2b9e2b0906ce752dd7ef159b2ee5fe113016f8f23599bd"
+    },
+    {
+      "path": "src/lib/achievements/evaluator.test.ts",
+      "sha256": "a1d1375b9a8fc23f407a3eb26cd7e331d670d3a1355f566e37f3cb41e1d27d42"
+    },
+    {
+      "path": "src/lib/achievements/evaluator.ts",
+      "sha256": "078be9829fe5f77ebe15c244f40b008323723f9ea516ae02d7be47a1bb857178"
+    },
+    {
+      "path": "src/lib/achievements/service.ts",
+      "sha256": "ec0a012bb17e05add312bf1fc5627f89654c3dfd5120112c80f7801878726fd3"
+    },
+    {
+      "path": "src/lib/achievements/types.ts",
+      "sha256": "8bc6c76f02af0f426373cf381905c5d155a58728998707cc4ad2146befbc3aff"
+    },
+    {
+      "path": "src/lib/activation-journey.ts",
+      "sha256": "082624293c224e4d684f9d73b90d78ff49d734e92581b02c976bc31fa1c8029e"
+    },
+    {
+      "path": "src/lib/app-route-capabilities.ts",
+      "sha256": "99c1253aa4b873c27fcb4798ea94fb3ce6ebb8511fda98881e0bb22faff95e74"
+    },
+    {
+      "path": "src/lib/companion-training-load.ts",
+      "sha256": "e4af065f9e239f293498e6b1f5532cd0414cfd8ca3f86a0251ada7cc234b20d0"
+    },
+    {
+      "path": "src/lib/mobile-session-review.test.ts",
+      "sha256": "3fd13f2873c4431ed0b769fa5a94033b5adee7c5b91aed589100f7b61526364f"
+    },
+    {
+      "path": "src/lib/mobile-session-review.ts",
+      "sha256": "7c67c27f9ad1587006fe701e009b1029b14d4ebe99427e445855acceffdeea37"
+    },
+    {
+      "path": "src/lib/mobile-today-briefing.test.ts",
+      "sha256": "7d483ec607bdcc892cada76afda4e472ff46a96b627ad52c90c3fd97ac2c89c5"
+    },
+    {
+      "path": "src/lib/mobile-today-briefing.ts",
+      "sha256": "53247c500881d12a9d8a2009985040ebd71ee94aded9bdc6e7deffa3f07c42fc"
+    },
+    {
+      "path": "src/lib/mobile-today-review.ts",
+      "sha256": "f9842e1041d0c10c61d6d39ef23944f83508432bd9ca0f55af62d1edddfc6109"
+    },
+    {
+      "path": "src/lib/practice-planner-view.test.ts",
+      "sha256": "f4e663afbb171949b2d74b98f23cf05b4a476ea6b522e0ccaa4d699b136f18b3"
+    },
+    {
+      "path": "src/lib/practice-planner-view.ts",
+      "sha256": "3905b10015f7e8d4e0824cb28c21fecd231770bfb4d7ac03a0e6d3fafbdafe2c"
+    },
+    {
+      "path": "src/lib/practice-planner.test.ts",
+      "sha256": "be0dde24f3b2c50403f169a86675a2a5017c1933c06c440ba67686478272b8b6"
+    },
+    {
+      "path": "src/lib/practice-planner.ts",
+      "sha256": "ca888bbd3d5de8e095975525143d3cfedb723625282827dc079fe16d4265966f"
+    },
+    {
+      "path": "src/lib/session-history.ts",
+      "sha256": "e86cde7c60ec73a4c813a469610cf1b01a37ce405bcf50688e682b06fa8d6eea"
+    },
+    {
+      "path": "src/lib/today-primary-state.test.ts",
+      "sha256": "0c192402164261216e55620f16ac1eb0cd2c59c102051b9fa39689599dce6b7f"
+    },
+    {
+      "path": "src/lib/today-primary-state.ts",
+      "sha256": "379f05f9b6e6426eb20ce9e3884ee3a7437f707f9d3535493fa37532411361e4"
+    },
+    {
+      "path": "tests/e2e/companion-journeys.spec.ts",
+      "sha256": "07e47aa44cfd442a73838bd8468bfd86380e777bfb75f87ea4d5671ee230b806"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "829b4ab8d07a7db80a497d690ac2d2f0f4a67ff103270b7470081dd592d7a34d"
+    }
+  ]
+}

@@ -30,7 +30,7 @@ export function BagSimulator({ clubs }: { clubs: BagSimulatorClub[] }) {
   const [candidateLabel, setCandidateLabel] = useState("Hybrid");
   const [candidateCarry, setCandidateCarry] = useState(185);
   const [candidateDispersion, setCandidateDispersion] = useState(18);
-  const [includeCandidate, setIncludeCandidate] = useState(true);
+  const [includeCandidate, setIncludeCandidate] = useState(false);
   const result = useMemo(
     () =>
       simulateBagChange({
@@ -67,6 +67,20 @@ export function BagSimulator({ clubs }: { clubs: BagSimulatorClub[] }) {
           widths change course-distance coverage.
         </p>
       </div>
+      <Button
+        type="button"
+        variant="outline"
+        className="min-h-11 w-fit"
+        onClick={() => {
+          setRemoveId("");
+          setCandidateLabel("Hybrid");
+          setCandidateCarry(185);
+          setCandidateDispersion(18);
+          setIncludeCandidate(false);
+        }}
+      >
+        Reset to saved bag
+      </Button>
       <Sheet>
         <SheetTrigger asChild>
           <Button type="button" variant="outline" className="w-fit">
@@ -121,9 +135,12 @@ export function BagSimulator({ clubs }: { clubs: BagSimulatorClub[] }) {
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="bag-simulator-carry">Projected carry</Label>
+                <Label htmlFor="bag-simulator-carry">Projected carry (yd)</Label>
                 <Input
                   id="bag-simulator-carry"
+                  min={1}
+                  max={400}
+                  step={1}
                   type="number"
                   value={candidateCarry}
                   onChange={(event) => setCandidateCarry(Number(event.target.value))}
@@ -131,9 +148,12 @@ export function BagSimulator({ clubs }: { clubs: BagSimulatorClub[] }) {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="bag-simulator-miss">Projected miss width</Label>
+                <Label htmlFor="bag-simulator-miss">Projected miss width (yd)</Label>
                 <Input
                   id="bag-simulator-miss"
+                  min={0}
+                  max={150}
+                  step={1}
                   type="number"
                   value={candidateDispersion}
                   onChange={(event) => setCandidateDispersion(Number(event.target.value))}

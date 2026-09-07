@@ -1,17 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Info } from "lucide-react";
 import { ResponsiveDetailPanel } from "@/components/app/responsive-detail-panel";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 type ProvenanceMetric = {
   key: string;
@@ -22,6 +14,11 @@ type ProvenanceMetric = {
 };
 
 export function ComparisonProvenancePanel({ metrics }: { metrics: ProvenanceMetric[] }) {
+  const ready = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   const [open, setOpen] = useState(false);
 
   return (
@@ -29,36 +26,43 @@ export function ComparisonProvenancePanel({ metrics }: { metrics: ProvenanceMetr
       open={open}
       onOpenChange={setOpen}
       title="How this comparison was calculated"
-      description="Source, method and confidence for every result shown in the table."
+      description="Source, method and confidence for every selected result."
+      footer={
+        <Button variant="outline" onClick={() => setOpen(false)}>
+          Close evidence
+        </Button>
+      }
       trigger={
-        <Button type="button" variant="outline" size="sm">
+        <Button type="button" variant="outline" size="sm" disabled={!ready}>
           <Info className="size-4" aria-hidden="true" />
           Evidence & method
         </Button>
       }
     >
-      <div className="overflow-hidden rounded-xl border border-border/70">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Metric</TableHead>
-              <TableHead>Source and method</TableHead>
-              <TableHead>Confidence</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {metrics.map((metric) => (
-              <TableRow key={metric.key}>
-                <TableCell className="font-medium">{metric.label}</TableCell>
-                <TableCell className="max-w-md text-muted-foreground">
-                  <span className="block">{metric.source}</span>
-                  <span className="mt-1 block">{metric.method}</span>
-                </TableCell>
-                <TableCell>{metric.confidenceLabel}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <div className="grid gap-4">
+        {metrics.map((metric) => (
+          <section key={metric.key} className="grid gap-2 rounded-lg border p-4">
+            <h3 className="font-semibold">{metric.label}</h3>
+            <dl className="grid gap-3 text-sm">
+              <div>
+                <dt className="font-medium">Source</dt>
+                <dd className="mt-1 whitespace-pre-wrap break-words text-muted-foreground">
+                  {metric.source}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium">Method</dt>
+                <dd className="mt-1 whitespace-pre-wrap break-words text-muted-foreground">
+                  {metric.method}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium">Confidence</dt>
+                <dd>{metric.confidenceLabel}</dd>
+              </div>
+            </dl>
+          </section>
+        ))}
       </div>
     </ResponsiveDetailPanel>
   );
