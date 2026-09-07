@@ -1,29 +1,37 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
-
-const routeDir = join(process.cwd(), "src/app/(app)/tournaments/[tournamentId]");
-
+import { describe, expect, it, vi } from "vitest";
+vi.mock("next/navigation", () => ({
+  redirect: (href: string) => {
+    throw new Error(href);
+  },
+}));
+import Leaderboard from "@/app/(app)/tournaments/[tournamentId]/leaderboard/page";
+import Rounds from "@/app/(app)/tournaments/[tournamentId]/rounds/page";
+import Rules from "@/app/(app)/tournaments/[tournamentId]/rules/page";
+import Submit from "@/app/(app)/tournaments/[tournamentId]/submit/page";
 describe("tournament alias routes", () => {
-  it("points legacy subroutes at unified mobile and desktop tab states", () => {
-    const aliases = [
-      { file: "leaderboard/page.tsx", target: "`/tournaments/${tournamentId}?tab=board`" },
-      { file: "rounds/page.tsx", target: "`/tournaments/${tournamentId}?tab=submit`" },
-      { file: "rules/page.tsx", target: "`/tournaments/${tournamentId}?tab=rules`" },
-      { file: "submit/page.tsx", target: "`/tournaments/${tournamentId}?tab=submit`" },
-    ];
-
-    for (const alias of aliases) {
-      const source = readFileSync(join(routeDir, alias.file), "utf8");
-
-      expect(source).toContain('import { redirect } from "next/navigation";');
-      expect(source).toContain("const { tournamentId } = await params;");
-      expect(source).toContain(`redirect(${alias.target})`);
-      expect(source).not.toContain("#standings");
-      expect(source).not.toContain("#submit-round");
-      expect(source).not.toContain("#rules");
-      expect(source).not.toContain("PageShell");
-      expect(source).not.toContain("DesktopWorkbenchLayout");
-    }
-  });
+  it.each([
+    { name: "leaderboard", Route: Leaderboard, tab: "board" },
+    { name: "rounds", Route: Rounds, tab: "submit" },
+    { name: "rules", Route: Rules, tab: "rules" },
+    { name: "submit", Route: Submit, tab: "submit" },
+  ])(
+    "$name retains exact event/filter context and selects the canonical tab",
+    async ({ name, Route, tab }) => {
+      await expect(
+        Route({
+          params: Promise.resolve({ tournamentId: "event/id" }),
+          searchParams: Promise.resolve({ tab: "wrong", filter: ["mine", "open"] }),
+        }),
+      ).rejects.toThrow(`/tournaments/event%2Fid?tab=${tab}&filter=mine&filter=open`);
+      const source = readFileSync(
+        join(process.cwd(), "src/app/(app)/tournaments/[tournamentId]", name, "page.tsx"),
+        "utf8",
+      );
+      expect(source).not.toMatch(
+        /#standings|#submit-round|#rules|PageShell|DesktopWorkbenchLayout/,
+      );
+    },
+  );
 });

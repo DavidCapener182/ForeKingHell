@@ -566,3 +566,9 @@ Club-card actual browser PASS3.0m all12surface/viewports,6analysis tabs, selecte
 Current P58 status regression: Available excludes closed/expired/nonopen unjoined entries; new Closed to entry tab preserves those records/rules/history with disabled Join and explanation. Active/joinedCompleted unchanged. Browser first run caught absent disabledcontrol on newtab; restored same canonical JoinChallenge disabled state. Final challenge-status-browser-final.log running exec70247; read terminal before updating P58 rows/committing. Files challenge-workspace.tsx and ui-upgrade-challenges.spec.ts. Types/lint passed before final tiny condition change.
 
 Other agent fresh full-unit-reconciled.json:2921total,2532pass,243failed,146pending,93failedfiles. Continues targeted reconciliation; coordinate every shared file. No overall completion.
+
+### Active challenge recheck and alias contracts
+
+P93–P98 obsolete source-string tests replaced with real async route invocation assertions for encoded IDs, repeated filters and required context; no duplicate PageShell/hash destinations retained. alias-contract-reconciled.log13PASS/4files501ms.
+
+P58 new Closed to entry UI remains uncommitted while browser finishes. First revised run caught missing disabled Join explanation (fixed); next create navigation exceeded10s while destination compiled22s; next reached final companion matrix iteration but remained in visible pending navigation beyond10s. All assertions retained; local fixture assertions now bounded60s and matrix360s. Current run challenge-status-browser-verified.log, exec1397. If this fails again, diagnose exact pending/error rather than increasing timeouts. No runtime timeout/guard changed.
