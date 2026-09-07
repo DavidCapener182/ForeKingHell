@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-220 desktop / 220 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P33 Goals project integration; next P34 Handicap estimates. P29 matrix p29-browser-interaction.log passed35.3s; screenshot390companion inspected. Latest P28 actual fixture matrix passed19.0s; P27 passed34.8s. Full-unit baseline112failedtests (two backend stale assertions later fixed), details output/playwright/redesign/full-unit-current.log. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
+220 desktop / 220 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: P34 Handicap estimates; next P35/P36 verify existing completed UI before P37. P29 matrix p29-browser-interaction.log passed35.3s; screenshot390companion inspected. Latest P28 actual fixture matrix passed19.0s; P27 passed34.8s. Full-unit baseline112failedtests (two backend stale assertions later fixed), details output/playwright/redesign/full-unit-current.log. User order: UI pass first, broader acceptance later. Historical checkpoints below are retained, not current resume instructions.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P33 Goals project integration**, next P34 Handicap estimates. P10 advanced analytics nine entries and P11 Longest three entries now UI implemented with partial verification. Continue the UI pass; acceptance is still outstanding.
+Current: **P34 Handicap estimates**, next P35/P36 existing implementation reconciliation. P10 advanced analytics nine entries and P11 Longest three entries now UI implemented with partial verification. Continue the UI pass; acceptance is still outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -235,3 +235,5 @@ P32 code in progress: common fullpage, allmobilehistory, rangeSheet supported7d/
 ## P32 UI pass / P33 integration active
 220/492 UIimplementedpartialboth,0accepted. P32C01–C06 browser28.7s12views plus exact manual30minRPE5save/errorrecovery/sourceledger/draftdetailsretention. Training-load-browser-ready evidence390companioninspected. Current summary preservesdomainmodel; selectedrange scopes chart and allledgerrows. Fixed first cold unhydratedrangeclickdisabledguard. User UI-first scope unchanged; existingrecommendationmodels reconciliation/fullacceptance remain.
 P33 previouslyimplementedrows preserved; new goal-project-panel.tsx connects existingownedbaseline/practice/drills/completion/subsequent-qualified evidence/comparelinks. Goaldata/actions unchanged. Run ui-upgrade-goal-project.spec.ts fixture3116, maintainbrowserruntimefreeze with otheragent. Next P34 fullprompts onepage. Latestfullunit125failures/2492pass (58failedfiles/492pass/22skip) output/playwright/redesign/full-unit-latest.log; targeted66Speed/Trainingdomain pass.
+
+P33 project integration passed7.9s12views; no increase to220because sixGoalrowsalreadyimplemented. Exactownedbaseline+planIDs persisted, drills/no false subsequent evidence displayed, rawshotsunchanged. Evidence appendedP33C02/C05. ExistingGoals UI preserved. P34 sourceactivelyrewrittencommonfullpage with fourURLsections, allroundcalculations/sourceSheets, eligible-only trendpoints and allmethodcaveats/repairrounds. Types/browserpending; noP34statusesupdatedyet. Next P35/P36previousUI preserve and verify regressions beforefirstunimplementedP37.

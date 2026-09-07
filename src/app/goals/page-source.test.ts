@@ -34,8 +34,8 @@ describe("goals shadcn workbench", () => {
   });
 
   it("renders action redirect failures as a semantic shadcn alert", () => {
-    expect(actions).toContain('redirect("/goals?error=goal_type")');
-    expect(actions).toContain('redirect("/goals?error=goal_not_found")');
+    expect(actions).toContain('failGoal("goal_type")');
+    expect(actions).toContain('failGoal("goal_not_found")');
     expect(page).toContain("goalErrorMessage(params?.error)");
     expect(page).toContain('error === "goal_type"');
     expect(page).toContain('error === "goal_not_found"');

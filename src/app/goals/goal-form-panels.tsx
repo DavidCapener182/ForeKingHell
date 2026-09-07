@@ -1,11 +1,19 @@
 "use client";
 
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { DraftForm } from "@/components/untitled-ui/draft-form";
+import { UntitledSelect } from "@/components/untitled-ui/form-controls";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
-import { addGoalAction, deleteGoalAction, updateGoalAction } from "@/app/goals/actions";
+import {
+  addGoalWithStateAction,
+  deleteGoalWithStateAction,
+  updateGoalWithStateAction,
+  type GoalFormResult,
+} from "@/app/goals/actions";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -26,13 +34,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -43,8 +44,20 @@ import {
 import { goalTypeLabel, goalTypes, type SeasonGoal } from "@/lib/product-preferences-model";
 
 export function GoalCreateDialog({ label = "Add goal" }: { label?: string }) {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [creationId, setCreationId] = useState("");
+  const router = useRouter();
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!pending) {
+          setOpen(value);
+          if (value && !creationId) setCreationId(crypto.randomUUID());
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button type="button">
           <Plus className="size-4" aria-hidden />
@@ -58,15 +71,35 @@ export function GoalCreateDialog({ label = "Add goal" }: { label?: string }) {
             Keep the season outcome broad and make this target numerical and evidence-linked.
           </DialogDescription>
         </DialogHeader>
-        <GoalForm action={addGoalAction} submitLabel="Add goal" idPrefix="create-goal" />
+        <GoalForm
+          action={addGoalWithStateAction}
+          submitLabel="Add goal"
+          idPrefix="create-goal"
+          creationId={creationId}
+          onPendingChange={setPending}
+          onCancel={() => setOpen(false)}
+          onSuccess={() => {
+            setOpen(false);
+            setCreationId(crypto.randomUUID());
+            router.refresh();
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
 }
 
 export function GoalEditSheet({ goal }: { goal: SeasonGoal }) {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const router = useRouter();
   return (
-    <Sheet>
+    <Sheet
+      open={open}
+      onOpenChange={(value) => {
+        if (!pending) setOpen(value);
+      }}
+    >
       <SheetTrigger asChild>
         <Button type="button" size="sm" variant="outline">
           <Pencil className="size-4" aria-hidden />
@@ -82,7 +115,13 @@ export function GoalEditSheet({ goal }: { goal: SeasonGoal }) {
         </SheetHeader>
         <div className="px-4 pb-6">
           <GoalForm
-            action={updateGoalAction}
+            action={updateGoalWithStateAction}
+            onPendingChange={setPending}
+            onCancel={() => setOpen(false)}
+            onSuccess={() => {
+              setOpen(false);
+              router.refresh();
+            }}
             submitLabel="Save goal"
             idPrefix={`edit-${goal.id}`}
             goal={goal}
@@ -94,8 +133,20 @@ export function GoalEditSheet({ goal }: { goal: SeasonGoal }) {
 }
 
 export function GoalDeleteDialog({ goal }: { goal: Pick<SeasonGoal, "id" | "title"> }) {
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState("");
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
   return (
-    <AlertDialog>
+    <AlertDialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!pending) {
+          setOpen(value);
+          if (value) setError("");
+        }
+      }}
+    >
       <AlertDialogTrigger asChild>
         <Button type="button" size="sm" variant="ghost" className="text-destructive">
           <Trash2 className="size-4" aria-hidden />
@@ -109,14 +160,37 @@ export function GoalDeleteDialog({ goal }: { goal: Pick<SeasonGoal, "id" | "titl
             This removes the goal from the season plan. Imported golf evidence is not deleted.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
         <AlertDialogFooter>
-          <AlertDialogCancel>Keep goal</AlertDialogCancel>
-          <form action={deleteGoalAction}>
-            <input type="hidden" name="goalId" value={goal.id} />
-            <AlertDialogAction type="submit" variant="destructive">
-              Remove goal
-            </AlertDialogAction>
-          </form>
+          <AlertDialogCancel disabled={pending}>Keep goal</AlertDialogCancel>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={pending}
+            className="min-h-11"
+            onClick={() =>
+              startTransition(async () => {
+                const data = new FormData();
+                data.set("goalId", goal.id);
+                setError("");
+                try {
+                  const result = await deleteGoalWithStateAction(data);
+                  if (result.ok) {
+                    setOpen(false);
+                    router.refresh();
+                  } else setError(result.error);
+                } catch {
+                  setError("The goal could not be removed. It is still shown here; try again.");
+                }
+              })
+            }
+          >
+            {pending ? "Removing…" : "Remove goal"}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -128,51 +202,64 @@ function GoalForm({
   submitLabel,
   idPrefix,
   goal,
+  creationId,
+  onSuccess,
+  onCancel,
+  onPendingChange,
 }: {
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<GoalFormResult>;
+  creationId?: string;
+  onSuccess?: () => void;
+  onCancel: () => void;
+  onPendingChange: (pending: boolean) => void;
   submitLabel: string;
   idPrefix: string;
   goal?: SeasonGoal;
 }) {
   const id = (value: string) => `${idPrefix}-${value}`;
+  const [starting, setStarting] = useState(String(goal?.startingValue ?? ""));
+  const [target, setTarget] = useState(String(goal?.targetValue ?? ""));
   return (
-    <form action={action} className="grid gap-4 md:grid-cols-2">
+    <DraftForm
+      action={action}
+      submitLabel={submitLabel}
+      creationId={creationId}
+      onSuccess={onSuccess}
+      onCancel={onCancel}
+      onPendingChange={onPendingChange}
+    >
       {goal ? <input type="hidden" name="goalId" value={goal.id} /> : null}
-      <Field label="Goal type" htmlFor={id("type")}>
-        <Select name="type" defaultValue={goal?.type ?? "carry"}>
-          <SelectTrigger id={id("type")} className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {goalTypes.map((type) => (
-              <SelectItem key={type} value={type}>
-                {goalTypeLabel(type)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
+      <UntitledSelect
+        label="Goal type"
+        name="type"
+        defaultValue={goal?.type ?? "carry"}
+        options={goalTypes.map((type) => ({ value: type, label: goalTypeLabel(type) }))}
+        required
+      />
       <Field label="Goal title" htmlFor={id("title")}>
-        <Input id={id("title")} name="title" defaultValue={goal?.title} required />
+        <Input className="min-h-11" id={id("title")} name="title" defaultValue={goal?.title} required />
       </Field>
       <Field label="Club or context" htmlFor={id("club")}>
-        <Input id={id("club")} name="club" defaultValue={goal?.club} />
+        <Input className="min-h-11" id={id("club")} name="club" defaultValue={goal?.club} />
       </Field>
       <Field label="Unit" htmlFor={id("unit")}>
-        <Input id={id("unit")} name="unit" defaultValue={goal?.unit ?? "yd"} required />
+        <Input className="min-h-11" id={id("unit")} name="unit" defaultValue={goal?.unit ?? "yd"} required />
       </Field>
       <Field label="Starting value" htmlFor={id("starting")}>
         <Input
+          className="min-h-11"
           id={id("starting")}
           name="startingValue"
           type="number"
           step="0.1"
-          defaultValue={goal?.startingValue}
+          value={starting}
+          onChange={(event) => setStarting(event.target.value)}
           required
         />
       </Field>
       <Field label="Current value" htmlFor={id("current")}>
         <Input
+          className="min-h-11"
           id={id("current")}
           name="currentValue"
           type="number"
@@ -183,32 +270,46 @@ function GoalForm({
       </Field>
       <Field label="Target value" htmlFor={id("target")}>
         <Input
+          className="min-h-11"
           id={id("target")}
           name="targetValue"
           type="number"
           step="0.1"
-          defaultValue={goal?.targetValue}
+          value={target}
+          onChange={(event) => setTarget(event.target.value)}
           required
         />
       </Field>
       <Field label="Target date" htmlFor={id("date")}>
-        <Input id={id("date")} name="goalTargetDate" type="date" defaultValue={goal?.targetDate} />
+        <Input className="min-h-11" id={id("date")} name="goalTargetDate" type="date" defaultValue={goal?.targetDate} />
       </Field>
-      <Field label="Evidence source" htmlFor={id("evidence")} className="md:col-span-2">
+      <Field label="Evidence source" htmlFor={id("evidence")} className="sm:col-span-2">
         <Input
+          className="min-h-11"
           id={id("evidence")}
           name="evidenceSource"
-          defaultValue={goal?.evidenceSource ?? "Imported session evidence"}
+          defaultValue={goal?.evidenceSource ?? "Manually saved goal value"}
           required
         />
       </Field>
-      <Field label="Recommended next action" htmlFor={id("action")} className="md:col-span-2">
-        <Input id={id("action")} name="nextAction" defaultValue={goal?.nextAction} required />
+      <Field label="Recommended next action" htmlFor={id("action")} className="sm:col-span-2">
+        <Input className="min-h-11" id={id("action")} name="nextAction" defaultValue={goal?.nextAction} required />
       </Field>
-      <Button type="submit" className="md:col-span-2">
-        {submitLabel}
-      </Button>
-    </form>
+      <p className="text-sm leading-6 text-muted-foreground sm:col-span-2">
+        {starting !== "" &&
+        target !== "" &&
+        Number.isFinite(Number(starting)) &&
+        Number.isFinite(Number(target))
+          ? Number(target) < Number(starting)
+            ? "Lower values move this goal towards its target."
+            : Number(target) > Number(starting)
+              ? "Higher values move this goal towards its target."
+              : "The target matches the starting value. Review whether this is a maintenance goal."
+          : "Set a starting value and target to show the direction of progress."}{" "}
+        Current values are saved explicitly; adding a source label does not automatically verify
+        imported evidence.
+      </p>
+    </DraftForm>
   );
 }
 
