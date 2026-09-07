@@ -540,3 +540,15 @@ Current: integrated test-failure reconciliation (other agent) and remaining acce
 Expanded browser acceptance caught actual internal clipping of achievement header, footer and tier at360 CSSzoom2 despite page-level overflow passing. Wrapped header icon/dismiss/name, footer text and tier group; added descendant clipping assertion. shared-acceptance-final.log PASS6.6s all6sizes,13s focused notification retention,2axe scans0violations and darkCSSzoom2 at1440/360. Final360zoom screenshot inspected. Nativezoom/AT still outstanding. Scoped lint clean before final class-only tier adjustment.
 
 Current ownership: other agent owns app-route-capabilities.ts metadata reconciliation + tests, preserving exact direct-route exceptions and unknown-nested handoffs; root owns UI/acceptance/tracker. Continue integrated failure queue. No active root browser or production build.
+
+### Integration checks in progress — 15:16
+
+Fixed Challenges loading missing skeleton/busy semantics (core4PASS); replaced ordinary club dispersion premium-card with named shared Card while retaining map/selection (native+loading25PASS203ms). Scoped lint clean. Post-change browser checks outstanding for these wrappers.
+
+Handicap saved-view link now selects rounds via canonical URL and preserves query. Actual functional workflow PASS1.5m all12contexts, but emitted Unexpected end JSON pageerror that old test only logged. Test now asserts no errors and captures stacks; must rerun before claiming clean browser validation. Do not suppress error.
+
+Isolated production snapshot /tmp/fkh-ui-production-check-20260907: first build failed omitted root proxy (snapshot fixed), second compiled41s but hit route-audit test copied before agent type fix. Refreshed that test; third build running exec80296 in isolated-production-build-types-fixed.log. Snapshot excludes .env, uses disposableDB/synthetic auth config, symlinks deps/public, webpack and4GBheap; no live server/output changed. It predates latest Handicap/Challenges/Card changes, so production pass cannot verify those latest edits.
+
+Exact resume: read terminal build log; await other agent unit/metadata reconciliation; run strengthened Handicap browser after build ends; inspect/fix JSON stack if reproduced. Preserve branch/CSV/workbook and all other dirty source. Stage only owned card delta via /tmp/fkh-club-card-owned.patch; other agent prior club edits remain separate.
+
+Isolated production build terminal PASS: compiled2.3m, TypeScript17.7s,25static pages1.9s, traces/routes complete (isolated-production-build-types-fixed.log). This is webpack snapshot validation with synthetic auth/localDB; no live deployment or authenticated production runtime acceptance. Snapshot predates latest Handicap/Challenges/Card changes.

@@ -18,7 +18,8 @@ test("Handicap keeps unofficial source estimates and full round calculations on 
   test.setTimeout(180000);
   page.setDefaultNavigationTimeout(60000);
   page.setDefaultTimeout(15000);
-  page.on("pageerror", (error) => console.log("PAGE ERROR", error.message));
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => { pageErrors.push(error.message); console.log("PAGE ERROR", error.stack); });
   const db = postgres(value!, { max: 1 });
   let owner: string | undefined;
   try {
@@ -56,7 +57,9 @@ test("Handicap keeps unofficial source estimates and full round calculations on 
       await db`insert into fkh_sessions(user_id,source,type,date,file_name,course_name,raw_csv_text,scorecard_json) values(${owner!},'manual','real_round',${`2026-09-0${i + 1}`},${`Synthetic round ${i + 1}`},${`Synthetic course ${i + 1}`},'',${db.json(cards)})`;
     await db`insert into fkh_sessions(user_id,source,type,date,file_name,course_name,raw_csv_text,scorecard_json) values(${owner!},'manual','real_round','2026-09-05','Incomplete synthetic round','Incomplete synthetic course','',${db.json(cards.slice(0, 4))})`;
     for (const surface of ["workbench", "companion"]) {
-      await page.goto(`/surface/${surface}?next=/handicap`);
+      await page.goto(
+        `/surface/${surface}?next=${encodeURIComponent("/handicap?filter=retained")}`,
+      );
       await expect(page.locator('[data-url-tabs][data-ready="true"]')).toBeVisible({
         timeout: 60000,
       });
@@ -70,6 +73,16 @@ test("Handicap keeps unofficial source estimates and full round calculations on 
       ]) {
         await page.setViewportSize({ width, height });
         await page.getByRole("tab", { name: "Round calculations", exact: true }).click();
+        const tableDisclosure = page.locator("details").filter({ has: page.locator("summary", { hasText: "Full differential table and export" }) });
+        if ((await tableDisclosure.getAttribute("open")) === null) await tableDisclosure.locator("summary").click();
+        await page.getByRole("button", { name: "Saved views", exact: true }).click();
+        const suggested = page.getByRole("menuitem", { name: /Score differentials/ });
+        await expect(suggested).toHaveAttribute("href", "/handicap?filter=retained&tab=rounds");
+        await suggested.click();
+        await expect(page).toHaveURL(/filter=retained&tab=rounds/);
+        await expect(
+          page.getByRole("tab", { name: "Round calculations", exact: true }),
+        ).toHaveAttribute("aria-selected", "true");
         await page.getByRole("button", { name: /^Synthetic course 1 / }).click();
         await expect(page.getByRole("dialog")).toContainText("113 fallback");
         await expect(page.getByRole("dialog")).toContainText("18-hole equivalent");
@@ -101,6 +114,7 @@ test("Handicap keeps unofficial source estimates and full round calculations on 
     expect(
       await db`select id,carry_yd,total_yd,side_carry_yd,review_status from fkh_shots where user_id=${owner!} order by id`,
     ).toEqual(original);
+    expect(pageErrors).toEqual([]);
   } finally {
     if (owner) await db`delete from fkh_users where id=${owner}`;
     await db.end();

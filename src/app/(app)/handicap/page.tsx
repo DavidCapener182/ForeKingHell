@@ -1,3 +1,4 @@
+import { canonicalRouteHref, type RouteQuery } from "@/lib/canonical-route-query";
 import Link from "next/link";
 import { UrlTabs } from "@/components/untitled-ui/url-tabs";
 import { LabEvidenceList } from "@/app/simulator-lab/lab-evidence";
@@ -81,7 +82,7 @@ const handicapRoundColumns: DesktopWorkbenchColumn[] = [
 const handicapSuggestedViews: DesktopSavedViewSuggestion[] = [
   {
     title: "Score differentials",
-    href: "#rounds",
+    href: "?tab=rounds",
     detail: "Every eligible scorecard feeding the handicap confidence view.",
   },
   {
@@ -96,7 +97,17 @@ const handicapSuggestedViews: DesktopSavedViewSuggestion[] = [
   },
 ];
 
-export default async function HandicapPage() {
+export default async function HandicapPage({
+  searchParams,
+}: {
+  searchParams?: Promise<RouteQuery>;
+}) {
+  const params = await searchParams;
+  const suggestedViews = handicapSuggestedViews.map((view) =>
+    view.href === "?tab=rounds"
+      ? { ...view, href: canonicalRouteHref("/handicap", params, { tab: "rounds" }) }
+      : view,
+  );
   const [rounds, progressData, featureData, rangeReality] = await Promise.all([
     getHandicapRounds(),
     getProgressData(),
@@ -406,7 +417,7 @@ export default async function HandicapPage() {
                             currentViewLabel="Score differential evidence"
                             resultLabel={`${rounds.length} rounds`}
                             columns={handicapRoundColumns}
-                            suggestedViews={handicapSuggestedViews}
+                            suggestedViews={suggestedViews}
                             exportTableId="handicap-rounds"
                             exportFileName="forekinghell-handicap-score-differentials.csv"
                           />

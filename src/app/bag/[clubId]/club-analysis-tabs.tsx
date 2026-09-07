@@ -173,9 +173,11 @@ export function ClubAnalysisTabs({
 
   return (
     <div className="space-y-5">
-      <section
+      <Card
         id="club-dispersion"
-        className="premium-card scroll-mt-28 overflow-hidden p-3 sm:p-4"
+        role="region"
+        aria-labelledby="club-dispersion-title"
+        className="scroll-mt-28 gap-0 overflow-hidden p-3 sm:p-4"
       >
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-3">
@@ -186,7 +188,7 @@ export function ClubAnalysisTabs({
               <Target className="size-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-2xl font-semibold tracking-normal">Dispersion Map</h2>
+              <h2 id="club-dispersion-title" className="text-2xl font-semibold tracking-normal">Dispersion Map</h2>
               <p className="truncate text-sm text-muted-foreground">
                 {clubModelName} · {clubTypeLabel} · this is how the club behaves.
               </p>
@@ -217,7 +219,7 @@ export function ClubAnalysisTabs({
           distanceView={distanceView}
           accent={accent}
         />
-      </section>
+      </Card>
 
       <div className="space-y-5" data-desktop-club-analysis>
         {afterDispersion ? <div className="space-y-5">{afterDispersion}</div> : null}
