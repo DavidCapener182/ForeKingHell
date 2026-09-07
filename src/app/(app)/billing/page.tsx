@@ -1,24 +1,13 @@
-import { AlertTriangle, Check, CheckCircle2, Minus, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Check, Info, Minus, ShieldCheck } from "lucide-react";
 
-import { createCheckoutAction } from "@/app/billing/actions";
+import { FullPlanCheckout } from "@/app/billing/billing-checkout";
+import { BillingHistory } from "@/app/billing/billing-history";
+import layout from "@/app/course-records/course-record-board.module.css";
 import { BillingManageDialog } from "@/app/billing/billing-manage-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -70,7 +59,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   const activePlanLimits = data.planLimits.filter((limit) => limit.planKey === data.activePlanKey);
 
   return (
-    <PageShell size="full" contentClassName="gap-6 lg:gap-8">
+    <PageShell size="full" contentClassName="gap-6 pb-28 lg:gap-8">
       <header className="flex flex-col gap-2 border-b border-border/70 pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Badge variant="outline" className="mb-3">
@@ -83,7 +72,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             See what you have, what happens next, and manage your billing in one place.
           </p>
         </div>
-        <p className="text-sm text-muted-foreground">{data.user?.email}</p>
+        <p className="break-all text-sm text-muted-foreground">{data.user?.email}</p>
       </header>
 
       {notice ? (
@@ -91,7 +80,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           {notice.error ? (
             <AlertTriangle className="size-4" />
           ) : (
-            <CheckCircle2 className="size-4" />
+            <Info className="size-4" />
           )}
           <AlertTitle>{notice.title}</AlertTitle>
           <AlertDescription>{notice.message}</AlertDescription>
@@ -99,6 +88,12 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
       ) : null}
 
       <CurrentPlanCard data={data} planName={activePlanName} />
+      {!data.stripeConfigured ? (
+        <p role="status" className="rounded-xl border p-4 text-sm">
+          Checkout and plan management are currently unavailable. Your saved plan and access remain
+          shown above. Try again later.
+        </p>
+      ) : null}
 
       <section id="compare-plans" className="scroll-mt-24" aria-labelledby="compare-plans-title">
         <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
@@ -112,47 +107,82 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
           </div>
         </div>
 
-        <Card className="overflow-hidden py-0">
-          <Table className="text-xs sm:text-sm" containerClassName="rounded-xl">
-            <TableCaption className="sr-only">
-              Comparison of the Free and Full account plans.
-            </TableCaption>
-            <TableHeader>
-              <TableRow className="bg-muted/35 hover:bg-muted/35">
-                <TableHead className="min-w-40 px-3 py-4 text-foreground sm:min-w-48 sm:px-4">
-                  What you get
-                </TableHead>
-                <TableHead className="min-w-24 px-3 py-4 text-foreground sm:min-w-36 sm:px-4">
-                  <PlanColumnHeading label="Free" current={data.activePlanKey === "free"} />
-                </TableHead>
-                <TableHead className="min-w-24 px-3 py-4 text-foreground sm:min-w-36 sm:px-4">
-                  <PlanColumnHeading label="Full" current={isFullPlan} />
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell className="px-3 font-medium sm:px-4">Price</TableCell>
-                <TableCell className="px-3 sm:px-4">£0</TableCell>
-                <TableCell className="px-3 font-medium whitespace-normal sm:px-4">
-                  {fullPlan ? `${fullPlan.monthlyPrice} / month` : "Not available"}
-                </TableCell>
-              </TableRow>
-              {fullPlanComparison.map((row) => (
-                <TableRow key={row.feature}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <article className="rounded-xl border p-4">
+            <h3 className="font-semibold">
+              Free {data.activePlanKey === "free" ? "· Current plan" : ""}
+            </h3>
+            <p>£0 · No renewal</p>
+            <p className="mt-2 text-sm">Starter imports and essential views.</p>
+          </article>
+          <article className="rounded-xl border p-4">
+            <h3 className="font-semibold">Full {isFullPlan ? "· Current plan" : ""}</h3>
+            <p>
+              {fullPlan?.monthlyPrice ?? "Unavailable"} / month or{" "}
+              {fullPlan?.yearlyPrice ?? "Unavailable"} / year
+            </p>
+            <p className="mt-2 text-sm">
+              Recurring subscription; confirm final payment terms at checkout.
+            </p>
+          </article>
+        </div>
+        <Card className="mt-4 overflow-hidden py-0">
+          <div className={layout.desktop}>
+            <Table className="text-xs sm:text-sm" containerClassName="rounded-xl">
+              <TableCaption className="sr-only">
+                Comparison of the Free and Full account plans.
+              </TableCaption>
+              <TableHeader>
+                <TableRow className="bg-muted/35 hover:bg-muted/35">
+                  <TableHead className="min-w-40 px-3 py-4 text-foreground sm:min-w-48 sm:px-4">
+                    What you get
+                  </TableHead>
+                  <TableHead className="min-w-24 px-3 py-4 text-foreground sm:min-w-36 sm:px-4">
+                    <PlanColumnHeading label="Free" current={data.activePlanKey === "free"} />
+                  </TableHead>
+                  <TableHead className="min-w-24 px-3 py-4 text-foreground sm:min-w-36 sm:px-4">
+                    <PlanColumnHeading label="Full" current={isFullPlan} />
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="px-3 font-medium sm:px-4">Price</TableCell>
+                  <TableCell className="px-3 sm:px-4">£0</TableCell>
                   <TableCell className="px-3 font-medium whitespace-normal sm:px-4">
-                    {row.feature}
-                  </TableCell>
-                  <TableCell className="px-3 whitespace-normal sm:px-4">
-                    {comparisonValue(row.free)}
-                  </TableCell>
-                  <TableCell className="px-3 whitespace-normal sm:px-4">
-                    {comparisonValue(row.full)}
+                    {fullPlan ? `${fullPlan.monthlyPrice} / month` : "Not available"}
                   </TableCell>
                 </TableRow>
+                {fullPlanComparison.map((row) => (
+                  <TableRow key={row.feature}>
+                    <TableCell className="px-3 font-medium whitespace-normal sm:px-4">
+                      {row.feature}
+                    </TableCell>
+                    <TableCell className="px-3 whitespace-normal sm:px-4">
+                      {comparisonValue(row.free)}
+                    </TableCell>
+                    <TableCell className="px-3 whitespace-normal sm:px-4">
+                      {comparisonValue(row.full)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <details className={layout.mobile}>
+            <summary className="min-h-11 cursor-pointer p-4 font-semibold">
+              Complete feature comparison
+            </summary>
+            <dl className="divide-y px-4">
+              {fullPlanComparison.map((row) => (
+                <div key={row.feature} className="py-3">
+                  <dt className="font-medium">{row.feature}</dt>
+                  <dd className="mt-1 text-sm">Free: {comparisonValue(row.free)}</dd>
+                  <dd className="mt-1 text-sm">Full: {comparisonValue(row.full)}</dd>
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </dl>
+          </details>
 
           <div className="flex flex-col gap-3 border-t bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
@@ -163,13 +193,38 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
                   : `${activePlanName} is your current plan; it remains available to manage above.`}
             </p>
             {data.activePlanKey === "free" && fullPlan ? (
-              <FullPlanCheckout plan={fullPlan} stripeConfigured={data.stripeConfigured} />
+              <FullPlanCheckout
+                plan={{
+                  key: fullPlan.key,
+                  monthlyPrice: fullPlan.monthlyPrice,
+                  yearlyPrice: fullPlan.yearlyPrice,
+                }}
+                availability={data.checkoutAvailability[fullPlan.key]}
+              />
             ) : null}
           </div>
         </Card>
       </section>
 
-      <BillingHistoryTable history={data.subscriptionHistory} plans={data.plans} />
+      <BillingHistory
+        rows={data.subscriptionHistory.map((entry) => ({
+          id: entry.id,
+          plan: accountPlanLabel(data.plans, entry.planKey),
+          status: label(entry.status),
+          period:
+            entry.currentPeriodStart && entry.currentPeriodEnd
+              ? `${dateFormatter.format(entry.currentPeriodStart)} – ${dateFormatter.format(entry.currentPeriodEnd)}`
+              : "Period not recorded",
+          renewal: entry.cancelAtPeriodEnd
+            ? "Ends after this period"
+            : ["active", "trialing"].includes(entry.status)
+              ? "Scheduled to continue"
+              : entry.status === "canceled"
+                ? "Will not renew"
+                : "Check plan management",
+          date: entry.createdAt.toISOString().slice(0, 10),
+        }))}
+      />
 
       <TechnicalPlanDetails
         limits={activePlanLimits}
@@ -225,8 +280,8 @@ function CurrentPlanCard({ data, planName }: { data: BillingPageData; planName: 
               {data.billingCustomer?.stripeCustomerId
                 ? "Securely managed by Stripe"
                 : data.activePlanKey === "free"
-                  ? "No payment method on file"
-                  : "This access does not renew"}
+                  ? "No recurring subscription shown"
+                  : "Check the saved renewal information above"}
             </p>
           </div>
         </CardContent>
@@ -256,92 +311,6 @@ function PlanColumnHeading({ label, current }: { label: string; current: boolean
   );
 }
 
-function FullPlanCheckout({
-  plan,
-  stripeConfigured,
-}: {
-  plan: BillingPlan;
-  stripeConfigured: boolean;
-}) {
-  return (
-    <form action={createCheckoutAction} className="flex w-full gap-2 sm:w-auto">
-      <input type="hidden" name="planKey" value={plan.key} />
-      <Select name="interval" defaultValue="monthly">
-        <SelectTrigger className="min-h-11 min-w-32" aria-label="Full plan billing interval">
-          <SelectValue placeholder="Billing interval" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="monthly">Monthly</SelectItem>
-          <SelectItem value="yearly">Yearly</SelectItem>
-        </SelectContent>
-      </Select>
-      <Button type="submit" className="min-h-11 flex-1 sm:flex-none" disabled={!stripeConfigured}>
-        Choose Full
-      </Button>
-    </form>
-  );
-}
-
-function BillingHistoryTable({
-  history,
-  plans,
-}: {
-  history: BillingPageData["subscriptionHistory"];
-  plans: BillingPlan[];
-}) {
-  return (
-    <section aria-labelledby="billing-history-title">
-      <div className="mb-3">
-        <h2 id="billing-history-title" className="text-xl font-semibold tracking-tight">
-          Billing history
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">Your recorded subscription periods.</p>
-      </div>
-      <Card className="overflow-hidden py-0">
-        <Table>
-          <TableCaption className="sr-only">
-            Subscription history showing plan, status, period and renewal state.
-          </TableCaption>
-          <TableHeader>
-            <TableRow className="bg-muted/35 hover:bg-muted/35">
-              <TableHead className="px-4">Plan</TableHead>
-              <TableHead className="px-4">Status</TableHead>
-              <TableHead className="px-4">Period</TableHead>
-              <TableHead className="px-4">Renewal</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {history.length > 0 ? (
-              history.map((entry) => (
-                <TableRow key={entry.id}>
-                  <TableCell className="px-4 font-medium">
-                    {accountPlanLabel(plans, entry.planKey)}
-                  </TableCell>
-                  <TableCell className="px-4">{label(entry.status)}</TableCell>
-                  <TableCell className="px-4">
-                    {entry.currentPeriodStart && entry.currentPeriodEnd
-                      ? `${dateFormatter.format(entry.currentPeriodStart)} – ${dateFormatter.format(entry.currentPeriodEnd)}`
-                      : dateFormatter.format(entry.createdAt)}
-                  </TableCell>
-                  <TableCell className="px-4">
-                    {entry.cancelAtPeriodEnd ? "Ends after this period" : "Continues"}
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={4} className="px-4 py-5 text-muted-foreground">
-                  No paid billing history yet.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </Card>
-    </section>
-  );
-}
-
 function TechnicalPlanDetails({
   limits,
   entitlements,
@@ -352,42 +321,46 @@ function TechnicalPlanDetails({
   planName: string;
 }) {
   return (
-    <section aria-label="Technical plan details">
+    <section aria-label="Plan access and limits">
       <Card className="px-4 py-0 sm:px-5">
-        <Accordion type="single" collapsible>
-          <AccordionItem value="technical-details" className="border-0">
-            <AccordionTrigger className="py-5 hover:no-underline">
-              <span>
-                <span className="block text-left font-semibold">Technical plan details</span>
-                <span className="mt-1 block text-left text-xs font-normal text-muted-foreground">
-                  Account grants and limits used to apply your access
-                </span>
+        <details>
+          <summary className="min-h-11 cursor-pointer py-5">
+            <span>
+              <span className="block text-left font-semibold">Your access and usage limits</span>
+              <span className="mt-1 block text-left text-xs font-normal text-muted-foreground">
+                Saved allowances for this account
               </span>
-            </AccordionTrigger>
-            <AccordionContent className="pb-5">
-              <div className="grid gap-5 lg:grid-cols-2">
-                <TechnicalList
-                  title={`${planName} limits`}
-                  rows={limits.map((limit) => ({
+            </span>
+          </summary>
+          <div className="pb-5">
+            <div className="grid gap-5 lg:grid-cols-2">
+              <TechnicalList
+                title={`${planName} limits`}
+                rows={limits
+                  .filter((limit) => Object.hasOwn(friendlyLimits, limit.limitKey))
+                  .map((limit) => ({
                     key: limit.id,
-                    label: label(limit.limitKey),
+                    label: friendlyLimits[limit.limitKey],
                     value: limitValue(limit.limitValueJson),
                   }))}
-                  empty="No additional limits are recorded for this plan."
-                />
-                <TechnicalList
-                  title="Account grants"
-                  rows={entitlements.map((entitlement) => ({
+                empty="No additional limits are recorded for this plan."
+              />
+              <TechnicalList
+                title="Additional access"
+                rows={entitlements
+                  .filter((entitlement) =>
+                    Object.hasOwn(friendlyLimits, entitlement.entitlementKey),
+                  )
+                  .map((entitlement) => ({
                     key: entitlement.id,
-                    label: label(entitlement.entitlementKey),
+                    label: friendlyLimits[entitlement.entitlementKey],
                     value: limitValue(entitlement.valueJson),
                   }))}
-                  empty="No additional account grants are recorded."
-                />
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+                empty="No additional access is recorded."
+              />
+            </div>
+          </div>
+        </details>
       </Card>
     </section>
   );
@@ -410,7 +383,7 @@ function TechnicalList({
           {rows.map((row) => (
             <div
               key={row.key}
-              className="flex items-center justify-between gap-4 px-3 py-2.5 text-sm"
+              className="flex flex-wrap items-center justify-between gap-4 px-3 py-2.5 text-sm"
             >
               <dt className="text-muted-foreground">{row.label}</dt>
               <dd className="text-right font-medium">{row.value}</dd>
@@ -465,7 +438,7 @@ function planStatus(status: string | undefined, activePlanKey: string) {
     default:
       return activePlanKey === "free"
         ? { label: "Active", tone: "green" as const }
-        : { label: label(status ?? "active"), tone: "slate" as const };
+        : { label: label(status ?? "status unavailable"), tone: "slate" as const };
   }
 }
 
@@ -475,7 +448,9 @@ function renewalState(subscription: BillingPageData["latestSubscription"], activ
   }
 
   if (!subscription) {
-    return "Free stays free. There is no renewal date.";
+    return activePlanKey === "free"
+      ? "Free stays free. There is no renewal date."
+      : "No subscription renewal date is recorded. Your saved access is shown above.";
   }
 
   if (subscription.cancelAtPeriodEnd) {
@@ -498,7 +473,7 @@ function billingNotice(checkout?: string, portal?: string, plan?: string) {
     return {
       error: true,
       title: "Plan management is unavailable",
-      message: "Account management is not configured in this environment yet.",
+      message: "Plan management is currently unavailable. Try again later.",
     };
   }
 
@@ -522,7 +497,7 @@ function billingNotice(checkout?: string, portal?: string, plan?: string) {
     return {
       error: true,
       title: "Checkout is unavailable",
-      message: `${plan ? accountPlanName(plan) : "That plan"} is not configured for checkout yet.`,
+      message: `${plan ? accountPlanName(plan) : "That plan"} is currently unavailable for checkout. Try again later.`,
     };
   }
 
@@ -537,8 +512,9 @@ function billingNotice(checkout?: string, portal?: string, plan?: string) {
   if (checkout === "success") {
     return {
       error: false,
-      title: "Checkout complete",
-      message: "Your plan access will update shortly.",
+      title: "Returned from checkout",
+      message:
+        "This return link does not confirm payment. Your saved plan status is shown below; provider confirmation may take a moment.",
     };
   }
 
@@ -546,7 +522,7 @@ function billingNotice(checkout?: string, portal?: string, plan?: string) {
     return {
       error: false,
       title: "Checkout cancelled",
-      message: "Your plan and payment details have not changed.",
+      message: "Checkout was left before confirmation. Review your saved plan status below.",
     };
   }
 
@@ -574,8 +550,8 @@ function label(value: string) {
 }
 
 function limitValue(value: Record<string, unknown>) {
-  if (typeof value.label === "string") {
-    return value.label;
+  if (value.label === "Unlimited") {
+    return "Unlimited";
   }
 
   if (typeof value.value === "boolean") {
@@ -586,5 +562,23 @@ function limitValue(value: Record<string, unknown>) {
     return value.value >= 999999 ? "Unlimited" : new Intl.NumberFormat("en-GB").format(value.value);
   }
 
-  return "Included";
+  return "Not available";
 }
+
+const friendlyLimits: Record<string, string> = {
+  max_monthly_imports: "Monthly imports",
+  max_friend_groups: "Friend groups",
+  max_private_challenges: "Private challenges",
+  monthly_course_record_attempts: "Monthly course record attempts",
+  private_course_record_boards: "Private course record boards",
+  private_friend_tournaments: "Private friend tournaments",
+  host_major_tournaments: "Host major tournaments",
+  can_use_ai_coach: "AI coach",
+  ai_monthly_credits: "Monthly AI credits",
+  ai_daily_chat_messages: "Daily AI chat messages",
+  ai_scorecard_extracts_monthly: "Monthly scorecard extracts",
+  advanced_reports: "Advanced reports",
+  friend_comparison_insights: "Friend comparison insights",
+  challenge_analytics: "Challenge analytics",
+  max_player_seats: "Player seats",
+};

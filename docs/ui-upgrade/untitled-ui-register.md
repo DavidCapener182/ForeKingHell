@@ -122,3 +122,6 @@ Specified Forms/Select/Toggles, Page headers and Modals/Buttons references reuse
 
 ## P74 Shared account
 Specified Page/Section headers, Metrics/Tooltips and Tables/Paginations references reuse installed local exports. Paid advanced examples unavailable; semantic identity and fact rows, sortable scoped ledger and focus-managed complete mobile detail panel are the accessible alternatives. No paid source or new owner mutation access claimed.
+
+## P75 Billing
+Specified Metrics, Tables/Paginations, Radio groups/Buttons, Inputs/Select, Modals and Section headers/Content dividers reuse checked installed exports. Paid advanced billing examples unavailable; native labelled interval, semantic comparison with stacked plans and complete native phone disclosure, responsive reviewed handoff and full history detail panels are explicit accessible alternatives. No paid vendor source or invoice data invented.

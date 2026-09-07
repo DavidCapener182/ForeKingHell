@@ -72,11 +72,7 @@ export const mobileCapabilities = {
   equipment: companionMore(),
   rapsodo: companionMore(),
   providers: companionMore(),
-  billing: desktopOnly(
-    "Open settings",
-    "/settings",
-    "Billing operations are available in the full workbench.",
-  ),
+  billing: companionMore(),
   settings: companionMore(),
   notifications: summaryMore(),
   admin: desktopOnly("Go to Today", "/today", "Administration is available in the full workbench."),
@@ -133,7 +129,7 @@ const desktopOnlyPrefixes = [
   "/coach/workspace",
 ] as const;
 
-const companionExactRoutes = ["/profile", "/social-intelligence", "/feed", "/groups", "/friends", "/achievements", "/leaderboard", "/course-records", "/simulator-lab", "/strokes-gained", "/compare", "/analyse", "/analyse/workspace", "/analyse/session-impact", "/analyse/conditions", "/analyse/compare", "/data-chat", "/coach/workspace", "/coach/reports", "/coach/diagnosis", "/coach", "/courses", "/courses/new", "/equipment", "/equipment/experiments"] as const;
+const companionExactRoutes = ["/billing", "/profile", "/social-intelligence", "/feed", "/groups", "/friends", "/achievements", "/leaderboard", "/course-records", "/simulator-lab", "/strokes-gained", "/compare", "/analyse", "/analyse/workspace", "/analyse/session-impact", "/analyse/conditions", "/analyse/compare", "/data-chat", "/coach/workspace", "/coach/reports", "/coach/diagnosis", "/coach", "/courses", "/courses/new", "/equipment", "/equipment/experiments"] as const;
 const companionExceptions = ["/profile", "/groups", "/courses/strategy"] as const;
 const summaryOnlyPrefixes = [
   "/coach",

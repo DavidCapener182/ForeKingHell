@@ -1,6 +1,6 @@
 ## Current resume point — 7 September
 
-401 desktop / 401 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P75 Plan and billing**, next P76 Operations console. 91 UI entries remain. Continue the UI pass with acceptance gaps retained.
+407 desktop / 407 mobile entries have UI implemented with partial verification; 0 fully accepted. Current: **P76 Operations console**, next P77 Account management. 85 UI entries remain. Continue the UI pass with acceptance gaps retained.
 
 # UI upgrade progress
 
@@ -16,7 +16,7 @@ User direction: implement the remaining UI changes first; defer broader integrat
 
 ## Current component and next component
 
-Current: **P75 Plan and billing**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
+Current: **P76 Operations console**. P61-C01–C08 and P62-C01–C05 are implemented with partial verification; acceptance remains outstanding.
 
 G01–G14 inherited acceptance remains incomplete. G01/G02/G03/G05/G06/G07/G10 and Progress have narrower passing evidence; G04/G08/G09/G11/G12/G13/G14 still need broader consumer/state checks recorded per row. Do not reset or mark them Passed based on route-level screenshots.
 
@@ -396,3 +396,7 @@ Changed notification and invitation pages, invitation-accept.tsx, settings accep
 ## P74 UI checkpoint
 P74-C01–C03 UI implemented partial;401/492UI,0 fullyaccepted. Full shared identity/read-only role summary, source/sample metrics, loaded20 searchable/orderable session ledger, full mobile detail panel, scoped minimal loader and explicit unavailable route. Partial scorecard no longer presented as total. shared-account-types.log/scopedlintclean; backend shared-account-data-final.log1PASS1.14s allroles/owner/revoked/invalid/scoping/excludedshots/partialtotal. First browser fixture required raw_csv_text fixed. shared-account-browser-final.log thenFAILED before targetpage: /surface/workbench500 Unexpected end of JSON input in Next runtime,64s_errorcompile. Actualviewport/screenshots unverified; preserve logs/test, no restart/clean. UI-first continueP75.
 Freeze RELEASED; root applies billing page/manage/checkout/history drafts. Other agent applies confirmed checkout/portalstate APIs and exact availability; no livepayments. P75 prompts fullyread. CurrentP75,nextP76; preserve all401implemented and unrelateddirtychanges.
+
+## P75 Billing UI checkpoint
+P75-C01–C06 UI implemented partial;407/492UI,0 fullyaccepted. Savedplan/currentperiod preserved, native completecomparison andpracticalallowances, exactcatalogmonth/yearprice andconfiguredavailability, review/cancel beforeproviderhandoff, statefulpending/error, fullmobilehistory/details. No invoiceamounts/currencies/URLs in storedhistory; truthfulgapplusportalaccess. Querycheckoutsuccessnowneutralreturnnotice, nofalsepaymentconfirmation. billing-controls.log1PASS24.6s6sizes withmockedno-callCancel/exactretryparameters/providererrors. Actualbilling-browser-ready.log1PASS1.0m12surface/sizes savedpaidaccess/history/allowances/foreignprivacy, no payments. FirstactualearlyAccordionclicklost→nativedetails; nextstrictduplicatefeatureselectorfixed; nexthistoryclicklost→readyguard. Companion390inspected; neutralInfoiconfinalminorchangeaftercapture. Backendredesign/billing-state-final.log7PASS; safeerrormessagefollowup redesign/billing-safe-state.log7PASS2.37s, targetedlintclean. Billing-admin typesclean;3unusedimportwarningsinnewadminUIremoved.
+Runtimefreeze RELEASED. P76 page/nav/attention/strip applied, allP76promptsread; types/lint billing-admin logs running. Otheragentoverviewpermission/countread-onlytest5PASS2.77sredesign/admin-overview-integration.log. RunP76isolated+actualafterstablefreeze; nextP77. P75lib/billing onlyavailability additions shouldstage via baseline /tmp/fkh-billing-before-p75.ts; keep prior servicecatchdiffunstaged. Capabilitybillingcategory+exactexception onlyP75; /adminexactexceptionP76pending.
