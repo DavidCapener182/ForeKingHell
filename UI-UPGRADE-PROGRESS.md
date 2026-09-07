@@ -702,3 +702,9 @@ Next/current: restore saved views, columns and filtered CSV controls to SharedSe
 - Fixed stale carousel callback overwriting the selected carry/total metric. Callback only updates club from current URL; record controls disabled until hydrated.
 - Other agent expanded ui-upgrade-longest.spec.ts; reviewed exact pressed-state/URL/evidence/source assertions. longest-all-clubs-retest.log PASS18.6s, allfixtureclubs/bothmetrics/bothsurfaces/sixsizes. Types/lint clean; settled carousel screenshot/AT remains open.
 - P11 entries updated but remain partial. Hosted preview predates this local fix. Current: History Focus selector restored; history-focus-browser.log running. Next: finish Focus and session-review integration, then three missing admin register control groups.
+
+## Follow-up — History Focus restored
+- P04-C02/C04: Focus selector restored in desktop toolbar and mobile filter drawer, with latest matching session and filtered session options. Native URL state survives reload; Clear all removes focus.
+- history-focus-browser-final.log PASS16.7s across both surfaces/six sizes; session-history query/view unit checks12PASS; scoped lint/types clean. 360companion screenshot inspected. Initial test selector mismatch corrected; full acceptance remains partial.
+- Changed history-toolbar.tsx, ui-upgrade-sessions.spec.ts, tracker/workbook/checkpoint. Hosted preview predates this fix.
+- Current: session-review integration. Resume by reviewing pending session-detail/source-history diffs and running tests/e2e/ui-upgrade-session-detail.spec.ts against disposable3116 fixture. Then restore saved views, columns and CSV controls for admin system, billing and challenge registers. Coordinate shared files with the other agent; preserve their verification work.

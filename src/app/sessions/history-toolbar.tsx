@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import {
   DEFAULT_SESSION_HISTORY_FILTERS,
+  sessionMatchesHistoryFilters,
   type SessionHistoryFilters,
   type SessionHistoryFilterPatch,
 } from "@/lib/session-history-search-params";
@@ -95,6 +96,23 @@ export function HistoryToolbar({
           { value: "earlier", label: "Earlier" },
         ]}
       />
+      <UntitledSelect
+        label="Focus"
+        name="historyFocus"
+        value={value.sessionId ?? "latest"}
+        onValueChange={(sessionId) =>
+          change({ sessionId: sessionId === "latest" ? null : sessionId })
+        }
+        options={[
+          { value: "latest", label: "Latest matching session" },
+          ...sessions
+            .filter((session) => sessionMatchesHistoryFilters(session, value))
+            .map((session) => ({
+              value: session.id,
+              label: `${session.title} · ${session.dateLabel} · ${session.sourceLabel}`,
+            })),
+        ]}
+      />
     </>
   );
   return (
@@ -116,7 +134,7 @@ export function HistoryToolbar({
           {count} of {sessions.length} loaded sessions
         </p>
       </div>
-      <div className="hidden gap-3 lg:grid lg:grid-cols-4">{fields(filters, onChange)}</div>
+      <div className="hidden gap-3 lg:grid lg:grid-cols-5">{fields(filters, onChange)}</div>
       <div className="lg:hidden">
         <Sheet
           open={open}
@@ -138,7 +156,8 @@ export function HistoryToolbar({
             <SheetHeader>
               <SheetTitle>Filter history</SheetTitle>
               <SheetDescription>
-                Choose a type, source, club and period. Apply keeps them in the page address.
+                Choose a type, source, club, period and focused session. Apply keeps them in the
+                page address.
               </SheetDescription>
             </SheetHeader>
             <div className="grid gap-3 px-4">
