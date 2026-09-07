@@ -111,6 +111,25 @@ describe.skipIf(!enabled)("navigation command account and entity identity", () =
           (item: { type: string }) => item.type === "session",
         ),
       ).toBe(true);
+      const longName = "alpha bravo charlie delta echo foxtrot golf hotel india";
+      const [longRecord] =
+        await db`insert into fkh_sessions(user_id,source,type,date,raw_csv_text,file_name) values(${users[0]},'manual','range','2019-01-01','Synthetic',${longName}) returning id`;
+      const longMatch = await GET(
+        new Request(
+          `http://localhost/api/desktop-workbench/commands?q=${encodeURIComponent(longName)}`,
+        ),
+      );
+      expect(
+        (await longMatch.json()).items.some(
+          (item: { href: string }) => item.href === `/sessions/${longRecord.id}`,
+        ),
+      ).toBe(true);
+      const ninthTermMiss = await GET(
+        new Request(
+          `http://localhost/api/desktop-workbench/commands?q=${encodeURIComponent(longName.replace("india", "absent"))}`,
+        ),
+      );
+      expect((await ninthTermMiss.json()).items).toEqual([]);
       actor.fail = true;
       const failed = await GET(new Request("http://localhost/api/desktop-workbench/commands"));
       expect(failed.status).toBe(503);

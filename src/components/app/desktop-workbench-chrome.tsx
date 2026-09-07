@@ -870,7 +870,7 @@ export function DesktopWorkbenchChrome({
         restoreFocusRef={commandReturnFocusRef}
         query={query}
         onQueryChange={(value) => {
-          setQuery(value);
+          setQuery(value.slice(0, 120));
           setActiveCommandIndex(0);
         }}
         onInputKeyDown={handleCommandInputKeyDown}

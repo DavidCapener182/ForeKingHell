@@ -30,7 +30,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
 
 // Literal, bounded terms: `%` and `_` are text, never SQL wildcards.
 function matchesQuery(query: string, fields: SQL) {
-  const terms = query.toLowerCase().split(/\s+/).filter(Boolean).slice(0, 8);
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
   return and(...terms.map((term) => sql`strpos(lower(${fields}), ${term}) > 0`));
 }
 

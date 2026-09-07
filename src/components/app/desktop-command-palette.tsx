@@ -89,6 +89,7 @@ export function DesktopCommandPalette({
     >
       <Command shouldFilter={false} loop>
         <CommandInput
+          maxLength={120}
           ref={inputRef}
           value={query}
           onValueChange={onQueryChange}
