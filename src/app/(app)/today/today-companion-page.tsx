@@ -1,4 +1,7 @@
 import { TodayHydrationBoundary } from "@/components/app/today-hydration-boundary";
+import { TodayProgressReport } from "@/components/app/today-progress-report";
+import { buildTodayProgress } from "@/lib/today-progress";
+import { getTodayProgressHistory } from "@/lib/today-progress-data";
 import { TodayWorkspaceTabs } from "@/app/today/today-workspace-tabs";
 import { TodayDataQuality } from "@/app/today/today-data-quality";
 import { getTodayShotDetailRows } from "@/lib/today-shot-detail-data";
@@ -34,7 +37,11 @@ import { buildTodayRecommendation, resolveTodayPrimaryState } from "@/lib/today-
 import { getTodayActivity } from "@/lib/today-activity-data";
 import { getTodayPracticeData } from "@/lib/today-session-data";
 
-export default async function TodayCompanionPage() {
+export default async function TodayCompanionPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   if (!process.env.DATABASE_URL?.trim()) {
     return (
       <PageShell>
@@ -54,24 +61,30 @@ export default async function TodayCompanionPage() {
 
   const userId = await requireCurrentUserId();
   const now = new Date();
+  const params = await searchParams;
+  const dateParam = Array.isArray(params?.date) ? params.date[0] : params?.date;
+  const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : undefined;
   const [context, currentPlan, activeRound, recent, todayData] = await Promise.all([
     getPracticePlannerContext(userId, { compactTraining: true, includeSpeed: false }),
     getCurrentPracticePlanSummary(userId),
     getInProgressRound(userId),
     getTodayActivity(userId),
-    getTodayPracticeData({ date: practiceDateKey(now), scope: "day", practiceOnly: true }).catch(
-      () => null,
-    ),
+    getTodayPracticeData({
+      date: selectedDate ?? practiceDateKey(now),
+      scope: "day",
+      practiceOnly: true,
+    }).catch(() => null),
   ]);
   const recommendation = buildTodayRecommendation(context);
-  const latestData = todayData?.rawShots.length
-    ? todayData
-    : context.latestPractice.sessionId
-      ? await getTodayPracticeData({
-          sessionId: context.latestPractice.sessionId,
-          scope: "day",
-        }).catch(() => null)
-      : null;
+  const latestData =
+    selectedDate || todayData?.rawShots.length
+      ? todayData
+      : context.latestPractice.sessionId
+        ? await getTodayPracticeData({
+            sessionId: context.latestPractice.sessionId,
+            scope: "day",
+          }).catch(() => null)
+        : null;
   const latestShots = latestData?.rawShots ?? [];
   const patternPoints = buildShotPatternPoints(
     (latestData?.comparisonShots ?? []).map((shot) => ({
@@ -95,7 +108,7 @@ export default async function TodayCompanionPage() {
     recommendation,
     latestData: null,
   });
-  const review = buildMobileTodayReview(todayData, now);
+  const review = buildMobileTodayReview(todayData, now, selectedDate);
   const nextPracticeState =
     recommendation.confidence === "Low"
       ? {
@@ -118,13 +131,25 @@ export default async function TodayCompanionPage() {
       : [];
 
   const change = buildMobileTodayChange(latestData);
-  const [shotDetails, clubOptions] = await Promise.all([
+  const [shotDetails, clubOptions, progressHistory] = await Promise.all([
     getTodayShotDetailRows({ userId, shotIds: latestShots.map((shot) => shot.id) }),
     getDb()
       .select({ value: clubs.id, clubType: clubs.type, brand: clubs.brand, model: clubs.model })
       .from(clubs)
       .where(eq(clubs.userId, userId)),
+    latestData?.rawShots.length
+      ? getTodayProgressHistory({ beforeDateKey: latestData.dateKey }).catch(() => null)
+      : Promise.resolve([]),
   ]);
+  const progress =
+    latestData?.rawShots.length && progressHistory
+      ? buildTodayProgress({
+          dateKey: latestData.dateKey,
+          rawShots: latestData.rawShots,
+          previousDays: progressHistory,
+          scope: "day",
+        })
+      : null;
   const correctionClubs = clubOptions.map((club) => ({
     value: club.value,
     label: [formatCompanionClubType(club.clubType), club.brand, club.model]
@@ -135,6 +160,7 @@ export default async function TodayCompanionPage() {
     <PageShell>
       <MobileAppShell className="gap-6" data-today-companion>
         <MobileTodayGreeting initialNow={now.toISOString()} />
+        <TodayProgressReport report={progress} historyError={progressHistory === null} />
         {!todayData ? (
           <Alert>
             <AlertTitle>Today’s review couldn’t load</AlertTitle>
@@ -144,6 +170,9 @@ export default async function TodayCompanionPage() {
           </Alert>
         ) : null}
         <TodayPrimaryAnswer
+          reviewContext={
+            selectedDate && selectedDate !== practiceDateKey(now) ? "selected" : "today"
+          }
           highlights={buildTodayHighlights(todayData)}
           compact={Boolean(review)}
           accountId={userId}
@@ -165,8 +194,8 @@ export default async function TodayCompanionPage() {
               </p>
               <ul className="grid gap-2 text-sm leading-5 text-foreground">
                 <li>
-                  Latest measured practice day ·{" "}
-                  {latestData?.dateLabel ?? context.latestPractice.dateLabel}
+                  {selectedDate ? "Selected measured practice day" : "Latest measured practice day"}{" "}
+                  · {latestData?.dateLabel ?? context.latestPractice.dateLabel}
                 </li>
                 <li>
                   {latestShots.length} measured shots across{" "}
@@ -187,7 +216,7 @@ export default async function TodayCompanionPage() {
               ) : null}
               <p className="text-xs leading-5 text-muted-foreground">
                 {review
-                  ? "Open any session for its full review, or explore today’s club comparisons and shot patterns below."
+                  ? "Open any session for its full review, or explore this practice’s club comparisons and shot patterns below."
                   : "Recommendations use measured golf evidence. Completing a practice activity manually does not count as measured success."}
               </p>
             </div>

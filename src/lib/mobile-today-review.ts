@@ -14,8 +14,14 @@ export function practiceDateKey(now: Date) {
 }
 
 /** A completed upload is reviewable even when its shots cannot support a comparison. */
-export function buildMobileTodayReview(data: TodayPracticeData | null, now: Date) {
-  if (!data || data.dateKey !== practiceDateKey(now) || !data.rawShots.length) return null;
+export function buildMobileTodayReview(
+  data: TodayPracticeData | null,
+  now: Date,
+  selectedDateKey?: string,
+) {
+  if (!data || data.dateKey !== (selectedDateKey ?? practiceDateKey(now)) || !data.rawShots.length)
+    return null;
+  const isToday = data.dateKey === practiceDateKey(now);
 
   const includedIds = new Set(data.rawShots.map((shot) => shot.sessionId));
   const sessions = data.sessions
@@ -41,13 +47,13 @@ export function buildMobileTodayReview(data: TodayPracticeData | null, now: Date
       : data.overall.title
     : "Your shots are saved. Review the uploads below; there are no comparable trusted full shots to judge improvement yet.";
   const state: TodayPrimaryState = {
-    eyebrow: "Practice complete · Today",
-    title: "Your practice today",
+    eyebrow: isToday ? "Practice complete · Today" : `Practice review · ${data.dateLabel}`,
+    title: isToday ? "Your practice today" : "Your selected practice",
     reason: todayReviewTakeaway(data)?.title ?? reason,
     status: "Review ready",
     tone: "positive",
     href: "#today-practice-review",
-    action: "Review today’s practice",
+    action: isToday ? "Review today’s practice" : "Review this practice",
   };
   return {
     state,

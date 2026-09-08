@@ -9,6 +9,7 @@ vi.mock("next/navigation", async (importOriginal) => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("@/lib/today-shot-detail-data", () => ({ getTodayShotDetailRows: async () => [] }));
+vi.mock("@/lib/today-progress-data", () => ({ getTodayProgressHistory: vi.fn(async () => []) }));
 
 // The shared async evidence panel has its own metric and rendering tests.
 vi.mock("@/components/analysis/driver-development-panel", () => ({
@@ -36,6 +37,7 @@ vi.mock("@/components/app/lazy-mobile-shot-pattern-charts", () => ({
 }));
 import { getPracticePlannerContext } from "@/lib/practice-planner";
 import { getTodayPracticeData } from "@/lib/today-session-data";
+import { getTodayProgressHistory } from "@/lib/today-progress-data";
 import TodayCompanionPage from "./today-companion-page";
 
 const now = new Date("2026-09-06T16:30:00Z");
@@ -116,6 +118,7 @@ beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "test-only");
   vi.setSystemTime(now);
   vi.mocked(getTodayPracticeData).mockResolvedValue(practice());
+  vi.mocked(getTodayProgressHistory).mockResolvedValue([]);
   vi.mocked(getPracticePlannerContext).mockResolvedValue({
     latestPractice: {
       sessionId: "session-1",
@@ -138,13 +141,17 @@ afterEach(() => {
 
 describe("mobile post-practice review", () => {
   it("renders the combined day before planning, without a low-confidence recommendation replacing the review", async () => {
-    const html = renderToStaticMarkup(await TodayCompanionPage());
+    const html = renderToStaticMarkup(await TodayCompanionPage({}));
     expect(getTodayPracticeData).toHaveBeenCalledWith({
       date: "2026-09-06",
       scope: "day",
       practiceOnly: true,
     });
     expect(html).toContain("Practice complete · Today");
+    expect(html).toContain("data-today-progress-report");
+    expect(html.indexOf("data-today-progress-report")).toBeLessThan(
+      html.indexOf("data-today-workspace-tabs"),
+    );
     expect(html).toContain('aria-label="Practice totals"');
     expect(html).toContain('aria-label="Today&#x27;s practice review sections"');
     expect(html).toContain("Overview");
@@ -177,7 +184,7 @@ describe("mobile post-practice review", () => {
     const data = practice();
     data.rawShots = [];
     vi.mocked(getTodayPracticeData).mockResolvedValue(data);
-    const html = renderToStaticMarkup(await TodayCompanionPage());
+    const html = renderToStaticMarkup(await TodayCompanionPage({}));
     expect(html).toContain("For your next session");
     expect(html).toContain("Build 20 min practice");
     expect(html).not.toContain("Practice complete · Today");
@@ -204,10 +211,37 @@ describe("mobile post-practice review", () => {
 
   it("reports a loading failure instead of implying there was no practice today", async () => {
     vi.mocked(getTodayPracticeData).mockRejectedValue(new Error("unavailable"));
-    const html = renderToStaticMarkup(await TodayCompanionPage());
+    const html = renderToStaticMarkup(await TodayCompanionPage({}));
     expect(html).toContain("Today’s review couldn’t load");
     expect(html).toContain('href="/sessions"');
     expect(html).not.toContain("Practice complete · Today");
+  });
+
+  it("keeps the saved review available when only the history comparison fails", async () => {
+    vi.mocked(getTodayProgressHistory).mockRejectedValue(new Error("History unavailable"));
+    const html = renderToStaticMarkup(await TodayCompanionPage({}));
+    expect(html).toContain("Practice comparison couldn’t load");
+    expect(html).toContain("Interactive shot patterns");
+    expect(html).toContain("Practice complete · Today");
+  });
+
+  it("opens a selected earlier practice without labelling it as completed today", async () => {
+    const data = practice();
+    data.dateKey = "2026-09-05";
+    data.dateLabel = "Saturday, 5 September 2026";
+    vi.mocked(getTodayPracticeData).mockResolvedValue(data);
+    const html = renderToStaticMarkup(
+      await TodayCompanionPage({ searchParams: Promise.resolve({ date: "2026-09-05" }) }),
+    );
+    expect(getTodayPracticeData).toHaveBeenCalledWith({
+      date: "2026-09-05",
+      scope: "day",
+      practiceOnly: true,
+    });
+    expect(getTodayProgressHistory).toHaveBeenCalledWith({ beforeDateKey: "2026-09-05" });
+    expect(html).toContain("Practice review · Saturday, 5 September 2026");
+    expect(html).not.toContain("Practice complete · Today");
+    expect(html).toContain("Interactive shot patterns");
   });
 
   it("does not present yesterday or a future day as practice completed today", () => {

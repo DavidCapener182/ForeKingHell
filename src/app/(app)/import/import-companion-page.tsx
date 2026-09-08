@@ -11,7 +11,7 @@ import { getRapsodoConnectionStatusAction } from "@/app/rapsodo/actions";
 import { CompanionSyncStatus } from "@/components/app/companion-sync-status";
 import { AppEmptyState } from "@/components/app/app-empty-state";
 import { StatusTimeline } from "@/components/app/status-timeline";
-import { MobileAppShell } from "@/components/mobile-sports";
+import { MobileAppShell } from "@/components/app/mobile-app-shell";
 import { PageShell } from "@/components/premium";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
