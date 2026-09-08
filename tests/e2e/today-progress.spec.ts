@@ -6,12 +6,13 @@ test("Today automatically reviews populated practice history on both surfaces", 
 }, info) => {
   const value = process.env.DATABASE_URL;
   const target = value ? new URL(value) : null;
+  const baseURL = process.env.PLAYWRIGHT_BASE_URL;
   test.skip(
     process.env.RUN_REDESIGN_DB_TESTS !== "1" ||
       target?.hostname !== "127.0.0.1" ||
       target.port !== "55432" ||
       target.pathname !== "/fkh_redesign" ||
-      process.env.PLAYWRIGHT_BASE_URL !== "http://localhost:3116",
+      !["http://localhost:3116", "http://localhost:3117"].includes(baseURL ?? ""),
     "Designated disposable fixture only",
   );
   test.skip(info.project.name !== "chromium", "Explicit desktop and mobile route coverage");
@@ -42,6 +43,8 @@ test("Today automatically reviews populated practice history on both surfaces", 
           values(${owner},'rapsodo','range',${`${dateKey(daysAgo)}T12:00:00Z`},'Synthetic',${`Progress practice ${daysAgo}-${upload}.csv`}) returning id`;
         if (daysAgo === 0) latestSession = session.id;
         for (const club of equipment) {
+          // This prior practice has irons only; a Driver report must not broaden on navigation.
+          if (daysAgo === 2 && club.type === "driver") continue;
           const carry = (club.type === "driver" ? [190, 200, 208, 216] : [140, 145, 150, 152])[
             practiceIndex
           ];
@@ -72,7 +75,7 @@ test("Today automatically reviews populated practice history on both surfaces", 
     const token = [encode({ alg: "none" }), encode({ sub: owner }), "playwright"].join(".");
     for (const surface of ["workbench", "companion"]) {
       const context = await browser.newContext({
-        baseURL: "http://localhost:3116",
+        baseURL,
         viewport: { width: surface === "workbench" ? 1440 : 390, height: 900 },
       });
       try {
@@ -118,6 +121,29 @@ test("Today automatically reviews populated practice history on both surfaces", 
           )
           .click();
         await expect(report.locator("time").first()).toHaveAttribute("datetime", dateKey(2));
+        if (surface === "workbench") {
+          await expect(report.getByRole("heading", { level: 2 })).toContainText("Driver");
+          await expect(report).toHaveAttribute("data-progress-verdict", "building");
+          await expect(report).not.toContainText("7i");
+          await expect(report).toContainText("0 of 0 trusted full shots");
+          await report.locator(`a[href="/today?date=${dateKey(4)}&club=driver"]`).click();
+          await expect(report.locator("time").first()).toHaveAttribute("datetime", dateKey(4));
+          await expect(report.getByRole("heading", { level: 2 })).toContainText("Driver");
+          await expect(report).not.toContainText("7i");
+          await expect(report).toContainText("12 of 12 trusted full shots");
+          await page.goto(`/today?date=${dateKey(3)}&club=driver`);
+          await expect(report.getByRole("heading", { level: 2 })).toContainText("Driver");
+          await expect(report).toHaveAttribute("data-progress-verdict", "building");
+          await expect(report).toContainText("0 of 0 trusted full shots");
+          await expect(
+            report.locator(`a[href="/today?date=${dateKey(4)}&club=driver"]`),
+          ).toBeVisible();
+          await page.goto("/today?club=invalid-report-scope");
+          await expect(report).not.toContainText("invalid-report-scope");
+          await expect(report).toContainText("7i");
+          await expect(report).toContainText("Driver");
+          await expect(report.locator('a[href*="&club="]')).toHaveCount(0);
+        }
         if (surface === "companion") {
           await expect(page.getByText("Practice complete · Today", { exact: true })).toHaveCount(0);
         }

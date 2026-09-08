@@ -78,7 +78,7 @@ import {
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
 import { isEstimatedClubData } from "@/lib/club-analytics";
 import { calculateClubFaceAngleDeg } from "@/lib/club-face-angle";
-import { formatClubType } from "@/lib/club-format";
+import { formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { getChallengesPageData, type ChallengeListItem } from "@/lib/challenges";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { getDb } from "@/db/client";
@@ -271,6 +271,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   }
 
   const params = await searchParams;
+  const requestedClub = normaliseAllValue(first(params.club).trim().toLowerCase());
   const userId = await requireCurrentUserId();
   const socialLoaded = shouldLoadTodaySocial(first(params.social));
   const [
@@ -283,11 +284,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     handicapProfile,
     cookieStore,
     recentActivity,
+    ownedClubs,
   ] = await Promise.all([
     getTodayPracticeData({
       date: first(params.date),
       sessionId: normaliseAllValue(first(params.session)),
-      club: normaliseAllValue(first(params.club)),
+      club: requestedClub,
     }),
     socialLoaded ? getChallengesPageData() : Promise.resolve(null),
     getPracticePlannerContext(userId, { compactTraining: true, includeSpeed: false }),
@@ -297,7 +299,17 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     getUserHandicapProfile(userId).catch(() => null),
     cookies(),
     getTodayHomeActivity(userId),
+    getDb()
+      .select({ value: clubs.id, type: clubs.type, brand: clubs.brand, model: clubs.model })
+      .from(clubs)
+      .where(eq(clubs.userId, userId)),
   ]);
+  // A valid selected club remains the report scope when an earlier date has none of its shots.
+  const progressClubType =
+    isTrackedClubType(requestedClub) && ownedClubs.some((club) => club.type === requestedClub)
+      ? requestedClub
+      : undefined;
+  const hasProgressScope = data.rawShots.length > 0 || Boolean(progressClubType);
   const [linkedPracticePlan, selectedCourse, progressHistory] = await Promise.all([
     getPracticePlanForSourceSessions(
       userId,
@@ -308,18 +320,18 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
       cookieStore.get(SELECTED_COURSE_COOKIE)?.value ?? null,
       recentActivity,
     ),
-    data.rawShots.length
+    hasProgressScope
       ? getTodayProgressHistory({ beforeDateKey: data.dateKey }).catch(() => null)
       : Promise.resolve([]),
   ]);
   const progress =
-    data.rawShots.length && progressHistory
+    hasProgressScope && progressHistory
       ? buildTodayProgress({
           dateKey: data.dateKey,
           rawShots: data.rawShots,
           previousDays: progressHistory,
           scope: data.filters.sessionId ? "session" : "day",
-          clubType: data.filters.club || undefined,
+          clubType: progressClubType,
         })
       : null;
   const socialContext: TodaySocialContext = {
@@ -329,13 +341,10 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const reviewMode = parsePracticeReviewMode(first(params.evidence));
   const selectedReviewComparisons = reviewComparisons(data, reviewMode);
   const selectedReviewShots = reviewShots(data, reviewMode);
-  const [chartShotDetails, ownedClubs] = await Promise.all([
-    getTodayShotDetailRows({ userId, shotIds: selectedReviewShots.map((shot) => shot.id) }),
-    getDb()
-      .select({ value: clubs.id, type: clubs.type, brand: clubs.brand, model: clubs.model })
-      .from(clubs)
-      .where(eq(clubs.userId, userId)),
-  ]);
+  const chartShotDetails = await getTodayShotDetailRows({
+    userId,
+    shotIds: selectedReviewShots.map((shot) => shot.id),
+  });
   const correctionClubs = ownedClubs.map((club) => ({
     value: club.value,
     label: [formatClubType(club.type), club.brand, club.model].filter(Boolean).join(" "),
@@ -376,6 +385,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
         currentPlan={currentPlan}
         primaryState={primaryState}
         progress={progress}
+        progressClubType={progressClubType}
         progressUnavailable={progressHistory === null}
         recommendation={recommendation}
         selectedCourse={selectedCourse}
@@ -407,6 +417,7 @@ function TodayDesktopDashboard({
   currentPlan,
   primaryState,
   progress,
+  progressClubType,
   progressUnavailable,
   recommendation,
   selectedCourse,
@@ -432,6 +443,7 @@ function TodayDesktopDashboard({
   currentPlan: Awaited<ReturnType<typeof getCurrentPracticePlanSummary>>;
   primaryState: ReturnType<typeof resolveTodayPrimaryState>;
   progress: ReturnType<typeof buildTodayProgress> | null;
+  progressClubType?: string;
   progressUnavailable: boolean;
   recommendation: TodayRecommendation;
   selectedCourse: TodaySelectedCourse;
@@ -452,7 +464,7 @@ function TodayDesktopDashboard({
       <TodayProgressReport
         report={progress}
         historyError={progressUnavailable}
-        clubType={data.filters.club || undefined}
+        clubType={progressClubType}
       />
       <TodayDecisionHero state={primaryState} recommendation={recommendation} data={data} />
       <BestShotsEntry />
