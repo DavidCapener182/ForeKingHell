@@ -10,14 +10,15 @@ import type { ShotPatternPoint } from "@/lib/shot-pattern-chart-data";
 
 const options = new URLSearchParams(window.location.search);
 const wide = options.get("wide") === "1";
+const longestCarry = options.get("carry") === "224" ? 224 : 234;
 const shots: TodayChartShot[] = [
   ...[-19.4, -10, -7, -3, 0, 4, 8, 13, 19.4].map((side, index) => ({
     id: `driver-${index + 1}`,
     clubType: "driver",
     clubLabel: "Driver",
     shotNumber: index + 1,
-    carryYd: 192 + index,
-    totalYd: 205 + index,
+    carryYd: longestCarry - 8 + index,
+    totalYd: longestCarry + 5 + index,
     sideCarryYd: side,
     launchDirectionDeg: side / 4,
     apexFt: 50 + index,

@@ -2,7 +2,7 @@
 
 import { TodaySelectedShotRail } from "@/app/today/today-selected-shot-rail";
 import type { ShotMasterDetailRow } from "@/app/shots/shots-master-detail-table";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 
@@ -36,7 +36,7 @@ import {
   summarizeShotPattern,
   type ShotPatternPoint,
 } from "@/lib/shot-pattern-chart-data";
-import { buildDispersionScale, type DispersionScale } from "@/lib/dispersion-scale";
+import { buildDispersionScale, carryAxisMax, type DispersionScale } from "@/lib/dispersion-scale";
 import { cn } from "@/lib/utils";
 
 type ChartMode = "dispersion" | "flight";
@@ -294,14 +294,15 @@ function MobileDispersionVisual({
   compact: boolean;
   onSelect: (point: ShotPatternPoint) => void;
 }) {
+  const plotClipId = useId();
   const landing = points.filter(hasLandingPoint);
   const trustedSummary = summarizeShotPattern(trustedPoints);
   const width = 360;
   // Today gets a purpose-built complete preview rather than a cropped full chart.
   const height = compact ? 220 : 420;
   const frame = compact
-    ? { top: 24, right: 16, bottom: 34, left: 38 }
-    : { top: 28, right: 18, bottom: 48, left: 42 };
+    ? { top: 32, right: 16, bottom: 34, left: 38 }
+    : { top: 36, right: 18, bottom: 48, left: 42 };
   const plotWidth = width - frame.left - frame.right;
   const plotHeight = height - frame.top - frame.bottom;
   const { maxCarryYd: maxCarry, maxSideYd: maxSide } = dispersionScale;
@@ -332,6 +333,11 @@ function MobileDispersionVisual({
         role="img"
         aria-label="Mobile dispersion chart. Tap any shot to inspect its measurements."
       >
+        <defs>
+          <clipPath id={plotClipId} clipPathUnits="userSpaceOnUse">
+            <rect x={frame.left} y={frame.top} width={plotWidth} height={plotHeight} />
+          </clipPath>
+        </defs>
         <rect width={width} height={height} fill="var(--mobile-chart-surface)" />
         <rect
           x={x(-corridor)}
@@ -343,6 +349,7 @@ function MobileDispersionVisual({
         />
         {hasTrustedZone ? (
           <rect
+            clipPath={`url(#${plotClipId})`}
             x={x(trustedSummary.sideLowYd!)}
             y={y(trustedSummary.carryHighYd!)}
             width={Math.max(4, x(trustedSummary.sideHighYd!) - x(trustedSummary.sideLowYd!))}
@@ -386,7 +393,7 @@ function MobileDispersionVisual({
         />
         <text
           x={x(0)}
-          y={frame.top - 9}
+          y={15}
           textAnchor="middle"
           fill="var(--mobile-chart-target)"
           className="text-[10px] font-semibold uppercase tracking-[0.08em]"
@@ -496,7 +503,7 @@ function MobileFlightVisual({
   const frame = { top: 24, right: 16, bottom: 42, left: 42 };
   const plotWidth = width - frame.left - frame.right;
   const plotHeight = height - frame.top - frame.bottom;
-  const maxCarry = niceCeiling(Math.max(25, ...visible.map((point) => point.carryYd ?? 0)), 25);
+  const maxCarry = carryAxisMax(Math.max(0, ...flight.map((point) => point.carryYd ?? 0)));
   const maxApex = niceCeiling(Math.max(30, ...visible.map((point) => point.apexFt ?? 0)), 20);
   const x = (value: number) => frame.left + (value / maxCarry) * plotWidth;
   const y = (value: number) => frame.top + plotHeight - (value / maxApex) * plotHeight;
@@ -505,6 +512,7 @@ function MobileFlightVisual({
     <div
       className="overflow-hidden rounded-2xl border bg-[var(--mobile-chart-surface)] shadow-inner"
       data-mobile-flight-layout
+      data-trajectory-max-carry={maxCarry}
     >
       <svg
         viewBox={`0 0 ${width} ${height}`}

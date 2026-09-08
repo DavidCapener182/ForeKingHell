@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useId, useMemo, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { UntitledSelect } from "@/components/untitled-ui/form-controls";
 import { Check, Eye } from "lucide-react";
@@ -22,7 +22,7 @@ import {
   type DispersionCorridorBucket,
   type DispersionCorridorTone,
 } from "@/lib/dispersion-corridor";
-import { buildDispersionScale, type DispersionScale } from "@/lib/dispersion-scale";
+import { buildDispersionScale, carryAxisMax, type DispersionScale } from "@/lib/dispersion-scale";
 import { buildShotShapeTrace, type ShotShapeTrace } from "@/lib/shot-shape-trace";
 import { cn } from "@/lib/utils";
 
@@ -81,6 +81,7 @@ const padding = {
   bottom: 46,
   left: 54,
 };
+const dispersionPadding = { ...padding, top: 42 };
 const plotWidth = chartWidth - padding.left - padding.right;
 const plotHeight = chartHeight - padding.top - padding.bottom;
 
@@ -804,6 +805,8 @@ function DispersionChart({
   selectedShotId: string | null;
   onSelectShot?: (shotId: string) => void;
 }) {
+  const plotClipId = useId();
+  const padding = dispersionPadding;
   const points = shots.filter(hasDispersionData);
   const width = layout === "portrait" ? dispersionWidth : chartWidth;
   const height = layout === "portrait" ? dispersionHeight : chartHeight;
@@ -816,6 +819,8 @@ function DispersionChart({
   const yScale = (value: number) => padding.top + plotHeight - (value / maxCarry) * plotHeight;
   const medianSide = medianNumber(points.map((shot) => shot.sideCarryYd ?? null));
   const medianCarry = medianNumber(points.map((shot) => shot.carryYd ?? shot.totalYd ?? null));
+  const medianY = yScale(medianCarry ?? 0);
+  const medianLabelY = medianY + (medianY < padding.top + 28 ? 15 : -15);
   const clubAverages = averageDispersionPoints(points);
   const shapeModel = buildTopDownShapeModel(points, scale, { width, height });
   const bestMarker = bestTargetCorridorShot(points, centerZone);
@@ -837,6 +842,11 @@ function DispersionChart({
           : "Dispersion chart"
       }
     >
+      <defs>
+        <clipPath id={plotClipId} clipPathUnits="userSpaceOnUse">
+          <rect x={padding.left} y={padding.top} width={plotWidth} height={plotHeight} />
+        </clipPath>
+      </defs>
       <rect x={0} y={0} width={width} height={height} fill="white" />
       <rect
         x={xScale(-centerZone)}
@@ -848,7 +858,7 @@ function DispersionChart({
       />
       <text
         x={xScale(-maxSide * 0.72)}
-        y={padding.top + 16}
+        y={18}
         textAnchor="middle"
         className="fill-slate-500 text-[11px]"
       >
@@ -856,7 +866,7 @@ function DispersionChart({
       </text>
       <text
         x={xScale(maxSide * 0.72)}
-        y={padding.top + 16}
+        y={18}
         textAnchor="middle"
         className="fill-slate-500 text-[11px]"
       >
@@ -864,7 +874,7 @@ function DispersionChart({
       </text>
       <text
         x={xScale(0)}
-        y={padding.top + 14}
+        y={18}
         textAnchor="middle"
         className="fill-emerald-700 text-[10px] font-semibold uppercase tracking-[0.08em]"
       >
@@ -872,6 +882,7 @@ function DispersionChart({
       </text>
       {ellipse80 ? (
         <ellipse
+          clipPath={`url(#${plotClipId})`}
           cx={xScale(ellipse80.side)}
           cy={yScale(ellipse80.carry)}
           rx={Math.max(3, (ellipse80.sideSpread / (maxSide * 2)) * plotWidth)}
@@ -886,6 +897,7 @@ function DispersionChart({
       ) : null}
       {ellipse50 ? (
         <ellipse
+          clipPath={`url(#${plotClipId})`}
           cx={xScale(ellipse50.side)}
           cy={yScale(ellipse50.carry)}
           rx={Math.max(3, (ellipse50.sideSpread / (maxSide * 2)) * plotWidth)}
@@ -937,7 +949,7 @@ function DispersionChart({
           </text>
         </g>
       ))}
-      <text x={padding.left} y={18} className="fill-slate-600 text-[12px]">
+      <text x={padding.left - 10} y={18} textAnchor="end" className="fill-slate-600 text-[12px]">
         carry yd
       </text>
       <text x={width / 2} y={height - 5} textAnchor="middle" className="fill-slate-600 text-[12px]">
@@ -1083,7 +1095,7 @@ function DispersionChart({
           />
           <circle
             cx={xScale(medianSide) + 15}
-            cy={yScale(medianCarry) - 15}
+            cy={medianLabelY}
             r={9}
             fill="#0f172a"
             stroke="white"
@@ -1091,7 +1103,7 @@ function DispersionChart({
           />
           <text
             x={xScale(medianSide) + 15}
-            y={yScale(medianCarry) - 11}
+            y={medianLabelY + 4}
             textAnchor="middle"
             className="fill-white text-[10px] font-bold"
           >
@@ -1120,13 +1132,19 @@ function DispersionMarker({
   tone: "green" | "pink";
 }) {
   const color = tone === "green" ? "#059669" : "#db2777";
+  const badgeY = y + (y < dispersionPadding.top + 28 ? 14 : -14);
 
   return (
     <g data-dispersion-club={shot.clubType} pointerEvents="none">
       <circle cx={x} cy={y} r={10} fill="none" stroke={color} strokeWidth={2.5} />
       <circle cx={x} cy={y} r={3.4} fill={color} />
-      <circle cx={x + 14} cy={y - 14} r={9} fill={color} stroke="white" strokeWidth={1.5} />
-      <text x={x + 14} y={y - 10} textAnchor="middle" className="fill-white text-[10px] font-bold">
+      <circle cx={x + 14} cy={badgeY} r={9} fill={color} stroke="white" strokeWidth={1.5} />
+      <text
+        x={x + 14}
+        y={badgeY + 4}
+        textAnchor="middle"
+        className="fill-white text-[10px] font-bold"
+      >
         {marker}
       </text>
       <title>{`${label}: ${shotTitle(shot)}`}</title>
@@ -1146,7 +1164,7 @@ function TrajectoryChart({
   onSelectShot?: (shotId: string) => void;
 }) {
   const points = shots.filter(hasTrajectoryData);
-  const maxCarry = niceMax(max(points.map((shot) => shot.carryYd ?? shot.totalYd ?? 0)), 25);
+  const maxCarry = carryAxisMax(max(points.map((shot) => shot.carryYd ?? shot.totalYd ?? 0)));
   const maxApex = niceTrajectoryMax(
     max(points.map((shot) => shot.apexFt ?? fallbackApex(shot) ?? 0)),
   );
@@ -1160,6 +1178,7 @@ function TrajectoryChart({
     <svg
       viewBox={`0 0 ${chartWidth} ${chartHeight}`}
       className="block h-auto w-full"
+      data-trajectory-max-carry={maxCarry}
       role={view === "shots" && onSelectShot ? "group" : "img"}
       aria-label={
         view === "shots" && onSelectShot
@@ -1352,6 +1371,7 @@ function buildTopDownShapeModel(
   scale: DispersionScale = buildDispersionScale(shots),
   dimensions = { width: dispersionWidth, height: dispersionHeight },
 ) {
+  const padding = dispersionPadding;
   const points = shots.filter(hasDispersionData);
   const { maxCarryYd: maxCarry, maxSideYd: maxSide } = scale;
   const plotWidth = dimensions.width - padding.left - padding.right;
