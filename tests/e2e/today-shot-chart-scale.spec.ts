@@ -3,6 +3,7 @@ import path from "node:path";
 import { build } from "esbuild";
 import postcss from "postcss";
 import tailwind from "@tailwindcss/postcss";
+import sharp from "sharp";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 let fixtureScript: string;
@@ -92,6 +93,73 @@ async function expectNoOverflow(page: Page) {
   );
 }
 
+async function pixelsPaintedAbovePlot(chart: Locator) {
+  const band = await chart.evaluate((svg) => {
+    const viewBox = (svg as SVGSVGElement).viewBox.baseVal;
+    const grid = [...svg.querySelectorAll("line")].filter(
+      (line) =>
+        line.y1.baseVal.value === line.y2.baseVal.value &&
+        line.x2.baseVal.value - line.x1.baseVal.value > viewBox.width / 2,
+    );
+    const top = Math.min(...grid.map((line) => line.y1.baseVal.value));
+    return {
+      left: Math.min(...grid.map((line) => line.x1.baseVal.value)) + 2,
+      right: Math.max(...grid.map((line) => line.x2.baseVal.value)) - 2,
+      top: top - 13,
+      bottom: top - 3,
+      width: viewBox.width,
+      height: viewBox.height,
+    };
+  });
+  const { data, info } = await sharp(await chart.screenshot({ animations: "disabled" }))
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  let painted = 0;
+  for (
+    let y = Math.ceil((band.top * info.height) / band.height);
+    y < (band.bottom * info.height) / band.height;
+    y++
+  ) {
+    for (
+      let x = Math.ceil((band.left * info.width) / band.width);
+      x < (band.right * info.width) / band.width;
+      x++
+    ) {
+      const offset = (y * info.width + x) * info.channels;
+      if (Math.min(data[offset], data[offset + 1], data[offset + 2]) < 250) painted++;
+    }
+  }
+  return painted;
+}
+
+async function expectEllipsePaintClipped(chart: Locator) {
+  const ellipses = chart.locator("ellipse");
+  await expect(ellipses).toHaveCount(2);
+  // Negative control: this actual distribution extends above the carry ceiling.
+  const clips = await ellipses.evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const clip = node.getAttribute("clip-path");
+      node.removeAttribute("clip-path");
+      return clip;
+    }),
+  );
+  let unclippedPixels = 0;
+  try {
+    unclippedPixels = await pixelsPaintedAbovePlot(chart);
+  } finally {
+    await ellipses.evaluateAll(
+      (nodes, paths) =>
+        nodes.forEach((node, index) => {
+          if (paths[index]) node.setAttribute("clip-path", paths[index]!);
+        }),
+      clips,
+    );
+  }
+  expect(unclippedPixels).toBeGreaterThan(0);
+  expect(await pixelsPaintedAbovePlot(chart)).toBe(0);
+}
+
 test("Today dispersion keeps its coordinate scale through club and outlier filters", async ({
   page,
 }, info) => {
@@ -110,6 +178,7 @@ test("Today dispersion keeps its coordinate scale through club and outlier filte
     const ironPoint = chart.locator('[data-today-shot-point="iron-8"]');
     await expectScale(chart, wide ? 100 : 50, true, carryCeiling);
     await expect(trajectory).toHaveAttribute("data-trajectory-max-carry", String(carryCeiling));
+    await expectEllipsePaintClipped(chart);
     const chartBox = (await chart.boundingBox())!;
     const longestShotBox = (await point.boundingBox())!;
     expect(longestShotBox.y).toBeLessThan(chartBox.y + chartBox.height * 0.12);

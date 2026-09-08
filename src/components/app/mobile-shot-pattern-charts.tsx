@@ -2,7 +2,7 @@
 
 import { TodaySelectedShotRail } from "@/app/today/today-selected-shot-rail";
 import type { ShotMasterDetailRow } from "@/app/shots/shots-master-detail-table";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 
@@ -294,6 +294,7 @@ function MobileDispersionVisual({
   compact: boolean;
   onSelect: (point: ShotPatternPoint) => void;
 }) {
+  const plotClipId = useId();
   const landing = points.filter(hasLandingPoint);
   const trustedSummary = summarizeShotPattern(trustedPoints);
   const width = 360;
@@ -332,6 +333,11 @@ function MobileDispersionVisual({
         role="img"
         aria-label="Mobile dispersion chart. Tap any shot to inspect its measurements."
       >
+        <defs>
+          <clipPath id={plotClipId} clipPathUnits="userSpaceOnUse">
+            <rect x={frame.left} y={frame.top} width={plotWidth} height={plotHeight} />
+          </clipPath>
+        </defs>
         <rect width={width} height={height} fill="var(--mobile-chart-surface)" />
         <rect
           x={x(-corridor)}
@@ -343,6 +349,7 @@ function MobileDispersionVisual({
         />
         {hasTrustedZone ? (
           <rect
+            clipPath={`url(#${plotClipId})`}
             x={x(trustedSummary.sideLowYd!)}
             y={y(trustedSummary.carryHighYd!)}
             width={Math.max(4, x(trustedSummary.sideHighYd!) - x(trustedSummary.sideLowYd!))}

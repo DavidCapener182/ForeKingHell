@@ -1,6 +1,6 @@
 "use client";
 
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useId, useMemo, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { UntitledSelect } from "@/components/untitled-ui/form-controls";
 import { Check, Eye } from "lucide-react";
@@ -805,6 +805,7 @@ function DispersionChart({
   selectedShotId: string | null;
   onSelectShot?: (shotId: string) => void;
 }) {
+  const plotClipId = useId();
   const padding = dispersionPadding;
   const points = shots.filter(hasDispersionData);
   const width = layout === "portrait" ? dispersionWidth : chartWidth;
@@ -841,6 +842,11 @@ function DispersionChart({
           : "Dispersion chart"
       }
     >
+      <defs>
+        <clipPath id={plotClipId} clipPathUnits="userSpaceOnUse">
+          <rect x={padding.left} y={padding.top} width={plotWidth} height={plotHeight} />
+        </clipPath>
+      </defs>
       <rect x={0} y={0} width={width} height={height} fill="white" />
       <rect
         x={xScale(-centerZone)}
@@ -876,6 +882,7 @@ function DispersionChart({
       </text>
       {ellipse80 ? (
         <ellipse
+          clipPath={`url(#${plotClipId})`}
           cx={xScale(ellipse80.side)}
           cy={yScale(ellipse80.carry)}
           rx={Math.max(3, (ellipse80.sideSpread / (maxSide * 2)) * plotWidth)}
@@ -890,6 +897,7 @@ function DispersionChart({
       ) : null}
       {ellipse50 ? (
         <ellipse
+          clipPath={`url(#${plotClipId})`}
           cx={xScale(ellipse50.side)}
           cy={yScale(ellipse50.carry)}
           rx={Math.max(3, (ellipse50.sideSpread / (maxSide * 2)) * plotWidth)}
