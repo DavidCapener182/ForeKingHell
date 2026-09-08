@@ -36,6 +36,7 @@ import {
   summarizeShotPattern,
   type ShotPatternPoint,
 } from "@/lib/shot-pattern-chart-data";
+import { buildDispersionScale, type DispersionScale } from "@/lib/dispersion-scale";
 import { cn } from "@/lib/utils";
 
 type ChartMode = "dispersion" | "flight";
@@ -71,6 +72,10 @@ export function MobileShotPatternCharts({
   correctionClubs?: Array<{ value: string; label: string }>;
 }) {
   const clubs = useMemo(() => shotPatternClubs(points), [points]);
+  const dispersionScale = useMemo(
+    () => buildDispersionScale(layout === "mobile" ? points.filter(hasLandingPoint) : points),
+    [layout, points],
+  );
   const [mode, setMode] = useState<ChartMode>("dispersion");
   const [flightMode, setFlightMode] = useState<FlightMode>("shots");
   const [club, setClub] = useState(() =>
@@ -186,12 +191,18 @@ export function MobileShotPatternCharts({
             <MobileShotPatternVisual
               points={selected}
               trustedPoints={trustedSelection}
+              dispersionScale={dispersionScale}
               mode="dispersion"
               compact={compact}
               onSelect={setSelectedShot}
             />
           ) : (
-            <SharedShotPatternVisual shots={selected} mode="dispersion" />
+            <SharedShotPatternVisual
+              shots={selected}
+              mode="dispersion"
+              dispersionScale={dispersionScale}
+              dispersionLayout="portrait"
+            />
           )}
         </div>
       ) : hasFlight ? (
@@ -205,6 +216,7 @@ export function MobileShotPatternCharts({
             <MobileShotPatternVisual
               points={selected}
               trustedPoints={trustedSelection}
+              dispersionScale={dispersionScale}
               mode="flight"
               flightMode={flightMode}
               onSelect={setSelectedShot}
@@ -242,6 +254,7 @@ export function MobileShotPatternCharts({
 function MobileShotPatternVisual({
   points,
   trustedPoints,
+  dispersionScale,
   mode,
   compact = false,
   flightMode = "shots",
@@ -249,6 +262,7 @@ function MobileShotPatternVisual({
 }: {
   points: ShotPatternPoint[];
   trustedPoints: ShotPatternPoint[];
+  dispersionScale: DispersionScale;
   mode: "dispersion" | "flight";
   compact?: boolean;
   flightMode?: FlightMode;
@@ -258,6 +272,7 @@ function MobileShotPatternVisual({
     <MobileDispersionVisual
       points={points}
       trustedPoints={trustedPoints}
+      dispersionScale={dispersionScale}
       compact={compact}
       onSelect={onSelect}
     />
@@ -269,11 +284,13 @@ function MobileShotPatternVisual({
 function MobileDispersionVisual({
   points,
   trustedPoints,
+  dispersionScale,
   compact,
   onSelect,
 }: {
   points: ShotPatternPoint[];
   trustedPoints: ShotPatternPoint[];
+  dispersionScale: DispersionScale;
   compact: boolean;
   onSelect: (point: ShotPatternPoint) => void;
 }) {
@@ -287,11 +304,7 @@ function MobileDispersionVisual({
     : { top: 28, right: 18, bottom: 48, left: 42 };
   const plotWidth = width - frame.left - frame.right;
   const plotHeight = height - frame.top - frame.bottom;
-  const maxCarry = niceCeiling(Math.max(25, ...landing.map((point) => point.carryYd ?? 0)), 25);
-  const maxSide = niceCeiling(
-    Math.max(20, ...landing.map((point) => Math.abs(point.sideCarryYd ?? 0))),
-    10,
-  );
+  const { maxCarryYd: maxCarry, maxSideYd: maxSide } = dispersionScale;
   const x = (value: number) => frame.left + ((value + maxSide) / (maxSide * 2)) * plotWidth;
   const y = (value: number) => frame.top + plotHeight - (value / maxCarry) * plotHeight;
   const carryTicks = compact
@@ -309,6 +322,9 @@ function MobileDispersionVisual({
     <div
       className="overflow-hidden rounded-2xl border bg-[var(--mobile-chart-surface)] shadow-inner"
       data-mobile-dispersion-layout
+      data-dispersion-max-side={maxSide}
+      data-dispersion-max-carry={maxCarry}
+      data-dispersion-target-side={corridor}
     >
       <svg
         viewBox={`0 0 ${width} ${height}`}
