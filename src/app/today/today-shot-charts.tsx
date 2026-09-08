@@ -22,6 +22,7 @@ import {
   type DispersionCorridorBucket,
   type DispersionCorridorTone,
 } from "@/lib/dispersion-corridor";
+import { buildDispersionScale, type DispersionScale } from "@/lib/dispersion-scale";
 import { buildShotShapeTrace, type ShotShapeTrace } from "@/lib/shot-shape-trace";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +70,8 @@ type AverageDispersion = {
   carryYd: number;
 };
 
+const dispersionWidth = 460;
+const dispersionHeight = 580;
 const chartWidth = 820;
 const chartHeight = 430;
 const padding = {
@@ -150,6 +153,7 @@ export function TodayShotCharts({
   correctionClubs?: Array<{ value: string; label: string }>;
 }) {
   const clubGroups = useMemo(() => buildClubGroups(shots), [shots]);
+  const dispersionScale = useMemo(() => buildDispersionScale(shots), [shots]);
   const statusByClub = useMemo(
     () => new Map(clubStatuses.map((status) => [status.clubType, status] as const)),
     [clubStatuses],
@@ -337,16 +341,16 @@ export function TodayShotCharts({
           className={cn(
             "grid items-start gap-4",
             variant === "editorial"
-              ? "xl:grid-cols-[minmax(0,1.65fr)_minmax(21rem,0.65fr)]"
-              : "lg:grid-cols-2",
+              ? "xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]"
+              : "lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]",
           )}
         >
           <ChartPanel
             title="Dispersion"
-            detail="Carry landing by left-right miss. Select a point to inspect that exact shot."
+            detail="Scale stays locked across club and outlier filters. Select a landing to inspect the shot."
             sampleSize={visibleShots.length}
             empty={!visibleShots.some(hasDispersionData)}
-            footer={<DispersionPanelFooter shots={visibleShots} />}
+            footer={<DispersionPanelFooter shots={visibleShots} scale={dispersionScale} />}
             fallback={
               <ChartAccessibleFallback
                 title="Today dispersion"
@@ -355,10 +359,11 @@ export function TodayShotCharts({
                 rows={dispersionRows}
               />
             }
-            chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
+            chartClassName="min-h-0 overflow-hidden"
           >
             <SharedShotPatternVisual
               shots={visibleShots}
+              dispersionScale={dispersionScale}
               mode="dispersion"
               selectedShotId={selectedShotId}
               onSelectShot={setSelectedShotId}
@@ -412,6 +417,7 @@ export function TodayShotCharts({
 
 export function SharedShotPatternVisual({
   shots,
+  dispersionScale,
   mode,
   trajectoryView = "shots",
   selectedShotId = null,
@@ -422,6 +428,7 @@ export function SharedShotPatternVisual({
       Partial<Pick<TodayChartShot, "totalYd" | "launchDirectionDeg" | "ballSpeedMph">>
   >;
   mode: "dispersion" | "trajectory";
+  dispersionScale?: DispersionScale;
   trajectoryView?: TrajectoryView;
   selectedShotId?: string | null;
   onSelectShot?: (shotId: string) => void;
@@ -437,6 +444,7 @@ export function SharedShotPatternVisual({
   return mode === "dispersion" ? (
     <DispersionChart
       shots={chartPoints}
+      scale={dispersionScale ?? buildDispersionScale(chartPoints)}
       selectedShotId={selectedShotId}
       onSelectShot={onSelectShot}
     />
@@ -512,9 +520,7 @@ function buildDispersionChartSummary(shots: ChartPoint[]) {
   const averageCarry = meanNumber(points.map((shot) => shot.carryYd ?? shot.totalYd));
   const averageSide = meanNumber(points.map((shot) => shot.sideCarryYd));
   const shapeModel = buildTopDownShapeModel(points);
-  const maxSide = dispersionSideMax(points);
-  const targetSide = dispersionTargetSide(maxSide);
-  const bestMarker = bestTargetCorridorShot(points, targetSide);
+  const bestMarker = bestTargetCorridorShot(points, 10);
   const worstShot = worstDispersionShot(points);
 
   return `${points.length} plotted shot${points.length === 1 ? "" : "s"}. ${
@@ -594,10 +600,9 @@ function buildTrajectoryChartRows(shots: ChartPoint[]): ChartFallbackRow[] {
     }));
 }
 
-function DispersionPanelFooter({ shots }: { shots: ChartPoint[] }) {
+function DispersionPanelFooter({ shots, scale }: { shots: ChartPoint[]; scale: DispersionScale }) {
   const points = shots.filter(hasDispersionData);
-  const maxSide = dispersionSideMax(points);
-  const targetSide = dispersionTargetSide(maxSide);
+  const { maxSideYd: maxSide, maxCarryYd: maxCarry, targetSideYd: targetSide } = scale;
   const buckets = buildDispersionCorridorBuckets(
     points.map((shot) => shot.sideCarryYd),
     {
@@ -609,6 +614,9 @@ function DispersionPanelFooter({ shots }: { shots: ChartPoint[] }) {
 
   return (
     <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Locked scale: ±{maxSide} yd left/right · {maxCarry} yd carry. Target ±{targetSide} yd.
+      </p>
       <DispersionCorridorStats buckets={buckets} />
       <DispersionMarkerLegend bestMarkerLabel={bestMarkerLabel} />
     </div>
@@ -623,14 +631,12 @@ function DispersionCorridorStats({ buckets }: { buckets: DispersionCorridorBucke
   const total = buckets[0]?.total ?? 0;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-2">
+    <div className="@container rounded-lg border border-border bg-card p-2">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs">
         <p className="font-semibold text-foreground">Corridor split</p>
         <p className="text-[11px] text-muted-foreground">{total} plotted shots</p>
       </div>
-      <div
-        className={cn("grid gap-1.5", buckets.length === 5 ? "sm:grid-cols-5" : "sm:grid-cols-3")}
-      >
+      <div className="grid grid-cols-1 gap-1.5 @min-[24rem]:grid-cols-5">
         {buckets.map((bucket) => (
           <div
             key={bucket.id}
@@ -640,7 +646,7 @@ function DispersionCorridorStats({ buckets }: { buckets: DispersionCorridorBucke
               corridorBucketClass(bucket.tone),
             )}
           >
-            <div className="flex items-baseline justify-between gap-2">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-2">
               <span className="font-medium">{shortCorridorLabel(bucket)}</span>
               <span className="shrink-0 text-sm font-semibold">
                 {formatPercent(bucket.percent)}
@@ -782,17 +788,19 @@ function ClubLegend({ clubs }: { clubs: ClubChartGroup[] }) {
 
 function DispersionChart({
   shots,
+  scale,
   selectedShotId,
   onSelectShot,
 }: {
   shots: ChartPoint[];
+  scale: DispersionScale;
   selectedShotId: string | null;
   onSelectShot?: (shotId: string) => void;
 }) {
   const points = shots.filter(hasDispersionData);
-  const maxCarry = niceMax(max(points.map((shot) => shot.carryYd ?? shot.totalYd ?? 0)), 25);
-  const maxSide = dispersionSideMax(points);
-  const centerZone = dispersionTargetSide(maxSide);
+  const { maxCarryYd: maxCarry, maxSideYd: maxSide, targetSideYd: centerZone } = scale;
+  const plotWidth = dispersionWidth - padding.left - padding.right;
+  const plotHeight = dispersionHeight - padding.top - padding.bottom;
   const yTicks = ticks(maxCarry, 4);
   const xTicks = [-maxSide, -maxSide / 2, 0, maxSide / 2, maxSide];
   const xScale = (value: number) => padding.left + ((value + maxSide) / (maxSide * 2)) * plotWidth;
@@ -800,7 +808,7 @@ function DispersionChart({
   const medianSide = medianNumber(points.map((shot) => shot.sideCarryYd ?? null));
   const medianCarry = medianNumber(points.map((shot) => shot.carryYd ?? shot.totalYd ?? null));
   const clubAverages = averageDispersionPoints(points);
-  const shapeModel = buildTopDownShapeModel(points);
+  const shapeModel = buildTopDownShapeModel(points, scale);
   const bestMarker = bestTargetCorridorShot(points, centerZone);
   const worstShot = worstDispersionShot(points);
   const ellipse50 = dispersionEllipse(points, 1.18);
@@ -808,8 +816,11 @@ function DispersionChart({
 
   return (
     <svg
-      viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-      className="block h-auto w-full"
+      viewBox={`0 0 ${dispersionWidth} ${dispersionHeight}`}
+      className="mx-auto block h-auto w-full max-w-[492px]"
+      data-dispersion-max-side={maxSide}
+      data-dispersion-max-carry={maxCarry}
+      data-dispersion-target-side={centerZone}
       role={onSelectShot ? "group" : "img"}
       aria-label={
         onSelectShot
@@ -817,7 +828,7 @@ function DispersionChart({
           : "Dispersion chart"
       }
     >
-      <rect x={0} y={0} width={chartWidth} height={chartHeight} fill="white" />
+      <rect x={0} y={0} width={dispersionWidth} height={dispersionHeight} fill="white" />
       <rect
         x={xScale(-centerZone)}
         y={padding.top}
@@ -848,7 +859,7 @@ function DispersionChart({
         textAnchor="middle"
         className="fill-emerald-700 text-[10px] font-semibold uppercase tracking-[0.08em]"
       >
-        Target corridor
+        Target ±10 yd
       </text>
       {ellipse80 ? (
         <ellipse
@@ -881,7 +892,7 @@ function DispersionChart({
         <g key={`y-${tick}`}>
           <line
             x1={padding.left}
-            x2={chartWidth - padding.right}
+            x2={dispersionWidth - padding.right}
             y1={yScale(tick)}
             y2={yScale(tick)}
             stroke="#e5e7eb"
@@ -902,14 +913,14 @@ function DispersionChart({
             x1={xScale(tick)}
             x2={xScale(tick)}
             y1={padding.top}
-            y2={chartHeight - padding.bottom}
+            y2={dispersionHeight - padding.bottom}
             stroke={tick === 0 ? "#111827" : "#e5e7eb"}
             strokeDasharray={tick === 0 ? undefined : "4 4"}
             opacity={tick === 0 ? 0.5 : 1}
           />
           <text
             x={xScale(tick)}
-            y={chartHeight - 18}
+            y={dispersionHeight - 18}
             textAnchor="middle"
             className="fill-slate-600 text-[12px]"
           >
@@ -921,8 +932,8 @@ function DispersionChart({
         carry yd
       </text>
       <text
-        x={chartWidth / 2}
-        y={chartHeight - 5}
+        x={dispersionWidth / 2}
+        y={dispersionHeight - 5}
         textAnchor="middle"
         className="fill-slate-600 text-[12px]"
       >
@@ -1332,13 +1343,14 @@ type RenderedTopDownShapeTrace = {
   trace: ShotShapeTrace;
 };
 
-function buildTopDownShapeModel(shots: ChartPoint[]) {
+function buildTopDownShapeModel(
+  shots: ChartPoint[],
+  scale: DispersionScale = buildDispersionScale(shots),
+) {
   const points = shots.filter(hasDispersionData);
-  const maxCarry = Math.max(
-    1,
-    niceMax(max(points.map((shot) => shot.carryYd ?? shot.totalYd ?? 0)), 25),
-  );
-  const maxSide = dispersionSideMax(points);
+  const { maxCarryYd: maxCarry, maxSideYd: maxSide } = scale;
+  const plotWidth = dispersionWidth - padding.left - padding.right;
+  const plotHeight = dispersionHeight - padding.top - padding.bottom;
   const traces = points
     .map((shot) => {
       const carryYd = shot.carryYd ?? shot.totalYd ?? null;
@@ -1702,14 +1714,6 @@ function standardDeviation(values: number[], mean = rawMean(values)) {
 
 function niceMax(value: number, step: number) {
   return Math.max(step, Math.ceil(value / step) * step);
-}
-
-function dispersionSideMax(points: Array<Pick<TodayChartShot, "sideCarryYd">>) {
-  return Math.max(20, niceMax(max(points.map((shot) => Math.abs(shot.sideCarryYd ?? 0))), 10));
-}
-
-function dispersionTargetSide(maxSide: number) {
-  return Math.min(10, maxSide);
 }
 
 function niceTrajectoryMax(value: number) {
