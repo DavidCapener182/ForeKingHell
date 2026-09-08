@@ -35,7 +35,11 @@ export function MobileTodayPracticeReview({
         className="companion-review-tabs"
         initialValue="overview"
         mode="local"
-        ariaLabel="Today's practice review sections"
+        ariaLabel={
+          review.state.eyebrow === "Practice complete · Today"
+            ? "Today's practice review sections"
+            : "Selected practice review sections"
+        }
         tabs={[
           {
             value: "overview",
@@ -123,7 +127,7 @@ export function MobileTodayPracticeReview({
                           <div className="mt-3 grid gap-3">
                             <p className="text-sm">{mobileComparisonSummary(comparison)}</p>
                             <p className="text-xs text-muted-foreground">
-                              {comparison.today.shotCount} comparable shots today ·{" "}
+                              {comparison.today.shotCount} comparable shots in this practice ·{" "}
                               {comparison.previous.shotCount} earlier shots
                             </p>
                             <dl className="grid grid-cols-2 gap-3 text-sm">
@@ -173,7 +177,7 @@ export function MobileTodayPracticeReview({
             label: "Sessions",
             content: (
               <MobileSection title="Your uploads">
-                <MobileGroupedList label="Today’s uploaded sessions">
+                <MobileGroupedList label="Uploaded sessions for this practice">
                   {review.sessions.map((session, index) => (
                     <MobileListRow
                       key={session.id}

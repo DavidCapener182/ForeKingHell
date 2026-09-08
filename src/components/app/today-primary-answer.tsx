@@ -35,6 +35,7 @@ export function TodayPrimaryAnswer({
   evidenceContent,
   compact = false,
   highlights = [],
+  reviewContext = "today",
 }: {
   accountId: string;
   serverState: TodayPrimaryState;
@@ -43,6 +44,7 @@ export function TodayPrimaryAnswer({
   evidenceContent: ReactNode;
   compact?: boolean;
   highlights?: TodayHighlight[];
+  reviewContext?: "today" | "selected";
 }) {
   const evidenceTrigger = useRef<HTMLButtonElement>(null);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
@@ -83,7 +85,9 @@ export function TodayPrimaryAnswer({
   const isReview = serverState.status === "Review ready";
   const isRecommendation = ["Low", "Moderate", "High"].includes(serverState.status);
   const evidenceTitle = isReview
-    ? "Today’s review evidence"
+    ? reviewContext === "selected"
+      ? "Selected practice evidence"
+      : "Today’s review evidence"
     : isRecommendation
       ? "Why this recommendation?"
       : "Evidence and next step";
@@ -136,7 +140,13 @@ export function TodayPrimaryAnswer({
                   highlights.length ? styles.focus : compact ? styles.reviewBrief : styles.focus
                 }
                 data-primary-recommendation
-                aria-label={isReview ? "Today’s practice review" : "Today's focus"}
+                aria-label={
+                  isReview
+                    ? reviewContext === "selected"
+                      ? "Selected practice review"
+                      : "Today’s practice review"
+                    : "Today's focus"
+                }
               >
                 <div className={styles.focusHeading}>
                   <p className={styles.focusEyebrow}>
@@ -152,7 +162,11 @@ export function TodayPrimaryAnswer({
                 </div>
                 <div>
                   <h2 className={styles.focusTitle}>
-                    {compact && reason === "Mixed session" ? "Mixed results today" : title}
+                    {compact && reason === "Mixed session"
+                      ? reviewContext === "selected"
+                        ? "Mixed results in this practice"
+                        : "Mixed results today"
+                      : title}
                   </h2>
                   {!compact || reason !== "Mixed session" ? (
                     <p className={styles.focusReason}>{reason}</p>
@@ -182,7 +196,12 @@ export function TodayPrimaryAnswer({
                       {compact ? "Saved practice · View evidence" : evidence}
                       {isRecommendation ? ` · ${serverState.status} confidence` : ""}
                     </strong>
-                    {evidenceDate ? <span>Latest practice · {evidenceDate}</span> : null}
+                    {evidenceDate ? (
+                      <span>
+                        {reviewContext === "selected" ? "Selected practice" : "Latest practice"} ·{" "}
+                        {evidenceDate}
+                      </span>
+                    ) : null}
                   </span>
                   <ChevronRight className="size-5 shrink-0" aria-hidden />
                 </button>

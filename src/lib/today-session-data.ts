@@ -12,7 +12,12 @@ import {
   detectShotDataIntegrityIssue,
   type ShotDataIntegrityIssue,
 } from "@/lib/shot-data-integrity";
-import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
+import type { ShotReviewStatus } from "@/lib/shot-review";
+import {
+  isCleanPracticeShot,
+  isComparisonShot,
+  isRawComparisonShot,
+} from "@/lib/today-practice-evidence";
 import { bigMissOfflineLimitYd, clubTypeImprovementScore } from "@/lib/today-club-scoring";
 import { isRoundSessionType } from "@/lib/round-sessions";
 
@@ -40,6 +45,7 @@ export type TodayPracticeShot = {
   sessionDate: Date;
   shotAt: Date;
   shotNumber: number | null;
+  clubId?: string;
   clubType: string;
   clubBrand: string | null;
   clubModel: string | null;
@@ -206,7 +212,7 @@ const EXCLUDED_PRACTICE_QUALITY_TAGS = new Set([
   "deleted",
 ]);
 
-const practiceShotSelect = {
+export const practiceShotSelect = {
   id: shots.id,
   sessionId: shots.sessionId,
   source: sessions.source,
@@ -216,6 +222,7 @@ const practiceShotSelect = {
   sessionDate: sessions.date,
   shotAt: shots.shotAt,
   shotNumber: shots.shotNumber,
+  clubId: shots.clubId,
   clubType: shots.clubType,
   clubBrand: clubs.brand,
   clubModel: clubs.model,
@@ -362,6 +369,7 @@ async function fetchPreviousPracticeRows(
       sessionDate: rankedPreviousShots.sessionDate,
       shotAt: rankedPreviousShots.shotAt,
       shotNumber: rankedPreviousShots.shotNumber,
+      clubId: rankedPreviousShots.clubId,
       clubType: rankedPreviousShots.clubType,
       clubBrand: rankedPreviousShots.clubBrand,
       clubModel: rankedPreviousShots.clubModel,
@@ -850,39 +858,6 @@ function straightShotScore(shot: TodayPracticeShot) {
   const startLine = Math.abs(shot.launchDirectionDeg ?? 0);
   const carryBonus = (shot.carryYd ?? 0) / 100;
   return offline + startLine * 2 - carryBonus;
-}
-
-function isComparisonShot(shot: TodayPracticeShot) {
-  if (!isCleanPracticeShot(shot)) {
-    return false;
-  }
-
-  return isRawComparisonShot(shot);
-}
-
-function isRawComparisonShot(shot: TodayPracticeShot) {
-  if (!isTrackedClubType(shot.clubType)) {
-    return false;
-  }
-
-  if (shot.shotCategory === "chip" || shot.shotCategory === "recovery") {
-    return false;
-  }
-
-  return isNumber(shot.carryYd) || isNumber(shot.sideCarryYd) || isNumber(shot.ballSpeedMph);
-}
-
-function isCleanPracticeShot(
-  shot: Pick<
-    TodayPracticeShot,
-    "reviewStatus" | "qualityTag" | "shotCategory" | "dataIntegrityIssue"
-  >,
-) {
-  if (!isShotEvidenceEligible(shot)) {
-    return false;
-  }
-
-  return shot.reviewStatus === "restored" || shot.dataIntegrityIssue === null;
 }
 
 export function isExcludedPracticeQualityTag(qualityTag: string | null | undefined) {

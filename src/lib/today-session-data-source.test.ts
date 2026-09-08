@@ -3,6 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(join(process.cwd(), "src/lib/today-session-data.ts"), "utf8");
+const evidenceSource = readFileSync(
+  join(process.cwd(), "src/lib/today-practice-evidence.ts"),
+  "utf8",
+);
 
 describe("today session data cleaning source", () => {
   it("can resolve a selected upload to its complete practice day", () => {
@@ -17,10 +21,10 @@ describe("today session data cleaning source", () => {
     expect(source).toContain('"top"');
     expect(source).toContain("isExcludedPracticeQualityTag");
     expect(source).toContain("detectShotDataIntegrityIssue");
-    expect(source).toContain("isShotEvidenceEligible(shot)");
+    expect(evidenceSource).toContain("isShotEvidenceEligible(shot)");
     expect(source).toContain("shotEvidenceSqlPredicate()");
     expect(source).toContain("${shots.reviewStatus} = 'restored'");
-    expect(source).toContain('shot.reviewStatus === "restored"');
+    expect(evidenceSource).toContain('shot.reviewStatus === "restored"');
     expect(source).toMatch(
       /const cleanTodayRows = filteredTodayRows\s*\.filter\(isCleanPracticeShot\)\s*\.map\(withDirectionalConfidence\)/,
     );
