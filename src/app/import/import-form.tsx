@@ -59,6 +59,7 @@ import {
 import type {
   LongestShotNotification,
   SaveRapsodoImportInput,
+  SaveRapsodoImportFileResult,
 } from "@/lib/imports/save-rapsodo-import";
 import type { AchievementUnlockNotification } from "@/lib/achievements/types";
 import type { ExtractedScorecard } from "@/lib/scorecard-extraction";
@@ -72,7 +73,7 @@ type SaveState =
       longestShotNotifications: LongestShotNotification[];
       achievementUnlockNotifications: AchievementUnlockNotification[];
     }
-  | { status: "error"; message: string };
+  | { status: "error"; message: string; fileResults?: SaveRapsodoImportFileResult[] };
 
 const TPC_SAWGRASS_PLAYERS_2026_SCORECARD = [
   "1,4,360",
@@ -133,6 +134,7 @@ export function ImportForm({
     readProgress,
     fileErrors,
     parseError,
+    parseFailures,
     isParsing,
     dismissFileError,
     setIsDragging,
@@ -141,6 +143,9 @@ export function ImportForm({
     clearFiles,
   } = useImportFiles(distanceUnit, columnMapping);
   const [scorecardReviewed, setScorecardReviewed] = useState(false);
+  const [hasExtractedScorecard, setHasExtractedScorecard] = useState(false);
+  const scorecardRequest = useRef<AbortController | null>(null);
+  useEffect(() => () => scorecardRequest.current?.abort(), []);
   const [settingsConfirmed, setSettingsConfirmed] = useState(false);
   const [warningsReviewed, setWarningsReviewed] = useState(false);
   const [sessionType, setSessionType] = useState<SessionType>("range");
@@ -149,11 +154,17 @@ export function ImportForm({
   const [scorecardText, setScorecardText] = useState("");
   const [holeReview, setHoleReview] = useState<HoleReviewState>({});
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
+  const batchReceipts = useRef<HTMLDivElement>(null);
   const [scorecardExtractState, setScorecardExtractState] = useState<ScorecardExtractState>({
     status: "idle",
   });
   const [isHydrated, setIsHydrated] = useState(false);
   const [isPending, startTransition] = useTransition();
+  useEffect(() => {
+    if (!isPending && saveState.status === "error" && saveState.fileResults?.length) {
+      batchReceipts.current?.focus();
+    }
+  }, [isPending, saveState]);
   const [isOnline, setIsOnline] = useState(true);
   const [offlineStorageEnabled, setOfflineStorageEnabled] = useState(false);
   const isCourseUpload = sessionType === "simulated_course";
@@ -385,7 +396,8 @@ export function ImportForm({
     !invalidMappings &&
     !unresolvedClubs &&
     settingsConfirmed &&
-    (scorecardExtractState.status !== "success" || !isCourseUpload || scorecardReviewed) &&
+    scorecardExtractState.status !== "loading" &&
+    (!hasExtractedScorecard || !isCourseUpload || scorecardReviewed) &&
     /^\d{4}-\d{2}-\d{2}$/.test(sessionDate) &&
     Number.isFinite(Date.parse(sessionDate)) &&
     (aggregate.warnings.length === 0 || warningsReviewed) &&
@@ -403,6 +415,7 @@ export function ImportForm({
     !isPending;
 
   async function readSelectedFiles(files: FileList | File[]) {
+    cancelScorecardExtraction();
     setSettingsConfirmed(false);
     setWarningsReviewed(false);
     setSaveState({ status: "idle" });
@@ -424,16 +437,20 @@ export function ImportForm({
   }
 
   function removeFile(fileId: string) {
+    cancelScorecardExtraction();
     setSaveState({ status: "idle" });
     removeImportFile(fileId);
   }
 
   function clearBatch() {
+    cancelScorecardExtraction();
     setSaveState({ status: "idle" });
     clearFiles();
   }
 
   function applySawgrassPreset() {
+    cancelScorecardExtraction();
+    setScorecardReviewed(false);
     setSessionType("simulated_course");
     setCourseName("TPC Sawgrass - THE PLAYERS Stadium Course");
     setScorecardText(TPC_SAWGRASS_PLAYERS_2026_SCORECARD);
@@ -441,41 +458,56 @@ export function ImportForm({
     setSaveState({ status: "idle" });
   }
 
-  async function extractScorecardImage(file: File | null | undefined) {
-    if (!file) {
-      return;
-    }
+  function cancelScorecardExtraction() {
+    if (!scorecardRequest.current) return;
+    scorecardRequest.current.abort();
+    scorecardRequest.current = null;
+    setScorecardExtractState({
+      status: "error",
+      message:
+        "Extraction cancelled. Existing values are retained; review them before saving or upload another image.",
+    });
+  }
 
-    if (!file.type.startsWith("image/")) {
+  async function extractScorecardImage(file: File | null | undefined) {
+    if (!file) return;
+    scorecardRequest.current?.abort();
+    const controller = new AbortController();
+    scorecardRequest.current = controller;
+    setScorecardReviewed(false);
+    setSettingsConfirmed(false);
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      scorecardRequest.current = null;
       setScorecardExtractState({
         status: "error",
         fileName: file.name,
-        message: "Choose a scorecard image file.",
+        message: "Use a JPEG, PNG or WebP scorecard image.",
       });
       return;
     }
-
     setSaveState({ status: "idle" });
-    setScorecardReviewed(false);
     setScorecardExtractState({ status: "loading", fileName: file.name });
-
     try {
       const imageDataUrl = await readFileAsDataUrl(file);
+      if (controller.signal.aborted) return;
       const response = await fetch("/api/scorecard/extract", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imageDataUrl }),
+        body: JSON.stringify({ imageDataUrl, purpose: "import_review" }),
+        signal: controller.signal,
       });
       const payload = (await response.json()) as {
         scorecard?: ExtractedScorecard;
         message?: string;
       };
-
-      if (!response.ok || !payload.scorecard) {
+      if (controller.signal.aborted) return;
+      if (!response.ok || !payload.scorecard)
         throw new Error(payload.message ?? "Scorecard extraction failed.");
-      }
-
       const message = applyExtractedScorecard(payload.scorecard);
+      setHasExtractedScorecard(true);
+      setScorecardReviewed(false);
+      setSettingsConfirmed(false);
+      setWarningsReviewed(false);
       trackPlausibleEvent("Scorecard Extracted", {
         props: {
           holeCount: payload.scorecard.holes.length,
@@ -484,11 +516,14 @@ export function ImportForm({
       });
       setScorecardExtractState({ status: "success", fileName: file.name, message });
     } catch (error) {
-      setScorecardExtractState({
-        status: "error",
-        fileName: file.name,
-        message: error instanceof Error ? error.message : "Scorecard extraction failed.",
-      });
+      if (!controller.signal.aborted)
+        setScorecardExtractState({
+          status: "error",
+          fileName: file.name,
+          message: error instanceof Error ? error.message : "Scorecard extraction failed.",
+        });
+    } finally {
+      if (scorecardRequest.current === controller) scorecardRequest.current = null;
     }
   }
 
@@ -530,15 +565,20 @@ export function ImportForm({
       return `Extracted ${scorecard.holes.length} holes from the scorecard image. Confirm course, tees, par and yardage before saving.`;
     }
 
+    setScorecardText("");
     return `Extracted ${scorecard.holes.length} hole scores. Confirm course, tees, par and add scorecard yardages before saving.`;
   }
 
   function resetCourseReview() {
+    cancelScorecardExtraction();
+    setScorecardReviewed(false);
     setHoleReview({});
     setSaveState({ status: "idle" });
   }
 
   function updateHoleReview(holeNumber: number, patch: HoleReviewState[number]) {
+    cancelScorecardExtraction();
+    setScorecardReviewed(false);
     setSaveState({ status: "idle" });
     setHoleReview((current) => ({
       ...current,
@@ -556,6 +596,7 @@ export function ImportForm({
 
     setSaveState({ status: "idle" });
     const importInputs = buildImportInputs();
+    const submittedFileIds = parsedFiles.map((file) => file.id);
     trackPlausibleEvent("Import Started", {
       props: {
         fileCount: uploadedFiles.length,
@@ -619,7 +660,13 @@ export function ImportForm({
           router.refresh();
         }
       } else {
-        setSaveState({ status: "error", message: result.message });
+        for (const receipt of result.fileResults ?? []) {
+          if (receipt.status === "saved" || receipt.status === "duplicate") {
+            const id = submittedFileIds[receipt.inputIndex];
+            if (id) removeImportFile(id);
+          }
+        }
+        setSaveState({ status: "error", message: result.message, fileResults: result.fileResults });
       }
     });
   }
@@ -728,7 +775,11 @@ export function ImportForm({
             status={saveState.status}
             title={
               saveState.status === "error"
-                ? "Import failed"
+                ? saveState.fileResults?.some(
+                    (file) => file.status === "saved" || file.status === "duplicate",
+                  )
+                  ? "Import partly saved"
+                  : "Import failed"
                 : saveState.achievementUnlockNotifications.length > 0
                   ? "Achievements unlocked"
                   : saveState.longestShotNotifications.length > 0
@@ -738,6 +789,42 @@ export function ImportForm({
             description={
               <>
                 <p>{saveState.message}</p>
+                {saveState.status === "error" && saveState.fileResults?.length ? (
+                  <div
+                    ref={batchReceipts}
+                    tabIndex={-1}
+                    className="mt-3 scroll-mt-28"
+                    data-import-batch-receipts
+                  >
+                    <ul className="space-y-2 text-sm">
+                      {saveState.fileResults.map((file) => (
+                        <li key={file.inputIndex} className="break-words">
+                          <strong>{file.fileName}</strong>:{" "}
+                          {file.status === "saved"
+                            ? "Saved"
+                            : file.status === "duplicate"
+                              ? "Already imported"
+                              : file.status === "pending"
+                                ? "Not attempted"
+                                : "Failed"}
+                          {file.status === "failed" ? ` — ${file.message}` : null}
+                          {file.sessionId ? (
+                            <Link
+                              className="ml-2 underline"
+                              href={`/sessions/${encodeURIComponent(file.sessionId)}`}
+                            >
+                              View saved session
+                            </Link>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-2">
+                      Saved files have been removed from this batch. Review the remaining files and
+                      save again.
+                    </p>
+                  </div>
+                ) : null}
                 {saveState.status === "success" ? (
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                     {saveState.savedSessionId ? (
@@ -879,10 +966,12 @@ export function ImportForm({
                 detectedUnits={detectedUnits}
                 detectedSessionDateIso={detectedSessionDateIso}
                 onSessionDateChange={(value) => {
+                  cancelScorecardExtraction();
                   setSessionDate(value);
                   setSettingsConfirmed(false);
                 }}
                 onSessionTypeChange={(value) => {
+                  cancelScorecardExtraction();
                   setSessionType(value);
                   setSettingsConfirmed(false);
                 }}
@@ -922,16 +1011,35 @@ export function ImportForm({
                   totalYards={scorecard.holes.reduce((total, hole) => total + hole.yards, 0)}
                   onApplySawgrassPreset={applySawgrassPreset}
                   onExtractScorecardImage={extractScorecardImage}
-                  onCourseNameChange={setCourseName}
-                  onScorecardTextChange={setScorecardText}
+                  onCourseNameChange={(value) => {
+                    cancelScorecardExtraction();
+                    setCourseName(value);
+                    setScorecardReviewed(false);
+                  }}
+                  onScorecardTextChange={(value) => {
+                    cancelScorecardExtraction();
+                    setScorecardText(value);
+                    setScorecardReviewed(false);
+                  }}
                 />
               ) : null}
-              {isCourseUpload && scorecardExtractState.status === "success" ? (
+              {scorecardExtractState.status === "loading" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11"
+                  onClick={cancelScorecardExtraction}
+                >
+                  Cancel extraction
+                </Button>
+              ) : null}
+              {isCourseUpload && hasExtractedScorecard ? (
                 <label className="flex min-h-11 items-start gap-2 rounded-xl border border-border p-3 text-sm">
                   <input
                     type="checkbox"
                     className="mt-1 size-5 shrink-0 accent-primary"
                     checked={scorecardReviewed}
+                    disabled={scorecardExtractState.status === "loading"}
                     onChange={(event) => setScorecardReviewed(event.target.checked)}
                   />
                   <span>
@@ -952,6 +1060,24 @@ export function ImportForm({
           <Alert variant="destructive">
             <AlertTitle>Could not parse files</AlertTitle>
             <AlertDescription>{parseError}</AlertDescription>
+            <ul className="mt-3 space-y-2">
+              {parseFailures.map((file) => (
+                <li key={file.id} className="flex flex-wrap items-center gap-2">
+                  <span className="min-w-0 break-words">
+                    {file.fileName}: {file.message}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => removeFile(file.id)}
+                    disabled={isPending}
+                  >
+                    Remove {file.fileName}
+                  </Button>
+                </li>
+              ))}
+            </ul>
           </Alert>
         ) : null}
         {uploadedFiles.length > 0 && aggregate.warnings.length > 0 ? (

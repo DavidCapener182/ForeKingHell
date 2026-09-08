@@ -1,7 +1,7 @@
 import "server-only";
 import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 
-import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, or, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import {
@@ -1084,6 +1084,94 @@ function importedScore(
     sessionCount: new Set(rows.map((row) => row.sessionId)).size,
     latestSessionId: latestRow.sessionId,
     latestShotAt: latestRow.shotAt,
+  };
+}
+
+export async function getChallengeSourceInspection(challengeId: string, requestedPage = 1) {
+  const userId = await requireCurrentUserId();
+  const challenge = await requireVisibleChallenge(userId, challengeId);
+  const db = getDb();
+  const [templateRow] = challenge.templateId
+    ? await db
+        .select()
+        .from(challengeTemplates)
+        .where(eq(challengeTemplates.id, challenge.templateId))
+        .limit(1)
+    : [];
+  const template = templateRow ?? defaultTemplateForChallenge(challenge);
+  const [entry] = await db
+    .select({ id: challengeEntries.id })
+    .from(challengeEntries)
+    .where(and(eq(challengeEntries.challengeId, challengeId), eq(challengeEntries.userId, userId)))
+    .limit(1);
+  const owned = and(eq(shots.userId, userId), eq(sessions.userId, userId));
+  const [count] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(shots)
+    .innerJoin(sessions, eq(sessions.id, shots.sessionId))
+    .where(owned);
+  const total = count?.total ?? 0;
+  const pages = Math.max(1, Math.ceil(total / 24));
+  const page = Math.min(
+    pages,
+    Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1,
+  );
+  const rows = await db
+    .select({
+      id: shots.id,
+      userId: shots.userId,
+      sessionId: shots.sessionId,
+      shotAt: shots.shotAt,
+      clubType: shots.clubType,
+      carryYd: shots.carryYd,
+      totalYd: shots.totalYd,
+      sideCarryYd: directionalMetricSql(shots.sideCarryYd),
+      launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
+      shotCategory: shots.shotCategory,
+      qualityTag: shots.qualityTag,
+      reviewStatus: shots.reviewStatus,
+      source: sessions.source,
+      sessionDate: sessions.date,
+    })
+    .from(shots)
+    .innerJoin(sessions, eq(sessions.id, shots.sessionId))
+    .where(owned)
+    .orderBy(desc(shots.shotAt), desc(shots.id))
+    .limit(24)
+    .offset((page - 1) * 24);
+  const rules = normalizedRules(challenge, template);
+  const clubs = ruleStringArray(rules, "clubTypes");
+  const now = new Date();
+  return {
+    total,
+    page,
+    pages,
+    rows: rows.map((row) => {
+      const reasons: string[] = [];
+      if (!entry) reasons.push("Join this challenge before your evidence can rank.");
+      if (row.source === "manual" || row.source === "course_twin_live")
+        reasons.push("This source is not an eligible imported launch-monitor source.");
+      if (row.shotAt < challenge.startsAt) reasons.push("Shot is before the challenge start.");
+      if (challenge.endsAt && row.shotAt > challenge.endsAt)
+        reasons.push("Shot is after the challenge end.");
+      if (row.shotAt > now) reasons.push("Shot is in the future.");
+      if (!["included", "restored"].includes(row.reviewStatus) || !isShotEvidenceEligible(row))
+        reasons.push(
+          `Shot review excludes this evidence (${row.reviewStatus.replaceAll("_", " ")}).`,
+        );
+      if (row.qualityTag === "modelled") reasons.push("Modelled evidence cannot rank.");
+      if (clubs.length && !clubMatches(row.clubType, clubs))
+        reasons.push("Club does not match the challenge rules.");
+      // Use the unchanged scorer to inspect metric availability, independently of the aggregate minimum sample.
+      const metricProbe = scoreImportedChallengeRows(
+        { ...challenge, challengeRulesJson: { ...rules, minShots: 1 } },
+        template,
+        [row],
+      );
+      if (!metricProbe && !(clubs.length && !clubMatches(row.clubType, clubs)))
+        reasons.push("Required scoring measurement is missing or unsupported.");
+      return { ...row, reasons, eligible: reasons.length === 0 };
+    }),
   };
 }
 

@@ -174,9 +174,40 @@ export type SaveRapsodoImportResult =
       retryable?: boolean;
     };
 
+export type SaveRapsodoImportFileResult = {
+  inputIndex: number;
+  fileName: string;
+} & (
+  | {
+      status: "saved" | "duplicate";
+      sessionId: string;
+      shotCount: number;
+      rawRowCount: number;
+      message?: never;
+      retryable?: never;
+    }
+  | {
+      status: "failed";
+      message: string;
+      retryable?: boolean;
+      sessionId?: never;
+      shotCount?: never;
+      rawRowCount?: never;
+    }
+  | {
+      status: "pending";
+      message?: never;
+      sessionId?: never;
+      shotCount?: never;
+      rawRowCount?: never;
+      retryable?: never;
+    }
+);
+
 export type SaveRapsodoImportBatchResult =
   | {
       ok: true;
+      fileResults?: SaveRapsodoImportFileResult[];
       savedSessionId: string | null;
       sessionCount: number;
       shotCount: number;
@@ -193,6 +224,12 @@ export type SaveRapsodoImportBatchResult =
       ok: false;
       message: string;
       retryable?: boolean;
+      fileResults?: SaveRapsodoImportFileResult[];
+      savedSessionId?: string | null;
+      sessionCount?: number;
+      skippedCount?: number;
+      shotCount?: number;
+      rawRowCount?: number;
     };
 
 const BAD_DATA_QUALITY_TAG = "bad_data";
@@ -281,15 +318,26 @@ export async function saveLaunchMonitorImport(
       coursePlan,
       courseLink,
     });
-    const practicePlanMatch = validatedInput.practicePlanId
-      ? await completeOwnedPracticePlanFromImport(
-          userId,
-          validatedInput.practicePlanId,
-          result.sessionId,
-        )
-      : result.skipped
-        ? await completeAssociatedPracticePlanFromDuplicateImport(userId, result.sessionId)
-        : await completeMatchingPracticePlanFromImport(userId, result.sessionId);
+    let practicePlanMatch: PracticePlanImportMatch | null = null;
+    const secondaryWarnings: string[] = [];
+    try {
+      practicePlanMatch = validatedInput.practicePlanId
+        ? await completeOwnedPracticePlanFromImport(
+            userId,
+            validatedInput.practicePlanId,
+            result.sessionId,
+          )
+        : result.skipped
+          ? await completeAssociatedPracticePlanFromDuplicateImport(userId, result.sessionId)
+          : await completeMatchingPracticePlanFromImport(userId, result.sessionId);
+    } catch (error) {
+      reportServerFailure("import_practice_review_failed_after_save", error, {
+        "app.source": validatedInput.source,
+      });
+      secondaryWarnings.push(
+        "The session was saved, but its practice review could not be completed. Your shot evidence remains available in the saved session.",
+      );
+    }
 
     if (!result.skipped) {
       after(async () => {
@@ -342,7 +390,7 @@ export async function saveLaunchMonitorImport(
       ...result,
       practicePlanMatch,
       achievementUnlockNotifications: [],
-      warnings: [...parsed.warnings, ...(coursePlan?.warnings ?? [])],
+      warnings: [...parsed.warnings, ...(coursePlan?.warnings ?? []), ...secondaryWarnings],
     };
   } catch (error) {
     if (!(error instanceof ImportValidationError)) {
@@ -379,17 +427,37 @@ export async function saveRapsodoImportBatch(
     };
   }
 
-  let validatedInputs: SaveRapsodoImportInput[];
-  try {
-    validatedInputs = inputs.map(validateInput);
-  } catch (error) {
-    return {
-      ok: false,
-      message:
+  const fileResults: SaveRapsodoImportFileResult[] = inputs.map((input, inputIndex) => ({
+    inputIndex,
+    fileName: typeof input?.fileName === "string" ? input.fileName : `File ${inputIndex + 1}`,
+    status: "pending",
+  }));
+  const validatedInputs: SaveRapsodoImportInput[] = [];
+  for (const [inputIndex, input] of inputs.entries()) {
+    try {
+      validatedInputs.push(validateInput(input));
+    } catch (error) {
+      const message =
         error instanceof ImportValidationError
           ? error.message
-          : "The import could not be validated.",
-    };
+          : "The import could not be validated.";
+      fileResults[inputIndex] = {
+        inputIndex,
+        fileName: fileResults[inputIndex].fileName,
+        status: "failed",
+        message,
+      };
+      return {
+        ok: false,
+        message,
+        fileResults,
+        savedSessionId: null,
+        sessionCount: 0,
+        skippedCount: 0,
+        shotCount: 0,
+        rawRowCount: 0,
+      };
+    }
   }
 
   const warnings: string[] = [];
@@ -408,7 +476,7 @@ export async function saveRapsodoImportBatch(
     input: SaveRapsodoImportInput;
     parsed: ParsedLaunchMonitorImportResult;
   }> = [];
-  for (const input of validatedInputs) {
+  for (const [inputIndex, input] of validatedInputs.entries()) {
     try {
       const parsed = await parseLaunchMonitorImportCsv({
         rawCsvText: input.rawCsvText,
@@ -426,26 +494,60 @@ export async function saveRapsodoImportBatch(
         });
       }
 
+      const message =
+        error instanceof ImportValidationError
+          ? `${input.fileName}: ${error.message}`
+          : `${input.fileName}: the import could not be validated.`;
+      fileResults[inputIndex] = {
+        inputIndex,
+        fileName: fileResults[inputIndex].fileName,
+        status: "failed",
+        message,
+      };
       return {
         ok: false,
-        message:
-          error instanceof ImportValidationError
-            ? `${input.fileName}: ${error.message}`
-            : `${input.fileName}: the import could not be validated.`,
+        message,
+        fileResults,
+        savedSessionId: null,
+        sessionCount: 0,
+        skippedCount: 0,
+        shotCount: 0,
+        rawRowCount: 0,
       };
     }
   }
 
-  for (const { input, parsed } of parsedInputs) {
+  for (const [inputIndex, { input, parsed }] of parsedInputs.entries()) {
     const result = await saveRapsodoImport(input);
 
     if (!result.ok) {
+      fileResults[inputIndex] = {
+        inputIndex,
+        fileName: input.fileName,
+        status: "failed",
+        message: result.message,
+        ...(result.retryable ? { retryable: true } : {}),
+      };
       return {
         ok: false,
         message: `${input.fileName}: ${result.message}`,
         ...(result.retryable ? { retryable: true } : {}),
+        fileResults,
+        savedSessionId,
+        sessionCount,
+        skippedCount,
+        shotCount,
+        rawRowCount,
       };
     }
+    fileResults[inputIndex] = {
+      inputIndex,
+      fileName: input.fileName,
+      status: result.skipped ? "duplicate" : "saved",
+      sessionId: result.sessionId,
+      shotCount: result.shotCount,
+      rawRowCount: result.rawRowCount,
+    };
 
     if (result.skipped) {
       savedSessionId ??= result.sessionId;
@@ -473,6 +575,7 @@ export async function saveRapsodoImportBatch(
   return {
     ok: true,
     savedSessionId,
+    fileResults,
     sessionCount,
     shotCount,
     clubCount: uniqueClubKeys.size,

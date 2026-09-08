@@ -1,3 +1,4 @@
+import { ImportPracticeContextBanner } from "@/app/import/import-practice-context-banner";
 import { ImportWorkspaceChoice } from "@/app/import/import-workspace-choice";
 import { UntitledPageHeader } from "@/components/untitled-ui/headers";
 import { getDb } from "@/db/client";
@@ -7,7 +8,7 @@ import { CompanionSyncStatus } from "@/components/app/companion-sync-status";
 import { MobileAppShell } from "@/components/mobile-sports";
 import { PageShell } from "@/components/premium";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { getSavedPracticePlan } from "@/lib/practice-planner";
+import { getImportPracticeContext } from "@/lib/import-practice-context";
 
 type ImportCsvSearchParams = Promise<{ practicePlanId?: string; source?: string }> | undefined;
 
@@ -23,17 +24,7 @@ export default async function ImportCompanionCsvPage({
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
-  const practicePlan = params?.practicePlanId
-    ? await getSavedPracticePlan(userId, params.practicePlanId)
-    : null;
-  const validPlan =
-    practicePlan &&
-    ["planned", "active", "awaiting_import", "match_found", "completed"].includes(
-      practicePlan.status,
-    ) &&
-    !practicePlan.sourceSessionId
-      ? practicePlan
-      : null;
+  const validPlan = await getImportPracticeContext(userId, params?.practicePlanId);
 
   return (
     <PageShell>
@@ -45,11 +36,7 @@ export default async function ImportCompanionCsvPage({
           title="Import"
           description="Review files, settings and shot evidence."
         />
-        {validPlan ? (
-          <p className="rounded-xl bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
-            This upload will be scored against {validPlan.title}.
-          </p>
-        ) : null}
+        <ImportPracticeContextBanner plan={validPlan} />
         <ImportWorkspaceChoice
           practicePlanId={validPlan?.id ?? null}
           defaultDistanceUnit={profile?.preferredUnits === "metres" ? "meters" : "yards"}

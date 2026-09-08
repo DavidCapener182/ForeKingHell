@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
   if (!bodyResult.ok) return bodyResult.response;
   const body = bodyResult.value as {
     imageDataUrl?: unknown;
+    purpose?: unknown;
     proofScopeType?: unknown;
     proofScopeId?: unknown;
     proofRoundNumber?: unknown;
@@ -83,7 +84,15 @@ export async function POST(request: NextRequest) {
   const imageDataUrl = typeof body?.imageDataUrl === "string" ? body.imageDataUrl : "";
   const proofScope = normalizeProofScope(body);
 
-  if (!proofScope) {
+  const importReview = body?.purpose === "import_review";
+  const hasProofFields =
+    body?.proofScopeType !== undefined ||
+    body?.proofScopeId !== undefined ||
+    body?.proofRoundNumber !== undefined;
+  if (
+    (importReview && hasProofFields) ||
+    (!importReview && (body?.purpose !== undefined || !proofScope))
+  ) {
     return NextResponse.json({ message: "Send a scorecard image data URL." }, { status: 400 });
   }
 
@@ -144,21 +153,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const proofToken = createScorecardProofToken({
-      userId,
-      scopeType: proofScope.scopeType,
-      scopeId: proofScope.scopeId,
-      roundNumber: proofScope.roundNumber ?? null,
-      imageHash: createHash("sha256").update(imageDataUrl).digest("hex"),
-      totalScore: scorecard.totalScore,
-      courseName: scorecard.courseName,
-      teeName: scorecard.teeName,
-      dateIso: scorecard.dateIso,
-    });
+    const proofToken =
+      !importReview && proofScope
+        ? createScorecardProofToken({
+            userId,
+            scopeType: proofScope.scopeType,
+            scopeId: proofScope.scopeId,
+            roundNumber: proofScope.roundNumber ?? null,
+            imageHash: createHash("sha256").update(imageDataUrl).digest("hex"),
+            totalScore: scorecard.totalScore,
+            courseName: scorecard.courseName,
+            teeName: scorecard.teeName,
+            dateIso: scorecard.dateIso,
+          })
+        : null;
 
     return NextResponse.json({
       scorecard,
-      proofToken,
+      ...(proofToken ? { proofToken } : {}),
       confidence:
         typeof result.output.confidence === "string" ? result.output.confidence : "medium",
       generatedAt: result.generatedAt,

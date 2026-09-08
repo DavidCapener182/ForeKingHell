@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = process.cwd();
+const library = readFileSync(join(root, "src/app/import/import-file-library.tsx"), "utf8");
 const entry = readFileSync(join(root, "src/app/(app)/import/page.tsx"), "utf8");
 const runtimeEntry = readFileSync(
   join(root, "src/app/(app)/companion-runtime/import/page.tsx"),
@@ -125,20 +126,20 @@ describe("surface-specific import centre", () => {
 
   it("preserves the exportable configurable workbench library", () => {
     expect(workbench).toContain("<PageShell>");
-    expect(workbench).toContain("DesktopTableWorkbenchControls");
-    expect(workbench).toContain('viewKey="import-library"');
-    expect(workbench).toContain('exportTableId="import-library"');
-    expect(workbench).toContain('data-workbench-export-table="import-library"');
-    expect(workbench).toContain('mainTableLabel="Import file library table"');
-    expect(workbench).toContain("ConfirmSubmitButton");
-    expect(workbench).toContain('confirmActionLabel="Archive file"');
+    expect(library).toContain("DesktopTableWorkbenchControls");
+    expect(library).toContain('viewKey="import-library"');
+    expect(library).toContain('exportTableId="import-library"');
+    expect(library).toContain('data-workbench-export-table="import-library"');
+    expect(library).toContain('mainTableLabel="Import file library table"');
+    expect(library).toContain("ConfirmSubmitButton");
+    expect(library).toContain('confirmActionLabel="Archive file"');
     expect(workbench).toContain("<ImportSourceChooser");
-    expect(workbench).toContain("Linked session evidence is retained.");
-    expect(workbench).toContain('name="importFileId" value={file.id}');
+    expect(library).toContain("Linked session evidence is retained.");
+    expect(library).toContain('name="importFileId" value={file.id}');
     expect(workbench).not.toContain("<OperationStepper");
     expect(workbench).toContain('id="csv-import"');
-    expect(workbench).toContain('href: "/rapsodo"');
-    expect(workbench).toContain('href="/rapsodo"');
+    expect(library).toContain('href: "/rapsodo"');
+    expect(workbench).toContain("?practicePlanId=${encodeURIComponent(practicePlanId)}");
     expect(workbench).not.toContain("#rapsodo-connect");
     expect(workbench).not.toContain("#rapsodo-import");
     expect(workbench).toContain("<ImportForm");
@@ -185,10 +186,7 @@ describe("surface-specific import centre", () => {
   });
 
   it("uses one workflow stepper and discloses import-quality evidence", () => {
-    const firstRun =
-      workbench.match(
-        /function FirstRunRapsodoOnboarding[\s\S]*?async function getImportLibrary/,
-      )?.[0] ?? "";
+    const firstRun = workbench.slice(workbench.indexOf("function FirstRunRapsodoOnboarding"));
     const quality =
       featurePanels.match(
         /export function ImportQualityFeaturePanel[\s\S]*?export function DataHealthFeaturePanel/,

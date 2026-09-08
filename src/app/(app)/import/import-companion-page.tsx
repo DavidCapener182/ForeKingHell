@@ -1,3 +1,6 @@
+import { getImportFileHistory } from "@/lib/import-file-history";
+import type { ImportHistoryParams } from "@/lib/import-history-query";
+import { ImportFileLibrary } from "@/app/import/import-file-library";
 import Link from "next/link";
 import { UntitledPageHeader } from "@/components/untitled-ui/headers";
 import { ImportSourceChooser } from "@/app/import/import-source-chooser";
@@ -24,11 +27,11 @@ import {
 import { getDb } from "@/db/client";
 import { sessions } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
-import { getSavedPracticePlan } from "@/lib/practice-planner";
+import { getImportPracticeContext } from "@/lib/import-practice-context";
 import { isRoundSessionType } from "@/lib/round-sessions";
 import { companionReviewRoute } from "@/lib/session-review-route";
 
-type ImportSearchParams = Promise<{ practicePlanId?: string }> | undefined;
+type ImportSearchParams = Promise<ImportHistoryParams> | undefined;
 
 export default async function ImportCompanionPage({
   searchParams,
@@ -37,19 +40,9 @@ export default async function ImportCompanionPage({
 }) {
   const userId = await requireCurrentUserId();
   const params = await searchParams;
-  const practicePlan = params?.practicePlanId
-    ? await getSavedPracticePlan(userId, params.practicePlanId)
-    : null;
-  const validPlan =
-    practicePlan &&
-    ["planned", "active", "awaiting_import", "match_found", "completed"].includes(
-      practicePlan.status,
-    ) &&
-    !practicePlan.sourceSessionId
-      ? practicePlan
-      : null;
+  const validPlan = await getImportPracticeContext(userId, params?.practicePlanId);
 
-  const [status, recent] = await Promise.all([
+  const [status, recent, history] = await Promise.all([
     getRapsodoConnectionStatusAction(),
     getDb()
       .select({
@@ -64,6 +57,7 @@ export default async function ImportCompanionPage({
       .where(eq(sessions.userId, userId))
       .orderBy(desc(sessions.date))
       .limit(3),
+    getImportFileHistory(userId, params),
   ]);
   const connected = status.ok && status.data.connected;
   const planQuery = validPlan ? `?practicePlanId=${encodeURIComponent(validPlan.id)}` : "";
@@ -121,12 +115,12 @@ export default async function ImportCompanionPage({
               description="Enter a scored round without an upload."
               href="/rounds/new"
             />
-            {recent.length > 0 ? (
+            {history.activeCount > 0 ? (
               <ImportActionItem
                 icon={FileClock}
                 title="Import history"
-                description={`${recent.length} recent imports`}
-                href="#recent-imports"
+                description={`${history.activeCount} active imported files`}
+                href="#import-library"
               />
             ) : null}
             <ImportActionItem
@@ -179,6 +173,9 @@ export default async function ImportCompanionPage({
             }
           />
         )}
+        <section id="import-library" className="min-w-0 scroll-mt-20">
+          <ImportFileLibrary history={history} params={params} />
+        </section>
       </MobileAppShell>
     </PageShell>
   );
