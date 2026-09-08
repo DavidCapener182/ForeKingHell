@@ -22,6 +22,9 @@ export function useImportFiles(distanceUnit: DistanceUnit, columnMapping: Rapsod
   const generation = useRef(0);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedCsv[]>([]);
   const [parsedFiles, setParsedFiles] = useState<ParsedImportFile[]>([]);
+  const [parseFailures, setParseFailures] = useState<
+    Array<{ id: string; fileName: string; message: string }>
+  >([]);
   const [isDragging, setIsDragging] = useState(false);
   const [readProgress, setReadProgress] = useState<{
     fileName: string;
@@ -35,8 +38,9 @@ export function useImportFiles(distanceUnit: DistanceUnit, columnMapping: Rapsod
     async function parseFiles() {
       setIsParsing(true);
       setParseError(null);
+      setParseFailures([]);
       try {
-        const nextFiles = await Promise.all(
+        const results = await Promise.allSettled(
           uploadedFiles.map(async (file) => ({
             ...file,
             parsed: await parseLaunchMonitorImportCsv({
@@ -49,7 +53,27 @@ export function useImportFiles(distanceUnit: DistanceUnit, columnMapping: Rapsod
         );
 
         if (!cancelled) {
-          setParsedFiles(nextFiles);
+          const successful: ParsedImportFile[] = [];
+          const failures: Array<{ id: string; fileName: string; message: string }> = [];
+          results.forEach((result, index) => {
+            if (result.status === "fulfilled") successful.push(result.value);
+            else
+              failures.push({
+                id: uploadedFiles[index].id,
+                fileName: uploadedFiles[index].fileName,
+                message:
+                  result.reason instanceof Error
+                    ? result.reason.message
+                    : "Could not parse this file. Review mappings or choose it again.",
+              });
+          });
+          setParsedFiles(successful);
+          setParseFailures(failures);
+          setParseError(
+            failures.length
+              ? failures.map((file) => `${file.fileName}: ${file.message}`).join("\n")
+              : null,
+          );
         }
       } catch (error) {
         if (!cancelled) {
@@ -136,11 +160,14 @@ export function useImportFiles(distanceUnit: DistanceUnit, columnMapping: Rapsod
     setFileErrors([]);
     setUploadedFiles([]);
     setParsedFiles([]);
+    setParseFailures([]);
+    setParseError(null);
   }
 
   return {
     uploadedFiles,
     parsedFiles,
+    parseFailures,
     fileErrors,
     parseError,
     isParsing,

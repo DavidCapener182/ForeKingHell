@@ -7,6 +7,7 @@ import {
   joinChallenge,
   leaveChallenge,
   getChallengeDetailData,
+  getChallengeSourceInspection,
 } from "@/lib/challenges";
 const actor = vi.hoisted(() => ({ id: "" }));
 vi.mock("@/lib/current-user", () => ({ requireCurrentUserId: async () => actor.id }));
@@ -126,6 +127,64 @@ describe.skipIf(!enabled)("imported challenge workflow", () => {
     await sql`insert into fkh_shots(user_id,session_id,club_id,club_type,shot_at,shot_number,total_yd,quality_tag,review_status,source_raw_json) values(${actor.id},${simulatedSessionId},${clubId},'driver',now(),1,999,'modelled','included','{}'::jsonb)`;
     const detail = await getChallengeDetailData(challengeId);
     expect(detail?.attempts[0].attempt.metricValue).toBe(250);
+    const before = detail?.results.map(({ result }) => ({
+      userId: result.userId,
+      score: result.score,
+      rank: result.rank,
+    }));
+    for (let n = 0; n < 25; n++)
+      await sql`insert into fkh_shots(user_id,session_id,club_id,club_type,shot_at,shot_number,total_yd,review_status,source_raw_json) values(${actor.id},${sessionId},${clubId},'iron',now(),${1000 + n},100,'included','{}'::jsonb)`;
+    await sql`insert into fkh_shots(user_id,session_id,club_id,club_type,shot_at,shot_number,review_status,source_raw_json) values(${actor.id},${sessionId},${clubId},'driver',now(),2000,'included','{}'::jsonb)`;
+    await sql`insert into fkh_shots(user_id,session_id,club_id,club_type,shot_at,shot_number,total_yd,review_status,source_raw_json) values(${actor.id},${sessionId},${clubId},'driver',now()-interval '3 days',2001,900,'included','{}'::jsonb)`;
+    const foreignSession = (
+      await sql`insert into fkh_sessions(user_id,source,type,date,raw_csv_text) values(${ids[0]},'csv','range',now(),'Foreign') returning id`
+    )[0].id;
+    await sql`insert into fkh_shots(user_id,session_id,club_id,club_type,shot_at,shot_number,total_yd,review_status,source_raw_json) values(${ids[0]},${foreignSession},${clubId},'driver',now(),2002,999,'included','{}'::jsonb)`;
+    const first = await getChallengeSourceInspection(challengeId);
+    const second = await getChallengeSourceInspection(challengeId, 2);
+    expect(first.total).toBe(31);
+    expect(first.rows).toHaveLength(24);
+    expect(second.rows).toHaveLength(7);
+    const inspected = [...first.rows, ...second.rows];
+    expect(new Set(inspected.map((row) => row.id)).size).toBe(31);
+    expect(inspected.every((row) => row.userId === actor.id)).toBe(true);
+    expect(inspected.filter((row) => row.eligible)).toHaveLength(1);
+    const reasons = inspected.flatMap((row) => row.reasons).join(" ");
+    for (const reason of [
+      "review excludes",
+      "Modelled",
+      "future",
+      "before the challenge",
+      "Club does not match",
+      "measurement is missing",
+    ])
+      expect(reasons).toContain(reason);
+    expect(
+      (await getChallengeDetailData(challengeId))?.results.map(({ result }) => ({
+        userId: result.userId,
+        score: result.score,
+        rank: result.rank,
+      })),
+    ).toEqual(before);
+    await sql`insert into fkh_shots(user_id,session_id,club_id,club_type,shot_at,shot_number,total_yd,review_status,source_raw_json) values(${actor.id},${sessionId},${clubId},'driver',now(),3000,225,'restored','{}'::jsonb)`;
+    expect(
+      (await getChallengeSourceInspection(challengeId)).rows.find(
+        (row) => row.reviewStatus === "restored",
+      )?.eligible,
+    ).toBe(true);
+    await sql`update fkh_challenges set ends_at=now() where id=${challengeId}`;
+    expect(
+      (await getChallengeSourceInspection(challengeId)).rows
+        .flatMap((row) => row.reasons)
+        .join(" "),
+    ).toContain("after the challenge end");
+    actor.id = ids[0];
+    const creatorSources = await getChallengeSourceInspection(challengeId);
+    expect(creatorSources.total).toBe(1);
+    expect(creatorSources.rows[0].reasons).toContain(
+      "Join this challenge before your evidence can rank.",
+    );
+    actor.id = ids[1];
     await sql`update fkh_shots set review_status='user_excluded' where session_id=${sessionId}`;
     expect((await getChallengeDetailData(challengeId))?.attempts).toHaveLength(0);
     await leaveChallenge(challengeId);

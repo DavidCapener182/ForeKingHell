@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChallengeSourceInspection } from "@/app/challenges/challenge-source-inspection";
 import { notFound } from "next/navigation";
 import { ChallengeInviteReview } from "@/app/challenges/challenge-invite-review";
 import { ChallengeJoinDialog } from "@/app/challenges/challenge-join-dialog";
@@ -21,7 +22,7 @@ import type {
   DesktopWorkbenchColumn,
   DesktopSavedViewSuggestion,
 } from "@/components/app/desktop-workbench";
-import { getChallengeDetailData } from "@/lib/challenges";
+import { getChallengeSourceInspection, getChallengeDetailData } from "@/lib/challenges";
 import boardStyles from "@/app/course-records/course-record-board.module.css";
 export const dynamic = "force-dynamic";
 type ChallengeDetail = NonNullable<Awaited<ReturnType<typeof getChallengeDetailData>>>;
@@ -57,11 +58,15 @@ export default async function ChallengePage({
   searchParams,
 }: {
   params: Promise<{ challengeId: string }>;
-  searchParams?: Promise<{ tab?: string; invite?: string }>;
+  searchParams?: Promise<{ tab?: string; invite?: string; sourcePage?: string }>;
 }) {
   const [{ challengeId }, query] = await Promise.all([params, searchParams]);
   const data = await getChallengeDetailData(challengeId);
   if (!data) notFound();
+  const sourceInspection = await getChallengeSourceInspection(
+    challengeId,
+    Number(query?.sourcePage ?? 1),
+  );
   const c = data.challenge;
   const viewer = data.results.find((row) => row.result.userId === data.viewerUserId);
   const closed = c.status !== "open" || Boolean(c.endsAt && c.endsAt <= new Date());
@@ -153,6 +158,7 @@ export default async function ChallengePage({
   );
   const attempts = (
     <section className="grid gap-3">
+      <ChallengeSourceInspection challengeId={challengeId} data={sourceInspection} />
       <h2 className="text-lg font-semibold">Qualifying attempt ledger</h2>
       <p className="text-sm">
         These are calculated qualifying results, not a complete history of rejected imports.

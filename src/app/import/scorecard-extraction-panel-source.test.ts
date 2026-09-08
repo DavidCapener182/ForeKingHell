@@ -8,6 +8,10 @@ const source = readFileSync(
 );
 
 describe("scorecard extraction panel source contract", () => {
+  it("offers only the image formats accepted by the extraction endpoint", () => {
+    expect(source).toContain('accept="image/jpeg,image/png,image/webp"');
+    expect(source).toContain("up to 5 MB");
+  });
   it("uses the shared shadcn textarea for editable scorecard rows", () => {
     expect(source).toContain('import { Textarea } from "@/components/ui/textarea"');
     expect(source).toContain("<Textarea");

@@ -385,10 +385,12 @@ export function DesktopWorkbenchControls({
         data-filter-toolbar
       >
         <div className="min-w-0 flex-[1_1_14rem]">
-          <div className="flex min-w-0 items-center gap-2">
-            <LayoutDashboard className="size-4 text-primary" aria-hidden />
-            <p className="truncate text-sm font-semibold text-foreground">{currentViewLabel}</p>
-            <Badge variant="secondary" className="whitespace-normal">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <LayoutDashboard className="size-4 shrink-0 text-primary" aria-hidden />
+            <p className="min-w-0 flex-[1_1_10rem] text-sm font-semibold text-foreground">
+              {currentViewLabel}
+            </p>
+            <Badge variant="secondary" className="max-w-full whitespace-normal">
               {resultLabel}
             </Badge>
           </div>

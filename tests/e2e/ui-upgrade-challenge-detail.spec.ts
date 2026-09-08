@@ -92,7 +92,7 @@ test("Challenge detail preserves evidence drafts and explicit scoped actions on 
         const tabs = page.getByRole("tablist", { name: "Challenge sections" });
         await tabs.getByRole("tab", { name: "Attempts", exact: true }).click();
         const panel = page.getByRole("tabpanel", { name: "Attempts", exact: true });
-        await panel.locator("summary").first().click();
+        await panel.locator("summary").filter({ hasText: "250.0 yd" }).click();
         await expect(panel).toContainText("250.0 yd");
         await expect(
           panel.getByRole("link", { name: "Open latest qualifying source session", exact: true }),

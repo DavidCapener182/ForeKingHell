@@ -61,7 +61,7 @@ export function ScorecardExtractionPanel({
             ref={scorecardImageInputRef}
             className="hidden"
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             onChange={(event) => {
               void onExtractScorecardImage(event.target.files?.[0]);
               event.currentTarget.value = "";
@@ -71,8 +71,8 @@ export function ScorecardExtractionPanel({
             <div className="min-w-0">
               <p className="text-sm font-medium">Scorecard screenshot</p>
               <p className="text-xs leading-5 text-muted-foreground">
-                Upload an 18Birdies scorecard image to pull scores, putts, FIR, GIR, handicap
-                strokes and the round date into the review rows.
+                Upload a JPEG, PNG or WebP scorecard image (up to 5 MB) to pull scores, putts, FIR,
+                GIR, handicap strokes and the round date into the review rows.
               </p>
             </div>
             <Button

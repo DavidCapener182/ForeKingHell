@@ -1634,7 +1634,9 @@ export async function getLatestPracticeSessionReview(
   };
 }
 
-export function isObservationOnlyPracticePlan(plan: PracticePlan): boolean {
+export function isObservationOnlyPracticePlan(
+  plan: Pick<PracticePlan, "generation" | "blocks">,
+): boolean {
   const observationMetric = (block: PracticeBlock) =>
     ["sg_category_observations", "simulator_prescription_observations"].includes(
       block.scoringRules.metric,
