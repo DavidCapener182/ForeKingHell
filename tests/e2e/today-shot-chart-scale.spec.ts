@@ -73,9 +73,9 @@ async function renderFixture(page: Page, query = "") {
   await expect(page.locator("svg[aria-label*='dispersion chart' i]")).toBeVisible();
 }
 
-async function expectScale(chart: Locator, maxSide: number, fixedTarget = true) {
+async function expectScale(chart: Locator, maxSide: number, fixedTarget = true, maxCarry = 240) {
   await expect(chart).toHaveAttribute("data-dispersion-max-side", String(maxSide));
-  await expect(chart).toHaveAttribute("data-dispersion-max-carry", "300");
+  await expect(chart).toHaveAttribute("data-dispersion-max-carry", String(maxCarry));
   if (fixedTarget) await expect(chart).toHaveAttribute("data-dispersion-target-side", "10");
 }
 
@@ -102,16 +102,37 @@ test("Today dispersion keeps its coordinate scale through club and outlier filte
   await page.setViewportSize({ width: 1440, height: 1000 });
 
   for (const wide of [false, true]) {
-    await renderFixture(page, wide ? "?wide=1" : "");
+    const carryCeiling = wide ? 230 : 240;
+    await renderFixture(page, wide ? "?wide=1&carry=224" : "");
     const chart = page.locator("svg[aria-label^='Interactive dispersion chart']");
+    const trajectory = page.locator("svg[aria-label^='Interactive trajectory chart']");
     const point = chart.locator('[data-today-shot-point="driver-9"]');
-    await expectScale(chart, wide ? 100 : 50);
+    const ironPoint = chart.locator('[data-today-shot-point="iron-8"]');
+    await expectScale(chart, wide ? 100 : 50, true, carryCeiling);
+    await expect(trajectory).toHaveAttribute("data-trajectory-max-carry", String(carryCeiling));
+    const chartBox = (await chart.boundingBox())!;
+    const longestShotBox = (await point.boundingBox())!;
+    expect(longestShotBox.y).toBeLessThan(chartBox.y + chartBox.height * 0.12);
     const originalLanding = await landingPosition(point);
+    const originalIronLanding = await landingPosition(ironPoint);
     const clubFilters = page.getByRole("group", { name: "Shot chart club filters" });
     await clubFilters.getByRole("radio", { name: /^Driver/ }).click();
     await expect(chart.locator("[data-today-shot-point]")).toHaveCount(9);
-    await expectScale(chart, wide ? 100 : 50);
+    await expectScale(chart, wide ? 100 : 50, true, carryCeiling);
+    await expect(trajectory).toHaveAttribute("data-trajectory-max-carry", String(carryCeiling));
     expect(await landingPosition(point)).toEqual(originalLanding);
+    await expect
+      .poll(() =>
+        chart.evaluate((svg) => {
+          const labels = [...svg.querySelectorAll("text")];
+          const target = labels
+            .find((label) => label.textContent?.trim() === "Target ±10 yd")!
+            .getBBox();
+          const median = labels.find((label) => label.textContent?.trim() === "M")!.getBBox();
+          return median.y - target.y - target.height;
+        }),
+      )
+      .toBeGreaterThanOrEqual(0);
 
     await point.focus();
     await point.press("Enter");
@@ -130,11 +151,15 @@ test("Today dispersion keeps its coordinate scale through club and outlier filte
     await page.getByRole("button", { name: "Show all clubs", exact: true }).click();
     await page.getByRole("button", { name: "Hide outliers", exact: true }).click();
     await expect(chart.locator('[data-today-shot-point="iron-9"]')).toHaveCount(0);
-    await expectScale(chart, wide ? 100 : 50);
+    await expectScale(chart, wide ? 100 : 50, true, carryCeiling);
     expect(await landingPosition(point)).toEqual(originalLanding);
     await page.getByRole("button", { name: "Show outliers", exact: true }).click();
     await expect(chart.locator('[data-today-shot-point="iron-9"]')).toHaveCount(1);
     expect(await landingPosition(point)).toEqual(originalLanding);
+    await clubFilters.getByRole("radio", { name: /^7 iron/ }).click();
+    await expectScale(chart, wide ? 100 : 50, true, carryCeiling);
+    expect(await landingPosition(ironPoint)).toEqual(originalIronLanding);
+    await expect(trajectory).toHaveAttribute("data-trajectory-max-carry", "150");
     await expectNoOverflow(page);
   }
   expect(errors).toEqual([]);
@@ -192,11 +217,12 @@ test("Companion dispersion stays fixed when club and trusted-shot filters change
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 });
     for (const wide of [false, true]) {
-      await renderFixture(page, `?surface=companion${wide ? "&wide=1" : ""}`);
+      const carryCeiling = wide ? 230 : 240;
+      await renderFixture(page, `?surface=companion${wide ? "&wide=1&carry=224" : ""}`);
       const wrapper = page.locator("[data-mobile-dispersion-layout]");
       const chart = wrapper.locator("svg");
       const point = chart.getByRole("button", { name: "Driver shot 9", exact: true });
-      await expectScale(wrapper, wide ? 100 : 50, false);
+      await expectScale(wrapper, wide ? 100 : 50, false, carryCeiling);
       await expect(chart.getByRole("button", { name: "Driver shot 99", exact: true })).toHaveCount(
         0,
       );
@@ -207,7 +233,7 @@ test("Companion dispersion stays fixed when club and trusted-shot filters change
         .getByRole("radiogroup", { name: "Chart club" })
         .getByRole("radio", { name: "Driver", exact: true })
         .click();
-      await expectScale(wrapper, wide ? 100 : 50, false);
+      await expectScale(wrapper, wide ? 100 : 50, false, carryCeiling);
       expect(await landingPosition(point)).toEqual(originalLanding);
       await expect(chart.getByRole("button", { name: "Driver shot 99", exact: true })).toHaveCount(
         0,
@@ -230,7 +256,7 @@ test("Companion dispersion stays fixed when club and trusted-shot filters change
       await expect(chart.getByRole("button", { name: "7 iron shot 18", exact: true })).toHaveCount(
         1,
       );
-      await expectScale(wrapper, wide ? 100 : 50, false);
+      await expectScale(wrapper, wide ? 100 : 50, false, carryCeiling);
       expect(await landingPosition(point)).toEqual(originalLanding);
       await expect(chart.getByRole("button", { name: "Driver shot 99", exact: true })).toHaveCount(
         0,
@@ -244,6 +270,22 @@ test("Companion dispersion stays fixed when club and trusted-shot filters change
         fullPage: true,
         animations: "disabled",
       });
+      await page
+        .getByRole("radiogroup", { name: "Shot pattern view" })
+        .getByRole("radio", { name: "Flight", exact: true })
+        .click();
+      const flight = page.locator("[data-mobile-flight-layout]");
+      await expect(flight).toHaveAttribute("data-trajectory-max-carry", String(carryCeiling));
+      await page
+        .getByRole("radiogroup", { name: "Chart club" })
+        .getByRole("radio", { name: "7 iron", exact: true })
+        .click();
+      await expect(flight).toHaveAttribute("data-trajectory-max-carry", "150");
+      await page
+        .getByRole("radiogroup", { name: "Flight detail" })
+        .getByRole("radio", { name: "Club average", exact: true })
+        .click();
+      await expect(flight).toHaveAttribute("data-trajectory-max-carry", "150");
     }
   }
   expect(errors).toEqual([]);
@@ -263,6 +305,8 @@ test("Shared paired shot thumbnails retain matching landscape geometry by defaul
   const trajectory = thumbnails.getByRole("img", { name: "Trajectory chart", exact: true });
   await expect(dispersion).toHaveAttribute("viewBox", "0 0 820 430");
   await expect(trajectory).toHaveAttribute("viewBox", "0 0 820 430");
+  await expectScale(dispersion, 50);
+  await expect(trajectory).toHaveAttribute("data-trajectory-max-carry", "240");
   const dispersionBox = (await dispersion.boundingBox())!;
   const trajectoryBox = (await trajectory.boundingBox())!;
   expect(dispersionBox.width).toBeGreaterThan(dispersionBox.height * 1.8);
