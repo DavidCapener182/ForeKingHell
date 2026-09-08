@@ -72,7 +72,10 @@ export function MobileShotPatternCharts({
   correctionClubs?: Array<{ value: string; label: string }>;
 }) {
   const clubs = useMemo(() => shotPatternClubs(points), [points]);
-  const dispersionScale = useMemo(() => buildDispersionScale(points), [points]);
+  const dispersionScale = useMemo(
+    () => buildDispersionScale(layout === "mobile" ? points.filter(hasLandingPoint) : points),
+    [layout, points],
+  );
   const [mode, setMode] = useState<ChartMode>("dispersion");
   const [flightMode, setFlightMode] = useState<FlightMode>("shots");
   const [club, setClub] = useState(() =>
@@ -198,6 +201,7 @@ export function MobileShotPatternCharts({
               shots={selected}
               mode="dispersion"
               dispersionScale={dispersionScale}
+              dispersionLayout="portrait"
             />
           )}
         </div>

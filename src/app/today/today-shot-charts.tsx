@@ -52,6 +52,7 @@ type ChartPoint = TodayChartShot & {
 };
 
 type TrajectoryView = "averages" | "shots";
+type DispersionLayout = "portrait" | "landscape";
 
 type AverageTrajectory = {
   clubType: string;
@@ -364,6 +365,7 @@ export function TodayShotCharts({
             <SharedShotPatternVisual
               shots={visibleShots}
               dispersionScale={dispersionScale}
+              dispersionLayout="portrait"
               mode="dispersion"
               selectedShotId={selectedShotId}
               onSelectShot={setSelectedShotId}
@@ -418,6 +420,7 @@ export function TodayShotCharts({
 export function SharedShotPatternVisual({
   shots,
   dispersionScale,
+  dispersionLayout = "landscape",
   mode,
   trajectoryView = "shots",
   selectedShotId = null,
@@ -429,6 +432,7 @@ export function SharedShotPatternVisual({
   >;
   mode: "dispersion" | "trajectory";
   dispersionScale?: DispersionScale;
+  dispersionLayout?: DispersionLayout;
   trajectoryView?: TrajectoryView;
   selectedShotId?: string | null;
   onSelectShot?: (shotId: string) => void;
@@ -445,6 +449,7 @@ export function SharedShotPatternVisual({
     <DispersionChart
       shots={chartPoints}
       scale={dispersionScale ?? buildDispersionScale(chartPoints)}
+      layout={dispersionLayout}
       selectedShotId={selectedShotId}
       onSelectShot={onSelectShot}
     />
@@ -789,18 +794,22 @@ function ClubLegend({ clubs }: { clubs: ClubChartGroup[] }) {
 function DispersionChart({
   shots,
   scale,
+  layout,
   selectedShotId,
   onSelectShot,
 }: {
   shots: ChartPoint[];
   scale: DispersionScale;
+  layout: DispersionLayout;
   selectedShotId: string | null;
   onSelectShot?: (shotId: string) => void;
 }) {
   const points = shots.filter(hasDispersionData);
+  const width = layout === "portrait" ? dispersionWidth : chartWidth;
+  const height = layout === "portrait" ? dispersionHeight : chartHeight;
   const { maxCarryYd: maxCarry, maxSideYd: maxSide, targetSideYd: centerZone } = scale;
-  const plotWidth = dispersionWidth - padding.left - padding.right;
-  const plotHeight = dispersionHeight - padding.top - padding.bottom;
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
   const yTicks = ticks(maxCarry, 4);
   const xTicks = [-maxSide, -maxSide / 2, 0, maxSide / 2, maxSide];
   const xScale = (value: number) => padding.left + ((value + maxSide) / (maxSide * 2)) * plotWidth;
@@ -808,7 +817,7 @@ function DispersionChart({
   const medianSide = medianNumber(points.map((shot) => shot.sideCarryYd ?? null));
   const medianCarry = medianNumber(points.map((shot) => shot.carryYd ?? shot.totalYd ?? null));
   const clubAverages = averageDispersionPoints(points);
-  const shapeModel = buildTopDownShapeModel(points, scale);
+  const shapeModel = buildTopDownShapeModel(points, scale, { width, height });
   const bestMarker = bestTargetCorridorShot(points, centerZone);
   const worstShot = worstDispersionShot(points);
   const ellipse50 = dispersionEllipse(points, 1.18);
@@ -816,8 +825,8 @@ function DispersionChart({
 
   return (
     <svg
-      viewBox={`0 0 ${dispersionWidth} ${dispersionHeight}`}
-      className="mx-auto block h-auto w-full max-w-[492px]"
+      viewBox={`0 0 ${width} ${height}`}
+      className={cn("mx-auto block h-auto w-full", layout === "portrait" && "max-w-[492px]")}
       data-dispersion-max-side={maxSide}
       data-dispersion-max-carry={maxCarry}
       data-dispersion-target-side={centerZone}
@@ -828,7 +837,7 @@ function DispersionChart({
           : "Dispersion chart"
       }
     >
-      <rect x={0} y={0} width={dispersionWidth} height={dispersionHeight} fill="white" />
+      <rect x={0} y={0} width={width} height={height} fill="white" />
       <rect
         x={xScale(-centerZone)}
         y={padding.top}
@@ -892,7 +901,7 @@ function DispersionChart({
         <g key={`y-${tick}`}>
           <line
             x1={padding.left}
-            x2={dispersionWidth - padding.right}
+            x2={width - padding.right}
             y1={yScale(tick)}
             y2={yScale(tick)}
             stroke="#e5e7eb"
@@ -913,14 +922,14 @@ function DispersionChart({
             x1={xScale(tick)}
             x2={xScale(tick)}
             y1={padding.top}
-            y2={dispersionHeight - padding.bottom}
+            y2={height - padding.bottom}
             stroke={tick === 0 ? "#111827" : "#e5e7eb"}
             strokeDasharray={tick === 0 ? undefined : "4 4"}
             opacity={tick === 0 ? 0.5 : 1}
           />
           <text
             x={xScale(tick)}
-            y={dispersionHeight - 18}
+            y={height - 18}
             textAnchor="middle"
             className="fill-slate-600 text-[12px]"
           >
@@ -931,12 +940,7 @@ function DispersionChart({
       <text x={padding.left} y={18} className="fill-slate-600 text-[12px]">
         carry yd
       </text>
-      <text
-        x={dispersionWidth / 2}
-        y={dispersionHeight - 5}
-        textAnchor="middle"
-        className="fill-slate-600 text-[12px]"
-      >
+      <text x={width / 2} y={height - 5} textAnchor="middle" className="fill-slate-600 text-[12px]">
         left / right yd
       </text>
       {shapeModel.traces.map(({ shot, trace }) => (
@@ -1346,11 +1350,12 @@ type RenderedTopDownShapeTrace = {
 function buildTopDownShapeModel(
   shots: ChartPoint[],
   scale: DispersionScale = buildDispersionScale(shots),
+  dimensions = { width: dispersionWidth, height: dispersionHeight },
 ) {
   const points = shots.filter(hasDispersionData);
   const { maxCarryYd: maxCarry, maxSideYd: maxSide } = scale;
-  const plotWidth = dispersionWidth - padding.left - padding.right;
-  const plotHeight = dispersionHeight - padding.top - padding.bottom;
+  const plotWidth = dimensions.width - padding.left - padding.right;
+  const plotHeight = dimensions.height - padding.top - padding.bottom;
   const traces = points
     .map((shot) => {
       const carryYd = shot.carryYd ?? shot.totalYd ?? null;

@@ -70,7 +70,7 @@ async function renderFixture(page: Page, query = "") {
   await page.goto(`https://today-shot-charts.fixture/${query}`);
   await page.addStyleTag({ content: fixtureStyle });
   await page.addScriptTag({ content: fixtureScript });
-  await expect(page.locator("svg[aria-label*='dispersion chart']")).toBeVisible();
+  await expect(page.locator("svg[aria-label*='dispersion chart' i]")).toBeVisible();
 }
 
 async function expectScale(chart: Locator, maxSide: number, fixedTarget = true) {
@@ -197,6 +197,10 @@ test("Companion dispersion stays fixed when club and trusted-shot filters change
       const chart = wrapper.locator("svg");
       const point = chart.getByRole("button", { name: "Driver shot 9", exact: true });
       await expectScale(wrapper, wide ? 100 : 50, false);
+      await expect(chart.getByRole("button", { name: "Driver shot 99", exact: true })).toHaveCount(
+        0,
+      );
+      await expect(chart.getByRole("button")).toHaveCount(17);
       const originalLanding = await landingPosition(point);
       const originalAxisLabels = await chart.locator("text").allTextContents();
       await page
@@ -205,6 +209,10 @@ test("Companion dispersion stays fixed when club and trusted-shot filters change
         .click();
       await expectScale(wrapper, wide ? 100 : 50, false);
       expect(await landingPosition(point)).toEqual(originalLanding);
+      await expect(chart.getByRole("button", { name: "Driver shot 99", exact: true })).toHaveCount(
+        0,
+      );
+      await expect(chart.getByRole("button")).toHaveCount(9);
       expect(await chart.locator("text").allTextContents()).toEqual(originalAxisLabels);
       await point.click();
       await expect(page.getByRole("dialog")).toBeVisible();
@@ -224,6 +232,10 @@ test("Companion dispersion stays fixed when club and trusted-shot filters change
       );
       await expectScale(wrapper, wide ? 100 : 50, false);
       expect(await landingPosition(point)).toEqual(originalLanding);
+      await expect(chart.getByRole("button", { name: "Driver shot 99", exact: true })).toHaveCount(
+        0,
+      );
+      await expect(chart.getByRole("button")).toHaveCount(18);
       const box = (await chart.boundingBox())!;
       expect(box.height).toBeGreaterThan(box.width);
       await expectNoOverflow(page);
@@ -234,5 +246,34 @@ test("Companion dispersion stays fixed when club and trusted-shot filters change
       });
     }
   }
+  expect(errors).toEqual([]);
+});
+
+test("Shared paired shot thumbnails retain matching landscape geometry by default", async ({
+  page,
+}, info) => {
+  test.skip(!["chromium", "webkit"].includes(info.project.name));
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await renderFixture(page, "?surface=thumbnails");
+
+  const thumbnails = page.getByRole("region", { name: "Measured shot thumbnails" });
+  const dispersion = thumbnails.getByRole("img", { name: "Dispersion chart", exact: true });
+  const trajectory = thumbnails.getByRole("img", { name: "Trajectory chart", exact: true });
+  await expect(dispersion).toHaveAttribute("viewBox", "0 0 820 430");
+  await expect(trajectory).toHaveAttribute("viewBox", "0 0 820 430");
+  const dispersionBox = (await dispersion.boundingBox())!;
+  const trajectoryBox = (await trajectory.boundingBox())!;
+  expect(dispersionBox.width).toBeGreaterThan(dispersionBox.height * 1.8);
+  expect(dispersionBox.width).toBeLessThan(320);
+  expect(Math.abs(dispersionBox.height - trajectoryBox.height)).toBeLessThanOrEqual(1);
+  expect(Math.abs(dispersionBox.y - trajectoryBox.y)).toBeLessThanOrEqual(1);
+  expect(trajectoryBox.x).toBeGreaterThan(dispersionBox.x + dispersionBox.width);
+  await expectNoOverflow(page);
+  await page.screenshot({
+    path: info.outputPath("paired-shot-thumbnails.png"),
+    animations: "disabled",
+  });
   expect(errors).toEqual([]);
 });
