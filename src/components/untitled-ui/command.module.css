@@ -19,6 +19,14 @@
 .dialog [data-slot="command-item"] {
   min-height: 2.75rem;
 }
+.dialog [data-slot="command-item"][data-selected="true"] {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+.dialog [data-slot="command-item"][data-selected="true"] * {
+  /* Nested labels and action icons must use the selected row's contrast color. */
+  color: inherit;
+}
 .dialog [data-slot="command-item"] :global(.truncate) {
   white-space: normal;
   overflow-wrap: anywhere;
