@@ -15,7 +15,7 @@ import { BestShotsEntry } from "@/components/app/best-shots-entry";
 import { buildMobileTodayReview, practiceDateKey } from "@/lib/mobile-today-review";
 import { buildMobileTodayChange } from "@/lib/mobile-today-briefing";
 import { formatCompanionClubType } from "@/lib/club-format";
-import { Flag, Upload, Activity, Trophy, Target } from "lucide-react";
+import { ArrowRight, Flag, Upload, Activity, Trophy, Target } from "lucide-react";
 import { MobileTodayGreeting } from "@/components/app/mobile-today-greeting";
 import { MobileSection } from "@/components/app/mobile-screen";
 import { MobileGroupedList, MobileListRow } from "@/components/app/mobile-primitives";
@@ -64,27 +64,18 @@ export default async function TodayCompanionPage({
   const params = await searchParams;
   const dateParam = Array.isArray(params?.date) ? params.date[0] : params?.date;
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : undefined;
-  const [context, currentPlan, activeRound, recent, todayData] = await Promise.all([
+  const [context, currentPlan, activeRound, recent, latestData] = await Promise.all([
     getPracticePlannerContext(userId, { compactTraining: true, includeSpeed: false }),
     getCurrentPracticePlanSummary(userId),
     getInProgressRound(userId),
     getTodayActivity(userId),
     getTodayPracticeData({
-      date: selectedDate ?? practiceDateKey(now),
+      date: selectedDate,
       scope: "day",
       practiceOnly: true,
     }).catch(() => null),
   ]);
   const recommendation = buildTodayRecommendation(context);
-  const latestData =
-    selectedDate || todayData?.rawShots.length
-      ? todayData
-      : context.latestPractice.sessionId
-        ? await getTodayPracticeData({
-            sessionId: context.latestPractice.sessionId,
-            scope: "day",
-          }).catch(() => null)
-        : null;
   const latestShots = latestData?.rawShots ?? [];
   const patternPoints = buildShotPatternPoints(
     (latestData?.comparisonShots ?? []).map((shot) => ({
@@ -108,7 +99,17 @@ export default async function TodayCompanionPage({
     recommendation,
     latestData: null,
   });
-  const review = buildMobileTodayReview(todayData, now, selectedDate);
+  const reviewContext = selectedDate
+    ? "selected"
+    : latestData && latestData.dateKey !== practiceDateKey(now)
+      ? "latest"
+      : "today";
+  const review = buildMobileTodayReview(
+    latestData,
+    now,
+    selectedDate ?? latestData?.dateKey,
+    reviewContext,
+  );
   const nextPracticeState =
     recommendation.confidence === "Low"
       ? {
@@ -118,14 +119,14 @@ export default async function TodayCompanionPage({
       : recommendationState;
   const mainState = review?.state ?? nextPracticeState;
   const reviewPatternPoints =
-    review && todayData
+    review && latestData
       ? buildShotPatternPoints(
-          todayData.rawShots.map((shot) => ({
+          latestData.rawShots.map((shot) => ({
             ...shot,
             clubLabel: formatCompanionClubType(shot.clubType),
           })),
           {
-            trustedShotIds: new Set(todayData.comparisonShots.map((shot) => shot.id)),
+            trustedShotIds: new Set(latestData.comparisonShots.map((shot) => shot.id)),
           },
         )
       : [];
@@ -160,8 +161,13 @@ export default async function TodayCompanionPage({
     <PageShell>
       <MobileAppShell className="gap-6" data-today-companion>
         <MobileTodayGreeting initialNow={now.toISOString()} />
+        <Button asChild variant="outline" className="min-h-11 self-end">
+          <Link href="/practice">
+            Next practice <ArrowRight className="size-4" aria-hidden />
+          </Link>
+        </Button>
         <TodayProgressReport report={progress} historyError={progressHistory === null} />
-        {!todayData ? (
+        {!latestData ? (
           <Alert>
             <AlertTitle>Today’s review couldn’t load</AlertTitle>
             <AlertDescription>
@@ -170,10 +176,8 @@ export default async function TodayCompanionPage({
           </Alert>
         ) : null}
         <TodayPrimaryAnswer
-          reviewContext={
-            selectedDate && selectedDate !== practiceDateKey(now) ? "selected" : "today"
-          }
-          highlights={buildTodayHighlights(todayData)}
+          reviewContext={reviewContext}
+          highlights={buildTodayHighlights(latestData)}
           compact={Boolean(review)}
           accountId={userId}
           serverState={mainState}

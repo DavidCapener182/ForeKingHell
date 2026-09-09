@@ -73,12 +73,25 @@ export function resolveTodayPrimaryState({
   activeRound,
   recommendation,
   latestData,
+  preferPracticeReview = false,
 }: {
   currentPlan: CurrentPracticePlan;
   activeRound: ActiveRound;
   recommendation: TodayRecommendation;
   latestData: LatestPracticeReview;
+  preferPracticeReview?: boolean;
 }): TodayPrimaryState {
+  if (preferPracticeReview && latestData?.sessions[0]?.id && latestData.shots.length > 0) {
+    return {
+      eyebrow: `Practice review · ${latestData.dateLabel}`,
+      title: latestData.overall.title,
+      reason: latestData.overall.summary,
+      status: "Review ready",
+      tone: "positive",
+      href: `/sessions/${latestData.sessions[0].id}`,
+      action: "Review practice",
+    };
+  }
   if (currentPlan?.status === "active") {
     return {
       eyebrow: "Active Range Mode",

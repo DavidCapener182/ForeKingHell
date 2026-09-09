@@ -2,7 +2,7 @@ import {
   withDirectionalConfidence,
   type SessionDataConfidence,
 } from "@/lib/session-data-confidence";
-import { and, asc, desc, eq, gte, inArray, lt, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt, lte, notInArray, sql } from "drizzle-orm";
 
 import { clubs, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -19,7 +19,7 @@ import {
   isRawComparisonShot,
 } from "@/lib/today-practice-evidence";
 import { bigMissOfflineLimitYd, clubTypeImprovementScore } from "@/lib/today-club-scoring";
-import { isRoundSessionType } from "@/lib/round-sessions";
+import { isRoundSessionType, roundSessionTypes } from "@/lib/round-sessions";
 
 const APP_TIME_ZONE = "Europe/London";
 const PREVIOUS_SHOT_LIMIT_PER_CLUB = 50;
@@ -262,14 +262,15 @@ export async function getTodayPracticeData(
       dateKey = sessionDateKey;
     }
   } else if (!hasExplicitDate) {
-    dateKey = (await findDefaultPracticeDateKey(db, userId, dateKey, filters.club)) ?? dateKey;
+    dateKey = (await findDefaultPracticeDateKey(db, userId, dateKey)) ?? dateKey;
   }
 
   const bounds = dayBounds(dateKey);
+  const practiceOnly = filters.practiceOnly ?? (!hasExplicitDate && !filters.sessionId);
   // Filter before deriving sessions, counts, comparisons and charts so a round in progress
   // cannot become part of a completed-practice review. Other review routes retain all types.
   const allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds)).filter(
-    (shot) => !filters.practiceOnly || !isRoundSessionType(shot.sessionType),
+    (shot) => !practiceOnly || !isRoundSessionType(shot.sessionType),
   );
 
   const clubTypes = new Set(allTodayRows.map((shot) => shot.clubType).filter(isTrackedClubType));
@@ -411,35 +412,27 @@ async function findDefaultPracticeDateKey(
   db: ReturnType<typeof getDb>,
   userId: string,
   currentDateKey: string,
-  clubFilter: string | undefined,
 ) {
-  const clauses = [eq(shots.userId, userId), eq(sessions.userId, userId), eq(clubs.userId, userId)];
-  const club = clubFilter && isTrackedClubType(clubFilter) ? clubFilter : "";
   const practiceDateKey = sql<string>`to_char(${shots.shotAt} at time zone 'Europe/London', 'YYYY-MM-DD')`;
-  const latestShotAt = sql<Date>`max(${shots.shotAt})`;
-  const datePriority = sql<number>`case
-    when ${practiceDateKey} = ${currentDateKey} then 2
-    when count(${shots.id}) >= ${MIN_TODAY_SHOTS_FOR_VERDICT} then 1
-    else 0
-  end`;
 
-  if (club) {
-    clauses.push(eq(shots.clubType, club));
-  }
-  clauses.push(shotEvidenceSqlPredicate());
-
+  // A saved practice day remains the review after midnight, even with few shots or
+  // every shot excluded from scoring. Empty uploads, rounds and future days cannot
+  // replace it; club filters and verdict sample thresholds do not change its date.
   const [practiceDay] = await db
-    .select({
-      dateKey: practiceDateKey,
-      latestShotAt,
-      datePriority,
-    })
+    .select({ dateKey: practiceDateKey })
     .from(shots)
     .innerJoin(sessions, eq(shots.sessionId, sessions.id))
     .innerJoin(clubs, eq(shots.clubId, clubs.id))
-    .where(and(...clauses))
-    .groupBy(practiceDateKey)
-    .orderBy(desc(datePriority), desc(latestShotAt))
+    .where(
+      and(
+        eq(shots.userId, userId),
+        eq(sessions.userId, userId),
+        eq(clubs.userId, userId),
+        notInArray(sessions.type, [...roundSessionTypes]),
+        lt(shots.shotAt, dayBounds(currentDateKey).end),
+      ),
+    )
+    .orderBy(desc(shots.shotAt))
     .limit(1);
 
   return practiceDay?.dateKey ?? null;
