@@ -113,8 +113,60 @@ describe.skipIf(!enabled)("Today defaults to the latest measured practice day", 
     expect(result.bounds.end.toISOString()).toBe("2026-09-08T23:00:00.000Z");
     expect(result.rawShots.map((row) => row.id).sort()).toEqual([first, second].sort());
     expect(result.sessions.map((row) => row.id).sort()).toEqual([firstUpload, secondUpload].sort());
-    // A club filter cannot silently move the review back to an older practice.
-    expect((await getTodayPracticeData({ club: "driver" })).dateKey).toBe("2026-09-08");
+  });
+
+  it("keeps an owned Driver filter empty on the latest iron-only day instead of widening its charts or changing dates", async () => {
+    await shot(await session(), "2026-09-06T12:00:00Z", {
+      clubId: driver,
+      clubType: "driver",
+    });
+    const latestUpload = await session();
+    await shot(latestUpload, "2026-09-08T12:00:00Z");
+    await shot(latestUpload, "2026-09-08T12:05:00Z", { reviewStatus: "user_excluded" });
+
+    const result = await getTodayPracticeData({ club: "driver" });
+    expect(result.dateKey).toBe("2026-09-08");
+    expect(result.filters.club).toBe("driver");
+    expect(result.rawShots).toEqual([]);
+    expect(result.shots).toEqual([]);
+    expect(result.rawComparisonShots).toEqual([]);
+    expect(result.comparisonShots).toEqual([]);
+    expect(result.rawClubComparisons).toEqual([]);
+    expect(result.clubComparisons).toEqual([]);
+    expect(result.clubStats).toEqual([]);
+    expect(result.bestStraightShots).toEqual([]);
+    expect(result.overall.today.shotCount).toBe(0);
+    expect(result.rawOverall.today.shotCount).toBe(0);
+    expect(result.dataCleaning).toMatchObject({
+      importedShotCount: 0,
+      excludedShotCount: 0,
+      excludedByClub: [],
+    });
+    expect(result.clubs).toContainEqual({
+      type: "driver",
+      label: "Driver",
+      shotCount: 0,
+      cleanShotCount: 0,
+    });
+    expect(result.allTodayShotCount).toBe(2);
+    expect(result.sessions.map((row) => row.id)).toEqual([latestUpload]);
+
+    const emptyDate = await getTodayPracticeData({ date: "2026-09-07", club: "driver" });
+    expect(emptyDate.dateKey).toBe("2026-09-07");
+    expect(emptyDate.filters.club).toBe("driver");
+    expect(emptyDate.rawShots).toEqual([]);
+    expect(emptyDate.clubs.map((club) => club.type)).toEqual(["driver"]);
+  });
+
+  it("rejects invalid or another owner's absent club scope", async () => {
+    const id = await shot(await session(), "2026-09-08T12:00:00Z");
+    await sql`insert into fkh_clubs(user_id,type,normalized_club_key) values(${foreign},'5w','rollover_foreign_5w')`;
+    for (const club of ["invalid-club-value", "5w", "unknown"]) {
+      const result = await getTodayPracticeData({ club });
+      expect(result.filters.club).toBe("");
+      expect(result.rawShots.map((row) => row.id)).toEqual([id]);
+      expect(result.clubs.map((row) => row.type)).toEqual(["7i"]);
+    }
   });
 
   it("uses the shot's London calendar day even when upload metadata has a different date", async () => {

@@ -122,6 +122,7 @@ test("Today automatically reviews populated practice history on both surfaces", 
           await expect(report).toHaveAttribute("data-progress-verdict", "building");
           await expect(report).not.toContainText("7i");
           await expect(report).toContainText("0 of 0 trusted full shots");
+          await expect(page.locator("[data-today-shot-point]")).toHaveCount(0);
           await report.locator(`a[href="/today?date=${dateKey(4)}&club=driver"]`).click();
           await expect(report.locator("time").first()).toHaveAttribute("datetime", dateKey(4));
           await expect(report.getByRole("heading", { level: 2 })).toContainText("Driver");
@@ -187,6 +188,8 @@ test("Today keeps the latest completed practice after the calendar day changes",
     )[0].id;
     const [club] = await db`insert into fkh_clubs(user_id,type,brand,model,normalized_club_key)
       values(${owner},'7i','Fixture','Midnight iron','midnight-iron') returning id`;
+    await db`insert into fkh_clubs(user_id,type,brand,model,normalized_club_key)
+      values(${owner},'driver','Fixture','Midnight driver','midnight-driver')`;
 
     // This account has no measured practice today. Its latest complete practice was yesterday,
     // across two uploads; no browser-only clock override can change the server's date selection.
@@ -269,6 +272,32 @@ test("Today keeps the latest completed practice after the calendar day changes",
           await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1),
         ).toBe(false);
         await page.screenshot({ path: info.outputPath(`today-after-midnight-${surface}.png`) });
+
+        if (surface === "workbench") {
+          // A saved club without shots on the latest day must stay empty, rather than display irons.
+          await page.goto("/today?club=driver");
+          await expect(page).toHaveURL(
+            (url) => url.searchParams.get("club") === "driver" && !url.searchParams.has("date"),
+          );
+          await expect(report.locator("time").first()).toHaveAttribute("datetime", dateKey(1));
+          await expect(report.getByRole("heading", { level: 2 })).toContainText("Driver");
+          await expect(report).toHaveAttribute("data-progress-verdict", "building");
+          await expect(report).toContainText("0 of 0 trusted full shots");
+          await expect(report).not.toContainText("7i");
+          await expect(page.locator("[data-today-shot-point]")).toHaveCount(0);
+
+          const workspace = page.locator("[data-today-workspace-tabs]");
+          await expect(workspace).toHaveAttribute("data-ready", "true", { timeout: 60000 });
+          await workspace.getByRole("tab", { name: "Evidence", exact: true }).click();
+          const filters = workspace.getByRole("tabpanel").locator("#today-review-controls");
+          await expect(filters.locator('input[name="club"]')).toHaveValue("driver");
+          await expect(filters.getByRole("button", { name: /Driver.*Club/ })).toBeVisible();
+          await expect(filters.getByLabel("Date", { exact: true })).toHaveValue(dateKey(1));
+          await expect(page.locator("[data-today-shot-point]")).toHaveCount(0);
+          await page.screenshot({
+            path: info.outputPath("today-after-midnight-empty-driver-workbench.png"),
+          });
+        }
 
         const nextPractice = page.getByRole("link", { name: "Next practice", exact: true });
         await expect(nextPractice).toBeVisible();

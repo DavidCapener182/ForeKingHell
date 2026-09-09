@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
 vi.mock("@/db/client", () => ({ getDb: vi.fn() }));
 vi.mock("@/lib/current-user", () => ({ requireCurrentUserId: vi.fn(async () => "owner") }));
 import { getDb } from "@/db/client";
@@ -39,7 +41,7 @@ function query(rows: unknown[]) {
   const q = {
     from: vi.fn(() => q),
     innerJoin: vi.fn(() => q),
-    where: vi.fn(() => q),
+    where: vi.fn<(condition?: SQL) => unknown>((): unknown => q),
     orderBy: vi.fn(() => q),
     limit: vi.fn(() => q),
     as: vi.fn(() => q),
@@ -59,6 +61,47 @@ beforeEach(() => {
 });
 
 describe("explicit session evidence scope", () => {
+  it("preserves an owned club scope with no shots and a zero-shot filter option", async () => {
+    const ownedClub = query([{ type: "driver" }]);
+    const select = vi
+      .fn()
+      .mockReturnValueOnce(query([neighbouringShot]))
+      .mockReturnValueOnce(ownedClub);
+    vi.mocked(getDb).mockReturnValue({ select } as unknown as ReturnType<typeof getDb>);
+
+    const result = await getTodayPracticeData({ date: "2026-08-22", club: "driver" });
+    expect(result.filters.club).toBe("driver");
+    expect(result.rawShots).toEqual([]);
+    expect(result.shots).toEqual([]);
+    expect(result.clubComparisons).toEqual([]);
+    expect(result.overall.today.shotCount).toBe(0);
+    expect(result.dataCleaning.excludedShotCount).toBe(0);
+    expect(result.allTodayShotCount).toBe(1);
+    expect(result.clubs).toContainEqual({
+      type: "driver",
+      label: "Driver",
+      shotCount: 0,
+      cleanShotCount: 0,
+    });
+    expect(new PgDialect().sqlToQuery(ownedClub.where.mock.calls[0][0]!).params).toEqual([
+      "owner",
+      "driver",
+    ]);
+  });
+
+  it("does not retain an absent club value that is not in the owner's bag", async () => {
+    const select = vi
+      .fn()
+      .mockReturnValueOnce(query([neighbouringShot]))
+      .mockReturnValue(query([]));
+    vi.mocked(getDb).mockReturnValue({ select } as unknown as ReturnType<typeof getDb>);
+
+    const result = await getTodayPracticeData({ date: "2026-08-22", club: "unowned-club" });
+    expect(result.filters.club).toBe("");
+    expect(result.rawShots.map((shot) => shot.id)).toEqual(["other-shot"]);
+    expect(result.clubs.map((club) => club.type)).toEqual(["7i"]);
+  });
+
   it("keeps all round types out of completed practice without changing normal day reviews", async () => {
     const rounds = ["round", "real_round", "simulator", "simulated_course"].map((sessionType) => ({
       ...neighbouringShot,

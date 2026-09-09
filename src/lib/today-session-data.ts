@@ -273,11 +273,25 @@ export async function getTodayPracticeData(
     (shot) => !practiceOnly || !isRoundSessionType(shot.sessionType),
   );
 
-  const clubTypes = new Set(allTodayRows.map((shot) => shot.clubType).filter(isTrackedClubType));
   const scopeToSession = filters.scope !== "day";
   // An explicit empty session must not borrow measurements from another upload that day.
   const sessionId = scopeToSession ? (filters.sessionId ?? "") : "";
-  const club = filters.club && clubTypes.has(filters.club) ? filters.club : "";
+  const requestedClub = filters.club?.trim().toLowerCase() ?? "";
+  let club = "";
+  if (isTrackedClubType(requestedClub)) {
+    if (allTodayRows.some((shot) => shot.clubType === requestedClub)) {
+      club = requestedClub;
+    } else {
+      // A saved club stays selected on a day without its shots. Validate against
+      // the owner's bag rather than silently widening the charts to other clubs.
+      const [ownedClub] = await db
+        .select({ type: clubs.type })
+        .from(clubs)
+        .where(and(eq(clubs.userId, userId), eq(clubs.type, requestedClub)))
+        .limit(1);
+      if (ownedClub) club = ownedClub.type;
+    }
+  }
   const filteredTodayRows = allTodayRows.filter((shot) => {
     if (sessionId && shot.sessionId !== sessionId) {
       return false;
@@ -456,6 +470,15 @@ function buildTodayPracticeData({
   previousRows = previousRows.map(withDirectionalConfidence);
   const sessions = sessionOptions(allTodayRows);
   const clubsForFilter = clubOptions(allTodayRows);
+  if (filters.club && !clubsForFilter.some((club) => club.type === filters.club)) {
+    clubsForFilter.push({
+      type: filters.club,
+      label: formatClubType(filters.club),
+      shotCount: 0,
+      cleanShotCount: 0,
+    });
+    clubsForFilter.sort((left, right) => clubSortValue(left.type) - clubSortValue(right.type));
+  }
   const cleanTodayRows = filteredTodayRows
     .filter(isCleanPracticeShot)
     .map(withDirectionalConfidence);
