@@ -143,7 +143,7 @@ describe("mobile post-practice review", () => {
   it("renders the combined day before planning, without a low-confidence recommendation replacing the review", async () => {
     const html = renderToStaticMarkup(await TodayCompanionPage({}));
     expect(getTodayPracticeData).toHaveBeenCalledWith({
-      date: "2026-09-06",
+      date: undefined,
       scope: "day",
       practiceOnly: true,
     });
@@ -188,6 +188,18 @@ describe("mobile post-practice review", () => {
     expect(html).toContain("For your next session");
     expect(html).toContain("Build 20 min practice");
     expect(html).not.toContain("Practice complete · Today");
+  });
+
+  it("keeps the latest practice review after London midnight with a separate next-practice action", async () => {
+    vi.setSystemTime(new Date("2026-09-06T23:05:00Z"));
+    const html = renderToStaticMarkup(await TodayCompanionPage({}));
+    expect(getTodayPracticeData).toHaveBeenCalledTimes(1);
+    expect(html).toContain("Your latest practice");
+    expect(html).toContain("Sunday, 6 September 2026");
+    expect(html).toContain("Interactive shot patterns");
+    expect(html).toContain("Next practice");
+    expect(html).not.toContain("Practice complete · Today");
+    expect(html).not.toContain("For your next session");
   });
 
   it("keeps excluded uploads reviewable without claiming measured improvement", () => {

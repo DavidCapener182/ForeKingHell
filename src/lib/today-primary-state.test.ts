@@ -109,6 +109,26 @@ describe("Today primary state priority", () => {
     expect(state.href).toBe("/practice?planId=saved%20%2F%20plan");
   });
 
+  it("keeps Today focused on the last measured practice without an age limit", () => {
+    vi.setSystemTime(new Date("2026-09-09T00:37:00Z"));
+    const state = resolveTodayPrimaryState({
+      currentPlan: {
+        id: "next-plan",
+        title: "Next practice",
+        status: "active",
+        timeMinutes: 30,
+      },
+      activeRound: { id: "new-round", courseName: "Newer round" },
+      recommendation,
+      latestData: review,
+      preferPracticeReview: true,
+    });
+    expect(state.status).toBe("Review ready");
+    expect(state.href).toBe("/sessions/session-1");
+    expect(state.eyebrow).toBe(`Practice review · ${review.dateLabel}`);
+    expect(state.eyebrow).not.toContain("New session");
+  });
+
   it("uses a completed plan's identity for importing evidence", () => {
     const state = resolveTodayPrimaryState({
       currentPlan: {

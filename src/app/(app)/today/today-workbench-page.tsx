@@ -290,6 +290,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
       date: first(params.date),
       sessionId: normaliseAllValue(first(params.session)),
       club: requestedClub,
+      practiceOnly: true,
     }),
     socialLoaded ? getChallengesPageData() : Promise.resolve(null),
     getPracticePlannerContext(userId, { compactTraining: true, includeSpeed: false }),
@@ -362,7 +363,12 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     currentPlan,
     activeRound,
     recommendation,
-    latestData: takeaway ? { ...data, overall: { ...data.overall, ...takeaway } } : data,
+    latestData: {
+      ...data,
+      shots: data.rawShots,
+      overall: takeaway ? { ...data.overall, ...takeaway } : data.overall,
+    },
+    preferPracticeReview: true,
   });
 
   return (
@@ -700,14 +706,14 @@ function TodayHomeUtilityBar({ shotDatabaseHref }: { shotDatabaseHref: string })
   return (
     <PageHeader
       title="Today"
-      description="Your latest result, current activity and next useful action."
+      description="Your latest practice stays here until you save another."
       actions={
         <ButtonGroup aria-label="Today utility links">
           <Button asChild variant="outline" className="min-h-11">
             <Link href={shotDatabaseHref}>Shot rows</Link>
           </Button>
           <Button asChild variant="outline" className="min-h-11">
-            <Link href="/practice">Planner</Link>
+            <Link href="/practice">Next practice</Link>
           </Button>
         </ButtonGroup>
       }

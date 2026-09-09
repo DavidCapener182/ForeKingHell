@@ -44,7 +44,7 @@ export function TodayPrimaryAnswer({
   evidenceContent: ReactNode;
   compact?: boolean;
   highlights?: TodayHighlight[];
-  reviewContext?: "today" | "selected";
+  reviewContext?: "today" | "selected" | "latest";
 }) {
   const evidenceTrigger = useRef<HTMLButtonElement>(null);
   const [evidenceOpen, setEvidenceOpen] = useState(false);
@@ -87,7 +87,9 @@ export function TodayPrimaryAnswer({
   const evidenceTitle = isReview
     ? reviewContext === "selected"
       ? "Selected practice evidence"
-      : "Today’s review evidence"
+      : reviewContext === "latest"
+        ? "Latest practice evidence"
+        : "Today’s review evidence"
     : isRecommendation
       ? "Why this recommendation?"
       : "Evidence and next step";
@@ -144,7 +146,9 @@ export function TodayPrimaryAnswer({
                   isReview
                     ? reviewContext === "selected"
                       ? "Selected practice review"
-                      : "Today’s practice review"
+                      : reviewContext === "latest"
+                        ? "Latest practice review"
+                        : "Today’s practice review"
                     : "Today's focus"
                 }
               >
@@ -163,7 +167,7 @@ export function TodayPrimaryAnswer({
                 <div>
                   <h2 className={styles.focusTitle}>
                     {compact && reason === "Mixed session"
-                      ? reviewContext === "selected"
+                      ? reviewContext !== "today"
                         ? "Mixed results in this practice"
                         : "Mixed results today"
                       : title}

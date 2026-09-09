@@ -18,6 +18,7 @@ export function buildMobileTodayReview(
   data: TodayPracticeData | null,
   now: Date,
   selectedDateKey?: string,
+  reviewContext: "today" | "selected" | "latest" = "today",
 ) {
   if (!data || data.dateKey !== (selectedDateKey ?? practiceDateKey(now)) || !data.rawShots.length)
     return null;
@@ -47,8 +48,14 @@ export function buildMobileTodayReview(
       : data.overall.title
     : "Your shots are saved. Review the uploads below; there are no comparable trusted full shots to judge improvement yet.";
   const state: TodayPrimaryState = {
-    eyebrow: isToday ? "Practice complete · Today" : `Practice review · ${data.dateLabel}`,
-    title: isToday ? "Your practice today" : "Your selected practice",
+    eyebrow: isToday
+      ? "Practice complete · Today"
+      : `${reviewContext === "latest" ? "Latest practice" : "Practice review"} · ${data.dateLabel}`,
+    title: isToday
+      ? "Your practice today"
+      : reviewContext === "latest"
+        ? "Your latest practice"
+        : "Your selected practice",
     reason: todayReviewTakeaway(data)?.title ?? reason,
     status: "Review ready",
     tone: "positive",
