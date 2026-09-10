@@ -1233,14 +1233,14 @@ function MainScoringLeak({
       <CardContent className="grid gap-3 p-4 md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <div className="grid overflow-hidden rounded-lg border border-border bg-muted/30 sm:grid-cols-[minmax(15rem,0.85fr)_minmax(0,1.15fr)]">
           {artwork ? (
-            <div className="relative aspect-[3/2] min-h-44 overflow-hidden border-b border-border bg-[#77944C] sm:border-r sm:border-b-0">
+            <div className="relative mx-4 mt-4 aspect-[3/2] w-36 overflow-hidden sm:m-0 sm:min-h-44 sm:w-auto border-b border-border bg-[#77944C] sm:border-r sm:border-b-0">
               <Image
                 src={artwork.src}
                 alt=""
                 fill
                 loading="eager"
                 fetchPriority="high"
-                sizes="(min-width: 1024px) 24vw, (min-width: 640px) 42vw, 100vw"
+                sizes="(min-width: 1024px) 24vw, (min-width: 640px) 42vw, 144px"
                 className={cn("object-cover", artwork.className)}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/8 via-transparent to-white/10" />
@@ -1330,27 +1330,27 @@ function MainScoringLeak({
 function scoringLeakArtwork(category: string) {
   if (category === "approach") {
     return {
-      src: "/assets/generated/strokes-leak-approach-v3.png",
+      src: "/assets/generated/strokes-leak-approach-v3.webp",
       className: "object-[50%_56%]",
     };
   }
 
   if (category === "short_game") {
     return {
-      src: "/assets/generated/strokes-leak-short-game-v3.png",
+      src: "/assets/generated/strokes-leak-short-game-v3.webp",
       className: "object-[50%_56%]",
     };
   }
 
   if (category === "putting") {
     return {
-      src: "/assets/generated/strokes-leak-putting-v3.png",
+      src: "/assets/generated/strokes-leak-putting-v3.webp",
       className: "object-[50%_56%]",
     };
   }
 
   return {
-    src: "/assets/generated/strokes-leak-tee-v3.png",
+    src: "/assets/generated/strokes-leak-tee-v3.webp",
     className: "object-center",
   };
 }

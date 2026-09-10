@@ -92,7 +92,8 @@ describe("strokes gained desktop workbench", () => {
     expect(leakBlock).toContain("md:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]");
     expect(leakBlock).not.toContain("Recommended practice");
     expect(leakBlock).toContain("sm:grid-cols-[minmax(15rem,0.85fr)_minmax(0,1.15fr)]");
-    expect(leakBlock).toContain("aspect-[3/2] min-h-44");
+    expect(leakBlock).toContain("aspect-[3/2] w-36");
+    expect(leakBlock).toContain("sm:min-h-44 sm:w-auto");
     expect(source).toContain('className: "object-center"');
     expect(roundBlock).toContain('className="grid gap-3 md:grid-cols-2"');
     expect(roundBlock).toContain("const displayedRounds = rounds.slice((page - 1) * 6, page * 6)");
