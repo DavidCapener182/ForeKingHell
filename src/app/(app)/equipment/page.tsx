@@ -621,7 +621,7 @@ function ClubIntelligenceSection({ profiles }: { profiles: ClubProfile[] }) {
                   model={profile.club.model}
                   alt=""
                   source="generated-v2"
-                  className="h-32 rounded-none border-0 border-b"
+                  className="h-20 rounded-none border-0 border-b sm:h-24"
                   imageClassName="px-5 py-3"
                   sizes="(min-width: 1280px) 280px, (min-width: 640px) 42vw, 78vw"
                 />
