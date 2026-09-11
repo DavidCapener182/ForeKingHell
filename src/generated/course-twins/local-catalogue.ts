@@ -1,14 +1,6 @@
 import type { CourseTwinManifest } from "@/lib/course-twin-contract";
 
 export type LocalCourseTwinMetadata = {
-  "e7c4eb7a-6c78-4d25-a85f-cadfa4ecb82d": {
-    courseId: "e7c4eb7a-6c78-4d25-a85f-cadfa4ecb82d";
-    name: "Ellesmere Port";
-    grade: "C";
-    previewImageUrl: "/course-twins/ellesmere-port-v1/imagery.jpg";
-    mappedHoles: 18;
-    terrainResolutionM: 4.411936697215177;
-  };
   courseId: string;
   name: string;
   grade: "A" | "B" | "C" | "D";
@@ -19,6 +11,14 @@ export type LocalCourseTwinMetadata = {
 
 /** Lightweight catalogue data used by directory and availability queries. */
 export const localCourseTwinMetadataByCourseId: Record<string, LocalCourseTwinMetadata> = {
+  "e7c4eb7a-6c78-4d25-a85f-cadfa4ecb82d": {
+    courseId: "e7c4eb7a-6c78-4d25-a85f-cadfa4ecb82d",
+    name: "Ellesmere Port",
+    grade: "C",
+    previewImageUrl: "/course-twins/ellesmere-port-v1/imagery.jpg",
+    mappedHoles: 18,
+    terrainResolutionM: 4.411936697215177,
+  },
   "486ddef6-5963-41d7-b2e6-82cec6732170": {
     courseId: "486ddef6-5963-41d7-b2e6-82cec6732170",
     name: "Aberystwyth Golf Course",
