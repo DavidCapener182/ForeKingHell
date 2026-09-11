@@ -1413,7 +1413,29 @@ function SideClub({
   accent: string;
 }) {
   const family = clubFamily(clubType);
-  const isMetal = family === "driver" || family === "wood";
+  if (family === "driver") {
+    return (
+      <image
+        href="/assets/generated/driver-delivery-side-v1.webp"
+        x={impactX - 200}
+        y={impactY - 172}
+        width={300}
+        height={200}
+      />
+    );
+  }
+  if (/^(?:[2-9]i|[2-9][ -]?iron|iron)$/i.test(clubType)) {
+    return (
+      <image
+        href="/assets/generated/iron-delivery-side-v1.webp"
+        x={impactX - 145}
+        y={impactY - 160}
+        width={300}
+        height={200}
+      />
+    );
+  }
+  const isMetal = family === "wood";
   const isWedge = family === "wedge";
 
   return (
@@ -1533,7 +1555,29 @@ function TopClub({
   accent: string;
 }) {
   const family = clubFamily(clubType);
-  const isMetal = family === "driver" || family === "wood";
+  if (family === "driver") {
+    return (
+      <image
+        href="/assets/generated/driver-delivery-top-v1.webp"
+        x={centerX - 172}
+        y={centerY - 152}
+        width={330}
+        height={220}
+      />
+    );
+  }
+  if (/^(?:[2-9]i|[2-9][ -]?iron|iron)$/i.test(clubType)) {
+    return (
+      <image
+        href="/assets/generated/iron-delivery-top-v1.webp"
+        x={centerX - 155}
+        y={centerY - 152}
+        width={330}
+        height={220}
+      />
+    );
+  }
+  const isMetal = family === "wood";
   const isWedge = family === "wedge";
 
   return (
