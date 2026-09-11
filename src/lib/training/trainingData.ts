@@ -28,6 +28,7 @@ import {
   aggregateSessionFormSnapshots,
   calculateSessionFormSignal,
   neutralSessionFormSignal,
+  sessionFormComparisonKey,
   type SessionFormSignal,
   type SessionFormSnapshot,
 } from "@/lib/training/sessionForm";
@@ -61,6 +62,7 @@ export type TrainingSessionListItem = {
   physicalDemand: number | null;
   sessionLoad: number;
   notes: string | null;
+  loadMetadataJson?: import("./roundLoad").RoundLoadMetadata;
 };
 
 export type TrainingSourceSuggestion = {
@@ -174,6 +176,7 @@ type TrainingSessionDbRow = {
   physicalDemand: number | null;
   sessionLoad: string | number;
   notes: string | null;
+  loadMetadataJson?: import("./roundLoad").RoundLoadMetadata;
 };
 
 type SessionSnapshotRow = {
@@ -249,6 +252,7 @@ export async function getTrainingOverTimeData(
         physicalDemand: golfTrainingSessions.physicalDemand,
         sessionLoad: golfTrainingSessions.sessionLoad,
         notes: golfTrainingSessions.notes,
+        loadMetadataJson: golfTrainingSessions.loadMetadataJson,
       })
       .from(golfTrainingSessions)
       .where(eq(golfTrainingSessions.userId, userId))
@@ -290,6 +294,7 @@ export async function getTrainingOverTimeData(
         physicalDemand: golfTrainingSessions.physicalDemand,
         sessionLoad: golfTrainingSessions.sessionLoad,
         notes: golfTrainingSessions.notes,
+        loadMetadataJson: golfTrainingSessions.loadMetadataJson,
       })
       .from(golfTrainingSessions)
       .where(
@@ -785,11 +790,11 @@ function buildHistoricalSessionFormAdjustments(
     return [];
   }
 
-  const previousByKind = new Map<SessionFormSnapshot["kind"], SessionFormSnapshot>();
+  const previousByKind = new Map<string, SessionFormSnapshot>();
   const adjustmentsByDate = new Map<string, number>();
 
   for (const group of snapshotGroups) {
-    const previousSnapshot = previousByKind.get(group.kind);
+    const previousSnapshot = previousByKind.get(sessionFormComparisonKey(group.snapshot));
 
     if (previousSnapshot) {
       const signal = calculateSessionFormSignal(group.snapshot, previousSnapshot);
@@ -803,7 +808,7 @@ function buildHistoricalSessionFormAdjustments(
       }
     }
 
-    previousByKind.set(group.kind, group.snapshot);
+    previousByKind.set(sessionFormComparisonKey(group.snapshot), group.snapshot);
   }
 
   return [...adjustmentsByDate.entries()].map(([date, adjustment]) => ({ date, adjustment }));
@@ -851,13 +856,17 @@ function buildLatestSessionFormSignal(
 
   const latestGroup = snapshotGroups.find(
     (group) =>
-      group.date === latestSession.sessionDate && group.kind === latestSnapshotRow.snapshot.kind,
+      group.date === latestSession.sessionDate &&
+      sessionFormComparisonKey(group.snapshot) ===
+        sessionFormComparisonKey(latestSnapshotRow.snapshot),
   );
   const previousGroup = [...snapshotGroups]
     .reverse()
     .find(
       (group) =>
-        group.kind === latestSnapshotRow.snapshot.kind && group.date < latestSession.sessionDate,
+        sessionFormComparisonKey(group.snapshot) ===
+          sessionFormComparisonKey(latestSnapshotRow.snapshot) &&
+        group.date < latestSession.sessionDate,
     );
 
   if (!latestGroup || !previousGroup) {
@@ -883,7 +892,7 @@ function buildSessionSnapshotGroups(rows: SessionSnapshotRow[]): SessionSnapshot
   const rowsByKey = new Map<string, SessionSnapshotRow[]>();
 
   for (const row of rows) {
-    const key = `${row.session.sessionDate}:${row.snapshot.kind}`;
+    const key = `${row.session.sessionDate}:${sessionFormComparisonKey(row.snapshot)}`;
     const existing = rowsByKey.get(key);
 
     if (existing) {
@@ -959,6 +968,9 @@ async function buildRoundFormSnapshot(userId: string, session: TrainingSessionLi
   const [row] = await getDb()
     .select({
       scorecardJson: sessions.scorecardJson,
+      roundType: sessions.type,
+      courseId: sessions.courseId,
+      teeSetId: sessions.teeSetId,
     })
     .from(sessions)
     .where(and(eq(sessions.userId, userId), eq(sessions.id, session.sourceId)))
@@ -977,6 +989,12 @@ async function buildRoundFormSnapshot(userId: string, session: TrainingSessionLi
 
   return {
     kind: "round",
+    comparisonKey: JSON.stringify([
+      row?.roundType,
+      row?.courseId ?? session.title,
+      row?.teeSetId ?? "unknown",
+      scoringHoles.map((hole) => [hole.holeNumber, hole.par]).sort((a, b) => a[0]! - b[0]!),
+    ]),
     title: session.title,
     sampleSize: scoringHoles.length,
     scoreToParPer18: ((score - par) / scoringHoles.length) * 18,

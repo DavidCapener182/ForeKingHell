@@ -1,14 +1,21 @@
 "use server";
 
-import { sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getDb } from "@/db/client";
-import { golfTrainingSessions } from "@/db/schema";
+import { golfTrainingSessions, sessions } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
 import { calculateSessionLoad } from "@/lib/training/trainingLoad";
 import type { TrainingSourceType } from "@/lib/training/trainingData";
+
+import {
+  calculateRoundLoad,
+  ROUND_DEFAULT_RPE,
+  ROUND_LOAD_MODEL,
+  type RoundMovement,
+} from "@/lib/training/roundLoad";
 
 const VALID_SOURCE_TYPES = new Set<TrainingSourceType>([
   "round",
@@ -263,4 +270,69 @@ function normaliseTotalSwings(
 
   const total = (fullSwings ?? 0) + (shortGameSwings ?? 0) + (puttingSwings ?? 0);
   return total > 0 ? total : null;
+}
+
+export async function updateRoundTrainingEffortAction(
+  formData: FormData,
+): Promise<TrainingSessionFormResult> {
+  const userId = await requireCurrentUserId();
+  const id = formValue(formData, "trainingSessionId");
+  if (!/^[0-9a-f-]{36}$/i.test(id))
+    return { ok: false, error: "That training entry is not available." };
+  const db = getDb();
+  const [entry] = await db
+    .select({ id: golfTrainingSessions.id, holes: golfTrainingSessions.holesPlayed })
+    .from(golfTrainingSessions)
+    .innerJoin(
+      sessions,
+      and(
+        eq(sql`${sessions.id}::text`, golfTrainingSessions.sourceId),
+        eq(sessions.userId, userId),
+      ),
+    )
+    .where(
+      and(
+        eq(golfTrainingSessions.id, id),
+        eq(golfTrainingSessions.userId, userId),
+        eq(golfTrainingSessions.sourceType, "round"),
+        eq(sessions.type, "real_round"),
+        eq(sessions.roundStatus, "complete"),
+        sql`${golfTrainingSessions.loadMetadataJson}->>'model' = ${ROUND_LOAD_MODEL}`,
+      ),
+    )
+    .limit(1);
+  if (!entry?.holes) return { ok: false, error: "That completed round is not available." };
+  const durationText = formValue(formData, "durationMinutes");
+  const rpeText = formValue(formData, "rpe");
+  const duration = durationText ? Number(durationText) : null;
+  const rpe = rpeText ? Number(rpeText) : ROUND_DEFAULT_RPE;
+  const movement = formValue(formData, "movement") as RoundMovement;
+  if (!["unknown", "carry", "trolley", "cart"].includes(movement))
+    return { ok: false, error: "Choose how you got around the course." };
+  let load: number;
+  try {
+    load = calculateRoundLoad(entry.holes, duration, rpe).load;
+  } catch {
+    return {
+      ok: false,
+      error:
+        "Use a duration of 1–1,440 whole minutes and effort of 1–10, or leave unknown values blank.",
+    };
+  }
+  await db
+    .update(golfTrainingSessions)
+    .set({
+      durationMinutes: duration,
+      rpe,
+      walked: movement === "unknown" ? null : movement !== "cart",
+      usedCart: movement === "unknown" ? null : movement === "cart",
+      sessionLoad: load,
+      loadMetadataJson: { model: ROUND_LOAD_MODEL, rpeEstimated: !rpeText, movement },
+      updatedAt: new Date(),
+    })
+    .where(and(eq(golfTrainingSessions.id, id), eq(golfTrainingSessions.userId, userId)));
+  revalidatePath("/stats/training-over-time");
+  revalidatePath("/today");
+  revalidatePath("/speed");
+  return { ok: true };
 }

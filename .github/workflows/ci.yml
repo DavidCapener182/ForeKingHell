@@ -127,6 +127,10 @@ jobs:
         run: npm run db:migrate
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/forekinghell
+      - name: Verify real-round training lifecycle
+        run: node scripts/test-real-round-training-load.mjs
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/forekinghell
 
   core-playwright:
     name: Core Playwright

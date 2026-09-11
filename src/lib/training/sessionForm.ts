@@ -1,6 +1,7 @@
 export type SessionFormSnapshot = {
   kind: "round" | "shots" | "speed" | "load";
   title: string;
+  comparisonKey?: string;
   sampleSize: number;
   scoreToParPer18?: number | null;
   averageOfflineYd?: number | null;
@@ -47,7 +48,9 @@ export function aggregateSessionFormSnapshots(
     return null;
   }
 
-  const matchingSnapshots = snapshots.filter((snapshot) => snapshot.kind === first.kind);
+  const matchingSnapshots = snapshots.filter(
+    (snapshot) => sessionFormComparisonKey(snapshot) === sessionFormComparisonKey(first),
+  );
   const sampleSize = matchingSnapshots.reduce(
     (total, snapshot) => total + Math.max(0, snapshot.sampleSize),
     0,
@@ -57,6 +60,7 @@ export function aggregateSessionFormSnapshots(
   if (first.kind === "round") {
     return {
       kind: "round",
+      comparisonKey: first.comparisonKey,
       title: aggregateTitle,
       sampleSize,
       scoreToParPer18: weightedMean(matchingSnapshots, (snapshot) => snapshot.scoreToParPer18),
@@ -104,11 +108,19 @@ export function aggregateSessionFormSnapshots(
   };
 }
 
+export function sessionFormComparisonKey(snapshot: SessionFormSnapshot): string {
+  return `${snapshot.kind}:${snapshot.comparisonKey ?? "default"}`;
+}
+
 export function calculateSessionFormSignal(
   latest: SessionFormSnapshot | null | undefined,
   previous: SessionFormSnapshot | null | undefined,
 ): SessionFormSignal {
-  if (!latest || !previous || latest.kind !== previous.kind) {
+  if (
+    !latest ||
+    !previous ||
+    sessionFormComparisonKey(latest) !== sessionFormComparisonKey(previous)
+  ) {
     return neutralSessionFormSignal;
   }
 
@@ -119,7 +131,7 @@ export function calculateSessionFormSignal(
         ? shotScore(latest, previous)
         : latest.kind === "speed"
           ? speedScore(latest, previous)
-          : loadScore(latest, previous);
+          : null;
 
   if (!result) {
     return neutralSessionFormSignal;
@@ -256,34 +268,6 @@ function speedScore(latest: SessionFormSnapshot, previous: SessionFormSnapshot) 
       notes.length > 0 ? notes.slice(0, 2).join(" and ") : "speed held steady"
     }.`,
     confidence: latest.sampleSize >= 15 && previous.sampleSize >= 15 ? "medium" : "low",
-  } satisfies ScoreResult;
-}
-
-function loadScore(latest: SessionFormSnapshot, previous: SessionFormSnapshot) {
-  if (!isNumber(latest.sessionLoad) || !isNumber(previous.sessionLoad)) {
-    return null;
-  }
-
-  const loadDeltaRatio =
-    previous.sessionLoad > 0
-      ? (latest.sessionLoad - previous.sessionLoad) / previous.sessionLoad
-      : 0;
-  const rpeDelta = isNumber(latest.rpe) && isNumber(previous.rpe) ? latest.rpe - previous.rpe : 0;
-  let adjustment = 0;
-  let detail = "Latest manual load looks similar to the previous one.";
-
-  if (loadDeltaRatio <= -0.2 && rpeDelta <= 0) {
-    adjustment = 2;
-    detail = "Latest manual load was lighter with no higher RPE, so form is nudged upward.";
-  } else if (loadDeltaRatio >= 0.3 || rpeDelta >= 2) {
-    adjustment = -2;
-    detail = "Latest manual load was heavier or felt harder, so form is nudged downward.";
-  }
-
-  return {
-    adjustment,
-    detail,
-    confidence: "low",
   } satisfies ScoreResult;
 }
 

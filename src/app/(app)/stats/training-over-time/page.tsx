@@ -1,3 +1,4 @@
+import { RoundTrainingEffort } from "@/components/training/RoundTrainingEffort";
 import { getMobileTrainingSourceLinks } from "@/lib/training/mobile-training-source-links";
 import Link from "next/link";
 
@@ -62,6 +63,8 @@ export default async function TrainingOverTimePage({ searchParams }: TrainingOve
             </AlertDescription>
           </Alert>
         ) : null}
+
+        <RoundTrainingEffort sessions={data.sessions} />
 
         <SpeedReadinessPanel development={speedCoachData.development} />
 

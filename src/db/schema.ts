@@ -2594,6 +2594,10 @@ export const golfTrainingSessions = pgTable(
     mentalPressure: integer("mental_pressure"),
     physicalDemand: integer("physical_demand"),
     sessionLoad: numeric("session_load", { precision: 10, scale: 0, mode: "number" }).notNull(),
+    loadMetadataJson: jsonb("load_metadata_json")
+      .$type<import("@/lib/training/roundLoad").RoundLoadMetadata>()
+      .notNull()
+      .default({}),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
