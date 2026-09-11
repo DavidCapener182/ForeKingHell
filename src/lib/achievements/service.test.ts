@@ -19,7 +19,7 @@ describe("achievement progress persistence", () => {
   });
 
   it("forces existing achievement progress to resynchronise", () => {
-    expect(ACHIEVEMENT_REGISTRY_VERSION).toBe("2026-08-13-club-metric-progress-v1");
+    expect(ACHIEVEMENT_REGISTRY_VERSION).toBe("2026-09-11-real-rounds-v1");
   });
 });
 

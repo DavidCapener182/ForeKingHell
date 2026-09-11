@@ -1,3 +1,4 @@
+import { evaluateRealRoundAchievements } from "./real-rounds";
 import { compareClubCarryToBenchmark } from "@/lib/club-benchmarks";
 import { formatClubType, isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
 import { isShotEvidenceEligible } from "@/lib/shot-review";
@@ -61,6 +62,9 @@ export function evaluateAllAchievementCandidates(
   context: AchievementEvaluationContext,
 ): AchievementEvaluationResult {
   const collector = createCollector();
+  const realRounds = evaluateRealRoundAchievements(context.sessions);
+  collector.unlocks.push(...realRounds.unlocks);
+  collector.progress.push(...realRounds.progress);
   const trackedShots = context.shots.filter(
     (shot) => isTrackedClubType(shot.clubType) && isShotEvidenceEligible(shot),
   );
@@ -107,6 +111,9 @@ export function evaluateRoundScorecardAchievements(
 ): AchievementEvaluationResult {
   const collector = createCollector();
   evaluateRoundScorecard(collector, session);
+  const realRounds = evaluateRealRoundAchievements([session]);
+  collector.unlocks.push(...realRounds.unlocks);
+  collector.progress.push(...realRounds.progress);
   return {
     unlocks: dedupeUnlockCandidates(collector.unlocks),
     progress: dedupeProgressCandidates(collector.progress),

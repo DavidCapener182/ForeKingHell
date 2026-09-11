@@ -19,6 +19,7 @@ export type AchievementCategory =
   | "scoring"
   | "putting"
   | "shortGame"
+  | "realRounds"
   | "roundStats"
   | "hidden";
 

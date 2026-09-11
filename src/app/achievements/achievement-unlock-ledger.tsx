@@ -64,6 +64,7 @@ const categoryLabels: Record<string, string> = {
   putting: "Putting",
   shortGame: "Short Game",
   roundStats: "Round Stats",
+  realRounds: "Real Rounds",
   hidden: "Hidden",
 };
 

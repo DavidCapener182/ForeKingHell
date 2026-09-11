@@ -1,3 +1,4 @@
+import { REAL_ROUND_ACHIEVEMENTS } from "./real-rounds";
 import { getClubDistanceBenchmark, type ClubBenchmarkLevelKey } from "@/lib/club-benchmarks";
 
 import type {
@@ -7,7 +8,7 @@ import type {
   AchievementTriggerType,
 } from "./types";
 
-export const ACHIEVEMENT_REGISTRY_VERSION = "2026-08-13-club-metric-progress-v1";
+export const ACHIEVEMENT_REGISTRY_VERSION = "2026-09-11-real-rounds-v1";
 
 const TIER_XP: Record<AchievementTier, number> = {
   bronze: 50,
@@ -2047,6 +2048,7 @@ for (const generated of GENERATED_HIDDEN_SHOT_ACHIEVEMENTS) {
 
 export const ACHIEVEMENTS: Achievement[] = [
   ...CORE_ACHIEVEMENTS,
+  ...REAL_ROUND_ACHIEVEMENTS,
   ...GENERATED_CLUB_METRIC_ACHIEVEMENTS.map(toGeneratedAchievement),
   ...GENERATED_CLUB_VOLUME_ACHIEVEMENTS.map(toGeneratedVolumeAchievement),
   ...GENERATED_CLUB_SESSION_VOLUME_ACHIEVEMENTS.map(toGeneratedSessionVolumeAchievement),
