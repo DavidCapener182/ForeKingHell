@@ -72,7 +72,7 @@ export function TodayRoundView({ round }: { round: TodayRound }) {
             <Link href={`/rounds/${round.session.id}`} className={styles.primaryLink}>
               Review round <ArrowUpRight size={16} aria-hidden />
             </Link>
-            <a href="#today-practice-review" className={styles.secondaryLink}>
+            <a href="#today-practice-progress" className={styles.secondaryLink}>
               Practice & progress <ArrowDownRight size={16} aria-hidden />
             </a>
           </div>

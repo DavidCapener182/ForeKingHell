@@ -34,7 +34,7 @@ describe("Today round view", () => {
     expect(html).toContain("11 September 2026");
     expect(html).not.toContain("Driver average 216 yd");
     expect(html).toContain("/rounds/round-id");
-    expect(html).toContain("#today-practice-review");
+    expect(html).toContain("#today-practice-progress");
     expect(html).not.toContain("<main");
     expect(html).not.toContain('aria-label="Round statistics"');
     expect(html).not.toContain("Dispersion");

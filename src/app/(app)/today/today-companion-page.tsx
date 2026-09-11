@@ -171,10 +171,12 @@ export default async function TodayCompanionPage({
         </Button>
         {latestRound ? <TodayRoundView round={latestRound} /> : null}
         {latestRound ? (
-          <div id="today-practice-review" className="scroll-mt-24 border-t border-border pt-5">
+          <div id="today-practice-progress" className="scroll-mt-24 border-t border-border pt-5">
             <h2 className="text-xl font-semibold">Practice & progress</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Your latest measured practice · {latestData?.dateLabel ?? "No practice recorded"}
+              {latestData?.rawShots.length
+                ? `Your latest measured practice · ${latestData.dateLabel}`
+                : "No measured practice recorded yet."}
             </p>
           </div>
         ) : null}

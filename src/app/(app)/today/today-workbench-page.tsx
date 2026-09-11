@@ -478,10 +478,12 @@ function TodayDesktopDashboard({
       />
       {latestRound ? <TodayRoundView round={latestRound} /> : null}
       {latestRound ? (
-        <div id="today-practice-review" className="scroll-mt-24 border-t border-border pt-6">
+        <div id="today-practice-progress" className="scroll-mt-24 border-t border-border pt-6">
           <h2 className="text-xl font-semibold">Practice & progress</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Your latest measured practice · {data.dateLabel}
+            {data.rawShots.length
+              ? `Your latest measured practice · ${data.dateLabel}`
+              : "No measured practice recorded yet."}
           </p>
         </div>
       ) : null}
