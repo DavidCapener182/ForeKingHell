@@ -1,0 +1,254 @@
+.root {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 28px;
+  border-radius: 16px;
+  background: #123d2c;
+  color: #f7f7ee;
+}
+.medal {
+  display: grid;
+  place-items: center;
+  flex: 0 0 72px;
+  height: 72px;
+  border: 1px solid #bccc89;
+  border-radius: 20px;
+  color: #dbeaa4;
+  background: #ffffff0c;
+}
+.heroCopy {
+  flex: 1;
+  min-width: 0;
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.heroCopy h3 {
+  font-size: clamp(22px, 2.2vw, 32px);
+  font-weight: 650;
+  margin: 6px 0;
+}
+.heroCopy p:not(.eyebrow) {
+  color: #d0ddd4;
+  font-size: 13px;
+}
+.heroCopy a,
+.target a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 14px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.celebrate {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border-radius: 8px;
+  color: #123d2c;
+  background: #dbeaa4;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 16px;
+  padding: 6px 0 14px;
+}
+.heading h3 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 650;
+  font-size: 19px;
+  margin-top: 5px;
+}
+.heading > p {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.target {
+  min-width: 0;
+  border: 1px solid var(--border);
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--card);
+}
+.target:first-child {
+  border-color: #879c63;
+  background: color-mix(in srgb, var(--card) 94%, #b7cd81);
+}
+.targetTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  font-weight: 650;
+}
+.target h4 {
+  font-size: 20px;
+  font-weight: 650;
+  margin-top: 10px;
+}
+.target h4 span {
+  font-size: 16px;
+  font-weight: 400;
+}
+.gap {
+  font-size: 30px;
+  font-weight: 650;
+  margin-top: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.gap span {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+.bar {
+  height: 7px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--muted);
+  margin-top: 12px;
+}
+.bar span {
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--primary);
+}
+.readout {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  margin-top: 8px;
+}
+.plan {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+  margin-top: 14px;
+}
+.history {
+  border: 1px solid var(--border);
+  padding: 16px;
+  border-radius: 12px;
+}
+.history summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.history summary span {
+  margin-left: auto;
+}
+.history > p {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin: 12px 0;
+}
+.historyGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.historyGrid a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--muted);
+  border-radius: 8px;
+  padding: 12px;
+}
+.historyGrid a > span {
+  flex: 1;
+  min-width: 0;
+}
+.historyGrid strong,
+.historyGrid small {
+  display: block;
+  font-size: 12px;
+}
+.historyGrid small {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.confetti {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+.confetti i {
+  position: absolute;
+  width: 7px;
+  height: 11px;
+  top: -15px;
+  animation: fall 1.6s ease-out both;
+}
+@keyframes fall {
+  to {
+    transform: translateY(280px) rotate(330deg);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti {
+    display: none;
+  }
+}
+@media (max-width: 700px) {
+  .grid,
+  .historyGrid {
+    grid-template-columns: 1fr;
+  }
+  .hero {
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 20px;
+  }
+  .medal {
+    flex-basis: 48px;
+    height: 48px;
+    border-radius: 12px;
+  }
+  .heroCopy {
+    flex-basis: calc(100% - 70px);
+  }
+  .heading {
+    display: block;
+  }
+  .heading > p {
+    margin-top: 8px;
+  }
+}

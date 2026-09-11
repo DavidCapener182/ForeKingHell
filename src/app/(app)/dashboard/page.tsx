@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getTodayRound } from "@/lib/today-round-data";
+import { TodayRoundView } from "../today/today-round-view";
 import type { ReactNode } from "react";
 import { and, countDistinct, eq, or } from "drizzle-orm";
 import { ArrowRight, CalendarDays, Crosshair, Gauge, Target, Upload } from "lucide-react";
@@ -73,12 +75,13 @@ async function dashboardCourseEvidence(userId: string) {
 export default async function DashboardPage() {
   if (!process.env.DATABASE_URL?.trim()) return <DashboardUnavailable />;
   const userId = await requireCurrentUserId();
-  const [data, currentPlan, speed, progress, courseRows] = await Promise.all([
+  const [data, currentPlan, speed, progress, courseRows, latestActivityRound] = await Promise.all([
     getDashboardData(),
     getCurrentPracticePlanSummary(userId),
     getSpeedCoachCardData(userId),
     getProgressData(userId),
     dashboardCourseEvidence(userId),
+    getTodayRound(userId),
   ]);
   const latest = data.recentSessions[0] ?? null;
   const focus = data.coachPreview;
@@ -89,12 +92,18 @@ export default async function DashboardPage() {
     ? `/practice?planId=${currentPlan.id}`
     : `/practice?${practiceQuery}`;
   const hasEvidence = data.stats.shotCount > 0;
-  const actionHref = hasEvidence ? practiceHref : "/import";
-  const actionLabel = hasEvidence
-    ? currentPlan
-      ? "Open saved practice"
-      : "Build focused practice"
-    : "Import first session";
+  const actionHref = latestActivityRound
+    ? `/rounds/${latestActivityRound.session.id}`
+    : hasEvidence
+      ? practiceHref
+      : "/import";
+  const actionLabel = latestActivityRound
+    ? "Review latest round"
+    : hasEvidence
+      ? currentPlan
+        ? "Open saved practice"
+        : "Build focused practice"
+      : "Import first session";
   const readyCourses = courseRows.filter((course) => course.holes > 0 && course.tees > 0);
   const course =
     readyCourses.find((course) => course.id === data.latestRound?.courseId) ?? readyCourses[0];
@@ -178,9 +187,11 @@ export default async function DashboardPage() {
         <PageHeader
           title="Dashboard"
           description={
-            latest
-              ? `Latest saved evidence: ${latest.fileName} · ${formatDate(latest.date)}`
-              : "Your saved golf evidence and next useful action."
+            latestActivityRound
+              ? "Your latest round, followed by your practice and progress."
+              : latest
+                ? `Latest saved evidence: ${latest.fileName} · ${formatDate(latest.date)}`
+                : "Your saved golf evidence and next useful action."
           }
           actions={
             <Button asChild className="min-h-11">
@@ -191,6 +202,15 @@ export default async function DashboardPage() {
             </Button>
           }
         />
+        {latestActivityRound ? <TodayRoundView round={latestActivityRound} /> : null}
+        {latestActivityRound ? (
+          <div id="today-practice-progress" className="scroll-mt-24 border-t border-border pt-5">
+            <h2 className="text-xl font-semibold">Practice & progress</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your saved plan and wider golf overview.
+            </p>
+          </div>
+        ) : null}
         <section
           id="practice"
           className="scroll-mt-24 rounded-xl border bg-card p-4 sm:p-5"
@@ -225,7 +245,13 @@ export default async function DashboardPage() {
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <Button asChild className="min-h-11">
-              <Link href={actionHref}>{actionLabel}</Link>
+              <Link href={hasEvidence ? practiceHref : "/import"}>
+                {hasEvidence
+                  ? currentPlan
+                    ? "Open saved practice"
+                    : "Build focused practice"
+                  : "Import first session"}
+              </Link>
             </Button>
             {focus ? (
               <Link

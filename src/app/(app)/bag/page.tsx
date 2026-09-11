@@ -1,3 +1,4 @@
+import { benchmarkMilestones, benchmarkSessionHistory } from "@/lib/benchmark-milestones";
 import { BagClubViews, BagVisualLayers } from "@/app/bag/bag-visual-controls";
 import { StockSampleReview } from "@/app/bag/stock-sample-review";
 import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
@@ -259,6 +260,7 @@ const EVOLUTION_SHOTS_PER_CLUB = 1200;
 const BENCHMARK_CARRY_CANDIDATE_SIZE = CLUB_BENCHMARK_CARRY_SAMPLE_SIZE * 2;
 
 const bagShotSelect = {
+  sessionCreatedAt: sessions.createdAt,
   id: shots.id,
   sessionId: shots.sessionId,
   clubId: shots.clubId,
@@ -1057,6 +1059,7 @@ async function getBag({ scope = "workbench" }: { scope?: BagDataScope } = {}) {
     .as("ranked_club_shots");
 
   const rankedBagShotSelect = {
+    sessionCreatedAt: rankedClubShots.sessionCreatedAt,
     id: rankedClubShots.id,
     sessionId: rankedClubShots.sessionId,
     clubId: rankedClubShots.clubId,
@@ -2664,6 +2667,31 @@ function buildBenchmarkRows(bag: BagClub[]): ClubBenchmarkRow[] {
         savedShotCount: club.rawShotCount,
         sampleCarryYards,
         confidenceScore: club.stock.confidenceScore,
+        milestones: benchmarkMilestones(
+          club.type,
+          benchmarkSessionHistory(club.evolutionShots).flatMap(
+            ({ sessionId, date, sequence, shots: historicalShots }) => {
+              const { filteredShots } = selectStockYardageShots(
+                historicalShots,
+                EVOLUTION_SHOTS_PER_CLUB,
+                { clubType: club.type, averageSampleSize: BENCHMARK_CARRY_CANDIDATE_SIZE },
+              );
+              const sample = filteredShots.slice(0, CLUB_BENCHMARK_CARRY_SAMPLE_SIZE);
+              const average = averageBenchmarkMetric(sample, (shot) => shot.carryYd);
+              return average === null
+                ? []
+                : [
+                    {
+                      sessionId,
+                      date,
+                      sequence,
+                      carryYd: average,
+                      sampleSize: sample.length,
+                    },
+                  ];
+            },
+          ),
+        ),
         metrics: buildBenchmarkMetricValues(benchmarkShots, carryYd),
       };
     }),

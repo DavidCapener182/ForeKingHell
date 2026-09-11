@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BenchmarkUnlocks } from "./benchmark-unlocks";
 import { useEffect, useState, type ReactNode } from "react";
 import { BarChart3, Users } from "lucide-react";
 
@@ -242,6 +243,7 @@ export function DistanceBenchmarkPanel({
         action={<BarChart3 className="size-5 text-primary" aria-hidden="true" />}
       />
       <CardContent className="space-y-4">
+        <BenchmarkUnlocks rows={rows} />
         <BenchmarkOverview
           rows={rows}
           peerSummary={peerSummary}
