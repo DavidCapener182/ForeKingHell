@@ -88,6 +88,7 @@ export type ClubBenchmarkAdvancePlan = {
 };
 
 type BenchmarkRowInput = {
+  milestones?: import("./benchmark-milestones").BenchmarkMilestone[];
   clubId: string;
   clubType: string;
   brandModel: string;
