@@ -466,6 +466,13 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
                           ? "Select a hole to see the saved shot data projected over the mapped course."
                           : "Select a hole to see estimated non-putt strokes placed along the mapped course geometry."}
                       </CardDescription>
+                      {round.mapFallbackTeeName ? (
+                        <CardDescription>
+                          Map layout: {round.mapFallbackTeeName}. Your recorded round remains on{" "}
+                          {round.session.teeName ?? "its original tees"}; these map distances and
+                          tee positions are different.
+                        </CardDescription>
+                      ) : null}
                     </CardHeader>
                     <CardContent>
                       {round.session.courseId && shotPatternEnabled ? (
@@ -2701,6 +2708,11 @@ async function getRoundDetail(sessionId: string) {
     mapHoles,
     mapShots,
     mapAutoImport: roundMapGeometry.autoImport,
+    mapFallbackTeeName:
+      roundMapGeometry.teeSetId && roundMapGeometry.teeSetId !== session.accessibleTeeSetId
+        ? (teeSetOptionRows.find((tee) => tee.teeSetId === roundMapGeometry.teeSetId)?.teeSetName ??
+          "Alternative mapped tees")
+        : null,
     courseOptions: teeSetOptionRows,
     recordOpportunities: dedupeRecordOpportunities(
       recordOpportunityRows.map((item) => ({
