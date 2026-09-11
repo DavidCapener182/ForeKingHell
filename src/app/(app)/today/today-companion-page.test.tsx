@@ -8,6 +8,7 @@ vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
   useSearchParams: () => new URLSearchParams(),
 }));
+vi.mock("@/lib/today-round-data", () => ({ getTodayRound: vi.fn(async () => null) }));
 vi.mock("@/lib/today-shot-detail-data", () => ({ getTodayShotDetailRows: async () => [] }));
 vi.mock("@/lib/today-progress-data", () => ({ getTodayProgressHistory: vi.fn(async () => []) }));
 
@@ -39,6 +40,7 @@ import { getPracticePlannerContext } from "@/lib/practice-planner";
 import { getTodayPracticeData } from "@/lib/today-session-data";
 import { getTodayProgressHistory } from "@/lib/today-progress-data";
 import TodayCompanionPage from "./today-companion-page";
+import { getTodayRound, type TodayRound } from "@/lib/today-round-data";
 
 const now = new Date("2026-09-06T16:30:00Z");
 function practice(): TodayPracticeData {
@@ -265,5 +267,27 @@ describe("mobile post-practice review", () => {
   it("uses the London practice day across BST midnight and winter dates", () => {
     expect(practiceDateKey(new Date("2026-09-05T23:30:00Z"))).toBe("2026-09-06");
     expect(practiceDateKey(new Date("2026-12-05T23:30:00Z"))).toBe("2026-12-05");
+  });
+});
+
+describe("mobile round review", () => {
+  it("shows the selected round before loading practice analytics", async () => {
+    vi.mocked(getTodayRound).mockResolvedValueOnce({
+      session: {
+        id: "round",
+        date: new Date("2026-09-11T11:00:00Z"),
+        type: "real_round",
+        courseName: "Ellesmere Port",
+        notes: null,
+        scorecardJson: [{ holeNumber: 1, par: 4, score: 5, putts: 2 }],
+      },
+      tee: null,
+    } as TodayRound);
+    const html = renderToStaticMarkup(await TodayCompanionPage({}));
+    expect(html).toContain("data-today-round");
+    expect(html).toContain("Ellesmere Port");
+    expect(html).not.toContain("data-today-progress-report");
+    expect(getTodayPracticeData).not.toHaveBeenCalled();
+    expect(getPracticePlannerContext).not.toHaveBeenCalled();
   });
 });
