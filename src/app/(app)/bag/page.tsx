@@ -1,4 +1,4 @@
-import { benchmarkMilestones } from "@/lib/benchmark-milestones";
+import { benchmarkMilestones, benchmarkSessionHistory } from "@/lib/benchmark-milestones";
 import { BagClubViews, BagVisualLayers } from "@/app/bag/bag-visual-controls";
 import { StockSampleReview } from "@/app/bag/stock-sample-review";
 import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
@@ -260,6 +260,7 @@ const EVOLUTION_SHOTS_PER_CLUB = 1200;
 const BENCHMARK_CARRY_CANDIDATE_SIZE = CLUB_BENCHMARK_CARRY_SAMPLE_SIZE * 2;
 
 const bagShotSelect = {
+  sessionCreatedAt: sessions.createdAt,
   id: shots.id,
   sessionId: shots.sessionId,
   clubId: shots.clubId,
@@ -1058,6 +1059,7 @@ async function getBag({ scope = "workbench" }: { scope?: BagDataScope } = {}) {
     .as("ranked_club_shots");
 
   const rankedBagShotSelect = {
+    sessionCreatedAt: rankedClubShots.sessionCreatedAt,
     id: rankedClubShots.id,
     sessionId: rankedClubShots.sessionId,
     clubId: rankedClubShots.clubId,
@@ -2667,28 +2669,28 @@ function buildBenchmarkRows(bag: BagClub[]): ClubBenchmarkRow[] {
         confidenceScore: club.stock.confidenceScore,
         milestones: benchmarkMilestones(
           club.type,
-          [...new Set(club.evolutionShots.map((shot) => shot.sessionId))].flatMap((sessionId) => {
-            const sessionShots = club.evolutionShots.filter((shot) => shot.sessionId === sessionId);
-            const end = Math.max(...sessionShots.map((shot) => shotTime(shot.shotAt)));
-            if (!Number.isFinite(end) || end <= 0) return [];
-            const { filteredShots } = selectStockYardageShots(
-              club.evolutionShots.filter((shot) => shotTime(shot.shotAt) <= end),
-              EVOLUTION_SHOTS_PER_CLUB,
-              { clubType: club.type, averageSampleSize: BENCHMARK_CARRY_CANDIDATE_SIZE },
-            );
-            const sample = filteredShots.slice(0, CLUB_BENCHMARK_CARRY_SAMPLE_SIZE);
-            const average = averageBenchmarkMetric(sample, (shot) => shot.carryYd);
-            return average === null
-              ? []
-              : [
-                  {
-                    sessionId,
-                    date: new Date(end).toISOString(),
-                    carryYd: average,
-                    sampleSize: sample.length,
-                  },
-                ];
-          }),
+          benchmarkSessionHistory(club.evolutionShots).flatMap(
+            ({ sessionId, date, sequence, shots: historicalShots }) => {
+              const { filteredShots } = selectStockYardageShots(
+                historicalShots,
+                EVOLUTION_SHOTS_PER_CLUB,
+                { clubType: club.type, averageSampleSize: BENCHMARK_CARRY_CANDIDATE_SIZE },
+              );
+              const sample = filteredShots.slice(0, CLUB_BENCHMARK_CARRY_SAMPLE_SIZE);
+              const average = averageBenchmarkMetric(sample, (shot) => shot.carryYd);
+              return average === null
+                ? []
+                : [
+                    {
+                      sessionId,
+                      date,
+                      sequence,
+                      carryYd: average,
+                      sampleSize: sample.length,
+                    },
+                  ];
+            },
+          ),
         ),
         metrics: buildBenchmarkMetricValues(benchmarkShots, carryYd),
       };

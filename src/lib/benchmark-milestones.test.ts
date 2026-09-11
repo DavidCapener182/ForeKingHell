@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { benchmarkMilestones, nearestBenchmarkUnlocks } from "./benchmark-milestones";
+import {
+  benchmarkMilestones,
+  benchmarkSessionHistory,
+  nearestBenchmarkUnlocks,
+} from "./benchmark-milestones";
 import { buildClubBenchmarkRows } from "./club-benchmarks";
 
 describe("benchmark level-ups", () => {
@@ -90,4 +94,36 @@ describe("benchmark level-ups", () => {
       ["driver", 0],
     ]);
   });
+});
+
+it("keeps same-noon imports separate and credits the later import", () => {
+  const shots = [
+    {
+      sessionId: "a-later",
+      shotAt: "2026-09-08T12:00:00Z",
+      sessionCreatedAt: "2026-09-08T19:00:00Z",
+      carry: 230,
+    },
+    {
+      sessionId: "z-earlier",
+      shotAt: "2026-09-08T12:00:00Z",
+      sessionCreatedAt: "2026-09-08T18:00:00Z",
+      carry: 210,
+    },
+  ];
+  const history = benchmarkSessionHistory(shots);
+  expect(history.map((row) => row.shots.map((shot) => shot.sessionId))).toEqual([
+    ["z-earlier"],
+    ["z-earlier", "a-later"],
+  ]);
+  const milestones = benchmarkMilestones(
+    "driver",
+    history.map((row) => ({
+      ...row,
+      carryYd: row.shots.reduce((sum, shot) => sum + shot.carry, 0) / row.shots.length,
+      sampleSize: row.shots.length,
+    })),
+  );
+  expect(milestones).toHaveLength(1);
+  expect(milestones[0].sessionId).toBe("a-later");
 });

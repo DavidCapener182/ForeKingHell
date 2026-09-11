@@ -245,7 +245,13 @@ export default async function DashboardPage() {
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <Button asChild className="min-h-11">
-              <Link href={actionHref}>{actionLabel}</Link>
+              <Link href={hasEvidence ? practiceHref : "/import"}>
+                {hasEvidence
+                  ? currentPlan
+                    ? "Open saved practice"
+                    : "Build focused practice"
+                  : "Import first session"}
+              </Link>
             </Button>
             {focus ? (
               <Link
