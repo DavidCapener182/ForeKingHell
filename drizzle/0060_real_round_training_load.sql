@@ -16,7 +16,9 @@ LANGUAGE sql IMMUTABLE SET search_path = public, pg_temp AS $$
 $$;
 --> statement-breakpoint
 CREATE OR REPLACE FUNCTION fkh_sync_real_round_training() RETURNS trigger
-LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
+-- The source row has already passed session RLS (including delegated editors).
+-- This trigger accepts no arguments and writes only that row's linked workload.
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE played integer;
 BEGIN
   IF TG_OP = 'DELETE' THEN

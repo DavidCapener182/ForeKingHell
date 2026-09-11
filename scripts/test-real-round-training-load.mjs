@@ -31,6 +31,22 @@ BEGIN
  DELETE FROM fkh_sessions WHERE id=sid;
  IF EXISTS(SELECT 1 FROM fkh_golf_training_sessions WHERE source_id=sid::text) THEN RAISE EXCEPTION 'orphaned load'; END IF;
 END $$;`);
+      const [fixture] = await tx`select gen_random_uuid() as uid, gen_random_uuid() as sid`;
+      await tx`insert into fkh_users(id) values(${fixture.uid})`;
+      await tx`insert into fkh_sessions(id,user_id,source,type,date,round_status,scorecard_json,raw_csv_text) values(${fixture.sid},${fixture.uid},'manual','real_round',now(),'complete',(select jsonb_agg(jsonb_build_object('holeNumber',i,'par',4,'score',5)) from generate_series(1,18)i),'')`;
+      // Grant a non-owner editor access to this disposable source row only. The
+      // training table retains its real owner-only RLS. All grants roll back.
+      await tx.unsafe(`GRANT USAGE ON SCHEMA public TO authenticated;
+        GRANT SELECT, UPDATE ON fkh_sessions TO authenticated;
+        CREATE POLICY fkh_round_sync_editor_test ON fkh_sessions FOR ALL TO authenticated USING (id='${fixture.sid}'::uuid) WITH CHECK (id='${fixture.sid}'::uuid);
+        SET LOCAL ROLE authenticated;`);
+      const changed =
+        await tx`update fkh_sessions set course_name='Editor update' where id=${fixture.sid} returning id`;
+      if (changed.length !== 1) throw new Error("Editor source update failed");
+      await tx.unsafe("RESET ROLE");
+      const [linked] =
+        await tx`select title from fkh_golf_training_sessions where source_id=${fixture.sid}`;
+      if (linked?.title !== "Editor update") throw new Error("Editor load sync failed");
       throw new Error("ROLLBACK_PASSED");
     });
   } catch (error) {
