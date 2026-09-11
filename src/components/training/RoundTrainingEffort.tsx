@@ -4,19 +4,20 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateRoundTrainingEffortAction } from "@/app/stats/training-over-time/actions";
 import type { TrainingSessionListItem } from "@/lib/training/trainingData";
-import { ROUND_LOAD_MODEL, roundLoadExplanation } from "@/lib/training/roundLoad";
+import { isManagedRoundLoad, roundLoadExplanation } from "@/lib/training/roundLoad";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export function RoundTrainingEffort({ sessions }: { sessions: TrainingSessionListItem[] }) {
-  const rounds = sessions.filter((s) => s.loadMetadataJson?.model === ROUND_LOAD_MODEL).slice(0, 8);
+  const rounds = sessions.filter((s) => isManagedRoundLoad(s.loadMetadataJson?.model)).slice(0, 8);
   if (!rounds.length) return null;
   return (
     <section className="w-full rounded-xl border bg-card p-5" aria-label="Round training effort">
       <h2 className="text-xl font-semibold">Your rounds count too</h2>
       <p className="mt-1 text-sm text-muted-foreground">
-        Completed real rounds are added automatically. Load uses minutes × overall effort. Missing
-        values use an estimate: 4 hours per 18 holes and effort 3/10. These are app workload units;
+        Completed real rounds are added automatically. Load uses minutes × overall effort × 0.5
+        round weighting. Missing values use an estimate: 4 hours per 18 holes and effort 3/10. The
+        weighting is provisional so rounds and swing-based practice sit on a more balanced scale;
         score does not change the load.
       </p>
       <div className="mt-4 divide-y">
