@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { roundLoadExplanation } from "@/lib/training/roundLoad";
 import type { TrainingRangeKey } from "@/lib/training/ranges";
 import type { TrainingSessionListItem } from "@/lib/training/trainingData";
 const integerFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 });
@@ -142,6 +143,11 @@ export function TrainingSessionLedger({
                     </TableCell>
                     <TableCell data-column="load" className="text-right tabular-nums">
                       {integerFormatter.format(Math.round(session.sessionLoad))}
+                      {roundLoadExplanation(session) ? (
+                        <span className="block text-xs text-muted-foreground">
+                          {roundLoadExplanation(session)}
+                        </span>
+                      ) : null}
                     </TableCell>
                     <TableCell data-column="rpe" className="text-right tabular-nums">
                       {session.rpe}

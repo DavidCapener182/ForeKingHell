@@ -916,7 +916,7 @@ function buildReadinessRecommendation(data: TrainingOverTimeData) {
       explanation:
         "Use a focused block for the weakest part of the game and stop once the quality drops.",
       reasons: [
-        `Golf Form is ${formatMetric(latest.form)}, below the 100 baseline.`,
+        `Golf Form is ${formatMetric(latest.form)}, ${latest.form < 100 ? "below" : latest.form > 100 ? "above" : "at"} the 100 baseline.`,
         data.sessionFormSignal.detail,
       ],
       tone: "amber" as const,

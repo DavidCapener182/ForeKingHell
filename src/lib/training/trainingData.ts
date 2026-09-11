@@ -61,6 +61,7 @@ export type TrainingSessionListItem = {
   physicalDemand: number | null;
   sessionLoad: number;
   notes: string | null;
+  loadMetadataJson?: import("./roundLoad").RoundLoadMetadata;
 };
 
 export type TrainingSourceSuggestion = {
@@ -174,6 +175,7 @@ type TrainingSessionDbRow = {
   physicalDemand: number | null;
   sessionLoad: string | number;
   notes: string | null;
+  loadMetadataJson?: import("./roundLoad").RoundLoadMetadata;
 };
 
 type SessionSnapshotRow = {
@@ -249,6 +251,7 @@ export async function getTrainingOverTimeData(
         physicalDemand: golfTrainingSessions.physicalDemand,
         sessionLoad: golfTrainingSessions.sessionLoad,
         notes: golfTrainingSessions.notes,
+        loadMetadataJson: golfTrainingSessions.loadMetadataJson,
       })
       .from(golfTrainingSessions)
       .where(eq(golfTrainingSessions.userId, userId))
@@ -290,6 +293,7 @@ export async function getTrainingOverTimeData(
         physicalDemand: golfTrainingSessions.physicalDemand,
         sessionLoad: golfTrainingSessions.sessionLoad,
         notes: golfTrainingSessions.notes,
+        loadMetadataJson: golfTrainingSessions.loadMetadataJson,
       })
       .from(golfTrainingSessions)
       .where(
