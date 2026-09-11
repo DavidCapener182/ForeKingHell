@@ -1,6 +1,14 @@
 import type { CourseTwinManifest } from "@/lib/course-twin-contract";
 
 export type LocalCourseTwinMetadata = {
+  "e7c4eb7a-6c78-4d25-a85f-cadfa4ecb82d": {
+    courseId: "e7c4eb7a-6c78-4d25-a85f-cadfa4ecb82d";
+    name: "Ellesmere Port";
+    grade: "C";
+    previewImageUrl: "/course-twins/ellesmere-port-v1/imagery.jpg";
+    mappedHoles: 18;
+    terrainResolutionM: 4.411936697215177;
+  };
   courseId: string;
   name: string;
   grade: "A" | "B" | "C" | "D";
@@ -326,6 +334,7 @@ export const localCourseTwinMetadataByCourseId: Record<string, LocalCourseTwinMe
 };
 
 const manifestLoaders: Record<string, () => Promise<unknown>> = {
+  "e7c4eb7a-6c78-4d25-a85f-cadfa4ecb82d": () => import("./ellesmere-port-v1.json"),
   "486ddef6-5963-41d7-b2e6-82cec6732170": () => import("./aberystwyth-golf-course-v1.json"),
   "4de11156-16fd-4a36-84e0-fadda53456b0": () => import("./aintree-v1.json"),
   "1b95d085-59c0-476c-b0ff-c2d369c2aadc": () => import("./aldenham-golf-club-v1.json"),
