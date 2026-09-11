@@ -83,7 +83,7 @@ jobs:
           "FKH_WINDOWS_SIGN_CERT_SHA1=$($certificate.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - run: npm run bridge:build
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: forekinghell-course-twin-bridge-${{ matrix.artifact }}
           path: dist/course-twin-bridge/**
