@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 vi.mock("@/components/app/today-hydration-boundary", () => ({
@@ -39,4 +40,13 @@ describe("Today round view", () => {
     expect(html).not.toContain("Trajectory");
     expect(html).not.toContain("max-w-6xl");
   });
+});
+
+it("keeps practice mode in filter forms and rebuilt review links", () => {
+  const source = readFileSync("src/app/(app)/today/today-workbench-page.tsx", "utf8");
+  expect(source).toContain('name="view" value="practice"');
+  for (const name of ["todayReviewModeHref", "todaySortHref"]) {
+    const fn = source.slice(source.indexOf(`function ${name}`)).split("\nfunction ")[0];
+    expect(fn).toContain('view: "practice"');
+  }
 });

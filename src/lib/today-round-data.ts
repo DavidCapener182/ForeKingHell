@@ -64,8 +64,11 @@ export async function getTodayRound(
         selectedDate
           ? sql`${activityDate} = ${selectedDate}`
           : sql`${activityDate} <= to_char(now() at time zone 'Europe/London', 'YYYY-MM-DD')`,
-        sql`((${round} and ${sessions.roundStatus} = 'complete' and exists
-        (select 1 from jsonb_array_elements(coalesce(${sessions.scorecardJson}, '[]'::jsonb)) h where (h->>'score')::numeric > 0))
+        sql`((${round} and ${sessions.roundStatus} = 'complete' and jsonb_array_length(coalesce(${sessions.scorecardJson}, '[]'::jsonb)) between 1 and 18
+        and not exists (select 1 from jsonb_array_elements(${sessions.scorecardJson}) h
+          where case when jsonb_typeof(h->'score') = 'number' then (h->>'score')::numeric < 1 or (h->>'score')::numeric <> trunc((h->>'score')::numeric) else true end
+          or case when jsonb_typeof(h->'holeNumber') = 'number' then (h->>'holeNumber')::numeric not between 1 and 18 or (h->>'holeNumber')::numeric <> trunc((h->>'holeNumber')::numeric) else true end)
+        and (select count(distinct (h->>'holeNumber')::numeric) from jsonb_array_elements(${sessions.scorecardJson}) h) = jsonb_array_length(${sessions.scorecardJson}))
         or (not ${round} and exists (select 1 from ${shots} where ${shots.sessionId} = ${sessions.id} and ${shots.userId} = ${userId})))`,
       ),
     )

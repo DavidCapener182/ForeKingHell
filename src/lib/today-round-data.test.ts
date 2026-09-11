@@ -30,6 +30,9 @@ describe("Today activity selection", () => {
     expect(q.sql).toContain('"fkh_shots"."user_id" =');
     expect(q.sql).toContain("Europe/London");
     expect(q.sql).toContain("jsonb_array_elements");
+    expect(q.sql).toContain("and not exists");
+    expect(q.sql).toContain("count(distinct");
+    expect(q.sql).toContain("between 1 and 18");
     expect(q.sql).toContain("'complete'");
     expect(q.sql).toContain("max(");
   });

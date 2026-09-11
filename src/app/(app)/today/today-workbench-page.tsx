@@ -1285,6 +1285,7 @@ function TodayDesktopFilterBar({
         resultLabel={`${integerFormatter.format(data.shots.length)} ${reviewMode === "clean" ? "trusted" : "imported"} shots`}
         filters={
           <form className="grid min-w-0 flex-1 gap-2 md:grid-cols-[minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto] md:items-end">
+            <input type="hidden" name="view" value="practice" />
             <input type="hidden" name="evidence" value={reviewMode === "raw" ? "raw" : ""} />
             <TodayScopeFields data={data} />
             <Button type="submit" className="h-9 rounded-lg">
@@ -3742,7 +3743,7 @@ function todaySocialHref(data: TodayPracticeData, sort: ClubSort) {
 }
 
 function todayReviewModeHref(data: TodayPracticeData, sort: ClubSort, mode: PracticeReviewMode) {
-  const params = new URLSearchParams({ date: data.dateKey });
+  const params = new URLSearchParams({ date: data.dateKey, view: "practice" });
 
   if (data.filters.sessionId) {
     params.set("session", data.filters.sessionId);
@@ -3783,7 +3784,7 @@ function buildTodayFilterChips(data: TodayPracticeData) {
 }
 
 function todayFilterHref(data: TodayPracticeData, omitKey: "session" | "club") {
-  const params = new URLSearchParams({ date: data.dateKey });
+  const params = new URLSearchParams({ date: data.dateKey, view: "practice" });
 
   if (omitKey !== "session" && data.filters.sessionId) {
     params.set("session", data.filters.sessionId);
@@ -3797,7 +3798,7 @@ function todayFilterHref(data: TodayPracticeData, omitKey: "session" | "club") {
 }
 
 function todaySortHref(data: TodayPracticeData, sort: ClubSort) {
-  const params = new URLSearchParams({ date: data.dateKey });
+  const params = new URLSearchParams({ date: data.dateKey, view: "practice" });
 
   if (data.filters.sessionId) {
     params.set("session", data.filters.sessionId);
