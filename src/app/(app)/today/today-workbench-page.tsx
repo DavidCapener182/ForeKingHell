@@ -1,3 +1,5 @@
+import { getTodayRound } from "@/lib/today-round-data";
+import { TodayRoundView } from "./today-round-view";
 import { TodayHydrationBoundary } from "@/components/app/today-hydration-boundary";
 import { PageShell } from "@/components/app/page-shell";
 import { HighlightCarousel } from "@/components/app/highlight-carousel";
@@ -273,6 +275,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const params = await searchParams;
   const requestedClub = normaliseAllValue(first(params.club).trim().toLowerCase());
   const userId = await requireCurrentUserId();
+  const latestRound = await getTodayRound(userId, params ?? {});
+  if (latestRound) return <TodayRoundView round={latestRound} />;
   const socialLoaded = shouldLoadTodaySocial(first(params.social));
   const [
     data,
