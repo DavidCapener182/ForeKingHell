@@ -17,3 +17,7 @@ The established session-RPE method motivates duration × effort: https://www.fro
 ## Validation
 
 Unit tests cover arithmetic, missing-data labels and invalid inputs. Transactional database tests cover insert, repeat updates, score independence, source corrections, delete/reopen, simulator exclusion and protection of pre-existing manual training rows. New metadata is additive and existing ownership/RLS policies continue to apply.
+
+## Performance comparison boundaries
+
+Golf Form does not change from duration, workload or effort alone. Round comparisons require matching round type, course, tee set and scored hole layout. Real rounds are not compared with simulated rounds, and a nine-hole score is not compared with an eighteen-hole score. Until a matching prior round exists, the round contributes workload without a performance adjustment. Historical form is recalculated using these boundaries.

@@ -349,8 +349,8 @@ export function TrainingLoadRangeView({
                 Your golf readiness trend
               </h2>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                Fitness builds slowly, Recent Load reacts quickly, and Golf Form shows how ready
-                your current game is to perform.
+                Fitness builds slowly and Recent Load reacts quickly. Golf Form tracks performance
+                in comparable sessions; effort alone does not lower it.
               </p>
             </div>
             <div className={styles.desktopRanges}>

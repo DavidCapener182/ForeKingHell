@@ -55,7 +55,7 @@ describe("latest session form signal", () => {
     expect(signal.adjustment).toBeLessThan(0);
   });
 
-  it("uses a low-confidence load fallback for manual sessions", () => {
+  it("does not treat workload as playing performance", () => {
     const signal = calculateSessionFormSignal(
       {
         kind: "load",
@@ -73,7 +73,8 @@ describe("latest session form signal", () => {
       },
     );
 
-    expect(signal.direction).toBe("improving");
+    expect(signal.direction).toBe("unknown");
+    expect(signal.adjustment).toBe(0);
     expect(signal.confidence).toBe("low");
   });
 
@@ -130,5 +131,29 @@ describe("latest session form signal", () => {
 
     expect(signal.direction).toBe("improving");
     expect(signal.adjustment).toBeGreaterThan(0);
+  });
+});
+
+describe("round comparison boundaries", () => {
+  it("does not compare real and simulated rounds or different course layouts", () => {
+    const latest = {
+      kind: "round" as const,
+      title: "Ellesmere",
+      sampleSize: 18,
+      scoreToParPer18: 12,
+      comparisonKey: "real-ellesmere-red-18",
+    };
+    for (const comparisonKey of [
+      "sim-aintree-9",
+      "real-ellesmere-white-18",
+      "real-ellesmere-red-9",
+    ]) {
+      const previous = { ...latest, comparisonKey, scoreToParPer18: 6 };
+      expect(calculateSessionFormSignal(latest, previous).adjustment).toBe(0);
+      expect(aggregateSessionFormSnapshots([latest, previous])?.sampleSize).toBe(18);
+    }
+    expect(calculateSessionFormSignal(latest, { ...latest, scoreToParPer18: 14 }).adjustment).toBe(
+      3,
+    );
   });
 });
