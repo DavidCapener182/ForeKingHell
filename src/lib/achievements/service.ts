@@ -560,6 +560,7 @@ function achievementCategoryFromMetadata(value: unknown): AchievementCategory {
     value === "putting" ||
     value === "shortGame" ||
     value === "roundStats" ||
+    value === "realRounds" ||
     value === "hidden"
   ) {
     return value;
@@ -1488,6 +1489,13 @@ function progressLabelFromMetadata(
   progressValue: number,
   targetValue: number,
 ) {
+  if (metadata?.realRound === true && typeof metadata.value === "number") {
+    if (metadata.metric === "score")
+      return `Best score ${metadata.value} · target under ${targetValue}`;
+    if (metadata.metric === "putts")
+      return `Best ${metadata.value} putts · target ${targetValue} or fewer`;
+  }
+
   if (metadata && typeof metadata.totalMiles === "number") {
     return `${formatNumber(metadata.totalMiles)} / ${formatNumber(targetValue)} mi`;
   }
