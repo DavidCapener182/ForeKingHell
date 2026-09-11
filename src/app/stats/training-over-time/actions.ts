@@ -14,6 +14,7 @@ import {
   calculateRoundLoad,
   ROUND_DEFAULT_RPE,
   ROUND_LOAD_MODEL,
+  LEGACY_ROUND_LOAD_MODEL,
   type RoundMovement,
 } from "@/lib/training/roundLoad";
 
@@ -297,7 +298,7 @@ export async function updateRoundTrainingEffortAction(
         eq(golfTrainingSessions.sourceType, "round"),
         eq(sessions.type, "real_round"),
         eq(sessions.roundStatus, "complete"),
-        sql`${golfTrainingSessions.loadMetadataJson}->>'model' = ${ROUND_LOAD_MODEL}`,
+        sql`${golfTrainingSessions.loadMetadataJson}->>'model' in (${ROUND_LOAD_MODEL}, ${LEGACY_ROUND_LOAD_MODEL})`,
       ),
     )
     .limit(1);

@@ -5,17 +5,17 @@ describe("real round workload", () => {
   it("uses the reported duration and effort for the trolley round", () => {
     expect(calculateRoundLoad(18, 213, 7)).toEqual({
       minutes: 213,
-      load: 1491,
+      load: 746,
       durationEstimated: false,
     });
   });
   it("scales missing duration by holes without inventing recorded minutes", () => {
     expect(calculateRoundLoad(9, null, 3)).toEqual({
       minutes: 120,
-      load: 360,
+      load: 180,
       durationEstimated: true,
     });
-    expect(calculateRoundLoad(18, null, 3).load).toBe(720);
+    expect(calculateRoundLoad(18, null, 3).load).toBe(360);
   });
   it.each([
     [18, 0, 7],
@@ -35,7 +35,7 @@ describe("real round workload", () => {
         rpe: 3,
         loadMetadataJson: { model: ROUND_LOAD_MODEL, rpeEstimated: true },
       }),
-    ).toBe("Estimated: 213 min × effort 3 (estimated).");
+    ).toBe("Estimated: 213 min × effort 3 (estimated) × 0.5 round weighting.");
     expect(
       roundLoadExplanation({
         holesPlayed: 18,
@@ -43,6 +43,6 @@ describe("real round workload", () => {
         rpe: 7,
         loadMetadataJson: { model: ROUND_LOAD_MODEL, rpeEstimated: false, movement: "trolley" },
       }),
-    ).toBe("Recorded effort: 213 min × effort 7.");
+    ).toBe("Recorded effort: 213 min × effort 7 × 0.5 round weighting.");
   });
 });

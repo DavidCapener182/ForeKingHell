@@ -4,15 +4,17 @@ Completed real 9/18-hole scorecards automatically create one linked training ent
 
 ## Workload model
 
-Round load = duration in minutes × overall session effort (1–10), in arbitrary app units. Scoring strokes, putts, penalties and birdies do not determine physical load. Movement (carried, trolley, buggy) is context: reported effort already reflects it, so there is no additional walking multiplier.
+Round load = duration in minutes × overall session effort (1–10) × 0.5, in arbitrary app units. Scoring strokes, putts, penalties and birdies do not determine physical load. Movement (carried, trolley, buggy) is context: reported effort already reflects it, so there is no additional walking multiplier.
 
 Missing duration uses 240 minutes per 18 holes, prorated to 120 per nine. Missing effort uses 3/10. These are provisional product defaults, not validated golfer-specific estimates. Both missing fields remain visibly labelled estimated; missing movement stays unknown. Saving effort replaces the existing entry, not another load.
 
 The established session-RPE method motivates duration × effort: https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2017.00612/full . Golf-specific monitoring also supports retaining time as its own source metric: https://pubmed.ncbi.nlm.nih.gov/29431589/ . Walking and cart use can differ in physiological demands: https://pmc.ncbi.nlm.nih.gov/articles/PMC12685474/ . None validates our default effort/duration or a universal conversion between existing swing-based practice units and round units. Existing practice/legacy load calculations remain unchanged; this is app workload guidance, not calories or clinical readiness.
 
+The 0.5 weighting is a provisional product calibration requested after the original round dominated the swing-based range scale. Today becomes about 1.75 times the latest 427-load range day. It is not a measured active-time fraction or a physiological conversion. The migration recomputes from original inputs and is repeat-safe.
+
 ## Recorded example
 
-11 September 2026, Ellesmere Port: screenshot duration 3h33m = 213 minutes; user reports walking with a trolley and effort 7/10. Load = 1,491. No estimated effort or walking multiplier. Score 83 stays performance evidence separately.
+11 September 2026, Ellesmere Port: screenshot duration 3h33m = 213 minutes; user reports walking with a trolley and effort 7/10. Raw duration × effort = 1,491; weighted app load = 746. No estimated effort or walking multiplier. Score 83 stays performance evidence separately.
 
 ## Validation
 

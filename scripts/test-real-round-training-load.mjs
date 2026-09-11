@@ -12,11 +12,11 @@ BEGIN
  IF fkh_real_round_hole_count(card)<>18 OR fkh_real_round_hole_count('[{"holeNumber":1,"score":5}]') IS NOT NULL OR fkh_real_round_hole_count('{}') IS NOT NULL THEN RAISE EXCEPTION 'validation'; END IF;
  INSERT INTO fkh_sessions(id,user_id,source,type,date,round_status,scorecard_json,raw_csv_text,course_name) VALUES(sid,uid,'manual','real_round','2026-09-10T23:30:00Z','complete',card,'','Rollback test');
  SELECT count(*),max(session_load) INTO n,amount FROM fkh_golf_training_sessions WHERE source_id=sid::text AND user_id=uid;
- IF n<>1 OR amount<>720 THEN RAISE EXCEPTION 'insert'; END IF;
+ IF n<>1 OR amount<>360 THEN RAISE EXCEPTION 'insert'; END IF;
  IF (SELECT session_date FROM fkh_golf_training_sessions WHERE source_id=sid::text)<>'2026-09-11'::date THEN RAISE EXCEPTION 'London date'; END IF;
- UPDATE fkh_golf_training_sessions SET duration_minutes=213,rpe=7,walked=true,used_cart=false,session_load=1491,load_metadata_json=load_metadata_json||'{"rpeEstimated":false,"movement":"trolley"}' WHERE source_id=sid::text;
+ UPDATE fkh_golf_training_sessions SET duration_minutes=213,rpe=7,walked=true,used_cart=false,session_load=746,load_metadata_json=load_metadata_json||'{"rpeEstimated":false,"movement":"trolley"}' WHERE source_id=sid::text;
  UPDATE fkh_sessions SET scorecard_json=jsonb_set(card,'{0,score}','12') WHERE id=sid;
- IF (SELECT session_load FROM fkh_golf_training_sessions WHERE source_id=sid::text)<>1491 THEN RAISE EXCEPTION 'score changed physical load'; END IF;
+ IF (SELECT session_load FROM fkh_golf_training_sessions WHERE source_id=sid::text)<>746 THEN RAISE EXCEPTION 'score changed physical load'; END IF;
  UPDATE fkh_sessions SET course_name='Renamed' WHERE id=sid;
  IF (SELECT count(*) FROM fkh_golf_training_sessions WHERE source_id=sid::text)<>1 THEN RAISE EXCEPTION 'duplicate'; END IF;
  IF (SELECT load_metadata_json->>'movement' FROM fkh_golf_training_sessions WHERE source_id=sid::text)<>'trolley' THEN RAISE EXCEPTION 'lost effort'; END IF;
