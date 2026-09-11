@@ -11,6 +11,27 @@ import {
 } from "@/generated/course-twins/local-catalogue";
 
 describe("checked-in Course Twin pilot packages", () => {
+  it("ships Ellesmere Port with 18 mapped holes and honest replay limitations", async () => {
+    const manifest = await loadLocalCourseTwinManifest("e7c4eb7a-6c78-4d25-a85f-cadfa4ecb82d");
+    expect(manifest?.holes.map((hole) => hole.holeNumber)).toEqual(
+      Array.from({ length: 18 }, (_, i) => i + 1),
+    );
+    expect(localCourseTwinMetadataByCourseId["e7c4eb7a-6c78-4d25-a85f-cadfa4ecb82d"]).toMatchObject(
+      { mappedHoles: 18, grade: "C" },
+    );
+    expect(manifest?.quality).toMatchObject({ grade: "C", verified: false, mappedHoles: 18 });
+    expect(manifest?.quality.warnings.join(" ")).toContain("exact Red tee positions");
+    expect(manifest?.supportedModes).toEqual(["flyover", "replay", "strategy"]);
+    expect(manifest?.attribution.some((source) => source.label.includes("GolfTraxx"))).toBe(true);
+    const heightmap = manifest!.terrain.heightmap!;
+    const bytes = readFileSync(resolve("public", heightmap.url.replace(/^\//, "")));
+    expect(bytes.length).toBe(heightmap.width * heightmap.height * 4);
+    expect(createHash("sha256").update(bytes).digest("hex")).toBe(heightmap.sha256);
+    expect(
+      manifest!.holes.every((hole) => [...hole.tee, ...hole.green].every(Number.isFinite)),
+    ).toBe(true);
+  });
+
   it("ships Aintree as a real nine-hole LiDAR and aerial package", () => {
     expect(aintree.course).toMatchObject({
       id: "4de11156-16fd-4a36-84e0-fadda53456b0",

@@ -65,7 +65,6 @@ export default async function TodayCompanionPage({
   const now = new Date();
   const params = await searchParams;
   const latestRound = await getTodayRound(userId, params ?? {});
-  if (latestRound) return <TodayRoundView round={latestRound} />;
   const dateParam = Array.isArray(params?.date) ? params.date[0] : params?.date;
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : undefined;
   const [context, currentPlan, activeRound, recent, latestData] = await Promise.all([
@@ -170,6 +169,17 @@ export default async function TodayCompanionPage({
             Next practice <ArrowRight className="size-4" aria-hidden />
           </Link>
         </Button>
+        {latestRound ? <TodayRoundView round={latestRound} /> : null}
+        {latestRound ? (
+          <div id="today-practice-progress" className="scroll-mt-24 border-t border-border pt-5">
+            <h2 className="text-xl font-semibold">Practice & progress</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {latestData?.rawShots.length
+                ? `Your latest measured practice · ${latestData.dateLabel}`
+                : "No measured practice recorded yet."}
+            </p>
+          </div>
+        ) : null}
         <TodayProgressReport report={progress} historyError={progressHistory === null} />
         {!latestData ? (
           <Alert>

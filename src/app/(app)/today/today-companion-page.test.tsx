@@ -271,7 +271,7 @@ describe("mobile post-practice review", () => {
 });
 
 describe("mobile round review", () => {
-  it("shows the selected round before loading practice analytics", async () => {
+  it("leads with the round while retaining practice, progress and planning", async () => {
     vi.mocked(getTodayRound).mockResolvedValueOnce({
       session: {
         id: "round",
@@ -286,8 +286,34 @@ describe("mobile round review", () => {
     const html = renderToStaticMarkup(await TodayCompanionPage({}));
     expect(html).toContain("data-today-round");
     expect(html).toContain("Ellesmere Port");
-    expect(html).not.toContain("data-today-progress-report");
-    expect(getTodayPracticeData).not.toHaveBeenCalled();
-    expect(getPracticePlannerContext).not.toHaveBeenCalled();
+    expect(html).toContain("data-today-progress-report");
+    expect(html.indexOf("data-today-round")).toBeLessThan(
+      html.indexOf("data-today-progress-report"),
+    );
+    expect(html).toContain("data-today-workspace-tabs");
+    expect(html).toContain("Practice &amp; progress");
+    expect((html.match(/id="today-practice-review"/g) ?? []).length).toBe(1);
+    expect(html).toContain('id="today-practice-progress"');
+    expect(getTodayPracticeData).toHaveBeenCalled();
+    expect(getPracticePlannerContext).toHaveBeenCalled();
+  });
+  it("does not invent a measured-practice date for a round-only account", async () => {
+    vi.mocked(getTodayRound).mockResolvedValueOnce({
+      session: {
+        id: "round",
+        date: now,
+        type: "real_round",
+        courseName: "Ellesmere Port",
+        notes: null,
+        scorecardJson: [{ holeNumber: 1, par: 4, score: 5 }],
+      },
+      tee: null,
+    } as TodayRound);
+    const data = practice();
+    data.rawShots = [];
+    vi.mocked(getTodayPracticeData).mockResolvedValue(data);
+    const html = renderToStaticMarkup(await TodayCompanionPage({}));
+    expect(html).toContain("No measured practice recorded yet.");
+    expect(html).not.toContain("Your latest measured practice");
   });
 });

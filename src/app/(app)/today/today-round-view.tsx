@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { PageShell } from "@/components/app/page-shell";
-import { TodayHydrationBoundary } from "@/components/app/today-hydration-boundary";
-import { buttonVariants } from "@/components/ui/button";
-import { PageHeader, DataPanel } from "@/components/premium";
+import { ArrowDownRight, ArrowUpRight, Flag, Target } from "lucide-react";
 import type { TodayRound } from "@/lib/today-round-data";
 import { summarizeTodayRound } from "@/lib/today-round-summary";
+import styles from "./today-round-view.module.css";
 
+const relativeScore = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : String(n));
+
+/** The latest round leads Today; the normal practice and planning sections follow it. */
 export function TodayRoundView({ round }: { round: TodayRound }) {
   const s = summarizeTodayRound(round);
   const date = new Intl.DateTimeFormat("en-GB", {
@@ -14,148 +15,214 @@ export function TodayRoundView({ round }: { round: TodayRound }) {
     year: "numeric",
     timeZone: "Europe/London",
   }).format(round.session.date);
-  const relative = s.toPar === 0 ? "E" : s.toPar > 0 ? `+${s.toPar}` : String(s.toPar);
+  const nines = [
+    s.played.filter((h) => h.holeNumber <= 9),
+    s.played.filter((h) => h.holeNumber > 9),
+  ];
+  const frontToPar = nines[0].reduce((n, h) => n + h.score! - h.par, 0);
+  const backToPar = nines[1].reduce((n, h) => n + h.score! - h.par, 0);
+  const improvement = frontToPar - backToPar;
+  const completeNines = nines.every((nine) => nine.length === 9);
+  const threePutts = s.putts === null ? null : s.played.filter((h) => h.putts! >= 3).length;
   const metrics = [
-    ["Putts", s.putts],
-    ["Fairways hit", s.fairways.recorded ? `${s.fairways.hit}/${s.fairways.recorded}` : null],
-    ["Greens in regulation", s.greens.recorded ? `${s.greens.hit}/${s.greens.recorded}` : null],
-    ["Penalties", s.penalties],
-    ["Chip shots", s.chips],
-    ["Net score", s.net],
-  ].filter(([, value]) => value !== null);
+    {
+      label: "Putts",
+      value: s.putts,
+      detail: threePutts === null ? "" : `${threePutts} three-putt holes`,
+    },
+    {
+      label: "Fairways",
+      value: s.fairways.recorded ? `${s.fairways.hit}/${s.fairways.recorded}` : null,
+      detail: s.fairways.recorded
+        ? `${Math.round((s.fairways.hit / s.fairways.recorded) * 100)}% of recorded holes`
+        : "",
+    },
+    {
+      label: "Greens in regulation",
+      value: s.greens.recorded ? `${s.greens.hit}/${s.greens.recorded}` : null,
+      detail: s.greens.recorded
+        ? `${Math.round((s.greens.hit / s.greens.recorded) * 100)}% of recorded holes`
+        : "",
+    },
+    { label: "Penalties", value: s.penalties, detail: "Penalty strokes" },
+  ].filter((m) => m.value !== null);
+  const distribution = [
+    { label: "Birdie or better", value: s.birdies, tone: "birdie" },
+    { label: "Par", value: s.pars, tone: "par" },
+    { label: "Bogey", value: s.bogeys, tone: "bogey" },
+    { label: "Double+", value: s.doubles, tone: "double" },
+  ];
   return (
-    <PageShell>
-      <div data-today-round className="flex min-w-0 flex-col gap-5">
-        <PageHeader
-          title="Today"
-          description="Your latest round. Review the scorecard and the stats you recorded."
-        />
-        <section className="rounded-2xl bg-primary p-5 text-primary-foreground sm:p-8">
-          <p className="text-sm opacity-80">
-            {date} · {round.session.type === "real_round" ? "Course round" : "Round review"}
+    <section data-today-round className={styles.round} aria-labelledby="today-round-title">
+      <div className={styles.hero}>
+        <div className={styles.intro}>
+          <div className={styles.eyebrow}>
+            <Flag size={14} aria-hidden /> Latest round <span>· {date}</span>
+          </div>
+          <h2 id="today-round-title">
+            {round.session.courseName ?? round.session.location ?? "Your latest round"}
+          </h2>
+          <p className={styles.course}>
+            {round.tee
+              ? `${round.tee.name} tees · ${round.tee.yards ? `${round.tee.yards.toLocaleString("en-GB")} yd · ` : ""}`
+              : ""}
+            {s.played.length} holes · Par {s.par}
           </p>
-          <div className="mt-4 flex flex-wrap items-end justify-between gap-6">
+          <div className={styles.actions}>
+            <Link href={`/rounds/${round.session.id}`} className={styles.primaryLink}>
+              Review round <ArrowUpRight size={16} aria-hidden />
+            </Link>
+            <a href="#today-practice-progress" className={styles.secondaryLink}>
+              Practice & progress <ArrowDownRight size={16} aria-hidden />
+            </a>
+          </div>
+        </div>
+        <div className={styles.result}>
+          <div className={styles.gross}>
+            <span className={styles.scoreLabel}>Gross score</span>
             <div>
-              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                {round.session.courseName ?? round.session.location ?? "Your round"}
-              </h2>
-              <p className="mt-2 text-sm opacity-80">
-                {round.tee
-                  ? `${round.tee.name} tees · ${round.tee.yards ? `${round.tee.yards.toLocaleString("en-GB")} yd · ` : ""}`
-                  : ""}
-                {s.played.length} holes scored · Par {s.par}
-              </p>
-            </div>
-            <div>
-              <span className="text-6xl font-semibold tabular-nums">{s.gross}</span>
-              <span className="ml-3 text-2xl">{relative}</span>
-              <p className="mt-2 text-sm opacity-80">
-                Gross score · {s.front} out
-                {s.played.some((h) => h.holeNumber > 9) ? ` / ${s.back} back` : ""}
-              </p>
+              <strong>{s.gross}</strong>
+              <span className={styles.toPar}>{relativeScore(s.toPar)}</span>
             </div>
           </div>
-          <Link
-            href={`/rounds/${round.session.id}`}
-            className="mt-6 inline-flex min-h-11 items-center font-semibold underline underline-offset-4"
-          >
-            Open full round →
-          </Link>
-        </section>
-        {metrics.length ? (
-          <DataPanel>
-            <h2 className="text-xl font-semibold">Round stats</h2>
-            <dl className="mt-4 grid grid-cols-2 gap-5 lg:grid-cols-3">
-              {metrics.map(([label, value]) => (
-                <div key={label}>
-                  <dt className="text-sm text-muted-foreground">{label}</dt>
-                  <dd className="mt-1 text-3xl font-semibold tabular-nums">{value}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Fairways and greens count holes with a recorded result.
-            </p>
-          </DataPanel>
-        ) : null}
-        <DataPanel>
-          <h2 className="text-xl font-semibold">How you scored</h2>
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {[
-              ["Birdie or better", s.birdies],
-              ["Pars", s.pars],
-              ["Bogeys", s.bogeys],
-              ["Double or worse", s.doubles],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-xl bg-muted p-4">
-                <p className="text-sm text-muted-foreground">{label}</p>
-                <p className="mt-1 text-2xl font-semibold">{value}</p>
+          <dl className={styles.splits}>
+            <div>
+              <dt>Out</dt>
+              <dd>{s.front}</dd>
+            </div>
+            {nines[1].length ? (
+              <div>
+                <dt>Back</dt>
+                <dd>{s.back}</dd>
               </div>
+            ) : null}
+            {s.net !== null ? (
+              <div>
+                <dt>Net</dt>
+                <dd>{s.net}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </div>
+      </div>
+      {metrics.length ? (
+        <dl className={styles.metrics} aria-label="Round statistics">
+          {metrics.map((m) => (
+            <div key={m.label}>
+              <dt>{m.label}</dt>
+              <dd>{m.value}</dd>
+              <p>{m.detail}</p>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      <div className={styles.analysis}>
+        <div className={styles.scorecard}>
+          <div className={styles.sectionTitle}>
+            <h3>Your scorecard</h3>
+            <Link href={`/rounds/${round.session.id}`}>
+              Full details <ArrowUpRight size={14} aria-hidden />
+            </Link>
+          </div>
+          <div className={styles.nines}>
+            {nines.map((nine, index) =>
+              nine.length ? (
+                <table key={index} className={styles.nine}>
+                  <caption>
+                    {index === 0 ? "Front nine" : "Back nine"}{" "}
+                    <span>
+                      {index === 0 ? s.front : s.back} ·{" "}
+                      {relativeScore(index === 0 ? frontToPar : backToPar)}
+                    </span>
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Hole</th>
+                      {nine.map((h) => (
+                        <th key={h.holeNumber} scope="col">
+                          {h.holeNumber}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row">Par</th>
+                      {nine.map((h) => (
+                        <td key={h.holeNumber}>{h.par}</td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <th scope="row">Score</th>
+                      {nine.map((h) => (
+                        <td key={h.holeNumber}>
+                          <span
+                            className={styles.holeScore}
+                            data-result={
+                              h.score! < h.par
+                                ? "birdie"
+                                : h.score === h.par
+                                  ? "par"
+                                  : h.score === h.par + 1
+                                    ? "bogey"
+                                    : "double"
+                            }
+                          >
+                            {h.score}
+                          </span>
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              ) : null,
+            )}
+          </div>
+          <div className={styles.distribution} aria-label="Scoring breakdown">
+            {distribution.map((d) => (
+              <span key={d.label}>
+                <i data-result={d.tone} />
+                <strong>{d.value}</strong> {d.label}
+              </span>
             ))}
           </div>
-        </DataPanel>
-        <DataPanel>
-          <h2 className="text-xl font-semibold">Hole by hole</h2>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <caption className="sr-only">
-                Round scorecard for {round.session.courseName}, {date}
-              </caption>
-              <thead>
-                <tr>
-                  {["Hole", "Par", "Score", "Putts", "Fairway", "Green"].map((h) => (
-                    <th key={h} scope="col" className="whitespace-nowrap p-2">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {s.holes.map((h) => (
-                  <tr key={h.holeNumber} className="border-t border-border">
-                    <th scope="row" className="p-2">
-                      {h.holeNumber}
-                    </th>
-                    <td className="p-2">{h.par}</td>
-                    <td className="p-2 font-semibold">{h.score ?? "—"}</td>
-                    <td className="p-2">{h.putts ?? "—"}</td>
-                    <td className="p-2">
-                      {h.par === 3
-                        ? "N/A"
-                        : h.fairwayHit == null
-                          ? "—"
-                          : h.fairwayHit
-                            ? "Hit"
-                            : "Miss"}
-                    </td>
-                    <td className="p-2">{h.gir == null ? "—" : h.gir ? "Hit" : "Miss"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </DataPanel>
-        {round.session.notes ? (
-          <DataPanel>
-            <h2 className="text-xl font-semibold">Round notes & extra stats</h2>
-            <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-muted-foreground">
-              {round.session.notes}
+        </div>
+        <aside className={styles.takeaways} aria-label="Round takeaways">
+          <h3>
+            <Target size={16} aria-hidden /> Take from this round
+          </h3>
+          <div>
+            <span className={styles.takeawayLabel}>Scoring</span>
+            <p>
+              {completeNines
+                ? improvement > 0
+                  ? `${improvement} shots better on the back nine`
+                  : improvement < 0
+                    ? `${Math.abs(improvement)} shots better on the front nine`
+                    : "Same score to par on both nines"
+                : `${s.pars + s.birdies} holes at par or better`}
             </p>
-          </DataPanel>
-        ) : null}
-        <nav aria-label="After your round" className="flex flex-wrap gap-3">
-          <Link href="/practice" className={buttonVariants()}>
-            Plan next practice
+            <small>
+              {completeNines
+                ? `${relativeScore(frontToPar)} out → ${relativeScore(backToPar)} back, against par.`
+                : `Across ${s.played.length} scored holes.`}
+            </small>
+          </div>
+          {s.greens.recorded ? (
+            <div>
+              <span className={styles.takeawayLabel}>Approach play</span>
+              <p>{s.greens.hit} greens in regulation</p>
+              <small>
+                {s.greens.recorded - s.greens.hit} missed greens across {s.greens.recorded} recorded
+                holes.
+              </small>
+            </div>
+          ) : null}
+          <Link href="/practice">
+            Plan next practice <ArrowUpRight size={15} aria-hidden />
           </Link>
-          <Link href="/today?view=practice" className={buttonVariants({ variant: "outline" })}>
-            Latest practice review
-          </Link>
-          <Link href="/rounds" className={buttonVariants({ variant: "outline" })}>
-            All rounds
-          </Link>
-        </nav>
+        </aside>
       </div>
-      <TodayHydrationBoundary />
-    </PageShell>
+    </section>
   );
 }

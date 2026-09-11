@@ -32,10 +32,11 @@ describe("Today round view", () => {
     const html = renderToStaticMarkup(<TodayRoundView round={round} />);
     expect(html).toContain("Ellesmere Port");
     expect(html).toContain("11 September 2026");
-    expect(html).toContain("Driver average 216 yd");
+    expect(html).not.toContain("Driver average 216 yd");
     expect(html).toContain("/rounds/round-id");
-    expect(html).toContain("/today?view=practice");
-    expect(html).not.toContain("Round stats");
+    expect(html).toContain("#today-practice-progress");
+    expect(html).not.toContain("<main");
+    expect(html).not.toContain('aria-label="Round statistics"');
     expect(html).not.toContain("Dispersion");
     expect(html).not.toContain("Trajectory");
     expect(html).not.toContain("max-w-6xl");

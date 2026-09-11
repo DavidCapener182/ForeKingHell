@@ -1,4 +1,4 @@
-import { getTodayRound } from "@/lib/today-round-data";
+import { type TodayRound, getTodayRound } from "@/lib/today-round-data";
 import { TodayRoundView } from "./today-round-view";
 import { TodayHydrationBoundary } from "@/components/app/today-hydration-boundary";
 import { PageShell } from "@/components/app/page-shell";
@@ -276,7 +276,6 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const requestedClub = normaliseAllValue(first(params.club).trim().toLowerCase());
   const userId = await requireCurrentUserId();
   const latestRound = await getTodayRound(userId, params ?? {});
-  if (latestRound) return <TodayRoundView round={latestRound} />;
   const socialLoaded = shouldLoadTodaySocial(first(params.social));
   const [
     data,
@@ -379,6 +378,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     <PageShell size="full" className="today-review-page" contentClassName="pb-4 sm:pb-5">
       <TodayHoverStyles comparisons={data.clubComparisons} />
       <TodayDesktopDashboard
+        latestRound={latestRound}
         correctionClubs={correctionClubs}
         data={data}
         socialContext={socialContext}
@@ -411,6 +411,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
 }
 
 function TodayDesktopDashboard({
+  latestRound,
   correctionClubs,
   data,
   socialContext,
@@ -437,6 +438,7 @@ function TodayDesktopDashboard({
   handicapSource,
   recentActivity,
 }: {
+  latestRound: TodayRound | null;
   correctionClubs: Array<{ value: string; label: string }>;
   data: TodayPracticeData;
   socialContext: TodaySocialContext;
@@ -470,7 +472,21 @@ function TodayDesktopDashboard({
       className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-5 pb-4"
       data-desktop-today-workspace
     >
-      <TodayHomeUtilityBar shotDatabaseHref={shotDatabaseHref} />
+      <TodayHomeUtilityBar
+        shotDatabaseHref={shotDatabaseHref}
+        roundFocused={Boolean(latestRound)}
+      />
+      {latestRound ? <TodayRoundView round={latestRound} /> : null}
+      {latestRound ? (
+        <div id="today-practice-progress" className="scroll-mt-24 border-t border-border pt-6">
+          <h2 className="text-xl font-semibold">Practice & progress</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {data.rawShots.length
+              ? `Your latest measured practice · ${data.dateLabel}`
+              : "No measured practice recorded yet."}
+          </p>
+        </div>
+      ) : null}
       <TodayProgressReport
         report={progress}
         historyError={progressUnavailable}
@@ -706,11 +722,21 @@ function TodayDesktopDashboard({
   );
 }
 
-function TodayHomeUtilityBar({ shotDatabaseHref }: { shotDatabaseHref: string }) {
+function TodayHomeUtilityBar({
+  shotDatabaseHref,
+  roundFocused = false,
+}: {
+  shotDatabaseHref: string;
+  roundFocused?: boolean;
+}) {
   return (
     <PageHeader
       title="Today"
-      description="Your latest practice stays here until you save another."
+      description={
+        roundFocused
+          ? "Your latest round, with practice, progress and next steps below."
+          : "Your latest practice stays here until you save another."
+      }
       actions={
         <ButtonGroup aria-label="Today utility links">
           <Button asChild variant="outline" className="min-h-11">
