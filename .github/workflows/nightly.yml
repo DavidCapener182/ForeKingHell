@@ -36,7 +36,7 @@ jobs:
       CRON_SECRET: ci-cron-secret-at-least-32-characters
       PLAYWRIGHT_E2E_AUTH_BYPASS: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -71,7 +71,7 @@ jobs:
   dependency-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -91,7 +91,7 @@ jobs:
       SCORECARD_PROOF_SECRET: ci-scorecard-proof-secret-32-characters
       CRON_SECRET: ci-cron-secret-at-least-32-characters
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 24
