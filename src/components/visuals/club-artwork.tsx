@@ -151,9 +151,10 @@ function resolveFallbackSpec(clubType: string) {
     };
   }
 
-  if (["3w", "5w", "7w"].includes(clubType) || clubType.includes("wood")) {
-    const label = ["3w", "5w", "7w"].includes(clubType) ? clubType.toUpperCase() : "FW";
-    const family = clubType === "3w" ? "3 wood" : clubType === "7w" ? "7 wood" : "Fairway wood";
+  const woodNumber = clubType.match(/^(\d+)w$/)?.[1];
+  if (woodNumber || clubType.includes("wood")) {
+    const label = woodNumber ? `${woodNumber}W` : "FW";
+    const family = woodNumber ? `${woodNumber} wood` : "Fairway wood";
 
     return {
       label,
@@ -171,17 +172,10 @@ function resolveFallbackSpec(clubType: string) {
     };
   }
 
-  if (["3h", "4h", "5h"].includes(clubType) || clubType.includes("hybrid")) {
-    const label =
-      clubType === "3h" ? "3H" : clubType === "4h" ? "4H" : clubType === "5h" ? "5H" : "HY";
-    const family =
-      clubType === "3h"
-        ? "3 hybrid"
-        : clubType === "4h"
-          ? "4 hybrid"
-          : clubType === "5h"
-            ? "5 hybrid"
-            : "Hybrid";
+  const hybridNumber = clubType.match(/^(\d+)h$/)?.[1];
+  if (hybridNumber || clubType.includes("hybrid")) {
+    const label = hybridNumber ? `${hybridNumber}H` : "HY";
+    const family = hybridNumber ? `${hybridNumber} hybrid` : "Hybrid";
 
     return {
       label,

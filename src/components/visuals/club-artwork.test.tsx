@@ -12,6 +12,10 @@ describe("club artwork without product metadata", () => {
     ["pitching wedge", "PW", "Pitching wedge"],
     ["putter", "PT", "Putter"],
     ["4 hybrid", "4H", "4 hybrid"],
+    ["2 hybrid", "2H", "2 hybrid"],
+    ["2h", "2H", "2 hybrid"],
+    ["4 wood", "4W", "4 wood"],
+    ["4w", "4W", "4 wood"],
   ])("preserves the identity of %s", (clubType, badge, family) => {
     const markup = renderToStaticMarkup(<ClubArtwork clubType={clubType} alt="" />);
     expect(markup).toContain(`>${badge}</text>`);
