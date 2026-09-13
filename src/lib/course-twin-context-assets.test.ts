@@ -5,12 +5,10 @@ import { courseTwinFeatureContains } from "./course-twin-surface";
 import registry from "@/generated/course-twins/context-assets.json";
 
 describe("course-specific optional scenery catalogue", () => {
-  it("provides correctly anchored context for every active local course package", () => {
-    for (const file of readdirSync("src/generated/course-twins").filter((f) =>
-      f.endsWith(".json"),
-    )) {
-      const manifest = JSON.parse(readFileSync(`src/generated/course-twins/${file}`, "utf8"));
-      if (!manifest.course?.id || !manifest.terrain?.heightmap) continue;
+  for (const file of readdirSync("src/generated/course-twins").filter((f) => f.endsWith(".json"))) {
+    const manifest = JSON.parse(readFileSync(`src/generated/course-twins/${file}`, "utf8"));
+    if (!manifest.course?.id || !manifest.terrain?.heightmap) continue;
+    it(`validates anchored scenery and safe car placement for ${file}`, () => {
       const url = (registry as Record<string, string>)[manifest.course.id];
       expect(url, file).toMatch(/^\/course-twins\/common\/context-v1\/[a-z0-9-]+\.json$/);
       const bytes = readFileSync(`public${url}`);
@@ -66,6 +64,6 @@ describe("course-specific optional scenery catalogue", () => {
         expect(building.height).toBeLessThanOrEqual(60);
         expect(Number.isFinite(building.base)).toBe(true);
       }
-    }
-  });
+    });
+  }
 });
