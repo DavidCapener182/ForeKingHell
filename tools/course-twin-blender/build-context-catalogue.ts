@@ -1,3 +1,4 @@
+import type { CourseTwinFeature } from "../../src/lib/course-twin-contract";
 import { parkedCarClearOfPlay } from "../../src/lib/course-twin-scenery";
 import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -29,7 +30,7 @@ for (const file of readdirSync("tools/course-twin-blender/.cache/context").filte
     ),
   );
   const project = createCourseTwinProjector(m.origin.latitude, m.origin.longitude);
-  const features = [];
+  const features: CourseTwinFeature[] = [];
   const buildings = [];
   const roads: {
     id: string;
