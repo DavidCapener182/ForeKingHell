@@ -1,3 +1,4 @@
+import { parkedCarClearOfPlay } from "../../src/lib/course-twin-scenery";
 import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { courseTwinFeatureContains } from "../../src/lib/course-twin-surface";
@@ -177,6 +178,7 @@ for (const file of readdirSync("tools/course-twin-blender/.cache/context").filte
   }
   const parkedCars = cars.filter(
     (car) =>
+      parkedCarClearOfPlay(car, [...m.features, ...features]) &&
       !roads.some((road) =>
         road.points.slice(1).some((b: number[], i: number) => {
           const a = road.points[i];

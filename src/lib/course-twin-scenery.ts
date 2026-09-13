@@ -28,6 +28,24 @@ export function sceneryClearOfPlay(instance: SceneryInstance, features: CourseTw
     );
 }
 
+/** Keep the car body and a small margin clear of playing surfaces, not just its centre. */
+export function parkedCarClearOfPlay(instance: SceneryInstance, features: CourseTwinFeature[]) {
+  const c = Math.cos(instance.rotation),
+    s = Math.sin(instance.rotation);
+  return [-1.5, 0, 1.5].every((dx) =>
+    [-2.7, 0, 2.7].every((dz) =>
+      sceneryClearOfPlay(
+        {
+          ...instance,
+          x: instance.x + dx * c + dz * s,
+          z: instance.z - dx * s + dz * c,
+        },
+        features,
+      ),
+    ),
+  );
+}
+
 /** Stable distance order: original placement order breaks ties, no random reload changes. */
 export function partitionScenery(
   instances: SceneryInstance[],

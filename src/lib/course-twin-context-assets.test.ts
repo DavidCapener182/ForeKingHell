@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, it, expect } from "vitest";
+import { parkedCarClearOfPlay } from "./course-twin-scenery";
 import { courseTwinFeatureContains } from "./course-twin-surface";
 import registry from "@/generated/course-twins/context-assets.json";
 
@@ -34,6 +35,10 @@ describe("course-specific optional scenery catalogue", () => {
       }
       expect(context.cars.length).toBeLessThanOrEqual(160);
       for (const car of context.cars) {
+        expect(
+          parkedCarClearOfPlay(car, [...manifest.features, ...context.features]),
+          `${file}: car on playable surface`,
+        ).toBe(true);
         const c = Math.cos(car.rotation),
           s = Math.sin(car.rotation);
         expect(

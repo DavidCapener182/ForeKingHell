@@ -15,7 +15,7 @@ Generated scenes and source downloads are ignored under scenes/ and .cache/. Bro
 
 ## Course-specific context
 
-All 40 active local course packages have separate context entries in src/generated/course-twins/context-assets.json. The context-v1 database totals 14,663,754 bytes across all courses: 5,579 surface outlines, 6,566 buildings, 4,553 road/path ways, 140 parking areas and 1,850 inferred parked cars. Only the selected course downloads. Counts include nearby mapped features and can overlap between neighbouring course extracts.
+All 40 active local course packages have separate context entries in src/generated/course-twins/context-assets.json. The context-v1 database totals 14,661,805 bytes across all courses: 5,579 surface outlines, 6,566 buildings, 4,553 road/path ways, 140 parking areas and 1,837 inferred parked cars. Only the selected course downloads. Counts include nearby mapped features and can overlap between neighbouring course extracts.
 
 The downloader uses bounded course turf/hole extents, a 16 MB response limit and 160 MB aggregate cache budget. No third-party map calls occur in the browser. Source query URLs, retrieval dates, checksums and OSM way IDs remain in each package. Runtime origin and heightfield checksum checks prevent loading scenery on the wrong course. Incomplete ways, multipolygon relations, geometries outside the terrain extent and elevated/tunnel roads are omitted; building count is capped at 2,000 per course. Coverage is not a complete survey.
 
@@ -28,3 +28,5 @@ Fresh mapped outlines take display precedence over overlapping legacy estimates.
 Screenshots are under output/playwright/, including aintree-roads-final.png and bootle-roads-final.png. Mobile 390×844 layout and optional context/model request failure were exercised. Mobile checking is viewport emulation, not physical-phone performance evidence. Concurrent Blender/build activity confounded initial frame measurements, so no controlled before/after performance claim is made. The optional Bootle high-detail imagery endpoint returned 502; packaged imagery still rendered. Existing CSP report-only blob notices remain; security policy was not weakened.
 
 The next shared refinement adds deterministic facade colours, window frames, glazing and doors to mapped buildings (up to 20,000 windows per course). Facades are inferred decoration and merged into the building draw call. Pavement grain fades with viewing distance; road strips subdivide across their width as well as along bends to reduce terrain intersections.
+
+Parked cars are rejected when their footprint or clearance overlaps any authoritative or display-mapped fairway, tee, green, bunker or water surface. The catalogue test checks every retained car against both feature sets.
