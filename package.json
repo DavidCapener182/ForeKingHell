@@ -41,7 +41,11 @@
     "training:backfill": "node scripts/backfill-training-over-time.mjs",
     "tour:seed-social": "node scripts/seed-tour-social.mjs",
     "tour:reset-social": "node scripts/seed-tour-social.mjs --reset",
-    "user:migrate-default": "node scripts/migrate-default-user-to-auth.mjs"
+    "user:migrate-default": "node scripts/migrate-default-user-to-auth.mjs",
+    "twin-assets:download": "node tools/course-twin-blender/download.mjs",
+    "twin-assets:build": "node tools/course-twin-blender/build.mjs",
+    "twin-assets:optimise": "node tools/course-twin-blender/optimise.mjs",
+    "twin-assets:validate": "vitest run src/lib/course-twin-scenery.test.ts"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.1",

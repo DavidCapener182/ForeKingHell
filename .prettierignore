@@ -25,3 +25,6 @@ tsconfig.tsbuildinfo
 *.gif
 *.svg
 *.ico
+
+# Compact generated scenery databases (runtime download budget).
+public/course-twins/common/context-v1/*.json

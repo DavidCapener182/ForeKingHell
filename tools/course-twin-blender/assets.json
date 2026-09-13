@@ -1,0 +1,243 @@
+{
+  "schemaVersion": 1,
+  "assets": [
+    {
+      "id": "tree_small_02",
+      "name": "Tree Small 02",
+      "creator": {
+        "Rico Cilliers": "All"
+      },
+      "provider": "Poly Haven",
+      "sourcePage": "https://polyhaven.com/a/tree_small_02",
+      "licence": "CC0-1.0",
+      "licenceReference": "https://polyhaven.com/license",
+      "accessTerms": "https://github.com/Poly-Haven/Public-API/blob/master/ToS.md",
+      "downloadedAt": "2026-09-13T16:53:04.552Z",
+      "type": "model",
+      "downloads": [
+        {
+          "originalFile": ".cache/tree_small_02/tree_small_02_1k.gltf",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/tree_small_02/tree_small_02_1k.gltf",
+          "bytes": 9075,
+          "sha256": "3062a709614c05b80fdc1e56583998bc3cb1027b0d52f956c8ecfb882ff8ca6d"
+        },
+        {
+          "originalFile": ".cache/tree_small_02/textures/tree_small_02_branch_nor_gl_1k.jpg",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/tree_small_02/tree_small_02_branch_nor_gl_1k.jpg",
+          "bytes": 581596,
+          "sha256": "a2efae9e7fede259601188cd5cb7e561fc502bd87e04d862a9532b2d8e647a62"
+        },
+        {
+          "originalFile": ".cache/tree_small_02/textures/tree_small_02_branch_diff_1k.jpg",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/tree_small_02/tree_small_02_branch_diff_1k.jpg",
+          "bytes": 449977,
+          "sha256": "a71b768e330c0c6cca097e30314f6b4e842ef724a1370f6aab14b4434eec64cb"
+        },
+        {
+          "originalFile": ".cache/tree_small_02/textures/tree_small_02_branch_arm_1k.jpg",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/tree_small_02/tree_small_02_branch_arm_1k.jpg",
+          "bytes": 375732,
+          "sha256": "8968b46d76c67da09ebbf4eed04b8123c9e0ddf5b55d123968b35b32aa76d27a"
+        },
+        {
+          "originalFile": ".cache/tree_small_02/textures/tree_small_02_leaves_nor_gl_1k.jpg",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/tree_small_02/tree_small_02_leaves_nor_gl_1k.jpg",
+          "bytes": 681604,
+          "sha256": "8c72e04fb23e16ae1df79c01385a638473d1dd4dede3d51e83d70153c129f09b"
+        },
+        {
+          "originalFile": ".cache/tree_small_02/textures/tree_small_02_leaves_diff_1k.jpg",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/tree_small_02/tree_small_02_leaves_diff_1k.jpg",
+          "bytes": 340003,
+          "sha256": "261e7d7a5ac7d2e16ea8823ff8510be8f3f615999724232994039ad2885e5c36"
+        },
+        {
+          "originalFile": ".cache/tree_small_02/textures/tree_small_02_leaves_arm_1k.jpg",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/tree_small_02/tree_small_02_leaves_arm_1k.jpg",
+          "bytes": 633698,
+          "sha256": "71f81374daf5a8f3e6eb2c694264a1769fdb0bea508178e4105618eecea83c3e"
+        },
+        {
+          "originalFile": ".cache/tree_small_02/textures/tree_small_02_nor_gl_1k.jpg",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/tree_small_02/tree_small_02_nor_gl_1k.jpg",
+          "bytes": 1228646,
+          "sha256": "9c83be074c950ea1b94c732c0c0291b53b9ba357f932d378bafe3ca3b4418871"
+        },
+        {
+          "originalFile": ".cache/tree_small_02/textures/tree_small_02_diff_1k.jpg",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/tree_small_02/tree_small_02_diff_1k.jpg",
+          "bytes": 863246,
+          "sha256": "4e0093f407b3a1120a36de49a48ebe5a465a9a9b77e361c7a3e66866e115e404"
+        },
+        {
+          "originalFile": ".cache/tree_small_02/textures/tree_small_02_arm_1k.jpg",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/tree_small_02/tree_small_02_arm_1k.jpg",
+          "bytes": 708242,
+          "sha256": "891c5a1bb124292984b01558e9f2b0302d27d2fa3ccf9dfc6c34f9ea4ca24e6c"
+        },
+        {
+          "originalFile": ".cache/tree_small_02/tree_small_02.bin",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/8k/tree_small_02/tree_small_02.bin",
+          "bytes": 95102324,
+          "sha256": "8da6c3c389ad8748286d1b7488cd827f75ebdad9d8f59ef7dfb0916df5edc634"
+        }
+      ],
+      "usage": "Decorative instanced woodland vegetation; no collision authority",
+      "outputs": [
+        {
+          "asset": "tree_small_02",
+          "lod": "near",
+          "file": "public/course-twins/common/blender-v1/tree_small_02-near.glb",
+          "bytes": 2199772,
+          "triangles": 22770,
+          "unitHeightM": 1,
+          "originalHeightM": 4.556740965694189,
+          "decorativeOnly": true,
+          "sha256": "6f827cd2b6cbe8fd8de51272dfd6f8755679cc62bf01d39f39abdb18e5da5fa2"
+        },
+        {
+          "asset": "tree_small_02",
+          "lod": "mid",
+          "file": "public/course-twins/common/blender-v1/tree_small_02-mid.glb",
+          "bytes": 1079264,
+          "triangles": 8734,
+          "unitHeightM": 1,
+          "originalHeightM": 4.556740965694189,
+          "decorativeOnly": true,
+          "sha256": "5e2c58cf2b3f2873943161f429ffff1f33b42d82895e1f071d6324f21caaa6fb"
+        }
+      ]
+    },
+    {
+      "id": "shrub_04",
+      "name": "Shrub 04",
+      "creator": {
+        "Rico Cilliers": "All"
+      },
+      "provider": "Poly Haven",
+      "sourcePage": "https://polyhaven.com/a/shrub_04",
+      "licence": "CC0-1.0",
+      "licenceReference": "https://polyhaven.com/license",
+      "accessTerms": "https://github.com/Poly-Haven/Public-API/blob/master/ToS.md",
+      "downloadedAt": "2026-09-13T16:53:04.660Z",
+      "type": "model",
+      "downloads": [
+        {
+          "originalFile": ".cache/shrub_04/shrub_04_1k.gltf",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/shrub_04/shrub_04_1k.gltf",
+          "bytes": 2882,
+          "sha256": "782832cbc57e96686b78c6ef9df6234c25f564f78421c8ed4bd42c3631f5aeae"
+        },
+        {
+          "originalFile": ".cache/shrub_04/textures/shrub_04_nor_gl_1k.jpg",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_04/shrub_04_nor_gl_1k.jpg",
+          "bytes": 449241,
+          "sha256": "200d791e0474495bfc876ba1c289dade669c6a5b124647c55bc840a875f6b51c"
+        },
+        {
+          "originalFile": ".cache/shrub_04/textures/shrub_04_diff_1k.jpg",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_04/shrub_04_diff_1k.jpg",
+          "bytes": 373350,
+          "sha256": "0b0fa0a474753d13f3093858cea79d0de05da1e6a0c5d6e181cd351080980b6c"
+        },
+        {
+          "originalFile": ".cache/shrub_04/textures/shrub_04_arm_1k.jpg",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/shrub_04/shrub_04_arm_1k.jpg",
+          "bytes": 332957,
+          "sha256": "d1085df021928b29b0f38dde7e58e9a2e304c4e8d838e390b37cf57f8aa492e8"
+        },
+        {
+          "originalFile": ".cache/shrub_04/shrub_04.bin",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/shrub_04/shrub_04.bin",
+          "bytes": 749084,
+          "sha256": "cb442c39682e54cc63f912aa78ab17a03566f947a61adbbbaaa6473166744f01"
+        }
+      ],
+      "usage": "Decorative instanced woodland vegetation; no collision authority",
+      "outputs": [
+        {
+          "asset": "shrub_04",
+          "lod": "near",
+          "file": "public/course-twins/common/blender-v1/shrub_04-near.glb",
+          "bytes": 184172,
+          "triangles": 2200,
+          "unitHeightM": 1,
+          "originalHeightM": 0.21919968025758862,
+          "decorativeOnly": true,
+          "sha256": "b46cbd417bbb560e01918fc80e67edd68a23a11eb7ce2f195583cdd7014ae378"
+        },
+        {
+          "asset": "shrub_04",
+          "lod": "mid",
+          "file": "public/course-twins/common/blender-v1/shrub_04-mid.glb",
+          "bytes": 111000,
+          "triangles": 1027,
+          "unitHeightM": 1,
+          "originalHeightM": 0.21919968025758862,
+          "decorativeOnly": true,
+          "sha256": "a9ad5329598cd1fd7ed71b6314e5da6c3299e3e9a60396c7c21aec91478379a6"
+        }
+      ]
+    },
+    {
+      "id": "sand_01",
+      "name": "Sand 01",
+      "creator": {
+        "Rob Tuytel": "All"
+      },
+      "provider": "Poly Haven",
+      "sourcePage": "https://polyhaven.com/a/sand_01",
+      "licence": "CC0-1.0",
+      "licenceReference": "https://polyhaven.com/license",
+      "accessTerms": "https://github.com/Poly-Haven/Public-API/blob/master/ToS.md",
+      "downloadedAt": "2026-09-13T16:53:04.745Z",
+      "type": "material",
+      "downloads": [
+        {
+          "originalFile": ".cache/sand_01/sand_01_diff_1k.jpg",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/sand_01/sand_01_diff_1k.jpg",
+          "bytes": 485088,
+          "sha256": "a73b90eaa6d675ef57e7d48a8cf23e1f412e353ab2e29cf73930b8ecd4e76875"
+        }
+      ],
+      "usage": "Mapped bunker surface colour",
+      "outputs": [
+        {
+          "file": "public/course-twins/common/blender-v1/sand-colour.webp",
+          "bytes": 164370,
+          "sha256": "7ea437894ad1c3261ebe58f87d7e29e6cbdd7799651d0adff8edf6193a9d3d2e"
+        }
+      ]
+    },
+    {
+      "id": "kiara_5_noon",
+      "name": "Kiara 5 Noon",
+      "creator": {
+        "Greg Zaal": "All"
+      },
+      "provider": "Poly Haven",
+      "sourcePage": "https://polyhaven.com/a/kiara_5_noon",
+      "licence": "CC0-1.0",
+      "licenceReference": "https://polyhaven.com/license",
+      "accessTerms": "https://github.com/Poly-Haven/Public-API/blob/master/ToS.md",
+      "downloadedAt": "2026-09-13T16:53:05.382Z",
+      "type": "environment",
+      "downloads": [
+        {
+          "originalFile": ".cache/kiara_5_noon/kiara_5_noon_1k.hdr",
+          "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/kiara_5_noon_1k.hdr",
+          "bytes": 1455707,
+          "sha256": "6b09aa23979a883e0385a563f7d3cc8a9c8791b1903a1579140e742fd5620910"
+        }
+      ],
+      "usage": "Optional daylight environment lighting, no geographic backdrop claim",
+      "outputs": [
+        {
+          "file": "public/course-twins/common/blender-v1/daylight.hdr",
+          "bytes": 374785,
+          "sha256": "545cf7a0e9508c09bd41e81068e40a35e8f118952a546e4916d0d4e4ce3344d5"
+        }
+      ]
+    }
+  ]
+}

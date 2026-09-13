@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "exports": [
+    {
+      "asset": "tree_small_02",
+      "lod": "near",
+      "file": "tree_small_02-near.glb",
+      "bytes": 2199772,
+      "triangles": 22770,
+      "unitHeightM": 1,
+      "originalHeightM": 4.556740965694189,
+      "decorativeOnly": true,
+      "sha256": "6f827cd2b6cbe8fd8de51272dfd6f8755679cc62bf01d39f39abdb18e5da5fa2"
+    },
+    {
+      "asset": "tree_small_02",
+      "lod": "mid",
+      "file": "tree_small_02-mid.glb",
+      "bytes": 1079264,
+      "triangles": 8734,
+      "unitHeightM": 1,
+      "originalHeightM": 4.556740965694189,
+      "decorativeOnly": true,
+      "sha256": "5e2c58cf2b3f2873943161f429ffff1f33b42d82895e1f071d6324f21caaa6fb"
+    },
+    {
+      "asset": "shrub_04",
+      "lod": "near",
+      "file": "shrub_04-near.glb",
+      "bytes": 184172,
+      "triangles": 2200,
+      "unitHeightM": 1,
+      "originalHeightM": 0.21919968025758862,
+      "decorativeOnly": true,
+      "sha256": "b46cbd417bbb560e01918fc80e67edd68a23a11eb7ce2f195583cdd7014ae378"
+    },
+    {
+      "asset": "shrub_04",
+      "lod": "mid",
+      "file": "shrub_04-mid.glb",
+      "bytes": 111000,
+      "triangles": 1027,
+      "unitHeightM": 1,
+      "originalHeightM": 0.21919968025758862,
+      "decorativeOnly": true,
+      "sha256": "a9ad5329598cd1fd7ed71b6314e5da6c3299e3e9a60396c7c21aec91478379a6"
+    }
+  ],
+  "material": {
+    "file": "sand-colour.webp",
+    "bytes": 164370,
+    "sha256": "7ea437894ad1c3261ebe58f87d7e29e6cbdd7799651d0adff8edf6193a9d3d2e"
+  },
+  "environment": {
+    "file": "daylight.hdr",
+    "bytes": 374785,
+    "sha256": "545cf7a0e9508c09bd41e81068e40a35e8f118952a546e4916d0d4e4ce3344d5"
+  }
+}

@@ -1,4 +1,8 @@
 @media (max-width: 1023px) {
+  .viewport :global([data-course-twin-desktop-nav]) {
+    display: none !important;
+  }
+
   .viewport {
     position: fixed !important;
     inset: 0 !important;

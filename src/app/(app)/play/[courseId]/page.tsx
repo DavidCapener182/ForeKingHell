@@ -53,7 +53,10 @@ export default async function CourseTwinPage({
         <ArrowLeft className="size-5" aria-hidden="true" />
         <span className="sr-only">Exit Course Twin</span>
       </Link>
-      <div className="absolute left-4 top-4 z-30 hidden lg:block xl:bottom-3 xl:left-[200px] xl:top-auto 2xl:left-[216px]">
+      <div
+        data-course-twin-desktop-nav
+        className="absolute left-4 top-4 z-30 hidden lg:block xl:bottom-3 xl:left-[200px] xl:top-auto 2xl:left-[216px]"
+      >
         <Button asChild variant="secondary" className="shadow-lg">
           <Link href={`/courses/${courseId}/holes`} prefetch={false}>
             <ArrowLeft className="size-4" />

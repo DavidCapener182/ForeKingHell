@@ -1,4 +1,19 @@
 "use client";
+import { CourseTwinDaylight } from "./course-twin-daylight";
+import { courseTwinVisualFeatures } from "@/lib/course-twin-visual-features";
+import { TessellateModifier } from "three/examples/jsm/modifiers/TessellateModifier.js";
+import { createCourseTwinRenderSampler } from "@/lib/course-twin-render-sampler";
+import { CourseTwinRoads } from "./course-twin-roads";
+import { CourseTwinBuildings, useCourseTwinContext } from "./course-twin-buildings";
+import { BlenderVegetation } from "./course-twin-blender-vegetation";
+import {
+  buildTreeInstances,
+  buildBushInstances,
+  hashString,
+  seededRandom,
+} from "@/lib/course-twin-vegetation-placement";
+import { sceneryClearOfPlay } from "@/lib/course-twin-scenery";
+import { CourseTwinVisualProbe } from "./course-twin-visual-probe";
 import { CourseTwinViewOptions } from "./course-twin-view-options";
 import { formatClubType } from "@/lib/club-format";
 
@@ -120,8 +135,6 @@ import {
 } from "@/lib/course-twin-putting";
 import {
   createCourseTwinSurfaceClassifier,
-  courseTwinFeatureContains,
-  courseTwinRingArea,
   type CourseTwinSurface,
 } from "@/lib/course-twin-surface";
 import {
@@ -3173,6 +3186,26 @@ export function CourseTwinScene({
                     <ChevronDown className="size-4 transition-transform group-data-[state=open]/attribution:rotate-180 motion-reduce:transition-none" />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2 leading-5">
+                    <p className="mb-2">
+                      Scenery uses OpenStreetMap outlines. Building heights, roofs and planted
+                      vegetation are approximate.
+                    </p>
+                    <a
+                      className="block underline"
+                      href="https://www.openstreetmap.org/copyright"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      OpenStreetMap contributors · ODbL
+                    </a>
+                    <a
+                      className="block underline"
+                      href="https://polyhaven.com/license"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Poly Haven trees, shrubs, sand and daylight · CC0
+                    </a>
                     {manifest.attribution.map((item) => (
                       <a
                         key={item.url}
@@ -3257,7 +3290,7 @@ export function CourseTwinScene({
               antialias: renderQuality === "high",
               powerPreference: renderQuality === "high" ? "high-performance" : "low-power",
               toneMapping: THREE.ACESFilmicToneMapping,
-              toneMappingExposure: 1.14,
+              toneMappingExposure: 1.02,
             }}
             fallback={
               <div className="grid h-full min-h-0 place-items-center p-8 text-center lg:min-h-[560px]">
@@ -3288,19 +3321,21 @@ export function CourseTwinScene({
               onContextChange={setMobileContextLost}
               setSuspended={setMobileRenderingSuspended}
             />
+            {process.env.NODE_ENV === "development" ? <CourseTwinVisualProbe /> : null}
+            <CourseTwinDaylight enabled={renderQuality === "high"} />
             <CourseTwinAdaptiveQuality renderQuality={renderQuality} />
             <color attach="background" args={[cameraView === "aerial" ? "#666b49" : "#75aecd"]} />
             <fog
               attach="fog"
               args={[cameraView === "aerial" ? "#737758" : "#b6ced0", 1_050, 3_300]}
             />
-            <hemisphereLight args={["#d9efff", "#1d3b24", 0.58]} />
+            <hemisphereLight args={["#e5eff5", "#74705a", 0.95]} />
             <ambientLight color="#d9f0df" intensity={0.06} />
             <directionalLight
               castShadow
               color="#fff2d2"
               position={[-260, 285, 170]}
-              intensity={1.7}
+              intensity={1.5}
               shadow-mapSize-width={renderQuality === "high" ? 2048 : 1024}
               shadow-mapSize-height={renderQuality === "high" ? 2048 : 1024}
               shadow-bias={-0.00012}
@@ -3457,24 +3492,26 @@ export function CourseTwinScene({
           >
             {mobileActionContent}
           </MobileCourseTwinChrome>
-          <CourseTwinMinimalHud
-            mode={mode}
-            readOnly={readOnly}
-            replayAvailable={Boolean(replay?.shots.length)}
-            selectedHole={selectedHole}
-            selectedHoleIndex={selectedHoleIndex}
-            holeCount={manifest.holes.length}
-            roundLocksHole={roundLocksHole}
-            clubLabel={hudClub}
-            carryLabel={hudCarryYd === null ? "—" : `${Math.round(hudCarryYd)} yd`}
-            currentLabel={hudCurrent}
-            onSelectMode={activateRuntimeMode}
-            onOpenSettings={() => toggleHudPanel("course")}
-            onOpenAdvanced={() => toggleHudPanel("analysis")}
-            onPreviousHole={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
-            onNextHole={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
-          />
-          <div className="hidden" aria-hidden="true">
+          {!isCompactViewport ? (
+            <CourseTwinMinimalHud
+              mode={mode}
+              readOnly={readOnly}
+              replayAvailable={Boolean(replay?.shots.length)}
+              selectedHole={selectedHole}
+              selectedHoleIndex={selectedHoleIndex}
+              holeCount={manifest.holes.length}
+              roundLocksHole={roundLocksHole}
+              clubLabel={hudClub}
+              carryLabel={hudCarryYd === null ? "—" : `${Math.round(hudCarryYd)} yd`}
+              currentLabel={hudCurrent}
+              onSelectMode={activateRuntimeMode}
+              onOpenSettings={() => toggleHudPanel("course")}
+              onOpenAdvanced={() => toggleHudPanel("analysis")}
+              onPreviousHole={() => selectHole(manifest.holes[selectedHoleIndex - 1].holeNumber)}
+              onNextHole={() => selectHole(manifest.holes[selectedHoleIndex + 1].holeNumber)}
+            />
+          ) : null}
+          <div className="hidden" aria-hidden="true" style={{ display: "none" }}>
             <div className="hidden lg:contents">
               <CinematicPerformanceHud
                 mode={mode}
@@ -3810,6 +3847,16 @@ export function CourseTwinScene({
               </div>
             </div>
           </div>
+          {!isCompactViewport ? (
+            <a
+              href="https://www.openstreetmap.org/copyright"
+              target="_blank"
+              rel="noreferrer"
+              className="absolute bottom-20 right-3 z-10 rounded bg-black/40 px-2 py-1 text-[10px] text-white/80 hover:text-white"
+            >
+              © OpenStreetMap contributors
+            </a>
+          ) : null}
           <div data-course-twin-tablet-controls className="hidden">
             {terrainError
               ? `Terrain unavailable · ${terrainError}`
@@ -5242,6 +5289,18 @@ function CourseWorld({
   exploreTransport: ExploreTransport | null;
   renderQuality: Exclude<CourseTwinRenderQuality, "fallback">;
 }) {
+  const { context, displayManifest } = useCourseTwinContext(manifest);
+  const sampleRenderedTerrain = useMemo(
+    () =>
+      manifest.terrain.heightmap
+        ? createCourseTwinRenderSampler(
+            manifest.terrain.heightmap,
+            terrainSamples,
+            renderQuality === "high",
+          )
+        : sampleTerrain,
+    [manifest.terrain.heightmap, terrainSamples, renderQuality, sampleTerrain],
+  );
   const holeLength = Math.max(
     1,
     Math.hypot(cameraEnd[0] - cameraStart[0], cameraEnd[2] - cameraStart[2]),
@@ -5271,34 +5330,52 @@ function CourseWorld({
   return (
     <group>
       <Terrain
-        manifest={manifest}
+        manifest={displayManifest}
         samples={terrainSamples}
         onAimPoint={onAimPoint}
         renderQuality={renderQuality}
+      />
+      <CourseTwinBuildings context={context} />
+      <CourseTwinRoads
+        context={context}
+        sampleTerrain={sampleRenderedTerrain}
+        high={renderQuality === "high"}
       />
       {(manifest.puttingSurfaces ?? [])
         .filter((surface) => surface.holeNumber === selectedHole.holeNumber)
         .map((surface) => (
           <PuttingSurfaceMesh key={surface.holeNumber} surface={surface} />
         ))}
-      {cameraView === "golfer" ? (
+      {
         <AtmosphericBackdrop
           terrainBounds={manifest.terrain.heightmap?.localBounds ?? manifest.bounds}
           sampleTerrain={sampleTerrain}
         />
-      ) : null}
-      {manifest.features.map((feature) => (
-        <SemanticFeature key={feature.id} feature={feature} sampleTerrain={sampleTerrain} />
-      ))}
-      {cameraView === "golfer" ? (
+      }
+      {courseTwinVisualFeatures(displayManifest.features)
+        .filter(
+          (f) =>
+            f.type === "water" ||
+            (["green", "bunker", "tee"].includes(f.type) && f.source !== "estimated_centerline"),
+        )
+        .map((feature) => (
+          <SemanticFeature
+            key={feature.id}
+            feature={feature}
+            sampleTerrain={sampleRenderedTerrain}
+            high={renderQuality === "high"}
+          />
+        ))}
+      {
         <InstancedVegetation
-          features={manifest.features}
+          tropical={manifest.course.country === "Dominican Republic"}
+          features={displayManifest.features}
           holes={manifest.holes}
           terrainBounds={manifest.terrain.heightmap?.localBounds ?? manifest.bounds}
           sampleTerrain={sampleTerrain}
           renderQuality={renderQuality}
         />
-      ) : null}
+      }
       {manifest.holes
         .filter((hole) => cameraView === "golfer" || hole === selectedHole)
         .map((hole) => (
@@ -5442,6 +5519,7 @@ function Terrain({
         asset={asset}
         samples={samples}
         imageryUrl={imagery.url}
+        features={manifest.features}
         onAimPoint={onAimPoint}
       />
     );
@@ -5452,6 +5530,7 @@ function Terrain({
       highDetailImageryUrl={courseTwinHighDetailRuntimeUrl(manifest.course.id, imagery)}
       samples={samples}
       features={manifest.features}
+      holes={manifest.holes}
       onAimPoint={onAimPoint}
     />
   );
@@ -5461,14 +5540,27 @@ function BalancedTerrain({
   asset,
   samples,
   imageryUrl,
+  features,
   onAimPoint,
 }: {
   asset: NonNullable<CourseTwinManifest["terrain"]["heightmap"]>;
   samples: Float32Array;
   imageryUrl: string;
+  features: CourseTwinFeature[];
   onAimPoint: ((point: CourseTwinPoint) => void) | null;
 }) {
   const loadedTexture = useTexture(imageryUrl);
+  const masks = useMemo(
+    () => createCourseTwinTerrainMasks(features, asset.localBounds),
+    [features, asset.localBounds],
+  );
+  useEffect(
+    () => () => {
+      masks.surface.dispose();
+      masks.water.dispose();
+    },
+    [masks],
+  );
   const texture = useMemo(() => {
     const copy = loadedTexture.clone();
     copy.colorSpace = THREE.SRGBColorSpace;
@@ -5500,7 +5592,34 @@ function BalancedTerrain({
           : undefined
       }
     >
-      <meshStandardMaterial map={texture} roughness={0.96} metalness={0} />
+      <meshStandardMaterial
+        map={texture}
+        roughness={0.96}
+        metalness={0}
+        onBeforeCompile={(shader) => {
+          shader.uniforms.surfaceMask = { value: masks.surface };
+          shader.uniforms.contextMask = { value: masks.water };
+          shader.fragmentShader = shader.fragmentShader.replace(
+            "#include <map_pars_fragment>",
+            "#include <map_pars_fragment>\nuniform sampler2D surfaceMask;\nuniform sampler2D contextMask;",
+          );
+          shader.fragmentShader = shader.fragmentShader.replace(
+            "#include <map_fragment>",
+            `
+            #include <map_fragment>
+            vec3 weights = texture2D(surfaceMask, vMapUv).rgb;
+            vec2 contextWeights = texture2D(contextMask, vMapUv).rg;
+            float textureVariation = 0.84 + dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) * 0.3;
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16,0.29,0.10)*textureVariation, weights.r*0.9);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.19,0.34,0.115)*textureVariation, weights.g*0.96);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.56,0.50,0.34)*textureVariation, weights.b*0.9);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.20,0.36,0.15)*textureVariation, contextWeights.g);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.035,0.12,0.15), contextWeights.r);
+          `,
+          );
+        }}
+        customProgramCacheKey={() => "course-balanced-distinct-grasses-v2"}
+      />
     </mesh>
   );
 }
@@ -5511,6 +5630,7 @@ function LidarTerrain({
   highDetailImageryUrl,
   samples,
   features,
+  holes,
   onAimPoint,
 }: {
   asset: NonNullable<CourseTwinManifest["terrain"]["heightmap"]>;
@@ -5518,6 +5638,7 @@ function LidarTerrain({
   highDetailImageryUrl: string | null;
   samples: Float32Array;
   features: CourseTwinFeature[];
+  holes: CourseTwinHole[];
   onAimPoint: ((point: CourseTwinPoint) => void) | null;
 }) {
   const [
@@ -5595,6 +5716,16 @@ function LidarTerrain({
   ]);
   const highDetailTexture = useProgressiveCourseImagery(highDetailImageryUrl, gl);
   const aerialTexture = highDetailTexture ?? texture;
+  const enhanced = new URLSearchParams(window.location.search).get("scenery") !== "off";
+  const sandTexture = useProgressiveCourseImagery(
+    enhanced ? "/course-twins/common/blender-v1/sand-colour.webp" : null,
+    gl,
+  );
+  const mowingDirections = useMemo(
+    () => createMowingDirections(features, holes, asset.localBounds),
+    [features, holes, asset.localBounds],
+  );
+  useEffect(() => () => mowingDirections.dispose(), [mowingDirections]);
   const geometry = useMemo(() => {
     const bounds = asset.localBounds;
     const width = bounds.maxX - bounds.minX;
@@ -5658,6 +5789,7 @@ function LidarTerrain({
       }
     >
       <meshStandardMaterial
+        key={sandTexture?.uuid ?? "base-surfaces"}
         map={aerialTexture}
         normalMap={surfaceNormalAtlas}
         normalScale={new THREE.Vector2(0.36, 0.36)}
@@ -5670,7 +5802,9 @@ function LidarTerrain({
           shader.uniforms.roughColourMap = { value: roughTexture };
           shader.uniforms.fairwayColourMap = { value: fairwayTexture };
           shader.uniforms.greenColourMap = { value: greenTexture };
-          shader.uniforms.bunkerColourMap = { value: bunkerTexture };
+          shader.uniforms.bunkerColourMap = { value: sandTexture ?? bunkerTexture };
+          shader.uniforms.courseMowingDirections = { value: mowingDirections };
+          shader.uniforms.courseEnhanced = { value: enhanced ? 1 : 0 };
           shader.uniforms.courseSurfaceRoughnessAtlas = { value: surfaceRoughnessAtlas };
           shader.uniforms.courseTerrainSize = {
             value: new THREE.Vector2(terrainWidth, terrainDepth),
@@ -5693,6 +5827,8 @@ uniform sampler2D fairwayColourMap;
 uniform sampler2D greenColourMap;
 uniform sampler2D bunkerColourMap;
 uniform sampler2D courseSurfaceRoughnessAtlas;
+uniform sampler2D courseMowingDirections;
+uniform float courseEnhanced;
 uniform vec2 courseTerrainSize;
 uniform vec4 courseSurfaceTileSize;`,
           );
@@ -5701,7 +5837,9 @@ uniform vec4 courseSurfaceTileSize;`,
             `#ifdef USE_MAP
   vec4 aerialColour = texture2D(map, vMapUv);
   vec3 surfaceWeights = texture2D(courseSurfaceMask, vMapUv).rgb;
-  float waterWeight = texture2D(courseWaterMask, vMapUv).r;
+  vec2 contextWeights = smoothstep(vec2(0.42), vec2(0.58), texture2D(courseWaterMask, vMapUv).rg);
+  float waterWeight = contextWeights.r;
+  float teeWeight = contextWeights.g;
   vec2 roughSurfaceCoordinate = vMapUv * courseTerrainSize / courseSurfaceTileSize.x;
   vec2 fairwaySurfaceCoordinate = vMapUv * courseTerrainSize / courseSurfaceTileSize.y;
   vec2 greenSurfaceCoordinate = vMapUv * courseTerrainSize / courseSurfaceTileSize.z;
@@ -5710,10 +5848,10 @@ uniform vec4 courseSurfaceTileSize;`,
   vec2 fairwaySurfaceUv = fract(fairwaySurfaceCoordinate);
   vec2 greenSurfaceUv = fract(greenSurfaceCoordinate);
   vec2 bunkerSurfaceUv = fract(bunkerSurfaceCoordinate);
-  vec3 roughColour = texture2D(roughColourMap, roughSurfaceUv).rgb;
-  vec3 fairwayColour = texture2D(fairwayColourMap, fairwaySurfaceUv).rgb;
-  vec3 greenColour = texture2D(greenColourMap, greenSurfaceUv).rgb;
-  vec3 bunkerColour = texture2D(bunkerColourMap, bunkerSurfaceUv).rgb;
+  vec3 roughColour = texture2D(roughColourMap, roughSurfaceCoordinate).rgb;
+  vec3 fairwayColour = texture2D(fairwayColourMap, fairwaySurfaceCoordinate).rgb;
+  vec3 greenColour = texture2D(greenColourMap, greenSurfaceCoordinate).rgb;
+  vec3 bunkerColour = texture2D(bunkerColourMap, bunkerSurfaceCoordinate).rgb;
   float roughWeight = clamp(
     1.0 - surfaceWeights.r - surfaceWeights.g - surfaceWeights.b,
     0.0,
@@ -5733,33 +5871,33 @@ uniform vec4 courseSurfaceTileSize;`,
   gradedAerial = pow(clamp((gradedAerial - 0.5) * 1.02 + 0.518, 0.0, 1.0), vec3(0.9));
   vec3 courseColour = mix(
     gradedAerial,
-    roughSurfaceColour * vec3(0.75, 0.89, 0.64),
-    roughWeight * mix(0.28, 0.44, surfaceDetailNearness)
+    mix(roughSurfaceColour * vec3(0.88, 0.91, 0.79), vec3(0.18, 0.225, 0.095) * (0.72 + dot(roughColour, vec3(0.2126, 0.7152, 0.0722)) * 0.9), 0.64),
+    roughWeight * mix(0.48, 0.68, surfaceDetailNearness)
   );
   courseColour = mix(
     courseColour,
-    fairwaySurfaceColour * vec3(0.74, 0.9, 0.68),
-    surfaceWeights.r * mix(0.64, 0.78, surfaceDetailNearness)
+    mix(fairwaySurfaceColour * vec3(0.86, 0.93, 0.79), vec3(0.16, 0.29, 0.10) * (0.84 + dot(fairwayColour, vec3(0.2126, 0.7152, 0.0722)) * 0.4), 0.72),
+    surfaceWeights.r * 0.94
   );
   courseColour = mix(
     courseColour,
-    greenSurfaceColour * vec3(0.72, 0.94, 0.68),
-    surfaceWeights.g * mix(0.58, 0.72, surfaceDetailNearness)
+    mix(greenSurfaceColour * vec3(0.85, 0.95, 0.8), vec3(0.19, 0.34, 0.115) * (0.94 + dot(greenColour, vec3(0.2126, 0.7152, 0.0722)) * 0.12), 0.86),
+    surfaceWeights.g * 0.98
   );
   courseColour = mix(
     courseColour,
-    bunkerSurfaceColour * vec3(1.04, 0.98, 0.88),
-    surfaceWeights.b * mix(0.8, 0.9, surfaceDetailNearness)
+    mix(bunkerSurfaceColour, vec3(0.62, 0.55, 0.40) * (0.90 + dot(bunkerColour, vec3(0.2126,0.7152,0.0722)) * 0.2), 0.88),
+    surfaceWeights.b * 0.99
   );
   mat2 courseSurfaceDetailRotation = mat2(0.8, -0.6, 0.6, 0.8);
   vec2 roughFineCoordinate = courseSurfaceDetailRotation * roughSurfaceCoordinate * 1.35 + vec2(0.19, 0.43);
   vec2 fairwayFineCoordinate = courseSurfaceDetailRotation * fairwaySurfaceCoordinate * 1.85 + vec2(0.37, 0.11);
   vec2 greenFineCoordinate = courseSurfaceDetailRotation * greenSurfaceCoordinate * 1.35 + vec2(0.63, 0.29);
   vec2 bunkerFineCoordinate = courseSurfaceDetailRotation * bunkerSurfaceCoordinate * 1.55 + vec2(0.73, 0.31);
-  vec3 roughFineColour = texture2D(roughColourMap, fract(roughFineCoordinate)).rgb;
-  vec3 fairwayFineColour = texture2D(fairwayColourMap, fract(fairwayFineCoordinate)).rgb;
-  vec3 greenFineColour = texture2D(greenColourMap, fract(greenFineCoordinate)).rgb;
-  vec3 bunkerFineColour = texture2D(bunkerColourMap, fract(bunkerFineCoordinate)).rgb;
+  vec3 roughFineColour = texture2D(roughColourMap, roughFineCoordinate).rgb;
+  vec3 fairwayFineColour = texture2D(fairwayColourMap, fairwayFineCoordinate).rgb;
+  vec3 greenFineColour = texture2D(greenColourMap, greenFineCoordinate).rgb;
+  vec3 bunkerFineColour = texture2D(bunkerColourMap, bunkerFineCoordinate).rgb;
   float roughFineLuma = dot(roughFineColour, vec3(0.2126, 0.7152, 0.0722));
   float fairwayFineLuma = dot(fairwayFineColour, vec3(0.2126, 0.7152, 0.0722));
   float greenFineLuma = dot(greenFineColour, vec3(0.2126, 0.7152, 0.0722));
@@ -5794,17 +5932,17 @@ uniform vec4 courseSurfaceTileSize;`,
   );
   courseColour = mix(
     courseColour,
-    roughFineColour * vec3(0.75, 0.89, 0.64),
+    roughFineColour * vec3(0.88, 0.91, 0.79),
     roughWeight * roughFineVisible * 0.18
   );
   courseColour = mix(
     courseColour,
-    fairwayFineColour * vec3(0.74, 0.9, 0.68),
+    fairwayFineColour * vec3(0.86, 0.93, 0.79),
     surfaceWeights.r * fairwayFineVisible * 0.16
   );
   courseColour = mix(
     courseColour,
-    greenFineColour * vec3(0.72, 0.94, 0.68),
+    greenFineColour * vec3(0.85, 0.95, 0.8),
     surfaceWeights.g * greenFineVisible * 0.08
   );
   courseColour = mix(
@@ -5832,8 +5970,23 @@ uniform vec4 courseSurfaceTileSize;`,
     bunkerFineGrain,
     surfaceWeights.b * bunkerFineVisible * 0.82
   );
-  vec3 reflectedWater = mix(courseColour * vec3(0.34, 0.58, 0.7), vec3(0.09, 0.4, 0.55), 0.58);
-  courseColour = mix(courseColour, reflectedWater, waterWeight * 0.76);
+  vec2 mowingDirection = texture2D(courseMowingDirections, vMapUv).rg * 2.0 - 1.0;
+  mowingDirection = length(mowingDirection) > 0.1 ? normalize(mowingDirection) : vec2(1.0, 0.0);
+  float mowingPhase = dot(vMapUv * courseTerrainSize, mowingDirection) * 0.72;
+  float mowingVisibility = 1.0 - smoothstep(0.5, 2.0, fwidth(mowingPhase));
+  courseColour *= 1.0 + (smoothstep(-0.22, 0.22, sin(mowingPhase)) * 2.0 - 1.0) * 0.085 * surfaceWeights.r * mowingVisibility * courseEnhanced;
+  // Contact shading follows the existing semantic mask; geometry/depth stays untouched.
+  float bunkerEdge = surfaceWeights.b * (1.0 - smoothstep(0.48, 0.94, surfaceWeights.b));
+  courseColour *= 1.0 - bunkerEdge * 0.2;
+  vec2 collarOffset = vec2(1.5) / courseTerrainSize;
+  float greenNeighbour = max(max(texture2D(courseSurfaceMask, vMapUv + vec2(collarOffset.x,0.0)).g, texture2D(courseSurfaceMask, vMapUv - vec2(collarOffset.x,0.0)).g), max(texture2D(courseSurfaceMask, vMapUv + vec2(0.0,collarOffset.y)).g, texture2D(courseSurfaceMask, vMapUv - vec2(0.0,collarOffset.y)).g));
+  float collar = smoothstep(0.4,0.6,greenNeighbour) * (1.0 - surfaceWeights.g) * (1.0-surfaceWeights.b) * (1.0-waterWeight);
+  courseColour = mix(courseColour, vec3(0.105,0.205,0.055), collar * 0.85);
+  float greenEdge = surfaceWeights.g * (1.0 - smoothstep(0.38, 0.9, surfaceWeights.g));
+  courseColour *= 1.0 - greenEdge * 0.11;
+  float teeCut = 0.97 + 0.03 * sin(vMapUv.x * courseTerrainSize.x * 1.4);
+  courseColour = mix(courseColour, vec3(0.20, 0.36, 0.15) * teeCut, teeWeight);
+  courseColour = mix(courseColour, vec3(0.035, 0.12, 0.15), waterWeight);
   courseColour = pow(max(courseColour, vec3(0.0)), vec3(0.98));
   diffuseColor *= vec4(courseColour, aerialColour.a);
 #endif`,
@@ -5852,13 +6005,13 @@ uniform vec4 courseSurfaceTileSize;`,
   vec2 courseFairwayNormalUv = fairwaySurfaceUv * 0.496 + vec2(0.502, 0.502);
   vec2 courseGreenNormalUv = greenSurfaceUv * 0.496 + vec2(0.002, 0.002);
   vec2 courseBunkerNormalUv = bunkerSurfaceUv * 0.496 + vec2(0.502, 0.002);
-  vec3 courseRoughNormal = texture2D(normalMap, courseRoughNormalUv).xyz * 2.0 - 1.0;
-  vec3 courseFairwayNormal = texture2D(normalMap, courseFairwayNormalUv).xyz * 2.0 - 1.0;
-  vec3 courseGreenNormal = texture2D(normalMap, courseGreenNormalUv).xyz * 2.0 - 1.0;
-  vec3 courseBunkerNormal = texture2D(normalMap, courseBunkerNormalUv).xyz * 2.0 - 1.0;
-  courseRoughNormal.xy *= 0.76;
+  vec3 courseRoughNormal = textureGrad(normalMap, courseRoughNormalUv, dFdx(roughSurfaceCoordinate) * 0.496, dFdy(roughSurfaceCoordinate) * 0.496).xyz * 2.0 - 1.0;
+  vec3 courseFairwayNormal = textureGrad(normalMap, courseFairwayNormalUv, dFdx(fairwaySurfaceCoordinate) * 0.496, dFdy(fairwaySurfaceCoordinate) * 0.496).xyz * 2.0 - 1.0;
+  vec3 courseGreenNormal = textureGrad(normalMap, courseGreenNormalUv, dFdx(greenSurfaceCoordinate) * 0.496, dFdy(greenSurfaceCoordinate) * 0.496).xyz * 2.0 - 1.0;
+  vec3 courseBunkerNormal = textureGrad(normalMap, courseBunkerNormalUv, dFdx(bunkerSurfaceCoordinate) * 0.496, dFdy(bunkerSurfaceCoordinate) * 0.496).xyz * 2.0 - 1.0;
+  courseRoughNormal.xy *= 0.95;
   courseFairwayNormal.xy *= 0.66;
-  courseGreenNormal.xy *= 0.44;
+  courseGreenNormal.xy *= 0.14;
   courseBunkerNormal.xy *= 0.78;
   vec3 courseBlendedNormal = normalize(
     courseRoughNormal * courseRoughWeight +
@@ -5866,6 +6019,7 @@ uniform vec4 courseSurfaceTileSize;`,
     courseGreenNormal * courseNormalWeights.g +
     courseBunkerNormal * courseNormalWeights.b
   );
+  courseBlendedNormal.xy *= 1.0 - smoothstep(25.0, 100.0, length(vViewPosition));
   normal = normalize(tbn * courseBlendedNormal);
 #endif`,
           );
@@ -5883,14 +6037,14 @@ uniform vec4 courseSurfaceTileSize;`,
   vec2 courseGreenRoughnessUv = greenSurfaceUv * 0.496 + vec2(0.002, 0.002);
   vec2 courseBunkerRoughnessUv = bunkerSurfaceUv * 0.496 + vec2(0.502, 0.002);
   float courseSurfaceRoughness =
-    texture2D(courseSurfaceRoughnessAtlas, courseRoughRoughnessUv).g * courseRoughnessRoughWeight +
-    texture2D(courseSurfaceRoughnessAtlas, courseFairwayRoughnessUv).g * courseRoughnessWeights.r +
-    texture2D(courseSurfaceRoughnessAtlas, courseGreenRoughnessUv).g * courseRoughnessWeights.g +
-    texture2D(courseSurfaceRoughnessAtlas, courseBunkerRoughnessUv).g * courseRoughnessWeights.b;
-  roughnessFactor *= courseSurfaceRoughness;`,
+    textureGrad(courseSurfaceRoughnessAtlas, courseRoughRoughnessUv, dFdx(roughSurfaceCoordinate) * 0.496, dFdy(roughSurfaceCoordinate) * 0.496).g * courseRoughnessRoughWeight +
+    textureGrad(courseSurfaceRoughnessAtlas, courseFairwayRoughnessUv, dFdx(fairwaySurfaceCoordinate) * 0.496, dFdy(fairwaySurfaceCoordinate) * 0.496).g * courseRoughnessWeights.r +
+    textureGrad(courseSurfaceRoughnessAtlas, courseGreenRoughnessUv, dFdx(greenSurfaceCoordinate) * 0.496, dFdy(greenSurfaceCoordinate) * 0.496).g * courseRoughnessWeights.g +
+    textureGrad(courseSurfaceRoughnessAtlas, courseBunkerRoughnessUv, dFdx(bunkerSurfaceCoordinate) * 0.496, dFdy(bunkerSurfaceCoordinate) * 0.496).g * courseRoughnessWeights.b;
+  roughnessFactor *= mix(1.0, courseSurfaceRoughness, 1.0 - smoothstep(25.0, 100.0, length(vViewPosition)));`,
           );
         }}
-        customProgramCacheKey={() => "course-twin-terrain-splat-v4-pbr-atlas"}
+        customProgramCacheKey={() => "course-twin-terrain-splat-v7-source-aware"}
       />
     </mesh>
   );
@@ -5935,7 +6089,8 @@ function createCourseTwinTerrainMasks(
   features: CourseTwinFeature[],
   bounds: CourseTwinManifest["bounds"],
 ) {
-  const size = 1024;
+  features = courseTwinVisualFeatures(features);
+  const size = 2048;
   const surfaceSource = document.createElement("canvas");
   const waterSource = document.createElement("canvas");
   surfaceSource.width = size;
@@ -5952,25 +6107,72 @@ function createCourseTwinTerrainMasks(
 
   const orderedTypes: Array<{ type: CourseTwinFeature["type"]; colour: string }> = [
     { type: "fairway", colour: "#ff0000" },
-    { type: "tee", colour: "#00ff00" },
+    { type: "tee", colour: "#000000" },
     { type: "green", colour: "#00ff00" },
     { type: "bunker", colour: "#0000ff" },
   ];
   for (const { type, colour } of orderedTypes) {
     surfaceContext.fillStyle = colour;
     for (const feature of features.filter((candidate) => candidate.type === type)) {
+      // Inferred rectangles remain subtle; mapped polygons keep crisp turf edges.
+      surfaceContext.globalAlpha = feature.source === "estimated_centerline" ? 0.32 : 1;
       drawCourseTwinMaskFeature(surfaceContext, feature, bounds, size);
+      surfaceContext.globalAlpha = 1;
     }
   }
-  waterContext.fillStyle = "#ffffff";
+  waterContext.fillStyle = "#00ff00";
+  for (const feature of features.filter((candidate) => candidate.type === "tee")) {
+    drawCourseTwinMaskFeature(waterContext, feature, bounds, size);
+  }
+  waterContext.fillStyle = "#ff0000";
   for (const feature of features.filter((candidate) => candidate.type === "water")) {
     drawCourseTwinMaskFeature(waterContext, feature, bounds, size);
   }
 
   return {
-    surface: featherCourseTwinMask(surfaceSource, 2.8),
-    water: featherCourseTwinMask(waterSource, 2.2),
+    surface: featherCourseTwinMask(surfaceSource, 0.2),
+    water: featherCourseTwinMask(waterSource, 0.35),
   };
+}
+
+function createMowingDirections(
+  features: CourseTwinFeature[],
+  holes: CourseTwinHole[],
+  bounds: CourseTwinManifest["bounds"],
+) {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 512;
+  const context = canvas.getContext("2d")!;
+  context.fillStyle = "rgb(128,128,0)";
+  context.fillRect(0, 0, 512, 512);
+  for (const feature of features.filter((f) => f.type === "fairway")) {
+    const ring = feature.rings[0];
+    if (!ring?.length) continue;
+    const x = ring.reduce((sum, p) => sum + p[0], 0) / ring.length;
+    const z = ring.reduce((sum, p) => sum + p[2], 0) / ring.length;
+    const hole =
+      holes.find((h) => h.holeNumber === feature.holeNumber) ??
+      [...holes].sort(
+        (a, b) =>
+          Math.hypot((a.tee[0] + a.green[0]) / 2 - x, (a.tee[2] + a.green[2]) / 2 - z) -
+          Math.hypot((b.tee[0] + b.green[0]) / 2 - x, (b.tee[2] + b.green[2]) / 2 - z),
+      )[0];
+    if (!hole) continue;
+    const dx = hole.green[0] - hole.tee[0],
+      dz = hole.green[2] - hole.tee[2];
+    const length = Math.hypot(dx, dz) || 1;
+    context.fillStyle = `rgb(${Math.round(((-dz / length) * 0.5 + 0.5) * 255)},${Math.round(((-dx / length) * 0.5 + 0.5) * 255)},0)`;
+    drawCourseTwinMaskFeature(context, feature, bounds, 512);
+    context.strokeStyle = context.fillStyle;
+    context.lineWidth = 4;
+    context.stroke();
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.minFilter = THREE.NearestFilter;
+  texture.magFilter = THREE.NearestFilter;
+  texture.generateMipmaps = false;
+  return texture;
 }
 
 function drawCourseTwinMaskFeature(
@@ -5981,9 +6183,9 @@ function drawCourseTwinMaskFeature(
 ) {
   const width = Math.max(1, bounds.maxX - bounds.minX);
   const depth = Math.max(1, bounds.maxZ - bounds.minZ);
-  for (const ring of feature.rings.slice(0, 1)) {
+  context.beginPath();
+  for (const ring of feature.rings) {
     if (ring.length < 3) continue;
-    context.beginPath();
     ring.forEach((point, index) => {
       const x = ((point[0] - bounds.minX) / width) * size;
       const y = ((point[2] - bounds.minZ) / depth) * size;
@@ -5991,8 +6193,8 @@ function drawCourseTwinMaskFeature(
       else context.lineTo(x, y);
     });
     context.closePath();
-    context.fill();
   }
+  context.fill("evenodd");
 }
 
 function featherCourseTwinMask(source: HTMLCanvasElement, blurPx: number) {
@@ -6016,21 +6218,14 @@ function featherCourseTwinMask(source: HTMLCanvasElement, blurPx: number) {
 }
 
 function SemanticFeature({
+  high,
   feature,
   sampleTerrain,
 }: {
+  high: boolean;
   feature: CourseTwinFeature;
   sampleTerrain: CourseTwinTerrainSampler;
 }) {
-  const featureCenter = useMemo(() => {
-    const ring = feature.rings[0] ?? [];
-    if (ring.length === 0) return new THREE.Vector3();
-    return new THREE.Vector3(
-      ring.reduce((total, point) => total + point[0], 0) / ring.length,
-      ring.reduce((total, point) => total + sampleTerrain(point[0], point[2]), 0) / ring.length,
-      ring.reduce((total, point) => total + point[2], 0) / ring.length,
-    );
-  }, [feature.rings, sampleTerrain]);
   const geometries = useMemo(() => {
     return feature.rings.slice(0, 1).map((ring) => {
       const shape = new THREE.Shape();
@@ -6039,7 +6234,15 @@ function SemanticFeature({
         else shape.lineTo(point[0], -point[2]);
       });
       shape.closePath();
-      const geometry = new THREE.ShapeGeometry(shape);
+      for (const hole of feature.rings.slice(1)) {
+        const path = new THREE.Path(hole.map((p) => new THREE.Vector2(p[0], -p[2])));
+        path.closePath();
+        shape.holes.push(path);
+      }
+      const source = new THREE.ShapeGeometry(shape);
+      const geometry =
+        feature.type === "water" ? source : new TessellateModifier(2, 7).modify(source);
+      if (geometry !== source) source.dispose();
       geometry.rotateX(-Math.PI / 2);
       const position = geometry.attributes.position;
       const waterHeight =
@@ -6048,8 +6251,7 @@ function SemanticFeature({
               Math.max(1, ring.length) +
             0.18
           : null;
-      const surfaceOffset =
-        feature.type === "bunker" ? -0.16 : feature.type === "course_boundary" ? 0.1 : 0.28;
+      const surfaceOffset = 0.08;
       for (let index = 0; index < position.count; index += 1) {
         const x = position.getX(index);
         const z = position.getZ(index);
@@ -6064,48 +6266,115 @@ function SemanticFeature({
         }
         geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
       }
+      const colours = new Float32Array(position.count * 3);
+      const baseColour = new THREE.Color(
+        feature.type === "bunker" ? "#c5b793" : feature.type === "tee" ? "#628445" : "#638540",
+      );
+      for (let i = 0; i < position.count; i++) {
+        const x = position.getX(i),
+          z = position.getZ(i);
+        let edge = Infinity;
+        for (let j = 0; j < ring.length; j++) {
+          const a = ring[j],
+            b = ring[(j + 1) % ring.length];
+          const dx = b[0] - a[0],
+            dz = b[2] - a[2];
+          const t = Math.max(
+            0,
+            Math.min(1, ((x - a[0]) * dx + (z - a[2]) * dz) / (dx * dx + dz * dz || 1)),
+          );
+          edge = Math.min(edge, Math.hypot(x - a[0] - t * dx, z - a[2] - t * dz));
+        }
+        const shade =
+          feature.type === "bunker"
+            ? 0.72 + 0.28 * Math.min(1, edge / 1.2)
+            : 0.92 + 0.08 * Math.min(1, edge / 1.0);
+        colours.set([baseColour.r * shade, baseColour.g * shade, baseColour.b * shade], i * 3);
+      }
+      geometry.setAttribute("color", new THREE.BufferAttribute(colours, 3));
       position.needsUpdate = true;
       geometry.computeVertexNormals();
       return geometry;
     });
   }, [feature.rings, feature.type, sampleTerrain]);
   useEffect(() => () => geometries.forEach((geometry) => geometry.dispose()), [geometries]);
-  if (feature.type !== "water") return null;
   return geometries.map((geometry, index) => (
     <group key={index}>
       <mesh geometry={geometry} receiveShadow>
-        <WaterMaterial center={featureCenter} />
+        {feature.type === "water" ? (
+          <WaterMaterial />
+        ) : (
+          <SemanticTurfMaterial type={feature.type} high={high} />
+        )}
       </mesh>
     </group>
   ));
+}
+
+function SemanticTurfMaterial({ type, high }: { type: CourseTwinFeature["type"]; high: boolean }) {
+  return high ? (
+    <DetailedSemanticTurfMaterial type={type} />
+  ) : (
+    <meshStandardMaterial vertexColors roughness={0.94} polygonOffset polygonOffsetFactor={-2} />
+  );
+}
+
+function DetailedSemanticTurfMaterial({ type }: { type: CourseTwinFeature["type"] }) {
+  // Reuse the terrain's already loaded textures; no additional material downloads.
+  const loadedTexture = useTexture(
+    type === "bunker"
+      ? highDetailSurfaceMaps.bunker.colour
+      : type === "tee"
+        ? highDetailSurfaceMaps.fairway.colour
+        : highDetailSurfaceMaps.green.colour,
+  );
+  const texture = useMemo(() => {
+    const copy = loadedTexture.clone();
+    copy.wrapS = copy.wrapT = THREE.RepeatWrapping;
+    copy.needsUpdate = true;
+    return copy;
+  }, [loadedTexture]);
+  useEffect(() => () => texture.dispose(), [texture]);
+  return (
+    <meshStandardMaterial
+      map={texture}
+      vertexColors
+      roughness={0.94}
+      polygonOffset
+      polygonOffsetFactor={-2}
+      onBeforeCompile={(shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          "#include <map_fragment>",
+          `
+      #ifdef USE_MAP
+      vec3 turfTexel = texture2D(map, vMapUv).rgb;
+      float turfGrain = dot(turfTexel, vec3(0.2126,0.7152,0.0722));
+      diffuseColor.rgb *= 0.92 + turfGrain * 0.22;
+      #endif
+    `,
+        );
+      }}
+      customProgramCacheKey={() => "mapped-turf-grain-v1"}
+    />
+  );
 }
 
 function isPbrSurface(type: CourseTwinFeature["type"]): type is PbrSurfaceType {
   return type in pbrSurfaceAssets;
 }
 
-function WaterMaterial({ center }: { center: THREE.Vector3 }) {
-  const materialRef = useRef<THREE.MeshPhysicalMaterial>(null);
+function WaterMaterial() {
   const normalMap = useMemo(() => waterNormalTexture(), []);
-  useFrame(({ camera }) => {
-    if (!materialRef.current) return;
-    const distance = camera.position.distanceTo(center);
-    const proximity = 1 - THREE.MathUtils.smoothstep(distance, 45, 190);
-    materialRef.current.opacity = THREE.MathUtils.lerp(0.08, 0.28, proximity);
-  });
   return (
     <meshPhysicalMaterial
-      ref={materialRef}
-      color="#3e879d"
+      color="#285564"
       normalMap={normalMap}
       normalScale={new THREE.Vector2(0.34, 0.34)}
       roughness={0.13}
       metalness={0.02}
       clearcoat={0.92}
       clearcoatRoughness={0.12}
-      transparent
-      opacity={0.08}
-      depthWrite={false}
+      depthWrite
       polygonOffset
       polygonOffsetFactor={-3}
     />
@@ -6177,7 +6446,7 @@ function AtmosphericBackdrop({
   return (
     <group>
       <mesh position={[centerX, baseY, centerZ]} renderOrder={-100}>
-        <sphereGeometry args={[radius * 3.6, 48, 24]} />
+        <sphereGeometry args={[radius * 2.1, 64, 32]} />
         <meshBasicMaterial
           map={skyTexture}
           depthWrite={false}
@@ -6375,33 +6644,54 @@ type VegetationInstance = {
 };
 
 function InstancedVegetation({
+  tropical,
   features,
   holes,
   terrainBounds,
   sampleTerrain,
   renderQuality,
 }: {
+  tropical: boolean;
   features: CourseTwinFeature[];
   holes: CourseTwinHole[];
   terrainBounds: CourseTwinManifest["bounds"];
   sampleTerrain: CourseTwinTerrainSampler;
   renderQuality: Exclude<CourseTwinRenderQuality, "fallback">;
 }) {
+  const gl = useThree((state) => state.gl);
+  const palmTexture = useProgressiveCourseImagery(
+    tropical ? "/course-twins/common/blender-v1/palm-billboard.png" : null,
+    gl,
+  );
   const trees = useMemo(
     () =>
-      buildTreeInstances(features, holes, terrainBounds, sampleTerrain).slice(
-        0,
-        renderQuality === "high" ? 650 : 280,
-      ),
+      buildTreeInstances(features, holes, terrainBounds, sampleTerrain)
+        .filter((instance) => sceneryClearOfPlay(instance, features))
+        .slice(0, renderQuality === "high" ? 650 : 280),
     [features, holes, renderQuality, sampleTerrain, terrainBounds],
   );
   const bushes = useMemo(
     () =>
-      buildBushInstances(features, holes, terrainBounds, sampleTerrain).slice(
-        0,
-        renderQuality === "high" ? 1_200 : 480,
-      ),
+      buildBushInstances(features, holes, terrainBounds, sampleTerrain)
+        .filter((instance) => sceneryClearOfPlay(instance, features))
+        .slice(0, renderQuality === "high" ? 1_200 : 480),
     [features, holes, renderQuality, sampleTerrain, terrainBounds],
+  );
+  const grass = useMemo(
+    () =>
+      bushes
+        .flatMap((bush) =>
+          [0, 1, 2, 3].map((i) => ({
+            ...bush,
+            x: bush.x + Math.cos(i * 1.7) * 2.5,
+            z: bush.z + Math.sin(i * 1.7) * 2.5,
+            height: 0.3 + i * 0.06,
+            widthScale: 2.5,
+          })),
+        )
+        .filter((p) => sceneryClearOfPlay(p, features))
+        .map((p) => ({ ...p, y: sampleTerrain(p.x, p.z) })),
+    [bushes, features, sampleTerrain],
   );
   const textures = useTexture([
     ...treeBillboards.map(({ url }) => url),
@@ -6421,22 +6711,45 @@ function InstancedVegetation({
   if (trees.length === 0 && bushes.length === 0) return null;
   return (
     <group>
-      {treeBillboards.map((asset, variant) => (
-        <InstancedVegetationBillboard
-          key={asset.url}
-          texture={textures[variant]}
-          aspect={asset.aspect}
-          instances={trees.filter((tree) => tree.variant === variant)}
-        />
-      ))}
-      {bushBillboards.map((asset, variant) => (
-        <InstancedVegetationBillboard
-          key={asset.url}
-          texture={textures[treeBillboards.length + variant]}
-          aspect={asset.aspect}
-          instances={bushes.filter((bush) => bush.variant === variant)}
-        />
-      ))}
+      <BlenderVegetation
+        key={`grass-${renderQuality}`}
+        asset="rough_grass"
+        instances={grass}
+        high={renderQuality === "high"}
+        fallback={() => null}
+      />
+      <BlenderVegetation
+        key={`trees-${renderQuality}-${tropical}`}
+        asset={tropical ? "palm" : "tree_small_02"}
+        instances={trees}
+        high={renderQuality === "high"}
+        fallback={(far) =>
+          treeBillboards.map((asset, variant) => (
+            <InstancedVegetationBillboard
+              key={asset.url}
+              texture={tropical && palmTexture ? palmTexture : textures[variant]}
+              aspect={asset.aspect}
+              instances={far.filter((tree) => tree.variant === variant)}
+            />
+          ))
+        }
+      />
+      <BlenderVegetation
+        key={`bushes-${renderQuality}`}
+        asset="shrub_04"
+        instances={bushes}
+        high={renderQuality === "high"}
+        fallback={(far) =>
+          bushBillboards.map((asset, variant) => (
+            <InstancedVegetationBillboard
+              key={asset.url}
+              texture={textures[treeBillboards.length + variant]}
+              aspect={asset.aspect}
+              instances={far.filter((bush) => bush.variant === variant)}
+            />
+          ))
+        }
+      />
     </group>
   );
 }
@@ -6514,202 +6827,6 @@ function InstancedBillboardPlane({
       />
     </instancedMesh>
   );
-}
-
-function buildTreeInstances(
-  features: CourseTwinFeature[],
-  holes: CourseTwinHole[],
-  terrainBounds: CourseTwinManifest["bounds"],
-  sampleTerrain: CourseTwinTerrainSampler,
-) {
-  const treeFeatures = features.filter((feature) => feature.type === "trees");
-  const exclusionFeatures = features.filter((feature) =>
-    ["tee", "fairway", "green", "bunker", "water"].includes(feature.type),
-  );
-  const instances: VegetationInstance[] = [];
-
-  for (const feature of treeFeatures) {
-    const ring = feature.rings[0];
-    if (!ring || ring.length < 4) continue;
-    const xs = ring.map((point) => point[0]);
-    const zs = ring.map((point) => point[2]);
-    const minX = Math.max(terrainBounds.minX, Math.min(...xs));
-    const maxX = Math.min(terrainBounds.maxX, Math.max(...xs));
-    const minZ = Math.max(terrainBounds.minZ, Math.min(...zs));
-    const maxZ = Math.min(terrainBounds.maxZ, Math.max(...zs));
-    if (minX >= maxX || minZ >= maxZ) continue;
-    const targetCount = Math.min(96, Math.max(6, Math.round(courseTwinRingArea(ring) / 330)));
-    const random = seededRandom(hashString(feature.id));
-    let accepted = 0;
-    for (let attempt = 0; attempt < targetCount * 28 && accepted < targetCount; attempt += 1) {
-      const x = minX + random() * (maxX - minX);
-      const z = minZ + random() * (maxZ - minZ);
-      if (!courseTwinFeatureContains(feature, x, z)) continue;
-      if (exclusionFeatures.some((candidate) => courseTwinFeatureContains(candidate, x, z))) {
-        continue;
-      }
-      const variant = Math.floor(random() * treeBillboards.length);
-      const height = 8.5 + random() * 8.5;
-      instances.push({
-        x,
-        y: sampleTerrain(x, z),
-        z,
-        height,
-        widthScale: 0.78 + random() * 0.46,
-        tint: random() * 2 - 1,
-        variant,
-        rotation: random() * Math.PI * 2,
-      });
-      accepted += 1;
-    }
-  }
-  return [
-    ...buildCourseTwinScreenTrees(features, holes, terrainBounds, sampleTerrain),
-    ...instances,
-  ].slice(0, 650);
-}
-
-function buildBushInstances(
-  features: CourseTwinFeature[],
-  holes: CourseTwinHole[],
-  terrainBounds: CourseTwinManifest["bounds"],
-  sampleTerrain: CourseTwinTerrainSampler,
-) {
-  const treeFeatures = features.filter((feature) => feature.type === "trees");
-  const exclusionFeatures = features.filter((feature) =>
-    ["tee", "fairway", "green", "bunker", "water"].includes(feature.type),
-  );
-  const instances: VegetationInstance[] = [];
-
-  for (const feature of treeFeatures) {
-    const ring = feature.rings[0];
-    if (!ring || ring.length < 4) continue;
-    const xs = ring.map((point) => point[0]);
-    const zs = ring.map((point) => point[2]);
-    const minX = Math.max(terrainBounds.minX, Math.min(...xs));
-    const maxX = Math.min(terrainBounds.maxX, Math.max(...xs));
-    const minZ = Math.max(terrainBounds.minZ, Math.min(...zs));
-    const maxZ = Math.min(terrainBounds.maxZ, Math.max(...zs));
-    if (minX >= maxX || minZ >= maxZ) continue;
-    const targetCount = Math.min(126, Math.max(8, Math.round(courseTwinRingArea(ring) / 210)));
-    const random = seededRandom(hashString(`${feature.id}:bushes`));
-    let accepted = 0;
-    for (let attempt = 0; attempt < targetCount * 24 && accepted < targetCount; attempt += 1) {
-      const x = minX + random() * (maxX - minX);
-      const z = minZ + random() * (maxZ - minZ);
-      if (!courseTwinFeatureContains(feature, x, z)) continue;
-      if (exclusionFeatures.some((candidate) => courseTwinFeatureContains(candidate, x, z))) {
-        continue;
-      }
-      instances.push({
-        x,
-        y: sampleTerrain(x, z),
-        z,
-        height: 1.1 + random() * 2.1,
-        widthScale: 0.82 + random() * 0.42,
-        tint: random() * 2 - 1,
-        variant: Math.floor(random() * bushBillboards.length),
-        rotation: random() * Math.PI * 2,
-      });
-      accepted += 1;
-    }
-  }
-  const screeningBushes = buildCourseTwinScreenTrees(features, holes, terrainBounds, sampleTerrain)
-    .filter((_, index) => index % 2 === 0)
-    .map((tree, index) => {
-      const random = seededRandom(hashString(`screening-bush:${tree.x}:${tree.z}`));
-      const distance = 2.6 + random() * 3.8;
-      const angle = random() * Math.PI * 2;
-      const x = tree.x + Math.cos(angle) * distance;
-      const z = tree.z + Math.sin(angle) * distance;
-      return {
-        x,
-        y: sampleTerrain(x, z),
-        z,
-        height: 1.2 + random() * 1.9,
-        widthScale: 0.86 + random() * 0.36,
-        tint: random() * 2 - 1,
-        variant: index % bushBillboards.length,
-        rotation: random() * Math.PI * 2,
-      };
-    });
-  return [...instances, ...screeningBushes].slice(0, 1_200);
-}
-
-function buildCourseTwinScreenTrees(
-  features: CourseTwinFeature[],
-  holes: CourseTwinHole[],
-  terrainBounds: CourseTwinManifest["bounds"],
-  sampleTerrain: CourseTwinTerrainSampler,
-) {
-  const exclusions = features.filter((feature) =>
-    ["tee", "fairway", "green", "bunker", "water"].includes(feature.type),
-  );
-  const instances: VegetationInstance[] = [];
-
-  for (const hole of holes) {
-    const start = hole.centerline[0] ?? hole.tee;
-    const end = hole.centerline.at(-1) ?? hole.green;
-    const dx = end[0] - start[0];
-    const dz = end[2] - start[2];
-    const length = Math.hypot(dx, dz);
-    if (length < 1) continue;
-
-    const directionX = dx / length;
-    const directionZ = dz / length;
-    const sideX = -directionZ;
-    const sideZ = directionX;
-    const pairs = THREE.MathUtils.clamp(Math.round(length / 78), 3, 8);
-    const random = seededRandom(hashString(`screening:${hole.holeNumber}:${start[0]}:${start[2]}`));
-
-    for (let index = 0; index < pairs; index += 1) {
-      const progress = (index + 0.5 + (random() - 0.5) * 0.35) / pairs;
-      const along = length * progress;
-      for (const side of [-1, 1] as const) {
-        const setback = 28 + random() * 38;
-        const x = start[0] + directionX * along + sideX * setback * side;
-        const z = start[2] + directionZ * along + sideZ * setback * side;
-        if (
-          x < terrainBounds.minX + 8 ||
-          x > terrainBounds.maxX - 8 ||
-          z < terrainBounds.minZ + 8 ||
-          z > terrainBounds.maxZ - 8 ||
-          exclusions.some((feature) => courseTwinFeatureContains(feature, x, z))
-        ) {
-          continue;
-        }
-        instances.push({
-          x,
-          y: sampleTerrain(x, z),
-          z,
-          height: 8.5 + random() * 8,
-          widthScale: 0.78 + random() * 0.5,
-          tint: random() * 2 - 1,
-          variant: Math.floor(random() * treeBillboards.length),
-          rotation: random() * Math.PI * 2,
-        });
-      }
-    }
-  }
-
-  return instances.slice(0, 260);
-}
-
-function hashString(value: string) {
-  let hash = 2_166_136_261;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16_777_619);
-  }
-  return hash >>> 0;
-}
-
-function seededRandom(seed: number) {
-  let state = seed || 1;
-  return () => {
-    state = (Math.imul(state, 1_664_525) + 1_013_904_223) >>> 0;
-    return state / 4_294_967_296;
-  };
 }
 
 function HoleGeometry({
