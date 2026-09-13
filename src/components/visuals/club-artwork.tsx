@@ -81,7 +81,13 @@ function ClubFallbackArtwork({
   view: ClubArtworkView;
   className?: string;
 }) {
-  const normalized = (clubType ?? "").trim().toLowerCase();
+  const normalized = (clubType ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(
+      /^(\d+)[ -]?(iron|wood|hybrid)$/,
+      (_, number: string, family: string) => `${number}${family[0]}`,
+    );
   const spec = resolveFallbackSpec(normalized);
 
   return (
@@ -145,9 +151,10 @@ function resolveFallbackSpec(clubType: string) {
     };
   }
 
-  if (["3w", "5w", "7w"].includes(clubType) || clubType.includes("wood")) {
-    const label = ["3w", "5w", "7w"].includes(clubType) ? clubType.toUpperCase() : "FW";
-    const family = clubType === "3w" ? "3 wood" : clubType === "7w" ? "7 wood" : "Fairway wood";
+  const woodNumber = clubType.match(/^(\d+)w$/)?.[1];
+  if (woodNumber || clubType.includes("wood")) {
+    const label = woodNumber ? `${woodNumber}W` : "FW";
+    const family = woodNumber ? `${woodNumber} wood` : "Fairway wood";
 
     return {
       label,
@@ -165,17 +172,10 @@ function resolveFallbackSpec(clubType: string) {
     };
   }
 
-  if (["3h", "4h", "5h"].includes(clubType) || clubType.includes("hybrid")) {
-    const label =
-      clubType === "3h" ? "3H" : clubType === "4h" ? "4H" : clubType === "5h" ? "5H" : "HY";
-    const family =
-      clubType === "3h"
-        ? "3 hybrid"
-        : clubType === "4h"
-          ? "4 hybrid"
-          : clubType === "5h"
-            ? "5 hybrid"
-            : "Hybrid";
+  const hybridNumber = clubType.match(/^(\d+)h$/)?.[1];
+  if (hybridNumber || clubType.includes("hybrid")) {
+    const label = hybridNumber ? `${hybridNumber}H` : "HY";
+    const family = hybridNumber ? `${hybridNumber} hybrid` : "Hybrid";
 
     return {
       label,
@@ -192,20 +192,23 @@ function resolveFallbackSpec(clubType: string) {
     };
   }
 
-  if (["gw", "aw", "sw", "lw"].includes(clubType) || clubType.includes("wedge")) {
+  if (["pw", "gw", "aw", "sw", "lw"].includes(clubType) || clubType.includes("wedge")) {
+    const isPitching = clubType.includes("pitching") || clubType === "pw";
     const isGap = clubType.includes("gap") || clubType === "gw";
     const isApproach = clubType.includes("approach") || clubType === "aw";
     const isLob = clubType.includes("lob") || clubType === "lw";
 
     return {
-      label: isGap ? "GW" : isApproach ? "AW" : isLob ? "LW" : "SW",
-      family: isGap
-        ? "Gap wedge"
-        : isApproach
-          ? "Approach wedge"
-          : isLob
-            ? "Lob wedge"
-            : "Sand wedge",
+      label: isPitching ? "PW" : isGap ? "GW" : isApproach ? "AW" : isLob ? "LW" : "SW",
+      family: isPitching
+        ? "Pitching wedge"
+        : isGap
+          ? "Gap wedge"
+          : isApproach
+            ? "Approach wedge"
+            : isLob
+              ? "Lob wedge"
+              : "Sand wedge",
       badgeFill: isGap ? "#FEF3C7" : isApproach ? "#FDE68A" : isLob ? "#FDE7F3" : "#DCFCE7",
       headFill: isGap ? "#A16207" : isApproach ? "#B45309" : isLob ? "#BE185D" : "#15803D",
       accent: isGap ? "#F59E0B" : isApproach ? "#F97316" : isLob ? "#EC4899" : "#22C55E",
@@ -218,9 +221,27 @@ function resolveFallbackSpec(clubType: string) {
     };
   }
 
+  const ironNumber = clubType.match(/^(\d+)i$/)?.[1];
+  const isPutter = clubType === "putter" || clubType === "pt";
+  if (!ironNumber && !clubType.includes("iron")) {
+    return {
+      label: isPutter ? "PT" : "—",
+      family: isPutter ? "Putter" : "Club",
+      badgeFill: "#E2E8F0",
+      headFill: "#334155",
+      accent: "#94A3B8",
+      sideShaft: isPutter ? "M112 248L450 95" : "",
+      sideHead: isPutter ? "M420 82L510 122L501 143L411 103Z" : "",
+      sideAccent: "",
+      topShaft: isPutter ? "M112 248L450 130" : "",
+      topHead: isPutter ? "M412 112L504 141L496 166L404 137Z" : "",
+      topAccent: "",
+    };
+  }
+
   return {
-    label: clubType === "4i" ? "4I" : "IR",
-    family: clubType === "4i" ? "4 iron" : "Iron",
+    label: ironNumber ? `${ironNumber}I` : "IR",
+    family: ironNumber ? `${ironNumber} iron` : "Iron",
     badgeFill: "#E2E8F0",
     headFill: "#334155",
     accent: "#94A3B8",
