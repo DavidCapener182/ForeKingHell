@@ -85,7 +85,7 @@ describe("Course Twin route boundaries", () => {
   });
 
   it("renders photographic aerial courses with TikTok-style tracer sequences", () => {
-    expect(sceneSource).toContain("course-twin-terrain-splat-v4-pbr-atlas");
+    expect(sceneSource).toContain("course-twin-terrain-splat-v7-source-aware");
     expect(sceneSource).toContain("replayCompletedTracers");
     expect(sceneSource).toContain("completedTracerColour");
     expect(sceneSource).toContain("<TracerNumberMarker");
@@ -208,7 +208,9 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("treeBillboards");
     expect(sceneSource).toContain("bushBillboards");
     expect(sceneSource).toContain("holes={manifest.holes}");
-    expect(sceneSource).toContain("buildCourseTwinScreenTrees");
+    expect(
+      readFileSync(resolve(process.cwd(), "src/lib/course-twin-vegetation-placement.ts"), "utf8"),
+    ).toContain("buildCourseTwinScreenTrees");
     expect(sceneSource).toContain("native screening vegetation");
     expect(sceneSource).not.toContain("TreeCanopyLobes");
     expect(vegetationLedgerSource).toContain("Course Twin British Parkland Vegetation Billboards");
