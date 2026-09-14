@@ -13,8 +13,8 @@ export function buildTodayPracticeRecap(raw: TodayPracticeShot[], eligible: Toda
   const eligibleIds = new Set(eligible.map((shot) => shot.id));
   const groups = new Map<string, TodayPracticeShot[]>();
   for (const shot of raw) {
-    // Pool individual readings across uploads and monitors into one row per club.
-    const key = shot.clubType;
+    // Pool monitors for the same saved club, preserving equipment-testing results.
+    const key = JSON.stringify([shot.clubId ?? null, shot.clubType]);
     groups.set(key, [...(groups.get(key) ?? []), shot]);
   }
   const clubs = [...groups]
@@ -101,7 +101,7 @@ export function buildTodayPracticeRecap(raw: TodayPracticeShot[], eligible: Toda
   return {
     recorded: raw.length,
     included: eligible.length,
-    clubCount: new Set(raw.map((shot) => shot.clubType)).size,
+    clubCount: clubs.length,
     mixedSources: new Set(raw.map((shot) => shot.source)).size > 1,
     clubs,
     uploads,
