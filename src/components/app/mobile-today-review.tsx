@@ -17,7 +17,7 @@ function reading(value: number | null, unit: string) {
 const verdicts = {
   better: "Improved",
   worse: "Changes to review",
-  mixed: "Mixed results",
+  mixed: "No clear overall change",
   new: "More shots needed",
 };
 
