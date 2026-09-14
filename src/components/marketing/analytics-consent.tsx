@@ -49,7 +49,6 @@ export function AnalyticsConsent() {
           route={pathname}
           path={pathname}
           scriptSrc="/_vercel/insights/script.js"
-          endpoint="/_vercel/insights"
           debug={false}
         />
       ) : null}

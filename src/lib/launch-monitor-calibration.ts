@@ -83,7 +83,27 @@ export function calibrationCandidates(source: CalibrationShot[], reference: Cali
   }));
 }
 export function sourceNormalisation(shots: CalibrationShot[]) {
-  const states = shots.map((shot) => shot.sourceRawJson.normalise_setting?.toLowerCase());
+  const aliases = new Set([
+    "normalisesetting",
+    "normalizesetting",
+    "normalisationsetting",
+    "normalizationsetting",
+    "normalisation",
+    "normalization",
+    "normalised",
+    "normalized",
+  ]);
+  const states = shots.map((shot) => {
+    const settings = new Set<string>();
+    for (const [key, value] of Object.entries(shot.sourceRawJson)) {
+      if (!aliases.has(key.toLowerCase().replace(/[^a-z]/g, ""))) continue;
+      const setting = typeof value === "string" ? value.trim().toLowerCase() : "";
+      if (["on", "true", "yes", "1"].includes(setting)) settings.add("on");
+      if (["off", "false", "no", "0"].includes(setting)) settings.add("off");
+    }
+    // Conflicting aliases must not silently pick whichever header came first.
+    return settings.size === 1 ? [...settings][0] : "unknown";
+  });
   const on = states.filter((value) => value === "on").length;
   const off = states.filter((value) => value === "off").length;
   return { on, off, unknown: shots.length - on - off };

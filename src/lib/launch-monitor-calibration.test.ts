@@ -7,6 +7,7 @@ import {
   type CalibrationShot,
 } from "./launch-monitor-calibration";
 import { isDesktopOnlyCompanionPath } from "./app-route-capabilities";
+import { parseLaunchMonitorImportCsv } from "./imports/normalized-import";
 
 const shot: CalibrationShot = {
   id: "source",
@@ -61,5 +62,57 @@ describe("website calibration evidence", () => {
   });
   it("allows the calibration page on the phone companion", () => {
     expect(isDesktopOnlyCompanionPath("/equipment/launch-monitors/calibration")).toBe(false);
+  });
+  it.each([
+    "Normalization",
+    "Normalisation",
+    "NORMALIZATION",
+    "Normalise Setting",
+    "normalise_setting",
+    "Normalize Setting",
+    "Normalization Setting",
+    "Normalised",
+    "Normalized",
+  ])("reads original provider header %s", (key) => {
+    expect(
+      sourceNormalisation([
+        { ...shot, sourceRawJson: { [key]: " ON " } },
+        { ...shot, sourceRawJson: { [key]: " Off " } },
+      ]),
+    ).toEqual({ on: 1, off: 1, unknown: 0 });
+  });
+  it.each(["Normalization", "Normalisation"])(
+    "retains %s through the TrackMan importer and counts it",
+    async (header) => {
+      const parsed = await parseLaunchMonitorImportCsv({
+        source: "trackman",
+        fileName: "TrackMan.csv",
+        rawCsvText: `Club,Carry,${header}\nDr,200,On\nDr,190,Off`,
+      });
+      expect(parsed.shots).toHaveLength(2);
+      expect(parsed.shots[0].sourceRawJson[header]).toBe("On");
+      expect(
+        sourceNormalisation(
+          parsed.shots.map((row) => ({ ...shot, sourceRawJson: row.sourceRawJson })),
+        ),
+      ).toEqual({ on: 1, off: 1, unknown: 0 });
+    },
+  );
+  it("leaves missing, unfamiliar and conflicting settings unknown without mutating raw fields", () => {
+    const rows: CalibrationShot[] = [
+      { ...shot, sourceRawJson: { Normalization: "" } },
+      { ...shot, sourceRawJson: { Normalization: "unknown" } },
+      { ...shot, sourceRawJson: { Normalization: "on", normalise_setting: "off" } },
+      { ...shot, sourceRawJson: { "Ball conversion": "on" } },
+    ];
+    const before = JSON.stringify(rows);
+    expect(sourceNormalisation(rows)).toEqual({ on: 0, off: 0, unknown: 4 });
+    expect(JSON.stringify(rows)).toBe(before);
+    expect(
+      sourceNormalisation([
+        { ...shot, sourceRawJson: { Normalization: "true" } },
+        { ...shot, sourceRawJson: { Normalization: "false" } },
+      ]),
+    ).toEqual({ on: 1, off: 1, unknown: 0 });
   });
 });
