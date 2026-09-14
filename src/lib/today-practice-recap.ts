@@ -13,8 +13,8 @@ export function buildTodayPracticeRecap(raw: TodayPracticeShot[], eligible: Toda
   const eligibleIds = new Set(eligible.map((shot) => shot.id));
   const groups = new Map<string, TodayPracticeShot[]>();
   for (const shot of raw) {
-    // Keep equipment and monitor measurements separate; these are not calibrated yards.
-    const key = JSON.stringify([shot.clubId ?? null, shot.clubType, shot.source]);
+    // Pool monitors for the same saved club, preserving equipment-testing results.
+    const key = JSON.stringify([shot.clubId ?? null, shot.clubType]);
     groups.set(key, [...(groups.get(key) ?? []), shot]);
   }
   const clubs = [...groups]
@@ -40,14 +40,21 @@ export function buildTodayPracticeRecap(raw: TodayPracticeShot[], eligible: Toda
         key,
         clubType: first.clubType,
         clubLabel: formatClubType(first.clubType),
-        equipment: [first.clubBrand, first.clubModel].filter(Boolean).join(" "),
-        source: sourceName(first.source),
+        equipment: [
+          ...new Set(
+            recorded.map((shot) => [shot.clubBrand, shot.clubModel].filter(Boolean).join(" ")),
+          ),
+        ]
+          .filter(Boolean)
+          .join(" / "),
+        source: [...new Set(recorded.map((shot) => sourceName(shot.source)))].sort().join(" + "),
         recorded: recorded.length,
         included: shots.length,
         carry,
         speed,
         offline,
         bestCarry: carries.length ? Math.max(...carries) : null,
+        shortestCarry: carries.length ? Math.min(...carries) : null,
         spread: {
           value: carries.length >= 3 ? sampleStandardDeviation(carries) : null,
           count: carries.length,
@@ -94,7 +101,7 @@ export function buildTodayPracticeRecap(raw: TodayPracticeShot[], eligible: Toda
   return {
     recorded: raw.length,
     included: eligible.length,
-    clubCount: new Set(raw.map((shot) => shot.clubType)).size,
+    clubCount: clubs.length,
     mixedSources: new Set(raw.map((shot) => shot.source)).size > 1,
     clubs,
     uploads,

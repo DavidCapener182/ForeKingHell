@@ -90,9 +90,8 @@ export function TodayPracticeRecap({
       </p>
       {recap.mixedSources ? (
         <p className={styles.deviceNote}>
-          More than one monitor was used. Club results are separated by device; these are raw
-          measurements, without a calibration correction. Uploads can include the same physical
-          shot, so recorded shots are not a count of unique swings.{" "}
+          Each club combines its readings across all uploads and monitors. These are recorded
+          measurements, without a calibration correction.{" "}
           <Link href="/equipment/launch-monitors/calibration" prefetch={false}>
             Review device comparison ↗
           </Link>
@@ -104,72 +103,125 @@ export function TodayPracticeRecap({
           Average and best carry, speed, sideways miss and carry consistency. Each value uses its
           available readings; fewer than 10 is an early sample.
         </p>
-        <table className={styles.table} role="table">
-          <caption className={styles.srOnly}>
-            Results for this practice, separated by saved equipment and launch monitor.
-          </caption>
-          <thead role="rowgroup">
-            <tr role="row">
-              {[
-                "Club / monitor",
-                "Full shots",
-                "Average carry",
-                "Best carry",
-                "Ball speed",
-                "Sideways miss",
-                "Carry spread",
-              ].map((label) => (
-                <th role="columnheader" scope="col" key={label}>
-                  {label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody role="rowgroup">
-            {recap.clubs.map((club) => (
-              <tr key={club.key} role="row">
-                <th scope="row" role="rowheader" className={styles.club}>
-                  <strong>{club.clubLabel}</strong>
-                  <span>
-                    {club.source}
-                    {club.equipment ? ` · ${club.equipment}` : ""}
+        <div className={styles.clubGrid}>
+          {recap.clubs.map((club) => {
+            const scale = Math.max(recap.longest?.value ?? 0, 1);
+            const position = (value: number) =>
+              `${Math.max(0, Math.min(100, (value / scale) * 100))}%`;
+            return (
+              <article
+                className={styles.clubCard}
+                key={club.key}
+                aria-label={`${club.clubLabel} combined session results`}
+              >
+                <header className={styles.clubHeader}>
+                  <div>
+                    <h4>{club.clubLabel}</h4>
+                    <p>{club.equipment || club.source}</p>
+                  </div>
+                  <span className={styles.shotBadge}>
+                    {club.included} full {club.included === 1 ? "shot" : "shots"}
                   </span>
-                  <span>
-                    {club.offline.count
-                      ? `${club.left} left · ${club.straight} within 2 yd · ${club.right} right`
-                      : "Direction not measured"}
-                  </span>
-                </th>
-                <td role="cell">
-                  <span className={styles.mobileLabel}>Full shots</span>
-                  <strong>{club.included}</strong>
-                  <small>of {club.recorded} recorded</small>
-                </td>
-                {(
-                  [
-                    ["Average carry", club.carry, "yd"],
-                    ["Best carry", { value: club.bestCarry, count: club.carry.count }, "yd"],
-                    ["Ball speed", club.speed, "mph"],
-                    ["Sideways miss", club.offline, "yd"],
-                    ["Carry spread", club.spread, "yd"],
-                  ] as const
-                ).map(([label, metric, unit]) => (
-                  <td role="cell" key={label}>
-                    <span className={styles.mobileLabel}>{label}</span>
-                    <strong>{reading(metric.value, unit)}</strong>
-                    <small>
-                      {metric.value === null
-                        ? label === "Carry spread" && metric.count > 0
-                          ? "Needs 3 carry readings"
-                          : "—"
-                        : `${metric.count} ${metric.count === 1 ? "reading" : "readings"}`}
-                    </small>
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </header>
+                <div className={styles.carryHeadline}>
+                  <div>
+                    <span>Average carry</span>
+                    <strong>{reading(club.carry.value, "yd")}</strong>
+                  </div>
+                  <div>
+                    <span>Best carry</span>
+                    <strong>{reading(club.bestCarry, "yd")}</strong>
+                  </div>
+                </div>
+                {club.carry.value !== null &&
+                club.shortestCarry !== null &&
+                club.bestCarry !== null ? (
+                  <div className={styles.carryGraphic}>
+                    <div
+                      className={styles.rangeTrack}
+                      role="img"
+                      aria-label={`Carry range ${reading(club.shortestCarry, "yd")} to ${reading(club.bestCarry, "yd")}, average ${reading(club.carry.value, "yd")}. Scale zero to ${reading(scale, "yd")}.`}
+                    >
+                      <span
+                        className={styles.rangeBand}
+                        style={{
+                          left: position(club.shortestCarry),
+                          width: position(club.bestCarry - club.shortestCarry),
+                        }}
+                      />
+                      <span
+                        className={styles.averageMarker}
+                        style={{ left: position(club.carry.value) }}
+                      />
+                    </div>
+                    <p>
+                      <span>0 yd</span>
+                      <span>Carry range · line = average</span>
+                      <span>{reading(scale, "yd")}</span>
+                    </p>
+                    <p className={styles.rangeCaption}>
+                      Shortest {reading(club.shortestCarry, "yd")} · {club.carry.count} carry
+                      readings
+                    </p>
+                  </div>
+                ) : null}
+                <dl className={styles.clubMetrics}>
+                  {(
+                    [
+                      ["Ball speed", club.speed, "mph"],
+                      ["Sideways miss", club.offline, "yd"],
+                      ["Carry spread", club.spread, "yd"],
+                    ] as const
+                  ).map(([label, metric, unit]) => (
+                    <div key={label}>
+                      <dt>{label}</dt>
+                      <dd>{reading(metric.value, unit)}</dd>
+                      <small>
+                        {metric.value === null
+                          ? label === "Carry spread"
+                            ? "Needs 3 readings"
+                            : "—"
+                          : `${metric.count} ${metric.count === 1 ? "reading" : "readings"}`}
+                      </small>
+                    </div>
+                  ))}
+                </dl>
+                <div className={styles.direction}>
+                  <p>Where the shots finished</p>
+                  {club.offline.count ? (
+                    <>
+                      <div className={styles.directionTrack} aria-hidden="true">
+                        <span
+                          className={styles.leftShots}
+                          style={{ width: `${(club.left / club.offline.count) * 100}%` }}
+                        />
+                        <span
+                          className={styles.centreShots}
+                          style={{ width: `${(club.straight / club.offline.count) * 100}%` }}
+                        />
+                        <span
+                          className={styles.rightShots}
+                          style={{ width: `${(club.right / club.offline.count) * 100}%` }}
+                        />
+                      </div>
+                      <div className={styles.directionLabels}>
+                        <span>← {club.left} left</span>
+                        <span>{club.straight} within 2 yd</span>
+                        <span>{club.right} right →</span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className={styles.note}>Direction not measured</p>
+                  )}
+                </div>
+                <footer className={styles.clubFooter}>
+                  {club.source} · {club.recorded} recorded
+                  {club.included < 10 ? " · Early sample" : ""}
+                </footer>
+              </article>
+            );
+          })}
+        </div>
       </div>
       <div className={styles.uploads}>
         <h3>Uploads behind this review</h3>

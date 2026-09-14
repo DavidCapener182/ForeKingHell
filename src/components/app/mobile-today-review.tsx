@@ -17,8 +17,8 @@ function reading(value: number | null, unit: string) {
 const verdicts = {
   better: "Improved",
   worse: "Changes to review",
-  mixed: "Mixed results",
-  new: "Building a baseline",
+  mixed: "No clear overall change",
+  new: "More shots needed",
 };
 
 export function MobileTodayPracticeReview({

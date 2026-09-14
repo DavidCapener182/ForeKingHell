@@ -407,10 +407,10 @@ it("gives the 33 versus 10 driver comparison a descriptive readout", () => {
   expect(result.setbacks[0].metric).toBe("carrySpread");
 });
 
-it("shows the current practice even without a previous baseline and separates monitors", () => {
+it("combines monitors into one club row using individual readings without a previous baseline", () => {
   const latest = day("2026-09-14", 6, 5, { carryYd: 190 });
   latest.rawShots.push(
-    ...day("2026-09-14", -4, 5, {
+    ...day("2026-09-14", -4, 3, {
       carryYd: 215,
       source: "trackman",
       sessionId: "trackman-upload",
@@ -419,17 +419,25 @@ it("shows the current practice even without a previous baseline and separates mo
   const result = report(latest);
   expect(result.verdict).toBe("building");
   expect(result.practice).toMatchObject({
-    recorded: 10,
-    included: 10,
+    recorded: 8,
+    included: 8,
     clubCount: 1,
     mixedSources: true,
   });
   expect(result.practice.clubs.map((club) => [club.source, club.carry.value])).toEqual([
-    ["Rapsodo", 190],
-    ["TrackMan", 215],
+    ["Rapsodo + TrackMan", 199.375],
   ]);
   expect(result.practice.uploads).toHaveLength(2);
-  expect(result.practice.clubs[0]).toMatchObject({ left: 0, straight: 0, right: 5 });
+  expect(result.practice.clubs[0]).toMatchObject({
+    left: 3,
+    straight: 0,
+    right: 5,
+    included: 8,
+    bestCarry: 215,
+    carry: { count: 8 },
+    spread: { count: 8 },
+  });
+  expect(result.practice.clubs[0].spread.value).toBeCloseTo(Math.sqrt(1171.875 / 7));
   expect(result.practice.longest).toMatchObject({
     value: 215,
     source: "TrackMan",
@@ -476,4 +484,35 @@ it("keeps the practice recap within the selected club and date", () => {
   });
   expect(result.practice.recorded).toBe(5);
   expect(result.practice.clubs).toHaveLength(1);
+});
+
+it("combines monitors for each saved club without merging different equipment", () => {
+  const latest = day("2026-09-14", 6, 5, { clubId: "driver-a", carryYd: 190 });
+  latest.rawShots.push(
+    ...day("2026-09-14", -4, 3, {
+      clubId: "driver-b",
+      carryYd: 215,
+      source: "trackman",
+      sessionId: "other-driver",
+    }).rawShots.map((row) => ({ ...row, id: `other-${row.id}` })),
+    ...day("2026-09-14", 2, 3, {
+      clubId: "driver-a",
+      carryYd: 200,
+      source: "trackman",
+      sessionId: "same-driver",
+    }).rawShots.map((row) => ({ ...row, id: `same-${row.id}` })),
+  );
+  const recap = report(latest).practice;
+  expect(recap.clubCount).toBe(2);
+  expect(recap.clubs).toHaveLength(2);
+  expect(recap.clubs.find((club) => club.included === 8)).toMatchObject({
+    carry: { value: 193.75, count: 8 },
+    source: "Rapsodo + TrackMan",
+    bestCarry: 200,
+  });
+  expect(recap.clubs.find((club) => club.included === 3)).toMatchObject({
+    carry: { value: 215, count: 3 },
+    source: "TrackMan",
+    bestCarry: 215,
+  });
 });

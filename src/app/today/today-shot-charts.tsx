@@ -266,6 +266,13 @@ export function TodayShotCharts({
                 </span>
                 {status ? (
                   <span
+                    title={
+                      status.verdict === "new"
+                        ? "Not enough shots in this practice or its earlier baseline for a fair comparison."
+                        : status.verdict === "mixed"
+                          ? `No clear overall change versus earlier practice. ${status.summary}`
+                          : status.summary
+                    }
                     className={cn(
                       "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
                       selected
@@ -280,6 +287,16 @@ export function TodayShotCharts({
             );
           })}
         </ToggleGroup>
+
+        {selectedClub !== "all" && statusByClub.get(selectedClub) ? (
+          <p className="text-sm text-muted-foreground" role="status">
+            <strong className="font-medium text-foreground">
+              Compared with earlier practice:{" "}
+            </strong>
+            {statusByClub.get(selectedClub)!.verdict === "mixed" ? "No clear overall change. " : ""}
+            {statusByClub.get(selectedClub)!.summary}
+          </p>
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-medium text-muted-foreground">Trajectory</span>
@@ -1853,8 +1870,8 @@ function hashText(value: string) {
 function verdictLabel(verdict: TodayChartClubStatus["verdict"]) {
   if (verdict === "better") return "Better";
   if (verdict === "worse") return "Worse";
-  if (verdict === "mixed") return "Mixed";
-  return "New";
+  if (verdict === "mixed") return "No clear change";
+  return "More shots needed";
 }
 
 function statusPillClass(verdict: TodayChartClubStatus["verdict"]) {
@@ -1863,9 +1880,6 @@ function statusPillClass(verdict: TodayChartClubStatus["verdict"]) {
   }
   if (verdict === "worse") {
     return "bg-[var(--status-error-surface)] text-destructive";
-  }
-  if (verdict === "mixed") {
-    return "bg-[var(--status-warning-surface)] text-[var(--status-warning-foreground)]";
   }
   return "bg-muted text-muted-foreground";
 }
