@@ -266,6 +266,11 @@ export function TodayShotCharts({
                 </span>
                 {status ? (
                   <span
+                    title={
+                      status.verdict === "new"
+                        ? "Not enough shots in this practice or its earlier baseline for a fair comparison."
+                        : undefined
+                    }
                     className={cn(
                       "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
                       selected
@@ -1854,7 +1859,7 @@ function verdictLabel(verdict: TodayChartClubStatus["verdict"]) {
   if (verdict === "better") return "Better";
   if (verdict === "worse") return "Worse";
   if (verdict === "mixed") return "Mixed";
-  return "New";
+  return "More shots needed";
 }
 
 function statusPillClass(verdict: TodayChartClubStatus["verdict"]) {

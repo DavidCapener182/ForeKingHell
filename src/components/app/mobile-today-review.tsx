@@ -18,7 +18,7 @@ const verdicts = {
   better: "Improved",
   worse: "Changes to review",
   mixed: "Mixed results",
-  new: "Building a baseline",
+  new: "More shots needed",
 };
 
 export function MobileTodayPracticeReview({
