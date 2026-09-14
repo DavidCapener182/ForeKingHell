@@ -401,7 +401,9 @@ describe("latest practice desktop dashboard", () => {
     expect(summaries).not.toMatch(/border-slate|bg-white|text-slate|bg-emerald|text-emerald/);
     expect(chartsSource).toContain("var(--status-error-surface)");
     expect(chartsSource).toContain("var(--status-information-surface)");
-    expect(chartsSource).toContain("var(--status-warning-surface)");
+    expect(chartsSource).toContain("bg-muted text-muted-foreground");
+    expect(chartsSource).toContain('return "No clear change"');
+    expect(chartsSource).toContain('return "More shots needed"');
     expect(chartsSource).not.toMatch(/<button\b/);
 
     expect(chartsSource).toContain('driver: "#2563eb"');
