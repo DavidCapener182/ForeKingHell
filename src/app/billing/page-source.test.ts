@@ -13,14 +13,13 @@ describe("account plan page", () => {
     expect(source).toContain("data-primary-action");
   });
 
-  it("uses a compact Free and Full comparison instead of marketing cards", () => {
-    expect(source).toContain("Free or Full");
-    expect(source).toContain("fullPlanComparison.map");
-    expect(source).toContain('<PlanColumnHeading label="Free"');
-    expect(source).toContain('<PlanColumnHeading label="Full"');
-    expect(source).not.toContain("function PlanCard(");
-    expect(source).not.toContain("Upgrade prompts");
-    expect(source).not.toContain("PageArtwork");
+  it("uses the shared public catalogue and keeps all purchasable tiers available", () => {
+    expect(source).toContain("Compare plans");
+    expect(source).toContain("!plan.internal");
+    expect(source).toContain("plan.features.map");
+    expect(source).toContain("data.checkoutAvailability[plan.key]");
+    expect(source).not.toContain("Free or Full");
+    expect(source).not.toContain('return "Full"');
   });
 
   it("keeps billing history compact and technical entitlements collapsed", () => {

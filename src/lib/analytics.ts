@@ -1,3 +1,6 @@
+import { track } from "@vercel/analytics";
+import { isPublicAnalyticsPath, readAnalyticsConsent } from "./analytics-consent";
+
 export type PlausibleEventName =
   | "AI Coach Generated"
   | "AI Data Chat Generated"
@@ -19,16 +22,19 @@ type PlausiblePayload = {
   props?: Record<string, string | number | boolean | null>;
 };
 
-declare global {
-  interface Window {
-    plausible?: (eventName: string, payload?: PlausiblePayload) => void;
-  }
-}
-
+// Preserve the existing caller API while the analytics provider changes.
+// Only public marketing intent is sent; account data and event properties are excluded.
 export function trackPlausibleEvent(eventName: PlausibleEventName, payload?: PlausiblePayload) {
-  if (typeof window === "undefined") {
+  // Keep compatibility with existing callers without sending their properties.
+  void payload;
+  if (
+    typeof window === "undefined" ||
+    readAnalyticsConsent() !== "granted" ||
+    !isPublicAnalyticsPath(window.location.pathname) ||
+    !eventName.startsWith("Public ")
+  ) {
     return;
   }
 
-  window.plausible?.(eventName, payload);
+  track(eventName);
 }

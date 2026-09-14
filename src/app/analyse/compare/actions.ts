@@ -15,11 +15,12 @@ import {
   type CompareFilters,
 } from "@/lib/compare-data";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { requirePlanUser } from "@/lib/require-plan-access";
 
 const conditions = new Set<CompareConditionMode>(["same", "indoor-outdoor", "practice-round"]);
 
 export async function saveSessionComparisonAction(formData: FormData) {
-  const userId = await requireCurrentUserId();
+  const userId = await requirePlanUser("advanced_analytics");
   const filters = filtersFromForm(formData);
   const requestedIds = [filters.sessionId, filters.baselineSessionId].filter(Boolean) as string[];
   if (

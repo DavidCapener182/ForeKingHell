@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 
 import { generateSocialSummary, reportSocialTarget } from "@/lib/social-intelligence";
 import { parseVisibility } from "@/lib/social";
@@ -50,6 +50,7 @@ export async function socialIntelligenceFormAction(
     }
     return { ok: true };
   } catch (error) {
+    unstable_rethrow(error);
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Could not save. Try again.",

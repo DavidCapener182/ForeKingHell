@@ -380,3 +380,29 @@ describe("automatic Today progress", () => {
     expect(result.method[0]).toContain("limited to Driver");
   });
 });
+
+it("gives the 33 versus 10 driver comparison a descriptive readout", () => {
+  function measured(
+    date: string,
+    count: number,
+    carry: number,
+    spread: number,
+    offline: number,
+    speed: number,
+  ) {
+    const result = day(date, offline, count, { ballSpeedMph: speed });
+    const centre = (count - 1) / 2;
+    const scale = Math.sqrt((count * (count + 1)) / 12);
+    result.rawShots.forEach((row, index) => {
+      row.carryYd = carry + ((index - centre) / scale) * spread;
+    });
+    return result;
+  }
+  const result = report(measured("2026-09-14", 33, 191.5, 12.2, 11.4, 130), [
+    measured("2026-09-13", 10, 192, 8.7, 9.5, 129.9),
+  ]);
+  expect(result.clubs[0].readout).toBe("Distance and speed stable — dispersion slightly wider");
+  expect(result.clubs[0].reason).toContain("Unequal samples");
+  expect(result.summary).toContain("Distance and speed stable");
+  expect(result.setbacks[0].metric).toBe("carrySpread");
+});

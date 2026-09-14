@@ -1,3 +1,4 @@
+import { planEntitlements } from "@/lib/plan-entitlements";
 import "server-only";
 
 import { desc, eq, inArray } from "drizzle-orm";
@@ -17,59 +18,7 @@ import { requireCurrentUserId } from "@/lib/current-user";
 export { billingIntervals, billingPlans } from "@/lib/billing-plan-catalog";
 export type { BillingInterval, BillingPlan, PlanKey } from "@/lib/billing-plan-catalog";
 
-const defaultAiPlanLimitValues = {
-  free: [
-    ["ai_monthly_credits", { value: 0 }],
-    ["ai_daily_chat_messages", { value: 0 }],
-    ["ai_scorecard_extracts_monthly", { value: 0 }],
-  ],
-  plus: [
-    ["ai_monthly_credits", { value: 10 }],
-    ["ai_daily_chat_messages", { value: 0 }],
-    ["ai_scorecard_extracts_monthly", { value: 2 }],
-  ],
-  pro: [
-    ["ai_monthly_credits", { value: 100 }],
-    ["ai_daily_chat_messages", { value: 30 }],
-    ["ai_scorecard_extracts_monthly", { value: 10 }],
-  ],
-  coach: [
-    ["ai_monthly_credits", { value: 300 }],
-    ["ai_daily_chat_messages", { value: 60 }],
-    ["ai_scorecard_extracts_monthly", { value: 25 }],
-  ],
-  full: [
-    ["ai_monthly_credits", { value: 1000, label: "Internal safety cap" }],
-    ["ai_daily_chat_messages", { value: 100 }],
-    ["ai_scorecard_extracts_monthly", { value: 50 }],
-  ],
-} as const satisfies Record<PlanKey, ReadonlyArray<readonly [string, Record<string, unknown>]>>;
-
-export const lifetimeFullEntitlements = [
-  ["lifetime_full", { value: true }],
-  ["max_monthly_imports", { value: 999999, label: "Unlimited" }],
-  ["max_friend_groups", { value: 999999, label: "Unlimited" }],
-  ["max_private_challenges", { value: 999999, label: "Unlimited" }],
-  ["monthly_course_record_attempts", { value: 999999, label: "Unlimited" }],
-  ["private_course_record_boards", { value: true }],
-  ["private_friend_tournaments", { value: true }],
-  ["host_major_tournaments", { value: true }],
-  ["can_use_ai_coach", { value: true }],
-  ["ai_monthly_credits", { value: 1000, label: "Internal safety cap" }],
-  ["ai_daily_chat_messages", { value: 100 }],
-  ["ai_scorecard_extracts_monthly", { value: 50 }],
-  ["advanced_reports", { value: true }],
-  ["friend_comparison_insights", { value: true }],
-  ["challenge_analytics", { value: true }],
-  ["ai_record_strategy", { value: true }],
-  ["advanced_verification_analytics", { value: true }],
-  ["coach_dashboard", { value: true }],
-  ["evidence_review_queue", { value: true }],
-  ["max_player_seats", { value: 999999, label: "Unlimited" }],
-  ["device_import_square", { value: true }],
-  ["device_import_trackman", { value: true }],
-  ["admin_operations", { value: true }],
-] as const satisfies ReadonlyArray<readonly [string, Record<string, unknown>]>;
+export const lifetimeFullEntitlements = planEntitlements.full;
 
 export async function getBillingPageData() {
   const userId = await requireCurrentUserId();
@@ -151,7 +100,8 @@ function withDefaultAiPlanLimits(rows: Array<typeof planLimits.$inferSelect>) {
   const existing = new Set(rows.map((row) => `${row.planKey}:${row.limitKey}`));
   const now = new Date();
   const defaults = billingPlans.flatMap((plan) =>
-    defaultAiPlanLimitValues[plan.key]
+    planEntitlements[plan.key]
+      .filter(([limitKey]) => limitKey.startsWith("ai_"))
       .filter(([limitKey]) => !existing.has(`${plan.key}:${limitKey}`))
       .map(([limitKey, limitValueJson]) => ({
         id: `default-${plan.key}-${limitKey}`,
@@ -202,6 +152,12 @@ export async function createCheckoutSession(input: {
 
   if (!plan || plan.key === "free") {
     return { url: "/billing?plan=free", error: null };
+  }
+
+  if (plan.internal)
+    return { url: "/billing", error: "This plan is available only by an internal grant." };
+  if ((await getActivePlanKeyForUser(userId)) !== "free") {
+    return { url: "/billing", error: "Use Manage billing to change your existing plan." };
   }
 
   const priceEnvKey = plan.priceEnv[input.interval];
@@ -355,7 +311,7 @@ function parsePlanKey(value: string | null | undefined): PlanKey {
     : "free";
 }
 
-function resolveActivePlanKey(
+export function resolveActivePlanKey(
   latestSubscription: Pick<typeof subscriptions.$inferSelect, "planKey" | "status"> | null,
   entitlementRows: Array<
     Pick<typeof entitlements.$inferSelect, "entitlementKey" | "valueJson" | "expiresAt">

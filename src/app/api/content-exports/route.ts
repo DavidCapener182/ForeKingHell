@@ -1,3 +1,4 @@
+import { planFeatureRejection } from "@/lib/require-plan-access";
 import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -17,6 +18,9 @@ export async function POST(request: NextRequest) {
   if (!userId) {
     return NextResponse.json({ message: "Authentication required." }, { status: 401 });
   }
+
+  const planRejection = await planFeatureRejection(userId, "share_customisation");
+  if (planRejection) return planRejection;
 
   const rateLimitRejection = rateLimitRequest(request, {
     keyPrefix: "content-export",

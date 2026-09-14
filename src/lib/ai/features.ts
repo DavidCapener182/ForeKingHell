@@ -1,4 +1,6 @@
 import "server-only";
+import { planNumberLimit } from "@/lib/plan-entitlements";
+import { planRank } from "@/lib/plan-access";
 
 import type { PlanKey } from "@/lib/billing";
 
@@ -25,6 +27,7 @@ export type AiFeatureConfig = {
   creditCost: number;
   modelEnvKey: string;
   fallbackModel: string;
+  defaultModel?: string;
   maxOutputTokens: number;
   cacheTtlMs?: number;
 };
@@ -38,6 +41,7 @@ export const aiFeatures = {
     minimumPlan: "pro",
     creditCost: 1,
     modelEnvKey: "OPENAI_COACH_MODEL",
+    defaultModel: "gpt-6-astra",
     fallbackModel: "gpt-4.1-mini",
     maxOutputTokens: 900,
     cacheTtlMs: 24 * hourMs,
@@ -48,6 +52,7 @@ export const aiFeatures = {
     minimumPlan: "pro",
     creditCost: 1,
     modelEnvKey: "OPENAI_COACH_MODEL",
+    defaultModel: "gpt-6-astra",
     fallbackModel: "gpt-4.1-mini",
     maxOutputTokens: 700,
   },
@@ -57,6 +62,7 @@ export const aiFeatures = {
     minimumPlan: "pro",
     creditCost: 1,
     modelEnvKey: "OPENAI_COACH_MODEL",
+    defaultModel: "gpt-6-astra",
     fallbackModel: "gpt-4.1-mini",
     maxOutputTokens: 900,
   },
@@ -85,6 +91,7 @@ export const aiFeatures = {
     minimumPlan: "plus",
     creditCost: 1,
     modelEnvKey: "OPENAI_COACH_MODEL",
+    defaultModel: "gpt-6-astra",
     fallbackModel: "gpt-4.1-mini",
     maxOutputTokens: 650,
     cacheTtlMs: 6 * hourMs,
@@ -95,6 +102,7 @@ export const aiFeatures = {
     minimumPlan: "pro",
     creditCost: 2,
     modelEnvKey: "OPENAI_COACH_MODEL",
+    defaultModel: "gpt-6-astra",
     fallbackModel: "gpt-4.1-mini",
     maxOutputTokens: 800,
     cacheTtlMs: 6 * hourMs,
@@ -141,21 +149,12 @@ export const aiFeatures = {
   },
 } as const satisfies Record<AiFeatureKey, AiFeatureConfig>;
 
-export const monthlyAiCreditDefaults = {
-  free: 0,
-  plus: 10,
-  pro: 100,
-  coach: 300,
-  full: 1000,
-} as const satisfies Record<PlanKey, number>;
-
-const planRank = {
-  free: 0,
-  plus: 1,
-  pro: 2,
-  coach: 3,
-  full: 4,
-} as const satisfies Record<PlanKey, number>;
+export const monthlyAiCreditDefaults = Object.fromEntries(
+  (["free", "plus", "pro", "coach", "full"] as const).map((plan) => [
+    plan,
+    planNumberLimit(plan, "ai_monthly_credits"),
+  ]),
+) as Record<PlanKey, number>;
 
 export function getAiFeature(featureKey: AiFeatureKey): AiFeatureConfig {
   return aiFeatures[featureKey];
@@ -180,7 +179,22 @@ export function resolveAiModel(featureKey: AiFeatureKey) {
   const fastFallback = process.env.OPENAI_FAST_MODEL?.trim();
   const coachFallback = process.env.OPENAI_COACH_MODEL?.trim();
 
-  return configured || fastFallback || coachFallback || feature.fallbackModel;
+  return (
+    configured || fastFallback || coachFallback || feature.defaultModel || feature.fallbackModel
+  );
+}
+
+export function aiRequestSettings(model: string, maxOutputTokens: number) {
+  if (model !== "gpt-6-astra") {
+    return { max_output_tokens: maxOutputTokens };
+  }
+
+  // Astra's output cap includes reasoning. Keep the existing visible-output allowance
+  // and add bounded reasoning headroom; tune against feature evaluations.
+  return {
+    reasoning: { effort: "low" as const },
+    max_output_tokens: maxOutputTokens + 4096,
+  };
 }
 
 export function aiFeatureAccessLabel(featureKey: AiFeatureKey) {

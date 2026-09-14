@@ -1,3 +1,4 @@
+import { requirePlanFeature } from "@/lib/require-plan-access";
 import "server-only";
 import { createHash } from "node:crypto";
 
@@ -434,6 +435,9 @@ export async function createTournament(input: {
   const userId = await requireCurrentUserId();
   const profile = await ensureSocialProfileForUser(userId);
   const format = tournamentFormats.includes(input.format) ? input.format : "two_round_open";
+  if (format === "four_round_major") await requirePlanFeature(userId, "major_hosting");
+  if (parseVisibility(input.visibility, "friends") !== "public")
+    await requirePlanFeature(userId, "private_competitions");
   const roundCount = Math.min(Math.max(input.roundCount ?? defaultRoundCount(format), 1), 12);
   const now = new Date();
   const startsAt = input.startsAt ?? now;

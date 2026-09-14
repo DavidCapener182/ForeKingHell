@@ -371,6 +371,13 @@ export const mobileRouteAudit = [
     note: "Verdict and deltas lead; setup selection and decision recording become focused tasks.",
   },
   {
+    file: "src/app/(app)/equipment/launch-monitors/calibration/page.tsx",
+    route: "/equipment/launch-monitors/calibration",
+    classification: 3,
+    resolution: "preserve",
+    note: "Responsive session selectors and conditions forms stack on phones; metric tables scroll within their panel and shot candidates expand individually.",
+  },
+  {
     file: "src/app/(app)/equipment/page.tsx",
     route: "/equipment",
     classification: 2,

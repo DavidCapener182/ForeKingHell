@@ -1,3 +1,4 @@
+import { requirePlanUser } from "@/lib/require-plan-access";
 import { RoundTrainingEffort } from "@/components/training/RoundTrainingEffort";
 import { getMobileTrainingSourceLinks } from "@/lib/training/mobile-training-source-links";
 import Link from "next/link";
@@ -28,7 +29,7 @@ type TrainingOverTimePageProps = {
   }>;
 };
 
-export default async function TrainingOverTimePage({ searchParams }: TrainingOverTimePageProps) {
+async function TrainingOverTimePage({ searchParams }: TrainingOverTimePageProps) {
   const resolvedSearchParams = (await searchParams) ?? {};
   const rangeKey = normalizeTrainingRange(resolvedSearchParams.range);
   const parsedScope = parseTrainingScope(
@@ -140,4 +141,9 @@ function SpeedReadinessPanel({ development }: { development: SpeedDevelopmentSum
       </CardContent>
     </DataPanel>
   );
+}
+
+export default async function SubscriptionPage(props: Parameters<typeof TrainingOverTimePage>[0]) {
+  await requirePlanUser("advanced_analytics");
+  return <TrainingOverTimePage {...props} />;
 }

@@ -30,7 +30,7 @@ export function BetaAccessSection() {
             Bring available launch-monitor evidence into one place, then follow the clearest next
             action.
           </p>
-          <div className={styles.finalCtaActions}>
+          <div className={styles.finalCtaActions} data-mobile-cta-stop>
             <Link href={marketingJoinBetaHref} className={styles.primaryAction}>
               Join the beta <ArrowRight aria-hidden />
             </Link>

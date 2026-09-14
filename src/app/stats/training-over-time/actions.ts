@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 import { getDb } from "@/db/client";
 import { golfTrainingSessions, sessions } from "@/db/schema";
-import { requireCurrentUserId } from "@/lib/current-user";
+import { requirePlanUser } from "@/lib/require-plan-access";
 import { calculateSessionLoad } from "@/lib/training/trainingLoad";
 import type { TrainingSourceType } from "@/lib/training/trainingData";
 
@@ -31,7 +31,7 @@ class TrainingFormError extends Error {}
 export async function createGolfTrainingSessionWithStateAction(
   formData: FormData,
 ): Promise<TrainingSessionFormResult> {
-  const userId = await requireCurrentUserId();
+  const userId = await requirePlanUser("advanced_analytics");
   try {
     await createGolfTrainingSession(formData, userId);
     return { ok: true };
@@ -46,7 +46,7 @@ export async function createGolfTrainingSessionWithStateAction(
   }
 }
 export async function createGolfTrainingSessionAction(formData: FormData) {
-  const userId = await requireCurrentUserId();
+  const userId = await requirePlanUser("advanced_analytics");
   await createGolfTrainingSession(formData, userId);
   const range = encodeURIComponent(formValue(formData, "range") || "3m");
   redirect(`/stats/training-over-time?range=${range}&saved=1#recent`);
@@ -276,7 +276,7 @@ function normaliseTotalSwings(
 export async function updateRoundTrainingEffortAction(
   formData: FormData,
 ): Promise<TrainingSessionFormResult> {
-  const userId = await requireCurrentUserId();
+  const userId = await requirePlanUser("advanced_analytics");
   const id = formValue(formData, "trainingSessionId");
   if (!/^[0-9a-f-]{36}$/i.test(id))
     return { ok: false, error: "That training entry is not available." };

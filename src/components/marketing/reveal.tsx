@@ -3,6 +3,11 @@
 import { createElement, useEffect, useRef, useState, type ReactNode } from "react";
 
 const registeredReveals = new Set<HTMLElement>();
+const registeredScenes = new Map<HTMLElement, number>();
+const activeScenes = new Set<HTMLElement>();
+let revealObserver: IntersectionObserver | null = null;
+let sceneObserver: IntersectionObserver | null = null;
+let motionQuery: MediaQueryList | null = null;
 let revealAnimationFrame = 0;
 let revealActivationFrame = 0;
 let revealListenersActive = false;
@@ -122,61 +127,36 @@ function updateRegisteredReveals() {
   const viewportHeight = window.innerHeight;
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const compactViewport = window.matchMedia("(max-width: 767px)").matches;
-  const boundsCache = new Map<HTMLElement, DOMRect>();
-  const updatedScenes = new Set<HTMLElement>();
-
-  for (const element of registeredReveals) {
-    const pauseSection = element.closest<HTMLElement>("[data-scroll-pause]");
-    // Every item in a chapter follows the chapter entrance. This lets the mobile
-    // composition complete before lower copy is reached instead of revealing each
-    // row after it has already started leaving the viewport.
-    const target = pauseSection ?? element;
-    const targetBounds = boundsCache.get(target) ?? target.getBoundingClientRect();
-    boundsCache.set(target, targetBounds);
-    const top = targetBounds.top;
-    const start = viewportHeight * (compactViewport ? 0.94 : pauseSection ? 0.58 : 0.82);
-    const end = viewportHeight * (compactViewport ? 0.68 : pauseSection ? -0.27 : 0.4);
-    const rawProgress = reducedMotion ? 1 : clampUnit((start - top) / (start - end));
-    const computedStyle = getComputedStyle(element);
-    const configuredDelay =
-      Number.parseFloat(computedStyle.getPropertyValue("--reveal-delay")) || 0;
-    const delay = compactViewport ? Math.min(configuredDelay, 0.06) : configuredDelay;
-    const progress = reducedMotion ? 1 : clampUnit((rawProgress - delay) / (1 - delay));
-    const revealFrom = element.dataset.revealFrom;
-    const configuredOriginX =
-      Number.parseFloat(computedStyle.getPropertyValue("--reveal-origin-x")) || 0;
-    const originX = revealFrom === "left" ? -3 : revealFrom === "right" ? 3 : configuredOriginX;
-    const verticalTravel = revealFrom === "left" || revealFrom === "right" ? 1.4 : 4.5;
-    const startingScale = revealFrom === "scale" ? 0.94 : 0.985;
-
-    if (pauseSection && !updatedScenes.has(pauseSection)) {
-      updateScene(
-        pauseSection,
-        targetBounds,
-        viewportHeight,
-        rawProgress,
-        reducedMotion,
-        compactViewport,
-      );
-      updatedScenes.add(pauseSection);
-    }
-
-    element.style.setProperty("--reveal-opacity", progress.toFixed(3));
-    element.style.setProperty("--reveal-x", `${(originX * (1 - progress)).toFixed(3)}rem`);
-    element.style.setProperty(
-      "--reveal-y",
-      `${((1 - progress) * (compactViewport ? Math.min(verticalTravel, 2.25) : verticalTravel)).toFixed(3)}rem`,
-    );
-    element.style.setProperty(
-      "--reveal-blur",
-      `${compactViewport ? 0 : ((1 - progress) * 4).toFixed(3)}px`,
-    );
-    element.style.setProperty(
-      "--reveal-scale",
-      (startingScale + progress * (1 - startingScale)).toFixed(4),
-    );
-    element.dataset.marketingReveal = progress >= 0.999 ? "visible" : "pending";
+  // Measure each nearby scene once, before writing styles. Text entrances are
+  // handled separately by IntersectionObserver and finish even when scrolling stops.
+  const scenes = reducedMotion ? registeredScenes.keys() : activeScenes;
+  const measurements = Array.from(scenes, (section) => ({
+    section,
+    bounds: section.getBoundingClientRect(),
+  }));
+  for (const { section, bounds } of measurements) {
+    const progress = reducedMotion ? 1 : clampUnit((viewportHeight - bounds.top) / viewportHeight);
+    updateScene(section, bounds, viewportHeight, progress, reducedMotion, compactViewport);
   }
+}
+
+function revealElement(element: HTMLElement) {
+  element.dataset.marketingReveal = "visible";
+  revealObserver?.unobserve(element);
+}
+
+function revealFocusedContent(event: FocusEvent) {
+  if (!(event.target instanceof Element)) return;
+  let reveal = event.target.closest<HTMLElement>("[data-marketing-reveal]");
+  while (reveal) {
+    revealElement(reveal);
+    reveal = reveal.parentElement?.closest<HTMLElement>("[data-marketing-reveal]") ?? null;
+  }
+}
+
+function syncMotionPreference() {
+  if (motionQuery?.matches) registeredReveals.forEach(revealElement);
+  requestRevealUpdate();
 }
 
 function requestRevealUpdate() {
@@ -203,6 +183,10 @@ function activateRevealMotion() {
 }
 
 function refreshAfterScrollRestore() {
+  // A restored tab or deep link must never return to hidden, already-read copy.
+  for (const element of registeredReveals) {
+    if (element.getBoundingClientRect().top < window.innerHeight * 0.92) revealElement(element);
+  }
   requestRevealUpdate();
   revealRestoreTimers.forEach((timer) => window.clearTimeout(timer));
   revealRestoreTimers = [
@@ -216,23 +200,75 @@ function registerReveal(element: HTMLElement) {
   const marketingPage = element.closest<HTMLElement>("[data-marketing-motion]");
   if (!revealListenersActive) {
     revealListenersActive = true;
+    motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    revealObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) revealElement(entry.target as HTMLElement);
+        }
+      },
+      { rootMargin: "0px 0px -8%", threshold: 0 },
+    );
+    sceneObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const section = entry.target as HTMLElement;
+          if (entry.isIntersecting) activeScenes.add(section);
+          else activeScenes.delete(section);
+        }
+        requestRevealUpdate();
+      },
+      { rootMargin: "20% 0px", threshold: 0 },
+    );
     window.addEventListener("scroll", requestRevealUpdate, { passive: true });
     window.addEventListener("resize", requestRevealUpdate, { passive: true });
     window.addEventListener("pageshow", refreshAfterScrollRestore);
     window.addEventListener("load", refreshAfterScrollRestore);
+    document.addEventListener("focusin", revealFocusedContent);
+    motionQuery.addEventListener("change", syncMotionPreference);
     refreshAfterScrollRestore();
+  }
+  // Preserve SSR and above-the-fold content. Only unseen content starts concealed.
+  if (motionQuery?.matches || element.getBoundingClientRect().top < window.innerHeight * 0.92) {
+    revealElement(element);
+  } else {
+    revealObserver?.observe(element);
+  }
+  const section = element.closest<HTMLElement>("[data-scroll-pause]");
+  if (section) {
+    const count = registeredScenes.get(section) ?? 0;
+    registeredScenes.set(section, count + 1);
+    if (count === 0) sceneObserver?.observe(section);
   }
   activateRevealMotion();
   requestRevealUpdate();
 
   return () => {
     registeredReveals.delete(element);
+    revealObserver?.unobserve(element);
+    if (section) {
+      const count = (registeredScenes.get(section) ?? 1) - 1;
+      if (count > 0) registeredScenes.set(section, count);
+      else {
+        registeredScenes.delete(section);
+        activeScenes.delete(section);
+        sceneObserver?.unobserve(section);
+        sceneTargetCache.delete(section);
+      }
+    }
     if (registeredReveals.size === 0 && revealListenersActive) {
       revealListenersActive = false;
       window.removeEventListener("scroll", requestRevealUpdate);
       window.removeEventListener("resize", requestRevealUpdate);
       window.removeEventListener("pageshow", refreshAfterScrollRestore);
       window.removeEventListener("load", refreshAfterScrollRestore);
+      document.removeEventListener("focusin", revealFocusedContent);
+      motionQuery?.removeEventListener("change", syncMotionPreference);
+      revealObserver?.disconnect();
+      sceneObserver?.disconnect();
+      revealObserver = null;
+      sceneObserver = null;
+      motionQuery = null;
       revealRestoreTimers.forEach((timer) => window.clearTimeout(timer));
       revealRestoreTimers = [];
       if (revealAnimationFrame) window.cancelAnimationFrame(revealAnimationFrame);

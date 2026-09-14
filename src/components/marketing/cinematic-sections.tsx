@@ -229,7 +229,11 @@ export function ProductScreensShowcase() {
             <span />
           </div>
           <Reveal className={cinematic.productScreensHeading} from="left">
+            <p className={cinematic.kicker}>Inside your golf workspace</p>
             <h2 id="product-screens-title">See the decision chain in the product.</h2>
+            <p className={cinematic.sectionDescription}>
+              One connected view of your game. From the latest signal to the next session.
+            </p>
           </Reveal>
         </div>
       </div>

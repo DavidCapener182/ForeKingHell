@@ -14,12 +14,14 @@ import {
   getPlayerCompareData,
 } from "@/lib/compare-data";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { requirePlanFeature, requirePlanUser } from "@/lib/require-plan-access";
 
 const compareViews = new Set(["progress", "clubs", "players"]);
 
 export async function saveWorkspaceComparisonAction(formData: FormData) {
-  const userId = await requireCurrentUserId();
+  const userId = await requirePlanUser("advanced_analytics");
   const view = clean(formData.get("view"), 24);
+  if (view === "players") await requirePlanFeature(userId, "player_comparison");
   if (!compareViews.has(view))
     throw new WorkspaceComparisonInputError("Choose a supported comparison view.");
 

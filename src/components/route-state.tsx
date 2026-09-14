@@ -58,7 +58,7 @@ export function RouteErrorState({
   );
 }
 
-export function RouteNotFoundState() {
+export function RouteNotFoundState({ authenticated = false }: { authenticated?: boolean }) {
   return (
     <main
       id="main-content"
@@ -75,12 +75,19 @@ export function RouteNotFoundState() {
             </h1>
           </CardTitle>
           <CardDescription className="text-[15px] leading-6">
-            That route does not match an {BRAND_NAME} screen.
+            That page is missing or the link has changed. Let’s get you back to {BRAND_NAME}.
           </CardDescription>
         </CardHeader>
-        <CardFooter className="justify-center">
+        <CardFooter className="flex-wrap justify-center gap-3">
           <Button asChild className="min-h-12 w-full sm:w-auto">
-            <Link href="/dashboard">Open dashboard</Link>
+            <Link href={authenticated ? "/dashboard" : "/"}>
+              {authenticated ? "Open dashboard" : "Back to home"}
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-12 w-full sm:w-auto">
+            <Link href={authenticated ? "/sessions" : "/login"}>
+              {authenticated ? "Open golf history" : "Sign in"}
+            </Link>
           </Button>
         </CardFooter>
       </Card>

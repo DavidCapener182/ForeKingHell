@@ -32,16 +32,19 @@ test("Billing review makes no provider calls until confirmation and retains sele
     }),
   );
 
-  for (const [width, height] of [
-    [1440, 900],
-    [1280, 800],
-    [390, 844],
-    [360, 800],
-    [1023, 800],
-    [1024, 800],
-  ]) {
+  for (const [planKey, planName, width, height] of [
+    ["plus", "Plus", 1440, 900],
+    ["pro", "Pro", 1440, 900],
+    ["coach", "Coach / Club", 1440, 900],
+    ["plus", "Plus", 390, 844],
+    ["pro", "Pro", 390, 844],
+    ["coach", "Coach / Club", 390, 844],
+    ["plus", "Plus", 360, 800],
+    ["pro", "Pro", 360, 800],
+    ["coach", "Coach / Club", 360, 800],
+  ] as const) {
     await page.setViewportSize({ width, height });
-    await page.goto("https://twin.fixture/");
+    await page.goto(`https://twin.fixture/?plan=${planKey}`);
     await page.addStyleTag({
       content:
         css.css +
@@ -53,10 +56,14 @@ test("Billing review makes no provider calls until confirmation and retains sele
     await page.addScriptTag({
       content: bundle.outputFiles.find((file) => file.path.endsWith(".js"))!.text,
     });
-    await page.getByRole("combobox", { name: "Full plan billing interval" }).selectOption("yearly");
-    await page.getByRole("button", { name: "Review Full plan", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "Review Full plan" });
-    await expect(dialog).toContainText("£119 per year");
+    await page
+      .getByRole("combobox", { name: `${planName} billing interval` })
+      .selectOption("yearly");
+    await page.getByRole("button", { name: `Review ${planName} plan`, exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: `Review ${planName} plan` });
+    await expect(dialog).toContainText(
+      `${planKey === "plus" ? "£69" : planKey === "coach" ? "£499" : "£119"} per year`,
+    );
     await dialog.getByRole("button", { name: "Keep current plan", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     expect(
@@ -64,7 +71,7 @@ test("Billing review makes no provider calls until confirmation and retains sele
         () => (window as unknown as { billingCalls?: unknown[] }).billingCalls ?? [],
       ),
     ).toEqual([]);
-    await page.getByRole("button", { name: "Review Full plan", exact: true }).click();
+    await page.getByRole("button", { name: `Review ${planName} plan`, exact: true }).click();
     for (let retry = 0; retry < 2; retry++) {
       await dialog
         .getByRole("button", { name: "Continue to secure checkout", exact: true })
@@ -74,8 +81,8 @@ test("Billing review makes no provider calls until confirmation and retains sele
     expect(
       await page.evaluate(() => (window as unknown as { billingCalls: unknown[] }).billingCalls),
     ).toEqual([
-      { planKey: "pro", interval: "yearly" },
-      { planKey: "pro", interval: "yearly" },
+      { planKey, interval: "yearly" },
+      { planKey, interval: "yearly" },
     ]);
     await dialog.getByRole("button", { name: "Keep current plan", exact: true }).click();
     await expect(dialog).toHaveCount(0);
@@ -92,7 +99,7 @@ test("Billing review makes no provider calls until confirmation and retains sele
     await portal.getByRole("button", { name: "Stay here", exact: true }).click();
     await expect(portal).toHaveCount(0);
     if (width < 768) {
-      await page.getByRole("button", { name: /Full.*Details/ }).click();
+      await page.getByRole("button", { name: /Pro.*Details/ }).click();
       await expect(page.getByRole("dialog", { name: "Subscription details" })).toContainText(
         "01 Jan 2026 – 01 Jan 2027",
       );
@@ -101,6 +108,6 @@ test("Billing review makes no provider calls until confirmation and retains sele
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(
       true,
     );
-    await page.screenshot({ path: info.outputPath(`P75-controls-${width}.png`) });
+    await page.screenshot({ path: info.outputPath(`subscription-${planKey}-${width}.png`) });
   }
 });

@@ -35,16 +35,17 @@ export function MarketingFaq() {
         </Reveal>
         <div className={styles.faqList}>
           {marketingFaqs.map((item) => (
-            <details
-              key={item.question}
-              className={styles.faqDetails}
-              onToggle={(event) => {
-                if (event.currentTarget.open) trackPlausibleEvent("Public FAQ Item Opened");
-              }}
-            >
-              <summary>{item.question}</summary>
-              <p>{item.answer}</p>
-            </details>
+            <Reveal key={item.question} from="up">
+              <details
+                className={styles.faqDetails}
+                onToggle={(event) => {
+                  if (event.currentTarget.open) trackPlausibleEvent("Public FAQ Item Opened");
+                }}
+              >
+                <summary>{item.question}</summary>
+                <p>{item.answer}</p>
+              </details>
+            </Reveal>
           ))}
         </div>
       </div>

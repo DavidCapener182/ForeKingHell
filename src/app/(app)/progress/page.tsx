@@ -1,3 +1,4 @@
+import { requirePlanUser } from "@/lib/require-plan-access";
 import { TimelineStory, type TimelineStoryItem } from "@/app/progress/progress-timeline";
 import { progressRecommendation } from "@/app/progress/progress-recommendation";
 import { ProgressComparison } from "@/app/progress/progress-comparison";
@@ -62,7 +63,7 @@ type BagSnapshot = {
   capturedAt: Date;
 };
 
-export default async function ProgressPage() {
+async function ProgressPage() {
   const userId = await requireCurrentUserId();
   const surface = await getRequestAppSurface();
   const [
@@ -861,4 +862,9 @@ function clampNumber(value: number, min: number, max: number) {
 function averageNumber(values: number[]) {
   if (values.length === 0) return 0;
   return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+export default async function SubscriptionPage() {
+  await requirePlanUser("advanced_analytics");
+  return <ProgressPage />;
 }

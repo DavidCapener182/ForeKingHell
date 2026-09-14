@@ -1,3 +1,5 @@
+import { getActivePlanKeyForUser } from "@/lib/billing";
+import { planHasFeature } from "@/lib/plan-access";
 import "server-only";
 import { createHash } from "node:crypto";
 
@@ -1537,6 +1539,9 @@ async function canViewRecord(viewerUserId: string, record: typeof courseRecords.
   if (record.scope === "public") {
     return true;
   }
+
+  if (!planHasFeature(await getActivePlanKeyForUser(viewerUserId), "private_competitions"))
+    return false;
 
   if (record.createdByUserId === viewerUserId) {
     return true;

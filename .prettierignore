@@ -1,5 +1,6 @@
 node_modules
 .next
+.next-production
 .next-e2e
 .vercel
 .DS_Store
@@ -28,3 +29,7 @@ tsconfig.tsbuildinfo
 
 # Compact generated scenery databases (runtime download budget).
 public/course-twins/common/context-v1/*.json
+
+# Local Blender downloads and generated scene cache (also gitignored).
+tools/course-twin-blender/.cache/
+tools/course-twin-blender/scenes/

@@ -30,6 +30,8 @@ The desktop workbench retains the full **investigate -> compare -> configure -> 
 
 ## Courses, records and equipment
 
+Launch monitor calibration: `/equipment/launch-monitors/calibration` — Settings and Equipment entry links; owned-session metric comparison, recording conditions and unverified shot candidates.
+
 | Feature            | Routes                                                                                                                                                                                | Where users find it                                                                       |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | Courses            | `/play`, `/courses`, `/courses/[courseId]`, `/courses/new`, `/courses/strategy`, `/courses/[courseId]/holes`, `/courses/[courseId]/shot-pattern`, `/course-twins`, `/play/[courseId]` | Companion Strategy hub, course profiles, Course Twin catalogue and pre-round preparation. |
@@ -81,3 +83,11 @@ Administration is never inferred from navigation visibility. Every route must va
 | System checks        | `/admin/system-checks` |
 
 `/shots/review` — Practice → Shots → automatic evidence review. Bounded history-based suggestions, batch review, Keep/Undo, reversible exclusion and club correction.
+
+## Public site and recovery
+
+| Feature                              | Routes               | Purpose                                |
+| ------------------------------------ | -------------------- | -------------------------------------- |
+| Public legal and storage preferences | `/terms`, `/cookies` | Terms and optional analytics controls. |
+| Sign-in confirmation                 | `/thank-you`         | Email-link next steps.                 |
+| Public recovery                      | `/404`               | Branded missing-page recovery.         |

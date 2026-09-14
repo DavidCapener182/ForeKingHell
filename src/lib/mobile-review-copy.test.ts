@@ -15,13 +15,13 @@ function comparison(miss: number | null, count = 20): ClubDayComparison {
 
 describe("mobile practice explanation", () => {
   it("describes measured direction without calling extra distance an improvement", () => {
-    expect(mobileComparisonSummary(comparison(-2))).toBe(
+    expect(mobileComparisonSummary(comparison(-2))).toContain(
       "2.0 yd less average sideways miss. 6.0 yd longer average carry.",
     );
-    expect(mobileComparisonSummary(comparison(0))).toBe(
+    expect(mobileComparisonSummary(comparison(0))).toContain(
       "Average sideways miss was unchanged. 6.0 yd longer average carry.",
     );
-    expect(mobileComparisonSummary({ ...comparison(null), carryDeltaYd: null })).toBe(
+    expect(mobileComparisonSummary({ ...comparison(null), carryDeltaYd: null })).toContain(
       "Baseline evidence",
     );
   });

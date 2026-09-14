@@ -8,12 +8,13 @@ import { and, count, eq, gte, lte, max, sql } from "drizzle-orm";
 import { analysisAnnotations, analysisSnapshots, sessions, shots } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { requirePlanUser } from "@/lib/require-plan-access";
 import { buildAnalysisSnapshot, validateAnalysisAnnotation } from "@/lib/analysis-workspace";
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function saveAnalysisAnnotationAction(formData: FormData) {
-  const userId = await requireCurrentUserId();
+  const userId = await requirePlanUser("advanced_analytics");
   const sessionId = cleanUuid(formData.get("sessionId"));
   const rangeFrom = parseDate(formData.get("rangeFrom"));
   const rangeTo = parseDate(formData.get("rangeTo"), true);
@@ -69,7 +70,7 @@ export async function deleteAnalysisAnnotationAction(formData: FormData) {
 }
 
 export async function saveAnalysisSnapshotAction(formData: FormData) {
-  const userId = await requireCurrentUserId();
+  const userId = await requirePlanUser("advanced_analytics");
   const club = cleanText(formData.get("club"), 40);
   const from = parseDate(formData.get("from"));
   const to = parseDate(formData.get("to"), true);

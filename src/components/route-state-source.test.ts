@@ -1,3 +1,6 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { RouteNotFoundState } from "./route-state";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -21,10 +24,14 @@ describe("shared route not-found state", () => {
     expect(notFoundState).not.toContain("<section");
   });
 
-  it("preserves the not-found copy and dashboard recovery action", () => {
+  it("provides public home and sign-in recovery actions", () => {
     expect(notFoundState).toContain("<h1");
     expect(notFoundState).toContain("Page not found");
-    expect(notFoundState).toContain("That route does not match an {BRAND_NAME} screen.");
-    expect(notFoundState).toContain('<Link href="/dashboard">Open dashboard</Link>');
+    expect(notFoundState).toContain("That page is missing or the link has changed.");
+    const html = renderToStaticMarkup(createElement(RouteNotFoundState));
+    expect(html).toContain('href="/"');
+    expect(html).toContain("Back to home");
+    expect(html).toContain('href="/login"');
+    expect(html).toContain("Sign in");
   });
 });

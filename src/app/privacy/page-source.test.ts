@@ -7,7 +7,7 @@ const source = readFileSync(join(process.cwd(), "src/app/privacy/page.tsx"), "ut
 describe("privacy page desktop shell", () => {
   it("keeps the privacy notice on the full app content shell without a desktop AI rail", () => {
     expect(source).toContain("<PageShell>");
-    expect(source).toContain("${BRAND_NAME} data notice");
+    expect(source).toContain("${BRAND_NAME} privacy policy");
     expect(source).toContain('href="/settings?section=privacy"');
     expect(source).toContain('aria-label="On this page"');
     for (const title of [

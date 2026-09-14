@@ -93,19 +93,6 @@ export function CourseTwinShowcase() {
       aria-labelledby="course-twin-title"
       data-scroll-pause="course-twin"
     >
-      <div className="relative z-10 flex flex-wrap gap-3 px-5 py-4">
-        <Button variant="outline" onClick={() => setDetailsOpen(true)}>
-          Explore the example plan
-        </Button>
-        {capability.canLoad && !Runtime ? (
-          <Button disabled={requested} onClick={() => setRequested(true)}>
-            {requested ? "Loading interactive example…" : "Launch interactive example"}
-          </Button>
-        ) : null}
-        <p className="w-full text-sm">
-          Illustrative modelled shot plan and reconstructed terrain; not your measured course data.
-        </p>
-      </div>
       <ResponsiveDetailPanel
         open={detailsOpen}
         onOpenChange={setDetailsOpen}
@@ -142,6 +129,28 @@ export function CourseTwinShowcase() {
             <li data-scene-vars="route">Plot the shot</li>
             <li data-scene-vars="twin">Open the twin</li>
           </ol>
+          <div className={styles.twinActions}>
+            <Button
+              className={styles.twinAction}
+              variant="outline"
+              onClick={() => setDetailsOpen(true)}
+            >
+              Explore the example plan
+            </Button>
+            {capability.canLoad && !Runtime ? (
+              <Button
+                className={styles.twinAction}
+                disabled={requested}
+                onClick={() => setRequested(true)}
+              >
+                {requested ? "Loading interactive example…" : "Launch interactive example"}
+              </Button>
+            ) : null}
+            <p>
+              Illustrative modelled shot plan and reconstructed terrain; not your measured course
+              data.
+            </p>
+          </div>
         </Reveal>
         <div className={styles.twinStoryStage} data-scene-vars="establish">
           <div className={styles.twinPhoto}>

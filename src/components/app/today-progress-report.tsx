@@ -8,7 +8,7 @@ type ProgressMetric = TodayProgressReportModel["clubs"][number]["metrics"][numbe
 
 const verdictLabels: Record<ProgressVerdict, string> = {
   better: "Improving",
-  worse: "Needs attention",
+  worse: "Wider dispersion",
   mixed: "Mixed",
   steady: "Holding steady",
   building: "Building evidence",
@@ -90,7 +90,11 @@ export function TodayProgressReport({
       {report.improvements.length || report.setbacks.length || report.changes.length ? (
         <div className={styles.changes} aria-label="What improved and what needs work">
           <ChangeList title="What improved" changes={report.improvements} direction="better" />
-          <ChangeList title="What slipped" changes={report.setbacks} direction="worse" />
+          <ChangeList
+            title="Where dispersion widened"
+            changes={report.setbacks}
+            direction="worse"
+          />
           <ChangeList title="Other changes" changes={report.changes} direction="steady" />
         </div>
       ) : null}
@@ -159,7 +163,7 @@ export function TodayProgressReport({
                             ? "New baseline"
                             : club.status === "low-sample"
                               ? "More shots needed"
-                              : verdictLabels[club.verdict]}
+                              : (club.readout ?? verdictLabels[club.verdict])}
                     </span>
                     <p>{club.reason}</p>
                   </td>
@@ -262,7 +266,7 @@ function MetricReading({ metric }: { metric: ProgressMetric }) {
           ? "No comparison"
           : metric.direction === "steady"
             ? "Similar"
-            : `${metric.delta > 0 ? "+" : ""}${number.format(metric.delta)} ${metric.unit}${metric.direction === "improved" ? " · improved" : metric.direction === "declined" ? " · worse" : ""}`}
+            : `${metric.delta > 0 ? "+" : ""}${number.format(metric.delta)} ${metric.unit}${metric.direction === "improved" ? " · improved" : metric.direction === "declined" ? " · wider" : ""}`}
       </span>
       <span className={styles.srOnly}>
         {metric.previousCount} previous readings; {metric.currentCount} latest readings.

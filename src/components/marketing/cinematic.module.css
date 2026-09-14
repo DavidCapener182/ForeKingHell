@@ -7,7 +7,7 @@
   --cinema-mist: oklch(89% 0.018 166);
   --cinema-yellow: oklch(88% 0.19 103);
   --cinema-line: color-mix(in oklch, var(--cinema-ink) 18%, transparent);
-  --cinema-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --cinema-ease: cubic-bezier(0.23, 1, 0.32, 1);
   position: relative;
   overflow: clip;
   background: var(--cinema-cream);
@@ -36,50 +36,107 @@
 }
 
 .page[data-marketing-motion="ready"] [data-marketing-reveal] {
-  opacity: var(--reveal-opacity, 0);
-  filter: blur(var(--reveal-blur, 4px));
-  transform: translate3d(var(--reveal-x, 0), var(--reveal-y, 4.5rem), 0)
-    scale(var(--reveal-scale, 0.985));
-  will-change: opacity, transform;
+  opacity: 1;
+  transform: none;
+  /* Editorial entrances can breathe; controls retain their shorter timings. */
+  transition:
+    opacity 560ms var(--cinema-ease),
+    transform 720ms var(--cinema-ease);
+  transition-delay: calc(var(--reveal-delay, 0) * 1s);
 }
 
-.promiseLead,
-.courseTwinCopy,
-.productScreensHeading,
-.editorialHeading,
-.privacyHeading,
-.finalCtaCopy,
-.faqStage > [data-marketing-reveal] {
-  --reveal-origin-x: -3;
+.page[data-marketing-motion="ready"] [data-marketing-reveal="pending"] {
+  opacity: 0;
+  transform: translate3d(0, 2rem, 0);
 }
 
-.practiceCopy,
-.finalProof,
-.productScreenshot {
-  --reveal-origin-x: 3;
+.page[data-marketing-motion="ready"] [data-marketing-reveal="pending"][data-reveal-from="left"] {
+  transform: translate3d(-2rem, 1rem, 0);
 }
 
-.productScreenCopy {
-  --reveal-origin-x: -3;
+.page[data-marketing-motion="ready"] [data-marketing-reveal="pending"][data-reveal-from="right"] {
+  transform: translate3d(2rem, 1rem, 0);
 }
 
-.productScreenCard:nth-child(even) .productScreenCopy {
-  --reveal-origin-x: 3;
+.page[data-marketing-motion="ready"] [data-marketing-reveal="pending"][data-reveal-from="scale"] {
+  transform: translate3d(0, 1.5rem, 0) scale(0.96);
 }
 
-.productScreenCard:nth-child(even) .productScreenshot {
-  --reveal-origin-x: -3;
+.page[data-marketing-motion="ready"] [data-marketing-reveal]:focus-within {
+  opacity: 1;
+  transform: none;
+  transition: none;
 }
 
-.loopStep:nth-child(2) {
+.readingProgress {
+  position: fixed;
+  z-index: 81;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--cinema-yellow);
+  pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.desktopNav a[aria-current="location"]::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.page [data-reveal-item] {
+  transition:
+    opacity 480ms var(--cinema-ease),
+    transform 640ms var(--cinema-ease);
+}
+
+.page [data-reveal-item]:nth-child(2) {
+  transition-delay: 60ms;
+}
+.page [data-reveal-item]:nth-child(3) {
+  transition-delay: 120ms;
+}
+.page [data-reveal-item]:nth-child(4) {
+  transition-delay: 180ms;
+}
+
+.page[data-marketing-motion="ready"] [data-marketing-reveal="pending"] [data-reveal-item] {
+  opacity: 0;
+  transform: translate3d(0, 1.25rem, 0);
+}
+
+.page [data-reveal-item]:focus-within {
+  opacity: 1 !important;
+  transform: none !important;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :global(html):has(.page) {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (max-width: 767px) {
+  .page[data-marketing-motion="ready"] [data-marketing-reveal] {
+    transition-duration: 420ms, 520ms;
+    transition-delay: min(calc(var(--reveal-delay, 0) * 1s), 120ms);
+  }
+
+  .page[data-marketing-motion="ready"] [data-marketing-reveal="pending"][data-reveal-from] {
+    transform: translate3d(0, 1rem, 0);
+  }
+}
+
+.loopStep:nth-of-type(2) {
   --reveal-delay: 0.07;
 }
 
-.loopStep:nth-child(3) {
+.loopStep:nth-of-type(3) {
   --reveal-delay: 0.14;
 }
 
-.loopStep:nth-child(4) {
+.loopStep:nth-of-type(4) {
   --reveal-delay: 0.21;
 }
 
@@ -131,8 +188,8 @@
     max(1rem, env(safe-area-inset-left));
   color: var(--cinema-ink);
   transition:
-    padding 320ms var(--cinema-ease),
-    color 320ms var(--cinema-ease);
+    transform 240ms var(--cinema-ease),
+    color 180ms var(--cinema-ease);
 }
 
 .headerInner {
@@ -358,7 +415,7 @@
 .heroCourse {
   z-index: -6;
   overflow: hidden;
-  animation: hero-environment-in 1.1s var(--cinema-ease) both;
+  /* The LCP image is visible immediately; the foreground provides the entrance. */
 }
 
 .heroCourse img {
@@ -523,12 +580,22 @@
   display: block;
   overflow: hidden;
   white-space: nowrap;
-  animation: hero-type-in 900ms var(--cinema-ease) both;
+  padding-block: 0.08em;
+  margin-block: -0.08em;
+}
+
+.heroTitle b {
+  display: block;
+  font-weight: inherit;
+  animation: hero-type-in 820ms var(--cinema-ease) backwards;
 }
 
 .heroTitle span:last-child {
   color: var(--cinema-cream);
-  animation-delay: 100ms;
+}
+
+.heroTitle span:last-child b {
+  animation-delay: 80ms;
 }
 
 .heroGolfer {
@@ -546,7 +613,7 @@
   transform-origin: 60% 74%;
   transition: transform 180ms var(--cinema-ease);
   will-change: transform;
-  animation: hero-golfer-in 1.05s 80ms var(--cinema-ease) both;
+  animation: hero-golfer-in 950ms 60ms var(--cinema-ease) backwards;
 }
 
 .heroGolfer img {
@@ -565,7 +632,7 @@
   left: clamp(1rem, 5vw, 6rem);
   width: min(31rem, 38vw);
   color: var(--cinema-cream);
-  animation: hero-detail-in 820ms 460ms var(--cinema-ease) both;
+  animation: hero-detail-in 680ms 240ms var(--cinema-ease) backwards;
   opacity: calc(1 - var(--hero-progress, 0) * 0.84);
   transform: translate3d(
     var(--hero-x, 0px),
@@ -1562,12 +1629,6 @@
   min-height: clamp(42rem, 82svh, 58rem);
   max-height: none;
   overflow: visible;
-}
-
-.page[data-marketing-motion="ready"] .productScreenCard[data-immersive="false"] .productScreenCopy {
-  opacity: var(--reveal-opacity, 0);
-  transform: translate3d(var(--reveal-x, 0), var(--reveal-y, 4.5rem), 0)
-    scale(var(--reveal-scale, 0.985));
 }
 
 .productScreenCard[data-immersive="false"] .productScreenshot img,
@@ -2756,7 +2817,6 @@
 .header {
   transition:
     transform 240ms var(--cinema-ease),
-    padding 240ms var(--cinema-ease),
     color 180ms var(--cinema-ease);
 }
 
@@ -2805,74 +2865,6 @@
 
 .heroTitle span:last-child {
   margin-left: 0.26em;
-}
-
-.storyBall {
-  position: absolute;
-  z-index: 7;
-  right: 18%;
-  bottom: 2.4rem;
-  width: 1.55rem;
-  height: 1.55rem;
-  object-fit: contain;
-  filter: drop-shadow(
-    0 0.16rem 0.28rem color-mix(in oklch, var(--cinema-forest-deep) 42%, transparent)
-  );
-  opacity: calc(1 - var(--hero-progress));
-  transform: translate3d(
-    calc(var(--hero-x, 0px) + var(--hero-progress, 0) * -26vw),
-    calc(var(--hero-y, 0px) + var(--hero-progress, 0) * 11rem),
-    0
-  );
-}
-
-.storyContinuity {
-  position: fixed;
-  z-index: 45;
-  top: 0;
-  left: 0;
-  width: 1.5rem;
-  height: 1.5rem;
-  margin: -0.75rem 0 0 -0.75rem;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  opacity: 0;
-  pointer-events: none;
-  transform: translate3d(-2rem, -2rem, 0);
-  will-change: opacity, transform;
-}
-
-.storyContinuityTracer {
-  position: fixed;
-  z-index: 44;
-  inset: 0;
-  width: 100vw;
-  height: 100svh;
-  overflow: visible;
-  opacity: 0;
-  pointer-events: none;
-  will-change: opacity;
-}
-
-.storyContinuityTracer path {
-  fill: none;
-  stroke: color-mix(in oklch, var(--cinema-yellow) 76%, var(--cinema-cream));
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 0 0.22rem color-mix(in oklch, var(--cinema-yellow) 42%, transparent))
-    drop-shadow(0 0.08rem 0.08rem color-mix(in oklch, var(--cinema-forest-deep) 30%, transparent));
-}
-
-.storyContinuity img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  filter: drop-shadow(
-    0 0.18rem 0.3rem color-mix(in oklch, var(--cinema-forest-deep) 48%, transparent)
-  );
 }
 
 .promise {
@@ -3242,16 +3234,6 @@
   min-height: 155svh;
 }
 
-.page[data-marketing-motion="ready"] .productScreenCopy {
-  opacity: calc(var(--reveal-opacity, 0) * (1 - var(--scene-phase-ui, 0) * 0.72));
-  transform: translate3d(
-      var(--reveal-x, 0),
-      calc(var(--reveal-y, 0) - var(--scene-phase-ui, 0) * 1.5rem),
-      0
-    )
-    scale(var(--reveal-scale, 1));
-}
-
 .productScreenCopy h3 {
   font-size: clamp(2.5rem, 3.8vw, 4.25rem);
 }
@@ -3366,17 +3348,10 @@
 
 /* Animation */
 
-@keyframes hero-environment-in {
-  from {
-    opacity: 0;
-    transform: scale(1.04);
-  }
-}
-
 @keyframes hero-type-in {
   from {
     opacity: 0;
-    transform: translateY(0.75em);
+    transform: translate3d(0, 105%, 0);
   }
 }
 
@@ -3582,9 +3557,18 @@
     min-height: 3.2rem;
   }
 
-  .signInLink,
-  .headerBeta {
+  .signInLink {
     display: none;
+  }
+
+  .headerBeta {
+    display: inline-flex;
+    padding-inline: 0.7rem;
+    font-size: 0.67rem;
+  }
+
+  .headerActions {
+    gap: 0.4rem;
   }
 
   .brand {
@@ -4178,12 +4162,6 @@
     font-size: clamp(2.9rem, 12vw, 3.9rem);
   }
 
-  .storyContinuity {
-    width: 1.3rem;
-    height: 1.3rem;
-    margin: -0.65rem 0 0 -0.65rem;
-  }
-
   .finalProof {
     display: none;
   }
@@ -4238,11 +4216,6 @@
     margin-left: 0;
     color: var(--cinema-cream);
     text-shadow: 0 0.14rem 1rem color-mix(in oklch, var(--cinema-forest-deep) 48%, transparent);
-  }
-
-  .storyBall {
-    right: 20%;
-    bottom: 1.4rem;
   }
 
   .promise {
@@ -4600,6 +4573,15 @@
     transform: none !important;
   }
 
+  .page [data-reveal-item] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .readingProgress {
+    display: none;
+  }
+
   .courseTwinDemo {
     clip-path: none !important;
     animation-name: none !important;
@@ -4609,14 +4591,6 @@
     opacity: 1 !important;
     filter: none !important;
     transform: none !important;
-  }
-
-  .storyContinuity {
-    display: none;
-  }
-
-  .storyContinuityTracer {
-    display: none;
   }
 }
 
@@ -4643,14 +4617,6 @@
     filter: none;
     transform: none;
   }
-
-  .storyContinuity {
-    display: none;
-  }
-
-  .storyContinuityTracer {
-    display: none;
-  }
 }
 
 @media (forced-colors: active) {
@@ -4672,17 +4638,25 @@
 
 /* Public UI upgrade: readable controls and complete plan detail. */
 .skipLink {
-  position: fixed;
+  position: absolute;
   top: 0.5rem;
   left: 1rem;
   z-index: 120;
-  padding: 0.75rem 1rem;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
   background: var(--cinema-cream);
   color: var(--cinema-forest-deep);
-  transform: translateY(-200%);
 }
 .skipLink:focus {
-  transform: none;
+  width: auto;
+  height: auto;
+  padding: 0.75rem 1rem;
+  overflow: visible;
+  clip-path: none;
 }
 .header:focus-within {
   transform: none;
@@ -4765,6 +4739,18 @@
   font-size: 1rem;
   font-weight: 600;
 }
+.faqDetails summary::marker {
+  color: var(--cinema-yellow);
+}
+.faqDetails[open] p {
+  animation: faq-answer-in 220ms var(--cinema-ease);
+}
+@keyframes faq-answer-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.35rem, 0);
+  }
+}
 .faqDetails p {
   padding: 0.5rem 0 1rem;
   font-size: 1rem;
@@ -4777,6 +4763,7 @@
 @media (prefers-reduced-motion: reduce), (scripting: none) {
   .heroCourse img,
   .heroTitle span,
+  .heroTitle b,
   .heroGolfer,
   .heroCopy,
   .heroUtility,
@@ -4789,5 +4776,749 @@
   .heroTitle {
     color: var(--cinema-cream);
     text-shadow: 0 2px 12px var(--cinema-forest-deep);
+  }
+}
+
+/* One editorial rhythm across the public page. Content determines chapter height;
+   the Course Twin retains its explanatory desktop scroll sequence. */
+.page {
+  --section-space: clamp(4.5rem, 7vw, 7.5rem);
+  --section-edge: clamp(1.25rem, 5vw, 6rem);
+}
+@media (min-width: 768px) {
+  .page .heroTitle {
+    top: 46%;
+    font-size: clamp(6rem, 12.8vw, 16rem);
+    line-height: 0.82;
+    /* Keep layout centring independent of the optional parallax transform. */
+    translate: 0 -50%;
+    transform: translate3d(
+        var(--hero-x, 0px),
+        calc(var(--hero-y, 0px) + var(--hero-progress, 0) * -8rem),
+        0
+      )
+      scale(calc(1 - var(--hero-progress, 0) * 0.045));
+  }
+}
+.page
+  :is(
+    .promise,
+    .practice,
+    .productScreensIntro,
+    .productScreenCard,
+    .editorialIntroPause,
+    .editorialSupportPause,
+    .privacySection,
+    .pricingSection,
+    .finalCta,
+    .faqSection
+  ) {
+  min-height: auto;
+}
+.page
+  :is(
+    .promiseStage,
+    .practiceStage,
+    .productScreensIntroStage,
+    .productScreenStage,
+    .editorialIntroStage,
+    .editorialGrid,
+    .privacyStage,
+    .pricingStage,
+    .faqStage
+  ) {
+  position: relative;
+  top: auto;
+  min-height: auto;
+  max-height: none;
+  overflow: clip;
+  padding: var(--section-space) var(--section-edge);
+}
+.page
+  :is(
+    .promiseLead h2,
+    .practiceCopy h2,
+    .productScreensHeading h2,
+    .editorialHeading h2,
+    .privacyHeading h2,
+    .pricingHeading h2,
+    .faqStage h2
+  ) {
+  font-size: clamp(2.75rem, 5.1vw, 5.6rem);
+  line-height: 0.97;
+  letter-spacing: -0.035em;
+}
+.page .kicker {
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+.page :is(.textLink, .privacyHeading a, .communityFeature a, .footer nav a) {
+  font-size: 0.875rem;
+}
+
+/* Four steps read as one clear sequence. */
+.page .promiseStage {
+  gap: 2.75rem;
+}
+.page .promiseLead {
+  grid-template-columns: 0.35fr 1fr;
+}
+.page .promiseImage {
+  opacity: 0.24;
+}
+.page .promiseImage span {
+  background: linear-gradient(180deg, var(--cinema-cream), transparent 50%, var(--cinema-cream));
+}
+.page .loopRail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: none;
+  gap: 1rem;
+  min-height: auto;
+  margin-top: 0;
+}
+.page .evidenceAxis {
+  display: none;
+}
+.page .evidenceCore {
+  position: relative;
+  inset: auto;
+  grid-column: 1 / -1;
+  grid-row: auto;
+  justify-self: start;
+  display: flex;
+  gap: 0.65rem;
+  width: auto;
+  height: auto;
+  aspect-ratio: auto;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  transform: none;
+  box-shadow: none;
+  opacity: 1;
+}
+.page .evidenceCore svg {
+  width: 1rem;
+  height: 1rem;
+}
+.page .evidenceCore small {
+  margin: 0;
+  font-size: 0.65rem;
+}
+.page .evidenceCore strong {
+  display: none;
+}
+.page .loopStep {
+  position: relative;
+  inset: auto;
+  width: auto;
+  min-height: 11rem;
+  grid-template-columns: 1fr;
+  gap: 1.75rem;
+  align-content: start;
+  padding: 1.5rem;
+  border-radius: 0.85rem;
+  background: var(--cinema-cream);
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.page .loopStep h3 {
+  font-size: 2rem;
+  line-height: 1;
+}
+.page .loopStep p {
+  display: block;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.page .promiseCoda {
+  display: block;
+  margin: 0;
+  max-width: none;
+  color: var(--cinema-forest);
+  font-family: var(--font-ui-source), sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  text-shadow: none;
+}
+
+/* Keep the Course Twin controls with the story they operate. */
+.page .courseTwinStage {
+  grid-template-columns: minmax(19rem, 0.8fr) minmax(0, 1.2fr);
+  gap: 3rem;
+  max-height: none;
+  overflow: visible;
+}
+.page .courseTwinSwap :global([data-course-twin-fallback]) {
+  display: flex;
+  flex-direction: column;
+}
+.page .courseTwinSwap :global([data-course-twin-fallback]) > [role="img"] {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+.page .courseTwinCopy h2 {
+  font-size: clamp(3rem, 4.5vw, 5.5rem);
+  line-height: 0.94;
+}
+.page .courseTwinCopy > p:not(.kicker) {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.twinActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.75rem;
+}
+.twinActions .twinAction {
+  min-height: 2.75rem;
+  padding: 0.75rem 1.1rem;
+  border: 1px solid color-mix(in oklch, var(--cinema-cream) 28%, transparent);
+  border-radius: 999px;
+  background: var(--cinema-cream);
+  color: var(--cinema-forest-deep);
+  font-size: 0.8125rem;
+}
+.twinActions .twinAction + .twinAction {
+  background: var(--cinema-yellow);
+}
+.twinActions p {
+  flex-basis: 100%;
+  margin: 0.4rem 0 0;
+  color: oklch(80% 0.025 148);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+/* Practice uses a generous image and a readable, unscrollable plan. */
+.page .practiceStage {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3.5rem;
+  background: var(--cinema-paper);
+}
+.page .practiceMedia {
+  position: relative;
+  inset: auto;
+  width: auto;
+  height: auto;
+  min-height: 35rem;
+  border-radius: 1.2rem;
+  overflow: hidden;
+}
+.page .practiceMedia > img {
+  object-position: 42% center;
+}
+.page .practiceCopy {
+  position: relative;
+  inset: auto;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  max-height: none;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.page .practiceCopy h2 {
+  font-size: clamp(2.7rem, 4.1vw, 4.6rem);
+  max-width: 18ch;
+}
+.page .practiceCopy > p:not(.kicker) {
+  display: block;
+}
+.page .practiceCopy > .textLink {
+  display: inline-flex;
+}
+.page .practicePrescription {
+  margin-top: 0.75rem;
+  border-radius: 0.9rem;
+  box-shadow: none;
+}
+.page .practicePrescription > strong {
+  font-size: 1.8rem;
+  line-height: 1.05;
+}
+.page .practiceWorkflow li {
+  opacity: 1;
+  transform: none;
+}
+.page .practiceWorkflow :is(p, small) {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.page .practiceWorkflow em {
+  font-size: 0.75rem;
+}
+
+/* Preview images get space, without forcing text into narrow towers. */
+.page .productScreensIntroStage {
+  padding-bottom: calc(var(--section-space) * 0.75);
+}
+.page .productScreensIntroImage {
+  opacity: 0.23;
+}
+.page .productScreensHeading h2 {
+  max-width: 17ch;
+  margin-top: 1rem;
+}
+.sectionDescription {
+  max-width: 45ch;
+  margin: 1.5rem 0 0;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: var(--cinema-forest);
+}
+.page .productScreenStage,
+.page .productScreenCard:nth-child(even) .productScreenStage {
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.5fr);
+  gap: clamp(2rem, 5vw, 5rem);
+  min-height: auto;
+  padding-block: clamp(3rem, 6vw, 6rem);
+  border-top: 1px solid color-mix(in oklch, var(--cinema-cream) 12%, transparent);
+}
+.page .productScreenCard:nth-child(even) .productScreenStage {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.8fr);
+}
+.page .productScreenBackdrop {
+  display: none;
+}
+.page .productScreenCopy h3 {
+  max-width: 15ch;
+  font-size: clamp(2.5rem, 3.5vw, 4rem);
+  line-height: 0.98;
+}
+.page .productScreenCopy > p:nth-of-type(1) {
+  margin-top: 1rem;
+  color: var(--cinema-yellow);
+}
+.page .productScreenCopy > p:nth-of-type(2) {
+  font-size: 1rem;
+}
+.page .productScreenCopy .textLink {
+  color: var(--cinema-cream);
+}
+.page .productScreenCopy .previewNote {
+  color: oklch(74% 0.025 148);
+  font-size: 0.75rem;
+}
+.page .productScreenshot {
+  box-shadow: 0 1.5rem 4rem #0003;
+}
+.page .productScreenshot img {
+  transform: none;
+}
+.page .productFocusCard {
+  display: none;
+}
+
+/* Connected features and trust have a calmer, consistent hierarchy. */
+.page .editorialIntroStage {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 4rem;
+  align-items: center;
+}
+.page .editorialHeading {
+  display: block;
+}
+.page .editorialHeading h2 {
+  margin-top: 1rem;
+  font-size: clamp(2.7rem, 4.5vw, 5rem);
+}
+.page .capabilityManifest {
+  grid-column: auto;
+  margin: 0;
+  padding: 1.75rem;
+  box-shadow: none;
+  backdrop-filter: none;
+  background: var(--cinema-forest);
+}
+.page .capabilityManifest section p {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.page .capabilityManifest .textLink {
+  grid-column: 2;
+  color: var(--cinema-cream);
+}
+.page .editorialGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: auto;
+  padding-top: 0;
+  gap: 1rem;
+}
+.page .editorialSupportImage {
+  display: none;
+}
+.page :is(.communityFeature, .evidenceFeature, .dataFeature) {
+  grid-column: auto;
+  grid-row: auto;
+  min-height: 20rem;
+  padding: 1.75rem;
+  border-radius: 1rem;
+}
+.page .communityFeature {
+  justify-content: flex-start;
+}
+.page .communityFeature > div {
+  position: static;
+  margin-bottom: 2rem;
+}
+.page :is(.communityFeature h3, .dataFeature strong) {
+  max-width: 15ch;
+  font-size: clamp(2.2rem, 3vw, 3.2rem);
+  line-height: 0.98;
+}
+.page .communityFeature p {
+  font-size: 0.875rem;
+}
+.page .evidenceFeature {
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-content: center;
+}
+.page .evidenceFeature svg {
+  grid-column: 1;
+}
+.page .evidenceFeature p {
+  grid-column: 2;
+  font-size: clamp(1.5rem, 2.5vw, 2.25rem);
+  line-height: 1;
+}
+.page .evidenceFeature strong {
+  grid-column: 1 / -1;
+  font-size: 0.8125rem;
+}
+.page .dataFeature {
+  align-content: start;
+  gap: 1.5rem;
+}
+.page .privacyImage {
+  opacity: 0.16;
+}
+.page .privacyGrid article {
+  background: transparent;
+  backdrop-filter: none;
+  padding-block: 1.4rem;
+}
+.page .privacyGrid h3 {
+  font-size: 1.5rem;
+  line-height: 1.05;
+}
+.page .privacyGrid p {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+/* Every plan and answer can expand naturally without clipping. */
+.page .pricingHeading {
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  gap: 1rem 3rem;
+}
+.page .pricingHeading .kicker {
+  grid-column: 1 / -1;
+}
+.page .pricingHeading h2 {
+  max-width: 16ch;
+}
+.page .pricingHeading > p:last-child {
+  grid-column: 2;
+  max-width: 32ch;
+  justify-self: end;
+  font-size: 1rem;
+}
+.page .pricingDeck {
+  gap: 1rem;
+}
+.page .pricingCard {
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.page .pricingCard header > span {
+  font-size: 0.6875rem;
+  min-height: 2.8rem;
+}
+.page .pricingCard > p {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.page .pricingCard li {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+.page .pricingCard footer > span {
+  font-size: 0.75rem;
+}
+.page .pricingCard footer a {
+  min-height: 3rem;
+  font-size: 0.8125rem;
+}
+.page .pricingTerms {
+  margin: 0;
+  padding: 0;
+  max-width: 80ch;
+  font-size: 0.8125rem;
+  color: oklch(78% 0.025 148);
+}
+.page .finalCtaStage {
+  position: relative;
+  top: auto;
+  min-height: 48rem;
+  max-height: none;
+  padding: var(--section-space) var(--section-edge);
+}
+.page .finalCtaCopy h2 {
+  font-size: clamp(3.5rem, 7vw, 8rem);
+  line-height: 0.94;
+  max-width: 16ch;
+}
+.page .faqImage {
+  display: none;
+}
+.page .faqStage {
+  align-items: start;
+}
+.page .faqList {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.page .faqStage h2 {
+  margin-top: 1rem;
+  max-width: 13ch;
+}
+.page .faqDetails {
+  padding: 0;
+  border-color: var(--cinema-line);
+}
+.page .faqDetails summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 1.4rem;
+  list-style: none;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+.page .faqDetails summary::-webkit-details-marker {
+  display: none;
+}
+.page .faqDetails summary::after {
+  content: "+";
+  flex-shrink: 0;
+  font-size: 1.5rem;
+  font-weight: 400;
+  transition: transform 180ms var(--cinema-ease);
+}
+.page .faqDetails[open] summary::after {
+  transform: rotate(45deg);
+}
+.page .faqDetails p {
+  margin: 0;
+  padding: 0 2rem 1.5rem 0;
+  color: var(--cinema-forest);
+}
+.page .footer {
+  padding: 3.5rem var(--section-edge) 2rem;
+}
+
+@media (prefers-reduced-motion: reduce), (scripting: none) {
+  .page .courseTwinSection {
+    min-height: auto;
+  }
+  .page .courseTwinStage {
+    position: relative;
+    min-height: auto;
+    padding: var(--section-space) var(--section-edge);
+  }
+}
+
+@media (max-width: 1100px) {
+  .page .courseTwinStage {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 2rem;
+  }
+  .page .editorialIntroStage {
+    grid-template-columns: 1fr;
+  }
+  .page .editorialHeading h2 {
+    max-width: 20ch;
+  }
+  .page .editorialGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .page .communityFeature {
+    grid-column: 1 / -1;
+    min-height: 15rem;
+  }
+  .page .communityFeature h3 {
+    max-width: none;
+  }
+  .page .practiceStage {
+    gap: 2rem;
+  }
+}
+@media (max-width: 767px) {
+  .page {
+    --section-space: 4.25rem;
+    --section-edge: max(1.25rem, env(safe-area-inset-left));
+  }
+  .page
+    :is(
+      .promiseLead,
+      .practiceStage,
+      .editorialIntroStage,
+      .privacyStage,
+      .pricingHeading,
+      .faqStage
+    ) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+  }
+  .page
+    :is(
+      .promiseLead h2,
+      .practiceCopy h2,
+      .productScreensHeading h2,
+      .editorialHeading h2,
+      .privacyHeading h2,
+      .pricingHeading h2,
+      .faqStage h2
+    ) {
+    font-size: clamp(2.5rem, 10.5vw, 3.5rem);
+    line-height: 0.99;
+  }
+  .page .loopRail {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+  .page .loopStep {
+    padding: 1.1rem;
+    min-height: 11rem;
+    gap: 1.25rem;
+  }
+  .page .loopStep h3 {
+    font-size: 1.65rem;
+  }
+  .page .loopStep p {
+    font-size: 0.875rem;
+  }
+  .page .courseTwinSection {
+    min-height: auto;
+  }
+  .page .courseTwinStage {
+    position: relative;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    min-height: auto;
+    max-height: none;
+    overflow: clip;
+    padding: var(--section-space) var(--section-edge);
+    gap: 2rem;
+  }
+  .page .courseTwinCopy {
+    max-width: none;
+  }
+  .page .courseTwinCopy h2 {
+    font-size: clamp(2.7rem, 11vw, 3.6rem);
+    max-width: 15ch;
+  }
+  .page .courseTwinCopy > p:not(.kicker) {
+    display: block;
+  }
+  .page .twinProgress {
+    display: none;
+  }
+  .page .twinStoryStage {
+    height: 28rem;
+    min-height: 0;
+    transform: none;
+  }
+  .page .twinPhoto {
+    display: none;
+  }
+  .page .courseTwinDemo {
+    opacity: 1;
+    clip-path: none;
+    transform: none;
+  }
+  .page .practiceMedia {
+    min-height: 24rem;
+  }
+  .page .practiceCopy {
+    padding: 0;
+  }
+  .page .productScreenStage,
+  .page .productScreenCard:nth-child(even) .productScreenStage {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    padding-block: var(--section-space);
+  }
+  .page .productScreenCard:nth-child(even) .productScreenCopy {
+    order: initial;
+  }
+  .page .productScreenCopy h3 {
+    max-width: 17ch;
+    font-size: 2.7rem;
+  }
+  .page .productScreensIntroStage {
+    padding-block: var(--section-space);
+  }
+  .page .productScreenshot {
+    overflow: visible;
+    border-radius: 0.75rem;
+  }
+  .page .productScreenshot img {
+    border-radius: inherit;
+  }
+  .page .editorialGrid {
+    grid-template-columns: 1fr;
+  }
+  .page :is(.communityFeature, .evidenceFeature, .dataFeature) {
+    grid-column: auto;
+    min-height: 18rem;
+  }
+  .page .capabilityManifest {
+    padding: 1.25rem;
+  }
+  .page .pricingHeading > p:last-child {
+    grid-column: auto;
+    justify-self: start;
+  }
+  .page .pricingHeading {
+    padding: 0;
+  }
+  .page .pricingDeck {
+    display: grid;
+    grid-template-columns: 1fr;
+    overflow: visible;
+    padding: 0;
+  }
+  .page .pricingCard {
+    min-height: auto;
+  }
+  .page .finalCtaStage {
+    min-height: 42rem;
+  }
+  .page .finalCtaCopy {
+    width: 100%;
+  }
+  .page .finalCtaCopy h2 {
+    font-size: clamp(3rem, 13vw, 4.5rem);
+  }
+  .page .finalCtaShade {
+    background: linear-gradient(0deg, var(--cinema-forest-deep), #001c14a6 65%, transparent);
   }
 }

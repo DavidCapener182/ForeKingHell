@@ -2,8 +2,11 @@ import { describe, expect, it, beforeEach, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
+  planFeatureRejection: vi.fn(),
   getOptionalCurrentUserId: vi.fn(),
 }));
+
+vi.mock("@/lib/require-plan-access", () => ({ planFeatureRejection: mocks.planFeatureRejection }));
 
 vi.mock("@/db/client", () => ({
   getDb: mocks.getDb,
@@ -33,7 +36,20 @@ describe("content export routes", () => {
   beforeEach(() => {
     vi.resetModules();
     mocks.getDb.mockReset();
+    mocks.planFeatureRejection.mockReset().mockResolvedValue(null);
     mocks.getOptionalCurrentUserId.mockReset();
+  });
+
+  it("rejects a lower-tier export before reading or writing its source", async () => {
+    mocks.getOptionalCurrentUserId.mockResolvedValue("user-1");
+    mocks.planFeatureRejection.mockResolvedValue(
+      Response.json({ code: "PLAN_REQUIRED" }, { status: 403 }),
+    );
+    const { POST } = await import("@/app/api/content-exports/route");
+    const response = await POST(jsonRequest({ sourceId: "feed-1" }));
+    expect(response.status).toBe(403);
+    expect(mocks.planFeatureRejection).toHaveBeenCalledWith("user-1", "share_customisation");
+    expect(mocks.getDb).not.toHaveBeenCalled();
   });
 
   it("rejects missing feed item sources", async () => {

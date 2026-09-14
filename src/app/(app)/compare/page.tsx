@@ -1,3 +1,4 @@
+import { requirePlanFeature, requirePlanUser } from "@/lib/require-plan-access";
 import Link from "next/link";
 import { and, desc, eq, sql } from "drizzle-orm";
 import {
@@ -68,7 +69,7 @@ const compareWorkbenchPrompts = [
   },
 ];
 
-export default async function ComparePage({ searchParams }: { searchParams: SearchParams }) {
+async function ComparePage({ searchParams }: { searchParams: SearchParams }) {
   if (!process.env.DATABASE_URL?.trim()) {
     return (
       <PageShell>
@@ -84,6 +85,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Sear
   const params = await searchParams;
   const activeView = parseCompareView(stringParam(params.view));
   const userId = await requireCurrentUserId();
+  if (activeView === "players") await requirePlanFeature(userId, "player_comparison");
   const [playerData, data, savedRows] = await Promise.all([
     getPlayerCompareData(parsePlayerFilters(params)),
     getClubCompareData(parseFilters(params)),
@@ -326,4 +328,9 @@ function savedWorkspaceComparison(
       notes: row.notes,
     },
   ];
+}
+
+export default async function SubscriptionPage(props: Parameters<typeof ComparePage>[0]) {
+  await requirePlanUser("advanced_analytics");
+  return <ComparePage {...props} />;
 }

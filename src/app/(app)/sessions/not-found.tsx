@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { RouteNotFoundState } from "@/components/route-state";
 
 export default async function SessionNotFound() {
-  if ((await getRequestAppSurface()) !== "companion") return <RouteNotFoundState />;
+  if ((await getRequestAppSurface()) !== "companion") return <RouteNotFoundState authenticated />;
   return (
     <PageShell>
       <MobileAppShell className="gap-5" data-mobile-session-not-found>

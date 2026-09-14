@@ -163,12 +163,20 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
           title="Equipment"
           description="Manage your active setup, retain dated changes and review measured evidence separately from projected fit."
           actions={
-            <Button asChild variant="outline">
-              <Link href="/equipment/experiments">
-                <Sparkles className="size-4" aria-hidden />
-                Experiment Lab
-              </Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline">
+                <Link href="/equipment/launch-monitors/calibration">
+                  <Gauge className="size-4" aria-hidden />
+                  Launch monitor calibration
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/equipment/experiments">
+                  <Sparkles className="size-4" aria-hidden />
+                  Experiment Lab
+                </Link>
+              </Button>
+            </div>
           }
           metrics={[
             {

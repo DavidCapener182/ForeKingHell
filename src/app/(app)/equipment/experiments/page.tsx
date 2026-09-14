@@ -1,3 +1,4 @@
+import { requirePlanUser } from "@/lib/require-plan-access";
 import { ExperimentSelection } from "@/app/equipment/experiments/experiment-selection";
 import { EquipmentInlineForm } from "@/app/equipment/equipment-form-panels";
 import { UntitledSelect } from "@/components/untitled-ui/form-controls";
@@ -24,7 +25,7 @@ import { requireCurrentUserId } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
-export default async function EquipmentExperimentPage({
+async function EquipmentExperimentPage({
   searchParams,
 }: {
   searchParams?: Promise<{
@@ -332,4 +333,11 @@ function Field({ name, label, placeholder }: { name: string; label: string; plac
 
 function textValue(value: unknown) {
   return typeof value === "string" ? value : "";
+}
+
+export default async function SubscriptionPage(
+  props: Parameters<typeof EquipmentExperimentPage>[0],
+) {
+  await requirePlanUser("advanced_analytics");
+  return <EquipmentExperimentPage {...props} />;
 }

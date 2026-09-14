@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
-import { mobileComparisonSummary, mobileReviewHighlights } from "@/lib/mobile-review-copy";
+import {
+  mobileComparisonReadout,
+  mobileComparisonSummary,
+  mobileReviewHighlights,
+} from "@/lib/mobile-review-copy";
 import Link from "next/link";
 import { MobilePageTabs } from "./mobile-controls";
 import { MobileGroupedList, MobileListRow } from "./mobile-primitives";
@@ -12,7 +16,7 @@ function reading(value: number | null, unit: string) {
 }
 const verdicts = {
   better: "Improved",
-  worse: "Needs attention",
+  worse: "Changes to review",
   mixed: "Mixed results",
   new: "Building a baseline",
 };
@@ -117,7 +121,10 @@ export function MobileTodayPracticeReview({
                           <span className="font-semibold">{club.label}</span>
                           <span className="ml-2 text-muted-foreground">{club.shotCount} shots</span>
                           <span className="mt-1 block text-muted-foreground">
-                            {comparison ? verdicts[comparison.verdict] : "No comparable full shots"}
+                            {comparison
+                              ? (mobileComparisonReadout(comparison) ??
+                                verdicts[comparison.verdict])
+                              : "No comparable full shots"}
                             {comparison?.today.carryAverageYd != null
                               ? ` · ${reading(comparison.today.carryAverageYd, "yd")} average carry`
                               : ""}

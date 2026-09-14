@@ -31,6 +31,7 @@ export function PricingSection() {
           {publicPlans.map((plan) => (
             <article
               className={styles.pricingCard}
+              data-reveal-item
               data-featured={plan.key === "pro" ? "true" : "false"}
               key={plan.key}
             >
