@@ -406,3 +406,74 @@ it("gives the 33 versus 10 driver comparison a descriptive readout", () => {
   expect(result.summary).toContain("Distance and speed stable");
   expect(result.setbacks[0].metric).toBe("carrySpread");
 });
+
+it("shows the current practice even without a previous baseline and separates monitors", () => {
+  const latest = day("2026-09-14", 6, 5, { carryYd: 190 });
+  latest.rawShots.push(
+    ...day("2026-09-14", -4, 5, {
+      carryYd: 215,
+      source: "trackman",
+      sessionId: "trackman-upload",
+    }).rawShots.map((row) => ({ ...row, id: `trackman-${row.id}` })),
+  );
+  const result = report(latest);
+  expect(result.verdict).toBe("building");
+  expect(result.practice).toMatchObject({
+    recorded: 10,
+    included: 10,
+    clubCount: 1,
+    mixedSources: true,
+  });
+  expect(result.practice.clubs.map((club) => [club.source, club.carry.value])).toEqual([
+    ["Rapsodo", 190],
+    ["TrackMan", 215],
+  ]);
+  expect(result.practice.uploads).toHaveLength(2);
+  expect(result.practice.clubs[0]).toMatchObject({ left: 0, straight: 0, right: 5 });
+  expect(result.practice.longest).toMatchObject({
+    value: 215,
+    source: "TrackMan",
+    sessionId: "trackman-upload",
+  });
+});
+
+it("keeps excluded and partial shots out of standouts and keeps missing direction unknown", () => {
+  const latest = day("2026-09-14", 4, 5, { dataConfidence: { alignment: "misaligned" } });
+  latest.rawShots.push(
+    shot("2026-09-14", 90, { carryYd: 300, ballSpeedMph: 180, reviewStatus: "user_excluded" }),
+  );
+  latest.rawShots.push(
+    shot("2026-09-14", 91, { carryYd: 250, ballSpeedMph: 150, shotCategory: "partial" }),
+  );
+  const recap = report(latest).practice;
+  expect(recap).toMatchObject({ recorded: 7, included: 5 });
+  expect(recap.longest?.value).toBe(200);
+  expect(recap.fastest?.value).toBe(130);
+  expect(recap.clubs[0].offline).toEqual({ value: null, count: 0 });
+  expect(recap.clubs[0].straight).toBe(0);
+});
+
+it("uses available metric counts and does not award a tightest grouping to a tiny sample", () => {
+  const latest = day("2026-09-14", 5, 3);
+  latest.rawShots[0].carryYd = null;
+  latest.rawShots[1].ballSpeedMph = null;
+  const recap = report(latest).practice;
+  expect(recap.clubs[0].carry.count).toBe(2);
+  expect(recap.clubs[0].speed.count).toBe(2);
+  expect(recap.clubs[0].spread.value).toBeNull();
+  expect(recap.tightest).toBeNull();
+});
+
+it("keeps the practice recap within the selected club and date", () => {
+  const latest = day("2026-09-14", 5, 5);
+  latest.rawShots.push(shot("2026-09-14", 50, { clubId: "iron", clubType: "7i" }));
+  latest.rawShots.push(shot("2026-09-13", 60));
+  const result = buildTodayProgress({
+    dateKey: latest.dateKey,
+    rawShots: latest.rawShots,
+    previousDays: [],
+    clubType: "driver",
+  });
+  expect(result.practice.recorded).toBe(5);
+  expect(result.practice.clubs).toHaveLength(1);
+});
