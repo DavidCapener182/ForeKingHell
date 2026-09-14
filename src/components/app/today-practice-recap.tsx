@@ -55,6 +55,7 @@ export function TodayPracticeRecap({
         {(
           [
             ["Longest measured carry", recap.longest, "yd"],
+            ["Longest recorded total", recap.longestTotal, "yd"],
             ["Fastest ball", recap.fastest, "mph"],
           ] as const
         ).map(([label, shot, unit]) =>
@@ -100,8 +101,8 @@ export function TodayPracticeRecap({
       <div id="today-practice-clubs" className={styles.clubs}>
         <h3>What you hit, club by club</h3>
         <p className={styles.note}>
-          Average and best carry, speed, sideways miss and carry consistency. Each value uses its
-          available readings; fewer than 10 is an early sample.
+          Carry is distance through the air; total includes roll. Bars show carry range with a
+          marker for the average, on the same scale for every club.
         </p>
         <div className={styles.clubGrid}>
           {recap.clubs.map((club) => {
@@ -132,6 +133,10 @@ export function TodayPracticeRecap({
                     <span>Best carry</span>
                     <strong>{reading(club.bestCarry, "yd")}</strong>
                   </div>
+                  <div>
+                    <span>Best total</span>
+                    <strong>{reading(club.bestTotal, "yd")}</strong>
+                  </div>
                 </div>
                 {club.carry.value !== null &&
                 club.shortestCarry !== null &&
@@ -156,12 +161,8 @@ export function TodayPracticeRecap({
                     </div>
                     <p>
                       <span>0 yd</span>
-                      <span>Carry range · line = average</span>
+                      <span>Carry range</span>
                       <span>{reading(scale, "yd")}</span>
-                    </p>
-                    <p className={styles.rangeCaption}>
-                      Shortest {reading(club.shortestCarry, "yd")} · {club.carry.count} carry
-                      readings
                     </p>
                   </div>
                 ) : null}
@@ -176,18 +177,13 @@ export function TodayPracticeRecap({
                     <div key={label}>
                       <dt>{label}</dt>
                       <dd>{reading(metric.value, unit)}</dd>
-                      <small>
-                        {metric.value === null
-                          ? label === "Carry spread"
-                            ? "Needs 3 readings"
-                            : "—"
-                          : `${metric.count} ${metric.count === 1 ? "reading" : "readings"}`}
-                      </small>
+                      {metric.value === null && label === "Carry spread" ? (
+                        <small>Needs 3 readings</small>
+                      ) : null}
                     </div>
                   ))}
                 </dl>
                 <div className={styles.direction}>
-                  <p>Where the shots finished</p>
                   {club.offline.count ? (
                     <>
                       <div className={styles.directionTrack} aria-hidden="true">
@@ -214,10 +210,17 @@ export function TodayPracticeRecap({
                     <p className={styles.note}>Direction not measured</p>
                   )}
                 </div>
-                <footer className={styles.clubFooter}>
-                  {club.source} · {club.recorded} recorded
-                  {club.included < 10 ? " · Early sample" : ""}
-                </footer>
+                <details className={styles.clubFooter}>
+                  <summary>Reading details{club.included < 10 ? " · Early sample" : ""}</summary>
+                  <p>
+                    {club.source} · {club.recorded} recorded · {club.included} trusted full shots
+                  </p>
+                  <p>
+                    Shortest carry {reading(club.shortestCarry, "yd")}. Readings: {club.carry.count}{" "}
+                    carry, {club.totalCount} total, {club.speed.count} speed, {club.offline.count}{" "}
+                    sideways.
+                  </p>
+                </details>
               </article>
             );
           })}

@@ -35,6 +35,7 @@ export function buildTodayPracticeRecap(raw: TodayPracticeShot[], eligible: Toda
       const speed = measure("ballSpeedMph");
       const offline = measure("sideCarryYd", true);
       const carries = shots.map((shot) => shot.carryYd).filter(finite);
+      const totals = shots.map((shot) => shot.totalYd).filter(finite);
       const sides = shots.map((shot) => shot.sideCarryYd).filter(finite);
       return {
         key,
@@ -54,6 +55,8 @@ export function buildTodayPracticeRecap(raw: TodayPracticeShot[], eligible: Toda
         speed,
         offline,
         bestCarry: carries.length ? Math.max(...carries) : null,
+        bestTotal: totals.length ? Math.max(...totals) : null,
+        totalCount: totals.length,
         shortestCarry: carries.length ? Math.min(...carries) : null,
         spread: {
           value: carries.length >= 3 ? sampleStandardDeviation(carries) : null,
@@ -80,7 +83,7 @@ export function buildTodayPracticeRecap(raw: TodayPracticeShot[], eligible: Toda
       included: shots.filter((shot) => eligibleIds.has(shot.id)).length,
     };
   });
-  const bestShot = (field: "carryYd" | "ballSpeedMph") => {
+  const bestShot = (field: "carryYd" | "totalYd" | "ballSpeedMph") => {
     const shot = eligible
       .filter((shot) => finite(shot[field]))
       .sort((a, b) => b[field]! - a[field]!)[0];
@@ -106,6 +109,7 @@ export function buildTodayPracticeRecap(raw: TodayPracticeShot[], eligible: Toda
     clubs,
     uploads,
     longest: bestShot("carryYd"),
+    longestTotal: bestShot("totalYd"),
     fastest: bestShot("ballSpeedMph"),
     tightest,
   };

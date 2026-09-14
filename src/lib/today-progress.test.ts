@@ -448,14 +448,26 @@ it("combines monitors into one club row using individual readings without a prev
 it("keeps excluded and partial shots out of standouts and keeps missing direction unknown", () => {
   const latest = day("2026-09-14", 4, 5, { dataConfidence: { alignment: "misaligned" } });
   latest.rawShots.push(
-    shot("2026-09-14", 90, { carryYd: 300, ballSpeedMph: 180, reviewStatus: "user_excluded" }),
+    shot("2026-09-14", 90, {
+      carryYd: 300,
+      totalYd: 400,
+      ballSpeedMph: 180,
+      reviewStatus: "user_excluded",
+    }),
   );
   latest.rawShots.push(
-    shot("2026-09-14", 91, { carryYd: 250, ballSpeedMph: 150, shotCategory: "partial" }),
+    shot("2026-09-14", 91, {
+      carryYd: 250,
+      totalYd: 350,
+      ballSpeedMph: 150,
+      shotCategory: "partial",
+    }),
   );
   const recap = report(latest).practice;
   expect(recap).toMatchObject({ recorded: 7, included: 5 });
   expect(recap.longest?.value).toBe(200);
+  expect(recap.longestTotal?.value).toBe(210);
+  expect(recap.clubs[0].bestTotal).toBe(210);
   expect(recap.fastest?.value).toBe(130);
   expect(recap.clubs[0].offline).toEqual({ value: null, count: 0 });
   expect(recap.clubs[0].straight).toBe(0);
@@ -515,4 +527,22 @@ it("combines monitors for each saved club without merging different equipment", 
     source: "TrackMan",
     bestCarry: 215,
   });
+});
+
+it("keeps longest total separate from carry and does not invent missing totals", () => {
+  const latest = day("2026-09-14", 5, 5, { totalYd: null });
+  latest.rawShots[0].carryYd = 210.4;
+  latest.rawShots[0].totalYd = 230;
+  latest.rawShots[1].carryYd = 204.2;
+  latest.rawShots[1].totalYd = 244.5;
+  const recap = report(latest).practice;
+  expect(recap.longest?.value).toBe(210.4);
+  expect(recap.longestTotal).toMatchObject({ value: 244.5, shotNumber: 1 });
+  expect(recap.clubs[0]).toMatchObject({ bestCarry: 210.4, bestTotal: 244.5, totalCount: 2 });
+  latest.rawShots.forEach((row) => {
+    row.totalYd = null;
+  });
+  const missing = report(latest).practice;
+  expect(missing.longestTotal).toBeNull();
+  expect(missing.clubs[0]).toMatchObject({ bestTotal: null, totalCount: 0 });
 });
