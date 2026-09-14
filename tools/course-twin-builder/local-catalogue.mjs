@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
+import { correctAintreeRouting } from "./aintree-routing.mjs";
+
 const SLUG_OVERRIDES = new Map([
   ["4de11156-16fd-4a36-84e0-fadda53456b0", "aintree-v1"],
   ["65359509-5de2-485e-8f85-392bba752710", "arrowe-park-v1"],
@@ -21,7 +23,7 @@ export function packageSlugForCourse(course) {
 }
 
 export function localManifestFromCompletion(completion, slug) {
-  return {
+  return correctAintreeRouting({
     ...completion.manifest,
     terrain: {
       ...completion.manifest.terrain,
@@ -38,7 +40,7 @@ export function localManifestFromCompletion(completion, slug) {
           }
         : null,
     },
-  };
+  });
 }
 
 export async function writeLocalCourseTwinPackage({ completion, slug, rootDirectory }) {

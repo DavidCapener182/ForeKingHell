@@ -54,10 +54,12 @@ describe("Course Twin route boundaries", () => {
     expect(sceneSource).toContain("<details className={mobileStyles.strategyEvidence}>");
   });
 
-  it("bounds native selects to the six frame-sensitive Course Twin runtime trays", () => {
-    expect(sceneSource.match(/<select\b/g) ?? []).toHaveLength(6);
+  it("bounds native selects to runtime trays and the interactive Plan selectors", () => {
+    expect(sceneSource.match(/<select\b/g) ?? []).toHaveLength(8);
     for (const control of [
-      "Recommended club",
+      "Plan club",
+      'aria-label="Starting tee"',
+      'aria-label="Plan club"',
       'aria-label="Shot type"',
       'aria-label="Club and modelled carry in yards"',
       'aria-label="Putt aim"',
@@ -85,7 +87,7 @@ describe("Course Twin route boundaries", () => {
   });
 
   it("renders photographic aerial courses with TikTok-style tracer sequences", () => {
-    expect(sceneSource).toContain("course-twin-terrain-splat-v7-source-aware");
+    expect(sceneSource).toContain("course-twin-terrain-splat-v10-linear-fine-turf");
     expect(sceneSource).toContain("replayCompletedTracers");
     expect(sceneSource).toContain("completedTracerColour");
     expect(sceneSource).toContain("<TracerNumberMarker");

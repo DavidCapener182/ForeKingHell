@@ -125,6 +125,64 @@ export function buildCourseTwinStrategy({
   };
 }
 
+/** Re-simulate the measured shot distribution along a straight, user-selected heading. */
+export function previewCourseTwinAim(
+  manifest: CourseTwinManifest,
+  hole: CourseTwinHole,
+  club: CourseTwinStrategyClub,
+  target: CourseTwinPoint | null,
+): CourseTwinStrategyClub {
+  const aim = target ?? defaultCourseTwinAim(hole, club);
+  const route = [hole.tee, ...hole.centerline.slice(1), hole.green];
+  const effectiveDistanceYd = route
+    .slice(1)
+    .reduce((distance, point, index) => distance + distance2d(route[index], point) / 0.9144, 0);
+  return simulateClubAim(
+    manifest.course.id,
+    hole,
+    {
+      ...club.shotModel,
+      clubId: club.clubId,
+      clubType: club.clubType,
+      sampleSize: club.sampleSize,
+      confidenceScore: club.confidenceScore,
+      evidenceWindow: club.evidenceWindow,
+    },
+    createCourseTwinSurfaceClassifier(manifest, hole.holeNumber),
+    DEFAULT_SAMPLE_COUNT,
+    0,
+    aim,
+    effectiveDistanceYd,
+  );
+}
+
+/** The intended heading excludes measured lateral shot bias. */
+export function defaultCourseTwinAim(hole: CourseTwinHole, club: CourseTwinStrategyClub) {
+  return offsetPerpendicular(
+    hole,
+    pointAlongHole(hole, club.carryMedianYd),
+    club.carryMedianYd,
+    club.aimOffsetYd * 0.9144,
+  );
+}
+
+export function nudgeCourseTwinAim(
+  hole: CourseTwinHole,
+  club: CourseTwinStrategyClub,
+  target: CourseTwinPoint | null,
+  degrees: number,
+): CourseTwinPoint {
+  const aim = target ?? defaultCourseTwinAim(hole, club);
+  const dx = aim[0] - hole.tee[0],
+    dz = aim[2] - hole.tee[2];
+  const angle = (degrees * Math.PI) / 180;
+  return [
+    hole.tee[0] + dx * Math.cos(angle) - dz * Math.sin(angle),
+    hole.tee[1],
+    hole.tee[2] + dx * Math.sin(angle) + dz * Math.cos(angle),
+  ];
+}
+
 function bestClubStrategy(
   courseId: string,
   hole: CourseTwinHole,
@@ -148,6 +206,8 @@ function simulateClubAim(
   classify: (x: number, z: number) => CourseTwinSurface,
   sampleCount: number,
   aimOffsetYd: number,
+  target?: CourseTwinPoint,
+  effectiveDistanceYd = hole.yards,
 ): CourseTwinStrategyClub {
   const random = seededRandom(
     hashString(`${courseId}:${hole.holeNumber}:${profile.clubId}:${aimOffsetYd}`),
@@ -163,11 +223,21 @@ function simulateClubAim(
     const carryYd = Math.max(2, profile.carryMedianYd + gaussian(random) * profile.carryStdDevYd);
     const sideYd = profile.sideMeanYd + aimOffsetYd + gaussian(random) * profile.sideStdDevYd;
     const base = pointAlongHole(hole, carryYd);
-    const landing = offsetPerpendicular(hole, base, carryYd, sideYd * 0.9144);
+    const dx = target ? target[0] - hole.tee[0] : 0;
+    const dz = target ? target[2] - hole.tee[2] : 0;
+    const length = Math.hypot(dx, dz);
+    const landing: CourseTwinPoint =
+      target && length > 0.01
+        ? [
+            hole.tee[0] + ((dx * carryYd - dz * sideYd) * 0.9144) / length,
+            hole.tee[1],
+            hole.tee[2] + ((dz * carryYd + dx * sideYd) * 0.9144) / length,
+          ]
+        : offsetPerpendicular(hole, base, carryYd, sideYd * 0.9144);
     const surface = classify(landing[0], landing[2]);
     counts[surface] += 1;
     remainingTotalYd += distance2d(landing, hole.green) / 0.9144;
-    if (landingCloud.length < 120) landingCloud.push(landing);
+    if (target || landingCloud.length < 120) landingCloud.push(landing);
   }
 
   const probabilities = Object.fromEntries(
@@ -181,7 +251,7 @@ function simulateClubAim(
     probabilities.bunker * 0.62 +
     probabilities.rough * 0.12 +
     averageRemainingYd / 620 +
-    Math.abs(profile.carryMedianYd - hole.yards) / 240;
+    Math.abs(profile.carryMedianYd - effectiveDistanceYd) / 240;
 
   return {
     clubId: profile.clubId,

@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { courseWindShader } from "./course-twin-wind";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { partitionScenery, type SceneryInstance } from "@/lib/course-twin-scenery";
 
-type Part = { geometry: THREE.BufferGeometry; material: THREE.Material | THREE.Material[] };
+type Part = {
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material | THREE.Material[];
+  depth?: THREE.MeshDepthMaterial;
+};
 type Library = { near: Part[]; mid: Part[]; dispose: () => void };
 
 async function loadLibrary(asset: string, signal: AbortSignal, high: boolean): Promise<Library> {
@@ -27,7 +32,10 @@ async function loadLibrary(asset: string, signal: AbortSignal, high: boolean): P
             if (value instanceof THREE.Texture) textures.add(value);
         }
       });
-    parts.forEach((p) => p.geometry.dispose());
+    parts.forEach((p) => {
+      p.geometry.dispose();
+      p.depth?.dispose();
+    });
     materials.forEach((m) => m.dispose());
     textures.forEach((t) => t.dispose());
   };
@@ -53,14 +61,32 @@ async function loadLibrary(asset: string, signal: AbortSignal, high: boolean): P
           ? object.material
           : [object.material]) {
           if (material instanceof THREE.MeshStandardMaterial) {
-            material.roughness = asset === "parked_car" ? 0.4 : 0.92;
-            material.metalness = 0;
-            material.transparent = false;
-            material.alphaTest = 0.4;
-            material.side = THREE.DoubleSide;
+            // Preserve exported opaque bark/paint/glass behaviour. Only cutout
+            // foliage needs double-sided rendering and an alpha shadow mask.
+            const cutout = material.alphaTest > 0 || /leaf|leaves|foliage/i.test(material.name);
+            if (cutout) {
+              material.transparent = false;
+              material.alphaTest = Math.max(0.35, material.alphaTest);
+              material.side = THREE.DoubleSide;
+              material.shadowSide = THREE.DoubleSide;
+              material.roughness = 0.9;
+            }
           }
         }
-        const part = { geometry, material: object.material };
+        let depth: THREE.MeshDepthMaterial | undefined;
+        if (asset !== "parked_car" && object.material instanceof THREE.MeshStandardMaterial) {
+          object.material.onBeforeCompile = (shader) => courseWindShader(shader);
+          object.material.customProgramCacheKey = () => "course-model-wind-v1";
+          depth = new THREE.MeshDepthMaterial({
+            depthPacking: THREE.RGBADepthPacking,
+            map: object.material.map,
+            alphaTest: object.material.alphaTest,
+            side: object.material.side,
+          });
+          depth.onBeforeCompile = (shader) => courseWindShader(shader);
+          depth.customProgramCacheKey = () => "course-model-wind-depth-v1";
+        }
+        const part = { geometry, material: object.material, depth };
         level.push(part);
         parts.push(part);
       });
@@ -90,6 +116,9 @@ export function BlenderVegetation({
     partitionScenery(instances, { x: 1e9, y: 0, z: 0 }, high),
   );
   const previous = useRef("");
+  const frustum = useMemo(() => new THREE.Frustum(), []);
+  const matrix = useMemo(() => new THREE.Matrix4(), []);
+  const sphere = useMemo(() => new THREE.Sphere(), []);
   const elapsed = useRef(0);
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("scenery") === "off") return;
@@ -116,12 +145,23 @@ export function BlenderVegetation({
       active?.dispose();
     };
   }, [asset, high]);
-  useFrame(({ camera }, delta) => {
+  useFrame(({ camera, size }, delta) => {
     elapsed.current += delta;
     if (elapsed.current < 0.35 || !library) return;
     elapsed.current = 0;
-    const next = partitionScenery(instances, camera.position, high, asset === "parked_car");
-    const key = next.near.join(",") + "/" + next.mid.join(",");
+    matrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(matrix);
+    const focalPixels = (size.height * camera.projectionMatrix.elements[5]) / 2;
+    const next = partitionScenery(instances, camera.position, high, asset === "parked_car", {
+      focalPixels,
+      previous: partition,
+      visible: (p) => {
+        sphere.center.set(p.x, p.y + p.height / 2, p.z);
+        sphere.radius = p.height * Math.max(0.6, p.widthScale);
+        return frustum.intersectsSphere(sphere);
+      },
+    });
+    const key = next.near.join(",") + "/" + next.mid.join(",") + "/" + next.visibleFar;
     if (key !== previous.current) {
       previous.current = key;
       setPartition(next);
@@ -134,6 +174,14 @@ export function BlenderVegetation({
     <group
       name={`Blender decorative ${asset}`}
       userData={{
+        lod: {
+          asset,
+          loaded: Boolean(library),
+          near: partition.near.length,
+          mid: partition.mid.length,
+          far: partition.far.length,
+          visibleFar: partition.visibleFar,
+        },
         decorativeOnly: true,
         source:
           asset === "rough_grass" || asset === "palm" || asset === "parked_car"
@@ -198,6 +246,7 @@ function ModelInstances({
       ref={ref}
       args={[part.geometry, part.material, instances.length]}
       castShadow
+      customDepthMaterial={part.depth}
       receiveShadow
       dispose={null}
     />

@@ -150,11 +150,12 @@ export function CourseTwinRoads({
                   `#include <color_fragment>
         float pavementGrain=fract(sin(dot(floor(vPavementPosition.xz*12.0),vec2(12.9898,78.233)))*43758.5453);
         float pavementDistance=1.0-smoothstep(25.0,100.0,length(vViewPosition));
-        diffuseColor.rgb *= 1.0+(pavementGrain-0.5)*0.13*pavementDistance;
+        float pavementWear = sin(vPavementPosition.x*0.18 + sin(vPavementPosition.z*0.11))*sin(vPavementPosition.z*0.23);
+        diffuseColor.rgb *= 1.0+(pavementGrain-0.5)*0.10*pavementDistance + pavementWear*0.025;
       `,
                 );
             }}
-            customProgramCacheKey={() => "course-pavement-grain-v1"}
+            customProgramCacheKey={() => "course-pavement-grain-v2"}
           />
         </mesh>
       ) : null}

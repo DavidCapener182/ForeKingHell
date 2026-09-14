@@ -52,27 +52,57 @@ export function partitionScenery(
   camera: { x: number; y: number; z: number },
   high: boolean,
   cars = false,
+  view?: {
+    focalPixels: number;
+    previous?: { near: number[]; mid: number[] };
+    visible?: (p: SceneryInstance) => boolean;
+  },
 ) {
   const near: number[] = [],
     mid: number[] = [];
+  const wasNear = new Set(view?.previous?.near);
+  const wasMid = new Set(view?.previous?.mid);
   const sorted = instances
     .map((p, index) => ({
       index,
       distance: Math.hypot(p.x - camera.x, p.y - camera.y, p.z - camera.z),
+      pixels:
+        view && (!view.visible || view.visible(p))
+          ? (p.height * view.focalPixels) /
+            Math.max(1, Math.hypot(p.x - camera.x, p.y + p.height / 2 - camera.y, p.z - camera.z))
+          : 0,
     }))
-    .sort((a, b) => a.distance - b.distance || a.index - b.index);
+    .sort((a, b) =>
+      view
+        ? b.pixels * (wasNear.has(b.index) || wasMid.has(b.index) ? 1.15 : 1) -
+            a.pixels * (wasNear.has(a.index) || wasMid.has(a.index) ? 1.15 : 1) || a.index - b.index
+        : a.distance - b.distance || a.index - b.index,
+    );
   for (const item of sorted) {
+    if (view && item.pixels <= 0) continue;
     if (
-      item.distance < (cars ? 250 : high ? 65 : 40) &&
+      (view && !cars
+        ? item.pixels > (wasNear.has(item.index) ? 100 : 125)
+        : item.distance < (cars ? 250 : high ? 65 : 40)) &&
       near.length < (cars ? (high ? 80 : 30) : high ? 10 : 4)
     )
       near.push(item.index);
     else if (
-      item.distance < (cars ? 700 : high ? 170 : 95) &&
+      (view && !cars
+        ? item.pixels > (wasNear.has(item.index) || wasMid.has(item.index) ? 16 : 22)
+        : item.distance < (cars ? 700 : high ? 170 : 95)) &&
       mid.length < (cars ? (high ? 80 : 30) : high ? 20 : 8)
     )
       mid.push(item.index);
   }
   const modelled = new Set([...near, ...mid]);
-  return { near, mid, far: instances.map((_, i) => i).filter((i) => !modelled.has(i)) };
+  const far = instances.map((_, i) => i).filter((i) => !modelled.has(i));
+  return {
+    near,
+    mid,
+    far,
+    visibleFar: view
+      ? sorted.filter((p) => p.pixels > 0 && !modelled.has(p.index)).length
+      : far.length,
+  };
 }

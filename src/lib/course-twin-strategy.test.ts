@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { planHoleFromTee } from "./course-twin-plan-tees";
+import { createCourseTwinSurfaceClassifier } from "./course-twin-surface";
 
 import type { CourseTwinManifest } from "@/lib/course-twin-contract";
-import { buildCourseTwinStrategy, type CourseTwinBagProfile } from "@/lib/course-twin-strategy";
+import {
+  previewCourseTwinAim,
+  nudgeCourseTwinAim,
+  buildCourseTwinStrategy,
+  type CourseTwinBagProfile,
+} from "@/lib/course-twin-strategy";
 
 const manifest: CourseTwinManifest = {
   schemaVersion: 1,
@@ -141,3 +148,116 @@ function rectangle(
     ],
   };
 }
+
+describe("interactive Plan aiming", () => {
+  it("rotates the same dispersion samples without changing club carry and recomputes surfaces", () => {
+    const club = buildCourseTwinStrategy({ manifest, holeNumber: 1, bag }).clubs[0];
+    const straight = previewCourseTwinAim(manifest, manifest.holes[0], club, [240, 0, 0]);
+    const sideways = previewCourseTwinAim(manifest, manifest.holes[0], club, [0, 0, 240]);
+    expect(sideways.carryMedianYd).toBe(straight.carryMedianYd);
+    straight.landingCloud.forEach((point, i) => {
+      expect(sideways.landingCloud[i][0]).toBeCloseTo(-point[2]);
+      expect(sideways.landingCloud[i][2]).toBeCloseTo(point[0]);
+    });
+    expect(sideways.probabilities.out_of_bounds).toBeGreaterThan(
+      straight.probabilities.out_of_bounds,
+    );
+    expect(Object.values(sideways.probabilities).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 3);
+    expect(previewCourseTwinAim(manifest, manifest.holes[0], club, [240, 0, 0])).toEqual(straight);
+  });
+
+  it("uses a shorter club to move the landing area closer and never follows a dogleg", () => {
+    const clubs = buildCourseTwinStrategy({ manifest, holeNumber: 1, bag }).clubs;
+    const dogleg = {
+      ...manifest.holes[0],
+      centerline: [
+        [0, 0, 0],
+        [50, 0, 0],
+        [50, 0, 200],
+      ] as [number, number, number][],
+    };
+    const previews = clubs.map((club) => previewCourseTwinAim(manifest, dogleg, club, [240, 0, 0]));
+    const long = previews.find((c) => c.clubId === "driver")!;
+    const short = previews.find((c) => c.clubId === "5i")!;
+    const mean = (c: typeof long) =>
+      c.landingCloud.reduce((sum, p) => sum + p[0], 0) / c.landingCloud.length;
+    expect(mean(long)).toBeGreaterThan(mean(short) + 30);
+    expect(mean(long)).toBeGreaterThan(170);
+  });
+});
+
+it("counts exactly the visible Plan cloud against updated display boundaries", () => {
+  const club = buildCourseTwinStrategy({ manifest, holeNumber: 1, bag }).clubs[0];
+  const displayed = { ...manifest, features: [rectangle("fairway", 0, 270, -4, 4)] };
+  const result = previewCourseTwinAim(displayed, manifest.holes[0], club, [240, 0, 0]);
+  const classify = createCourseTwinSurfaceClassifier(displayed, 1);
+  expect(result.landingCloud).toHaveLength(320);
+  for (const [surface, probability] of Object.entries(result.probabilities)) {
+    const count = result.landingCloud.filter((p) => classify(p[0], p[2]) === surface).length;
+    expect(probability).toBeCloseTo(count / result.landingCloud.length, 3);
+  }
+  expect(result.probabilities.rough).toBeGreaterThan(0.3);
+  expect(result.probabilities.fairway).toBeLessThan(0.7);
+});
+
+it("moves the shot origin with the selected tee and recalculates landing surfaces and leave", () => {
+  const club = buildCourseTwinStrategy({ manifest, holeNumber: 1, bag }).clubs[0];
+  const first = previewCourseTwinAim(manifest, manifest.holes[0], club, [240, 0, 0]);
+  const alternate = { ...manifest.holes[0], tee: [40, 0, 60] as [number, number, number] };
+  const moved = previewCourseTwinAim(manifest, alternate, club, [280, 0, 60]);
+  first.landingCloud.forEach((point, i) => {
+    expect(moved.landingCloud[i][0]).toBeCloseTo(point[0] + 40);
+    expect(moved.landingCloud[i][2]).toBeCloseTo(point[2] + 60);
+  });
+  expect(moved.carryMedianYd).toBe(first.carryMedianYd);
+  expect(moved.probabilities).not.toEqual(first.probabilities);
+  expect(moved.averageRemainingYd).not.toBe(first.averageRemainingYd);
+  expect(manifest.holes[0].tee).toEqual([0, 0, 0]);
+});
+
+it("ranks a forward tee by remaining route distance while retaining the scorecard yards", () => {
+  const open = { ...manifest, features: [rectangle("fairway", -500, 800, -500, 500)] };
+  const clubs = buildCourseTwinStrategy({
+    manifest: open,
+    holeNumber: 1,
+    bag: [profile("driver", 250, 1, 1), profile("pw", 100, 1, 1)],
+  }).clubs;
+  const forward = planHoleFromTee(open.holes[0], [146.56, 0, 0]);
+  const rank = (hole: typeof forward) =>
+    clubs
+      .map((c) => previewCourseTwinAim(open, hole, c, null))
+      .sort((a, b) => a.expectedRiskStrokes - b.expectedRiskStrokes);
+  expect(rank(open.holes[0])[0].clubId).toBe("driver");
+  expect(rank(forward)[0].clubId).toBe("pw");
+  expect(forward.yards).toBe(260);
+  const wedge = rank(forward).find((c) => c.clubId === "pw")!;
+  expect(wedge.expectedRiskStrokes).toBeCloseTo(wedge.averageRemainingYd / 620, 2);
+});
+
+it("nudges initial, reset and explicit aim exactly two degrees without doubling lateral bias", () => {
+  const hole = manifest.holes[0];
+  const original = buildCourseTwinStrategy({ manifest, holeNumber: 1, bag }).clubs[0];
+  const club = {
+    ...original,
+    aimOffsetYd: 12,
+    shotModel: { ...original.shotModel, sideMeanYd: 35 },
+  };
+  for (const initial of [null, [160, 0, 70] as [number, number, number], null]) {
+    for (const degrees of [-2, 2]) {
+      const before = previewCourseTwinAim(manifest, hole, club, initial);
+      const aim = nudgeCourseTwinAim(hole, club, initial, degrees);
+      const after = previewCourseTwinAim(manifest, hole, club, aim);
+      const angle = (degrees * Math.PI) / 180;
+      before.landingCloud.forEach((point, index) => {
+        expect(after.landingCloud[index][0]).toBeCloseTo(
+          point[0] * Math.cos(angle) - point[2] * Math.sin(angle),
+          8,
+        );
+        expect(after.landingCloud[index][2]).toBeCloseTo(
+          point[0] * Math.sin(angle) + point[2] * Math.cos(angle),
+          8,
+        );
+      });
+    }
+  }
+});

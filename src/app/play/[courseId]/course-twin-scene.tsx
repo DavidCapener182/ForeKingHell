@@ -1,4 +1,15 @@
 "use client";
+import { useProgressiveCourseImagery } from "./course-twin-progressive-texture";
+import { CourseTwinWind, courseWindShader } from "./course-twin-wind";
+import {
+  parsePlanTees,
+  planTeeStorageKey,
+  planHoleFromTee,
+  type PlanTees,
+} from "@/lib/course-twin-plan-tees";
+import { nudgeCourseTwinAim, previewCourseTwinAim } from "@/lib/course-twin-strategy";
+import { HoleFlag } from "./course-twin-flag";
+import { CourseTwinSunlight } from "./course-twin-sunlight";
 import { CourseTwinDaylight } from "./course-twin-daylight";
 import { courseTwinVisualFeatures } from "@/lib/course-twin-visual-features";
 import { TessellateModifier } from "three/examples/jsm/modifiers/TessellateModifier.js";
@@ -6,12 +17,7 @@ import { createCourseTwinRenderSampler } from "@/lib/course-twin-render-sampler"
 import { CourseTwinRoads } from "./course-twin-roads";
 import { CourseTwinBuildings, useCourseTwinContext } from "./course-twin-buildings";
 import { BlenderVegetation } from "./course-twin-blender-vegetation";
-import {
-  buildTreeInstances,
-  buildBushInstances,
-  hashString,
-  seededRandom,
-} from "@/lib/course-twin-vegetation-placement";
+import { buildTreeInstances, buildBushInstances } from "@/lib/course-twin-vegetation-placement";
 import { sceneryClearOfPlay } from "@/lib/course-twin-scenery";
 import { CourseTwinVisualProbe } from "./course-twin-visual-probe";
 import { CourseTwinViewOptions } from "./course-twin-view-options";
@@ -257,23 +263,12 @@ const defaultRoundRules: CourseTwinRoundRules = {
 
 const proceduralTextureCache = new Map<string, THREE.CanvasTexture>();
 const treeBillboards = [
-  {
-    url: "/course-twins/common/vegetation/high-detail/tree-oak-hq.webp?v=1",
-    aspect: 1,
-  },
-  {
-    url: "/course-twins/common/vegetation/high-detail/tree-birch-hq.webp?v=1",
-    aspect: 1,
-  },
-  {
-    url: "/course-twins/common/vegetation/high-detail/tree-sycamore-hq.webp?v=1",
-    aspect: 1,
-  },
+  { url: "/course-twins/common/blender-v1/tree_small_02-impostor.png", aspect: 1 },
 ] as const;
 const bushBillboards = [
   {
-    url: "/course-twins/common/vegetation/high-detail/shrub-hawthorn-hq.webp?v=1",
-    aspect: 1024 / 683,
+    url: "/course-twins/common/blender-v1/shrub_04-impostor.png",
+    aspect: 1,
   },
 ] as const;
 
@@ -429,10 +424,6 @@ export function CourseTwinScene({
   const initialCompactViewport =
     typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches;
   const [strategyEvidenceBasis] = useState(initialCompactViewport ? "latest-reliable" : "stock");
-  useEffect(() => {
-    if (renderQuality === "high")
-      [...treeBillboards, ...bushBillboards].forEach(({ url }) => useTexture.preload(url));
-  }, [renderQuality]);
   const [holeNumber, setHoleNumber] = useState(
     manifest.holes.some((hole) => hole.holeNumber === initialHoleNumber)
       ? initialHoleNumber!
@@ -442,10 +433,13 @@ export function CourseTwinScene({
     initialMode ??
       (initialCompactViewport ? "strategy" : replay?.shots.length ? "replay" : "strategy"),
   );
+  const [presentation, setPresentation] = useState(false);
   const [cameraView, setCameraView] = useState<CameraView>(
-    initialMode === "strategy" || initialCompactViewport || replay?.shots.length
-      ? "aerial"
-      : "golfer",
+    initialCompactViewport && (!initialMode || initialMode === "strategy")
+      ? "golfer"
+      : initialMode === "strategy" || replay?.shots.length
+        ? "aerial"
+        : "golfer",
   );
   const [shotIndex, setShotIndex] = useState(() => {
     const requested =
@@ -472,6 +466,33 @@ export function CourseTwinScene({
     document: null,
     error: null,
   });
+  const [planTees, setPlanTees] = useState<PlanTees>({});
+  const teeStorageKey = planTeeStorageKey(manifest);
+  const [loadedTeeKey, setLoadedTeeKey] = useState<string | null>(null);
+  const [teeSaveStatus, setTeeSaveStatus] = useState("Saved on this device");
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      try {
+        setPlanTees(parsePlanTees(localStorage.getItem(teeStorageKey), manifest));
+        setTeeSaveStatus("Saved on this device");
+      } catch {
+        setPlanTees({});
+        setTeeSaveStatus("Device storage unavailable · session only");
+      }
+      setLoadedTeeKey(teeStorageKey);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [teeStorageKey, manifest]);
+  useEffect(() => {
+    if (loadedTeeKey !== teeStorageKey) return;
+    try {
+      localStorage.setItem(teeStorageKey, JSON.stringify(planTees));
+    } catch {
+      queueMicrotask(() => setTeeSaveStatus("Device storage unavailable · session only"));
+    }
+  }, [planTees, teeStorageKey, loadedTeeKey]);
+  const [placingPlanTee, setPlacingPlanTee] = useState(false);
+  const [planAim, setPlanAim] = useState<{ hole: number; point: CourseTwinPoint } | null>(null);
   const [strategyClubId, setStrategyClubId] = useState<string | null>(null);
   const [virtualStart, setVirtualStart] = useState<CourseTwinPoint>(
     manifest.holes[0]?.tee ?? [0, 0, 0],
@@ -819,6 +840,14 @@ export function CourseTwinScene({
         : null,
     [manifest.puttingSurfaces, terrainAsset, terrainSamples],
   );
+  const sceneryData = useCourseTwinContext(manifest);
+  const planManifest = useMemo(
+    () => ({
+      ...sceneryData.displayManifest,
+      features: courseTwinVisualFeatures(sceneryData.displayManifest.features),
+    }),
+    [sceneryData.displayManifest],
+  );
   const classifySurface = useMemo(
     () => createCourseTwinSurfaceClassifier(manifest, selectedHole.holeNumber),
     [manifest, selectedHole.holeNumber],
@@ -876,13 +905,87 @@ export function CourseTwinScene({
         : null,
     [classifySurface, configuredWind, liveShot, sampleTerrain],
   );
-  const strategyClub = useMemo(
+  const chosenPlanTee =
+    loadedTeeKey === teeStorageKey ? planTees[selectedHole.holeNumber] : undefined;
+  const planHole = useMemo(
+    () => planHoleFromTee(selectedHole, chosenPlanTee?.point),
+    [selectedHole, chosenPlanTee],
+  );
+  const planTeeOptions = useMemo(
+    () =>
+      planManifest.features
+        .filter(
+          (f) =>
+            f.type === "tee" &&
+            f.holeNumber === selectedHole.holeNumber &&
+            f.source !== "estimated_centerline" &&
+            f.rings[0]?.length,
+        )
+        .map((f, index) => {
+          const ring = f.rings[0];
+          const point: CourseTwinPoint = [
+            ring.reduce((v, p) => v + p[0], 0) / ring.length,
+            0,
+            ring.reduce((v, p) => v + p[2], 0) / ring.length,
+          ];
+          return { id: f.id, label: `Mapped tee ${index + 1}`, point };
+        }),
+    [planManifest, selectedHole.holeNumber],
+  );
+  const selectPlanTee = (id: string, point?: CourseTwinPoint) => {
+    setPlanTees((previous) => {
+      const next = { ...previous };
+      if (point) next[selectedHole.holeNumber] = { id, point };
+      else delete next[selectedHole.holeNumber];
+      return next;
+    });
+    setPlacingPlanTee(false);
+    setPlanAim(null);
+    setCameraCommand(null);
+  };
+  const planRankedClubs = useMemo(() => {
+    if (mode !== "strategy" || strategyState.document?.holeNumber !== selectedHole.holeNumber)
+      return [];
+    return strategyState.document.clubs
+      .map((club) => previewCourseTwinAim(planManifest, planHole, club, null))
+      .sort((a, b) => a.expectedRiskStrokes - b.expectedRiskStrokes);
+  }, [mode, strategyState.document, selectedHole.holeNumber, planManifest, planHole]);
+  const baseStrategyClub = useMemo(
     () =>
       strategyState.document?.clubs.find((club) => club.clubId === strategyClubId) ??
-      strategyState.document?.recommended ??
+      (mode === "strategy"
+        ? strategyState.document?.clubs.find((club) => club.clubId === planRankedClubs[0]?.clubId)
+        : strategyState.document?.recommended) ??
       null,
-    [strategyClubId, strategyState.document],
+    [strategyState.document, strategyClubId, mode, planRankedClubs],
   );
+  const planAimPoint = planAim?.hole === selectedHole.holeNumber ? planAim.point : null;
+  const strategyClub = useMemo(
+    () =>
+      mode === "strategy"
+        ? baseStrategyClub && strategyState.document?.holeNumber === selectedHole.holeNumber
+          ? previewCourseTwinAim(planManifest, planHole, baseStrategyClub, planAimPoint)
+          : null
+        : baseStrategyClub,
+    [
+      mode,
+      planManifest,
+      selectedHole,
+      planHole,
+      baseStrategyClub,
+      planAimPoint,
+      strategyState.document?.holeNumber,
+    ],
+  );
+  // Reset only on mobile Plan entry / hole changes, allowing subsequent manual orbiting.
+  useEffect(() => {
+    if (!isCompactViewport || mode !== "strategy") return;
+    const frame = requestAnimationFrame(() => {
+      setCameraView("golfer");
+      setCameraCommand(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isCompactViewport, mode, selectedHole.holeNumber]);
   const virtualRemainingYd =
     Math.hypot(selectedHole.green[0] - virtualStart[0], selectedHole.green[2] - virtualStart[2]) /
     0.9144;
@@ -1686,7 +1789,7 @@ export function CourseTwinScene({
             document,
             error: null,
           });
-          setStrategyClubId(document.recommended?.clubId ?? document.clubs[0]?.clubId ?? null);
+          setStrategyClubId(null);
         })
         .catch((error: unknown) => {
           if (controller.signal.aborted) return;
@@ -1709,6 +1812,7 @@ export function CourseTwinScene({
 
   const activateRuntimeMode = (nextMode: RuntimeMode) => {
     selectMode(nextMode);
+    setPlacingPlanTee(false);
     setPlaying(false);
     setCameraCommand(null);
 
@@ -1718,9 +1822,11 @@ export function CourseTwinScene({
     }
 
     setCameraView(
-      nextMode === "strategy" || nextMode === "replay" || nextMode === "flyover"
-        ? "aerial"
-        : "golfer",
+      nextMode === "strategy" && isCompactViewport
+        ? "golfer"
+        : nextMode === "strategy" || nextMode === "replay" || nextMode === "flyover"
+          ? "aerial"
+          : "golfer",
     );
     if (nextMode === "strategy" || nextMode === "play" || nextMode === "live") {
       if (
@@ -1737,6 +1843,7 @@ export function CourseTwinScene({
   };
 
   const selectHole = (nextHoleNumber: number) => {
+    setPlacingPlanTee(false);
     setHoleNumber(nextHoleNumber);
     setShotIndex(0);
     setPlaybackPosition(0);
@@ -2304,6 +2411,81 @@ export function CourseTwinScene({
     return "Mapped course view";
   })();
 
+  const nudgePlanAim = (degrees: number) => {
+    if (!baseStrategyClub) return;
+    setPlanAim({
+      hole: selectedHole.holeNumber,
+      point: nudgeCourseTwinAim(planHole, baseStrategyClub, planAimPoint, degrees),
+    });
+  };
+
+  const planAimControls = (
+    <div className="mt-2 flex gap-2" data-plan-aim-controls>
+      <button
+        type="button"
+        aria-label="Aim two degrees left"
+        className="min-h-11 flex-1 rounded-lg border border-white/20 px-2 text-xs"
+        onClick={() => nudgePlanAim(-2)}
+      >
+        ← Aim left
+      </button>
+      <button
+        type="button"
+        className="min-h-11 rounded-lg border border-white/20 px-2 text-xs"
+        onClick={() => setPlanAim(null)}
+      >
+        Reset aim
+      </button>
+      <button
+        type="button"
+        aria-label="Aim two degrees right"
+        className="min-h-11 flex-1 rounded-lg border border-white/20 px-2 text-xs"
+        onClick={() => nudgePlanAim(2)}
+      >
+        Aim right →
+      </button>
+    </div>
+  );
+  const planTeeControls = (
+    <div className="mb-2" data-plan-tee-controls>
+      <label className="block text-xs">
+        Starting tee
+        <select
+          aria-label="Starting tee"
+          className="mt-1 w-full rounded-lg bg-[#203c2e] p-2 text-sm"
+          value={chosenPlanTee?.id ?? "reference"}
+          onChange={(event) => {
+            const option = planTeeOptions.find((t) => t.id === event.target.value);
+            selectPlanTee(event.target.value, option?.point);
+          }}
+        >
+          <option value="reference">Reference tee</option>
+          {planTeeOptions.map((tee) => (
+            <option key={tee.id} value={tee.id}>
+              {tee.label}
+            </option>
+          ))}
+          {chosenPlanTee?.id === "custom" ? (
+            <option value="custom">Your tee position</option>
+          ) : null}
+        </select>
+      </label>
+      <p className="mt-1 text-[10px] text-white/60">{teeSaveStatus}</p>
+      <button
+        type="button"
+        aria-pressed={placingPlanTee}
+        className="mt-1 text-xs underline"
+        onClick={() => setPlacingPlanTee((value) => !value)}
+      >
+        {placingPlanTee ? "Cancel tee placement" : "Set tee on course"}
+      </button>
+      <p className="mt-1 text-xs text-white/70">
+        {placingPlanTee
+          ? "Tap the ground at your tee to set the shot start."
+          : `${Math.round(Math.hypot(planHole.green[0] - planHole.tee[0], planHole.green[2] - planHole.tee[2]) / 0.9144)} yd direct to pin · tee colours unverified`}
+      </p>
+    </div>
+  );
   const mobileActionContent: ReactNode =
     mode === "play" ? (
       activeRound?.mode === "play" && activeRound.status === "in_progress" ? (
@@ -2370,6 +2552,8 @@ export function CourseTwinScene({
       />
     ) : mode === "strategy" ? (
       <MobileStrategyControls
+        aimControls={planAimControls}
+        teeControls={planTeeControls}
         state={strategyState}
         selectedClub={strategyClub}
         onSelectClub={setStrategyClubId}
@@ -2429,7 +2613,7 @@ export function CourseTwinScene({
           ? `${formatVirtualShotKind(virtualShot.sampled.shotKind)} · modelled result`
           : `Shot ${virtualShotNumber} · ${formatMobileAim(virtualAimDirectionDeg)}`
         : strategyClub
-          ? `${formatProbability(strategyClub.probabilities.fairway)} fairway · ${strategyClub.averageRemainingYd.toFixed(0)} yd leave`
+          ? `${formatProbability(strategyClub.probabilities.fairway)} fairway · ${formatProbability(strategyClub.probabilities.green)} green · ${strategyClub.averageRemainingYd.toFixed(0)} yd leave`
           : strategyState.status === "loading"
             ? "Building your personal strategy…"
             : "Personal strategy unavailable";
@@ -3277,6 +3461,14 @@ export function CourseTwinScene({
             "order-1 relative min-h-[62dvh] overflow-hidden xl:absolute xl:inset-0 xl:order-none xl:h-auto xl:min-h-0",
           )}
         >
+          <button
+            type="button"
+            aria-pressed={presentation}
+            onClick={() => setPresentation((value) => !value)}
+            className="absolute right-4 top-20 z-20 min-h-11 rounded-full border border-white/20 bg-[#10251e]/85 px-4 text-xs text-white backdrop-blur"
+          >
+            {presentation ? "Show analysis" : "Scenery view"}
+          </button>
           <Canvas
             frameloop={isCompactViewport && mobileRenderingSuspended ? "never" : "always"}
             shadows={renderQuality === "high" ? "percentage" : "basic"}
@@ -3322,24 +3514,14 @@ export function CourseTwinScene({
               setSuspended={setMobileRenderingSuspended}
             />
             {process.env.NODE_ENV === "development" ? <CourseTwinVisualProbe /> : null}
+            <CourseTwinWind />
             <CourseTwinDaylight enabled={renderQuality === "high"} />
             <CourseTwinAdaptiveQuality renderQuality={renderQuality} />
-            <color attach="background" args={[cameraView === "aerial" ? "#666b49" : "#75aecd"]} />
-            <fog
-              attach="fog"
-              args={[cameraView === "aerial" ? "#737758" : "#b6ced0", 1_050, 3_300]}
-            />
-            <hemisphereLight args={["#e5eff5", "#74705a", 0.95]} />
+            <color attach="background" args={["#b6ced0"]} />
+            <fog attach="fog" args={["#b6ced0", 650, 1_750]} />
+            <hemisphereLight args={["#e5eff5", "#74705a", 0.65]} />
             <ambientLight color="#d9f0df" intensity={0.06} />
-            <directionalLight
-              castShadow
-              color="#fff2d2"
-              position={[-260, 285, 170]}
-              intensity={1.5}
-              shadow-mapSize-width={renderQuality === "high" ? 2048 : 1024}
-              shadow-mapSize-height={renderQuality === "high" ? 2048 : 1024}
-              shadow-bias={-0.00012}
-            />
+            <CourseTwinSunlight high={renderQuality === "high"} />
             <directionalLight color="#9fd5ff" position={[340, 170, -280]} intensity={0.12} />
             {terrainAsset && terrainSamples && sampleTerrain ? (
               <>
@@ -3355,6 +3537,9 @@ export function CourseTwinScene({
                 ) : null}
                 <Suspense fallback={null}>
                   <CourseWorld
+                    planHole={planHole}
+                    sceneryData={sceneryData}
+                    presentation={presentation}
                     manifest={manifest}
                     terrainSamples={terrainSamples}
                     sampleTerrain={sampleTerrain}
@@ -3396,39 +3581,49 @@ export function CourseTwinScene({
                         : null
                     }
                     onAimPoint={
-                      mode === "play" && !virtualShot && !virtualPuttReplay
+                      mode === "strategy"
                         ? (point) =>
-                            setVirtualAimDirectionDeg(
-                              courseTwinAimDirectionDegToPoint(
-                                virtualStart,
-                                selectedHole.green,
-                                point,
-                                virtualShotKind,
-                              ),
-                            )
-                        : null
+                            placingPlanTee
+                              ? selectPlanTee("custom", point)
+                              : setPlanAim({ hole: selectedHole.holeNumber, point })
+                        : mode === "play" && !virtualShot && !virtualPuttReplay
+                          ? (point) =>
+                              setVirtualAimDirectionDeg(
+                                courseTwinAimDirectionDegToPoint(
+                                  virtualStart,
+                                  selectedHole.green,
+                                  point,
+                                  virtualShotKind,
+                                ),
+                              )
+                          : null
                     }
                     cameraStart={
-                      cameraView === "aerial" && (mode === "replay" || mode === "strategy")
-                        ? selectedHole.tee
-                        : (animatedShot?.start ??
-                          (mode === "play"
-                            ? virtualStart
-                            : mode === "live"
-                              ? liveStart
-                              : selectedHole.tee))
+                      mode === "strategy"
+                        ? planHole.tee
+                        : cameraView === "aerial" && mode === "replay"
+                          ? selectedHole.tee
+                          : (animatedShot?.start ??
+                            (mode === "play"
+                              ? virtualStart
+                              : mode === "live"
+                                ? liveStart
+                                : selectedHole.tee))
                     }
                     cameraEnd={
-                      cameraView === "aerial" && (mode === "replay" || mode === "strategy")
-                        ? selectedHole.green
-                        : (animatedShot?.totalEnd ??
-                          (mode === "play" && !virtualShot && !virtualPuttReplay
-                            ? virtualAimTarget
-                            : selectedHole.green))
+                      mode === "strategy" && cameraView === "golfer"
+                        ? (planHole.centerline[1] ?? planHole.green)
+                        : cameraView === "aerial" && (mode === "replay" || mode === "strategy")
+                          ? selectedHole.green
+                          : (animatedShot?.totalEnd ??
+                            (mode === "play" && !virtualShot && !virtualPuttReplay
+                              ? virtualAimTarget
+                              : selectedHole.green))
                     }
                     cameraUsesShotFraming={
+                      mode !== "strategy" &&
                       Boolean(animatedShot) &&
-                      !(cameraView === "aerial" && (mode === "replay" || mode === "strategy"))
+                      !(cameraView === "aerial" && mode === "replay")
                     }
                     strategyClub={mode === "strategy" ? strategyClub : null}
                     playbackRef={playbackRef}
@@ -3492,6 +3687,72 @@ export function CourseTwinScene({
           >
             {mobileActionContent}
           </MobileCourseTwinChrome>
+          {!isCompactViewport && mode === "strategy" && strategyClub && strategyState.document ? (
+            <div
+              className="absolute left-4 top-20 z-20 w-64 rounded-2xl border border-white/15 bg-[#10251c]/95 p-3 text-white shadow-xl"
+              data-plan-controls
+            >
+              {planTeeControls}
+              <label className="block text-xs font-semibold">
+                Plan club
+                <select
+                  aria-label="Plan club"
+                  className="mt-1 block w-full rounded-lg bg-[#203c2e] p-2 text-sm"
+                  value={strategyClub.clubId}
+                  onChange={(event) => setStrategyClubId(event.target.value)}
+                >
+                  {strategyState.document.clubs.map((club) => (
+                    <option key={club.clubId} value={club.clubId}>
+                      {formatClubType(club.clubType)} · {Math.round(club.carryMedianYd)} yd
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="mt-2 text-xs text-white/75">
+                Click the course to aim. Drag to move the camera. Club carry determines the landing
+                distance.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-sm" aria-live="polite">
+                <span>
+                  Fairway <strong>{formatProbability(strategyClub.probabilities.fairway)}</strong>
+                </span>
+                <span>
+                  Green <strong>{formatProbability(strategyClub.probabilities.green)}</strong>
+                </span>
+                <span>
+                  Rough <strong>{formatProbability(strategyClub.probabilities.rough)}</strong>
+                </span>
+                <span>
+                  Bunker <strong>{formatProbability(strategyClub.probabilities.bunker)}</strong>
+                </span>
+                <span>
+                  Water <strong>{formatProbability(strategyClub.probabilities.water)}</strong>
+                </span>
+                <span>
+                  Trees <strong>{formatProbability(strategyClub.probabilities.trees)}</strong>
+                </span>
+                <span>
+                  Out of bounds{" "}
+                  <strong>{formatProbability(strategyClub.probabilities.out_of_bounds)}</strong>
+                </span>
+                <span>
+                  Leave <strong>{Math.round(strategyClub.averageRemainingYd)} yd</strong>
+                </span>
+              </div>
+              <p className="mt-2 text-[10px]">
+                <span className="text-[#dfff65]">Lime: fairway</span> ·{" "}
+                <span className="text-[#65e6ff]">Blue: green</span> ·{" "}
+                <span className="text-[#ffbf72]">Amber: rough/sand</span> ·{" "}
+                <span className="text-[#ff7181]">Pink: hazards</span>
+              </p>
+              {planAimControls}
+              <p className="mt-2 text-[10px] text-white/60">
+                {strategyClub.landingCloud.length} simulated landings from {strategyClub.sampleSize}{" "}
+                measured shots. Percentages use the displayed surface boundaries; estimates, not
+                guarantees.
+              </p>
+            </div>
+          ) : null}
           {!isCompactViewport ? (
             <CourseTwinMinimalHud
               mode={mode}
@@ -3983,7 +4244,10 @@ function CourseTwinMinimalHud({
               key={item}
               value={item}
               disabled={(item === "replay" && !replayAvailable) || (item === "play" && readOnly)}
-              className="h-9 rounded-full border-0 px-4 text-xs font-semibold text-white/62 hover:bg-white/8 hover:text-white data-[state=on]:bg-[#e7ff6a] data-[state=on]:text-[#102217]"
+              className={cn(
+                mobileStyles.desktopModeButton,
+                "h-9 border-0 px-4 text-xs font-semibold text-white/62 hover:bg-white/8 hover:text-white data-[state=on]:bg-[#e7ff6a] data-[state=on]:text-[#102217]",
+              )}
             >
               {item === "strategy" ? "Plan" : runtimeModeLabel(item)}
             </ToggleGroupItem>
@@ -4362,11 +4626,15 @@ function MobileReplayControls({
 }
 
 function MobileStrategyControls({
+  aimControls,
+  teeControls,
   state,
   selectedClub,
   onSelectClub,
   onOpenDetails,
 }: {
+  aimControls: ReactNode;
+  teeControls: ReactNode;
   state: StrategyLoadState;
   selectedClub: CourseTwinStrategyClub | null;
   onSelectClub: (clubId: string) => void;
@@ -4386,13 +4654,13 @@ function MobileStrategyControls({
 
   return (
     <div className={mobileStyles.strategyTray}>
+      <details className={mobileStyles.strategyEvidence}>
+        <summary>Starting tee · change position</summary>
+        {teeControls}
+      </details>
       <div className={mobileStyles.strategyDecision}>
         <label className={mobileStyles.field}>
-          <span className={mobileStyles.fieldLabel}>
-            {state.document.recommended?.clubId === selectedClub.clubId
-              ? "Recommended club"
-              : "Compare club"}
-          </span>
+          <span className={mobileStyles.fieldLabel}>Plan club</span>
           <select
             className={mobileStyles.select}
             value={selectedClub.clubId}
@@ -4410,12 +4678,13 @@ function MobileStrategyControls({
           <span>yd carry</span>
         </p>
       </div>
-      <p className={mobileStyles.strategyTarget}>
-        Aim{" "}
-        {Math.abs(selectedClub.aimOffsetYd) < 1
-          ? "on the mapped centre line"
-          : `${Math.round(Math.abs(selectedClub.aimOffsetYd))} yd ${selectedClub.aimOffsetYd > 0 ? "right" : "left"} of the mapped centre line`}
+      <p className={mobileStyles.strategyTarget} aria-live="polite">
+        Fairway {formatProbability(selectedClub.probabilities.fairway)} · Green{" "}
+        {formatProbability(selectedClub.probabilities.green)} · Rough{" "}
+        {formatProbability(selectedClub.probabilities.rough)}
       </p>
+      <p className={mobileStyles.provenance}>Tap the course to aim · drag to look around</p>
+      {aimControls}
       {selectedClub.evidenceWindow ? (
         <details className={mobileStyles.strategyEvidence}>
           <summary>{selectedClub.sampleSize} trusted shots · same carry as Bag</summary>
@@ -5243,6 +5512,9 @@ function simulationDropPoint(simulation: CourseTwinReplaySimulation): CourseTwin
 }
 
 function CourseWorld({
+  planHole,
+  sceneryData,
+  presentation,
   manifest,
   terrainSamples,
   sampleTerrain,
@@ -5264,6 +5536,9 @@ function CourseWorld({
   exploreTransport,
   renderQuality,
 }: {
+  planHole: CourseTwinHole;
+  sceneryData: ReturnType<typeof useCourseTwinContext>;
+  presentation: boolean;
   manifest: CourseTwinManifest;
   terrainSamples: Float32Array;
   sampleTerrain: CourseTwinTerrainSampler;
@@ -5289,7 +5564,17 @@ function CourseWorld({
   exploreTransport: ExploreTransport | null;
   renderQuality: Exclude<CourseTwinRenderQuality, "fallback">;
 }) {
-  const { context, displayManifest } = useCourseTwinContext(manifest);
+  const { context, displayManifest } = sceneryData;
+  const planSurfaceAt = useMemo(
+    () =>
+      createCourseTwinSurfaceClassifier(
+        {
+          features: courseTwinVisualFeatures(displayManifest.features),
+        },
+        selectedHole.holeNumber,
+      ),
+    [displayManifest, selectedHole.holeNumber],
+  );
   const sampleRenderedTerrain = useMemo(
     () =>
       manifest.terrain.heightmap
@@ -5328,7 +5613,12 @@ function CourseWorld({
   ];
 
   return (
-    <group>
+    <group
+      name="Course landscape"
+      userData={
+        process.env.NODE_ENV === "development" ? { holes: manifest.holes, sampleTerrain } : {}
+      }
+    >
       <Terrain
         manifest={displayManifest}
         samples={terrainSamples}
@@ -5384,50 +5674,57 @@ function CourseWorld({
             hole={hole}
             selected={hole === selectedHole}
             dimmed={
-              hole === selectedHole &&
-              (Boolean(selectedShot) || completedTracers.length > 0 || Boolean(nextShotStart))
+              presentation ||
+              (hole === selectedHole &&
+                (Boolean(selectedShot) || completedTracers.length > 0 || Boolean(nextShotStart)))
             }
-            showNumber={hole === selectedHole && cameraView === "aerial"}
+            showNumber={!presentation && hole === selectedHole && cameraView === "aerial"}
             sampleTerrain={sampleTerrain}
           />
         ))}
-      {selectedShot && selectedSimulation ? (
-        <ReplayTracer
-          key={selectedShot.id}
-          simulation={selectedSimulation}
-          playback={playbackRef}
-          active
-          label={cameraView === "aerial" ? (selectedShot.holeShotNumber ?? undefined) : undefined}
-        />
-      ) : null}
-      {completedTracers.map((tracer) => (
-        <ReplayTracer
-          key={tracer.id}
-          simulation={tracer.simulation}
-          playback={1}
-          active={false}
-          label={cameraView === "aerial" ? tracer.shotNumber : undefined}
-          colourOverride={completedTracerColour(tracer.shotNumber)}
-          showCarryMarker={false}
-          showFinishMarker={
-            !nextShotStart ||
-            !courseTwinGroundPositionsCoincide(tracer.simulation.finalPosition, nextShotStart)
-          }
-        />
-      ))}
-      {nextShotStart ? (
-        <NextShotMarker position={nextShotStart} sampleTerrain={sampleTerrain} />
-      ) : null}
-      {aimStart && aimEnd ? (
-        <ShotAimGuide start={aimStart} end={aimEnd} sampleTerrain={sampleTerrain} />
-      ) : null}
-      {strategyClub ? (
-        <StrategyLandingCloud
-          club={strategyClub}
-          sampleTerrain={sampleTerrain}
-          hole={selectedHole}
-        />
-      ) : null}
+      <group visible={!presentation}>
+        {selectedShot && selectedSimulation ? (
+          <ReplayTracer
+            key={selectedShot.id}
+            simulation={selectedSimulation}
+            playback={playbackRef}
+            active
+            label={cameraView === "aerial" ? (selectedShot.holeShotNumber ?? undefined) : undefined}
+          />
+        ) : null}
+        {completedTracers.map((tracer) => (
+          <ReplayTracer
+            key={tracer.id}
+            simulation={tracer.simulation}
+            playback={1}
+            active={false}
+            label={cameraView === "aerial" ? tracer.shotNumber : undefined}
+            colourOverride={completedTracerColour(tracer.shotNumber)}
+            showCarryMarker={false}
+            showFinishMarker={
+              !nextShotStart ||
+              !courseTwinGroundPositionsCoincide(tracer.simulation.finalPosition, nextShotStart)
+            }
+          />
+        ))}
+        {nextShotStart ? (
+          <NextShotMarker position={nextShotStart} sampleTerrain={sampleTerrain} />
+        ) : null}
+        {aimStart && aimEnd ? (
+          <ShotAimGuide start={aimStart} end={aimEnd} sampleTerrain={sampleTerrain} />
+        ) : null}
+        {strategyClub ? (
+          <NextShotMarker position={planHole.tee} sampleTerrain={sampleTerrain} />
+        ) : null}
+        {strategyClub ? (
+          <StrategyLandingCloud
+            club={strategyClub}
+            sampleTerrain={sampleTerrain}
+            surfaceAt={planSurfaceAt}
+            hole={planHole}
+          />
+        ) : null}
+      </group>
       {!exploreTransport ? (
         <>
           <CameraFocus
@@ -5586,6 +5883,7 @@ function BalancedTerrain({
       onClick={
         onAimPoint
           ? (event) => {
+              if (event.delta > 5) return;
               event.stopPropagation();
               onAimPoint([event.point.x, event.point.y, event.point.z]);
             }
@@ -5609,16 +5907,18 @@ function BalancedTerrain({
             #include <map_fragment>
             vec3 weights = texture2D(surfaceMask, vMapUv).rgb;
             vec2 contextWeights = texture2D(contextMask, vMapUv).rg;
-            float textureVariation = 0.84 + dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) * 0.3;
-            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16,0.29,0.10)*textureVariation, weights.r*0.9);
+            float mappedRough = texture2D(contextMask,vMapUv).b * (1.0-max(weights.r,max(weights.g,weights.b)));
+            float textureVariation = 0.95 + dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) * 0.08;
+            diffuseColor.rgb = mix(diffuseColor.rgb,vec3(0.16,0.205,0.092)*textureVariation,mappedRough*0.86);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.135,0.235,0.092)*textureVariation, weights.r*0.995);
             diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.19,0.34,0.115)*textureVariation, weights.g*0.96);
             diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.56,0.50,0.34)*textureVariation, weights.b*0.9);
             diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.20,0.36,0.15)*textureVariation, contextWeights.g);
-            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.035,0.12,0.15), contextWeights.r);
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.017,0.06,0.052), contextWeights.r);
           `,
           );
         }}
-        customProgramCacheKey={() => "course-balanced-distinct-grasses-v2"}
+        customProgramCacheKey={() => "course-balanced-distinct-grasses-v3"}
       />
     </mesh>
   );
@@ -5721,6 +6021,19 @@ function LidarTerrain({
     enhanced ? "/course-twins/common/blender-v1/sand-colour.webp" : null,
     gl,
   );
+  const loadedRoughAo = useProgressiveCourseImagery(
+    enhanced ? "/course-twins/common/blender-v1/rough-ao.png" : null,
+    gl,
+  );
+  const roughAo = useMemo(() => {
+    if (!loadedRoughAo) return null;
+    const copy = loadedRoughAo.clone();
+    copy.colorSpace = THREE.NoColorSpace;
+    copy.wrapS = copy.wrapT = THREE.RepeatWrapping;
+    copy.needsUpdate = true;
+    return copy;
+  }, [loadedRoughAo]);
+  useEffect(() => () => roughAo?.dispose(), [roughAo]);
   const mowingDirections = useMemo(
     () => createMowingDirections(features, holes, asset.localBounds),
     [features, holes, asset.localBounds],
@@ -5782,6 +6095,7 @@ function LidarTerrain({
       onClick={
         onAimPoint
           ? (event) => {
+              if (event.delta > 5) return;
               event.stopPropagation();
               onAimPoint([event.point.x, event.point.y, event.point.z]);
             }
@@ -5789,7 +6103,7 @@ function LidarTerrain({
       }
     >
       <meshStandardMaterial
-        key={sandTexture?.uuid ?? "base-surfaces"}
+        key={`${sandTexture?.uuid ?? "base-surfaces"}-${roughAo?.uuid ?? "no-ao"}`}
         map={aerialTexture}
         normalMap={surfaceNormalAtlas}
         normalScale={new THREE.Vector2(0.36, 0.36)}
@@ -5797,6 +6111,31 @@ function LidarTerrain({
         roughness={0.92}
         metalness={0}
         onBeforeCompile={(shader) => {
+          if (process.env.NODE_ENV === "development") {
+            const modes = ["none", "masks", "albedo", "normals", "roughness", "shadows", "aerial"];
+            const debug = Math.max(
+              0,
+              modes.indexOf(new URLSearchParams(location.search).get("terrainDebug") ?? "none"),
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+              "#include <shadowmap_pars_fragment>",
+              "#include <shadowmap_pars_fragment>\n#include <shadowmask_pars_fragment>",
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+              "#include <opaque_fragment>",
+              `${debug === 1 ? "outgoingLight = texture2D(courseSurfaceMask,vMapUv).rgb;" : debug === 2 ? "outgoingLight = diffuseColor.rgb;" : debug === 3 ? "outgoingLight = normal * 0.5 + 0.5;" : debug === 4 ? "outgoingLight = vec3(roughnessFactor);" : debug === 5 ? "outgoingLight = vec3(getShadowMask());" : debug === 6 ? "outgoingLight = texture2D(map,vMapUv).rgb;" : ""}\n#include <opaque_fragment>`,
+            );
+          }
+          shader.uniforms.courseRoughAo = { value: roughAo ?? roughTexture };
+          shader.uniforms.courseRoughAoStrength = { value: roughAo ? 0.32 : 0 };
+          shader.fragmentShader = shader.fragmentShader.replace(
+            "#include <aomap_fragment>",
+            `#include <aomap_fragment>
+#ifdef USE_MAP
+ float roughContact = texture2D(courseRoughAo,vMapUv * courseTerrainSize / 2.0).r;
+ reflectedLight.indirectDiffuse *= mix(1.0,roughContact,courseRoughAoStrength * roughWeight * (1.0-smoothstep(30.0,90.0,length(vViewPosition))));
+#endif`,
+          );
           shader.uniforms.courseSurfaceMask = { value: masks.surface };
           shader.uniforms.courseWaterMask = { value: masks.water };
           shader.uniforms.roughColourMap = { value: roughTexture };
@@ -5820,6 +6159,8 @@ function LidarTerrain({
           shader.fragmentShader = shader.fragmentShader.replace(
             "#include <map_pars_fragment>",
             `#include <map_pars_fragment>
+uniform sampler2D courseRoughAo;
+uniform float courseRoughAoStrength;
 uniform sampler2D courseSurfaceMask;
 uniform sampler2D courseWaterMask;
 uniform sampler2D roughColourMap;
@@ -5838,6 +6179,7 @@ uniform vec4 courseSurfaceTileSize;`,
   vec4 aerialColour = texture2D(map, vMapUv);
   vec3 surfaceWeights = texture2D(courseSurfaceMask, vMapUv).rgb;
   vec2 contextWeights = smoothstep(vec2(0.42), vec2(0.58), texture2D(courseWaterMask, vMapUv).rg);
+  float mappedGround = texture2D(courseWaterMask, vMapUv).b;
   float waterWeight = contextWeights.r;
   float teeWeight = contextWeights.g;
   vec2 roughSurfaceCoordinate = vMapUv * courseTerrainSize / courseSurfaceTileSize.x;
@@ -5874,10 +6216,11 @@ uniform vec4 courseSurfaceTileSize;`,
     mix(roughSurfaceColour * vec3(0.88, 0.91, 0.79), vec3(0.18, 0.225, 0.095) * (0.72 + dot(roughColour, vec3(0.2126, 0.7152, 0.0722)) * 0.9), 0.64),
     roughWeight * mix(0.48, 0.68, surfaceDetailNearness)
   );
+  courseColour = mix(courseColour, vec3(0.16,0.205,0.092) * (0.84 + dot(roughColour,vec3(0.2126,0.7152,0.0722))*0.42), mappedGround * roughWeight * 0.86);
   courseColour = mix(
     courseColour,
-    mix(fairwaySurfaceColour * vec3(0.86, 0.93, 0.79), vec3(0.16, 0.29, 0.10) * (0.84 + dot(fairwayColour, vec3(0.2126, 0.7152, 0.0722)) * 0.4), 0.72),
-    surfaceWeights.r * 0.94
+    mix(fairwaySurfaceColour * vec3(0.86, 0.93, 0.79), vec3(0.135, 0.235, 0.092) * (0.84 + dot(fairwayColour, vec3(0.2126, 0.7152, 0.0722)) * 0.4), 0.72),
+    surfaceWeights.r * 0.995
   );
   courseColour = mix(
     courseColour,
@@ -5916,17 +6259,17 @@ uniform vec4 courseSurfaceTileSize;`,
     1.18
   );
   float fairwayFineGrain = clamp(
-    1.0 + (fairwayFineLuma - 0.47) * 0.64,
+    1.0 + (fairwayFineLuma - 0.195) * 2.0,
     0.84,
     1.16
   );
   float greenFineGrain = clamp(
-    1.0 + (greenFineLuma - 0.47) * 0.3,
+    1.0 + (greenFineLuma - 0.194) * 1.2,
     0.92,
     1.08
   );
   float bunkerFineGrain = clamp(
-    1.0 + (bunkerFineLuma - 0.63) * 0.72,
+    1.0 + (bunkerFineLuma - 0.356) * 1.3,
     0.82,
     1.18
   );
@@ -5974,19 +6317,27 @@ uniform vec4 courseSurfaceTileSize;`,
   mowingDirection = length(mowingDirection) > 0.1 ? normalize(mowingDirection) : vec2(1.0, 0.0);
   float mowingPhase = dot(vMapUv * courseTerrainSize, mowingDirection) * 0.72;
   float mowingVisibility = 1.0 - smoothstep(0.5, 2.0, fwidth(mowingPhase));
-  courseColour *= 1.0 + (smoothstep(-0.22, 0.22, sin(mowingPhase)) * 2.0 - 1.0) * 0.085 * surfaceWeights.r * mowingVisibility * courseEnhanced;
+  courseColour *= 1.0 + (smoothstep(-0.22, 0.22, sin(mowingPhase)) * 2.0 - 1.0) * 0.035 * surfaceWeights.r * mowingVisibility * courseEnhanced;
+  // Low-frequency albedo variation remains visible above the fine-grass fade.
+  // It changes reflectance only; source elevations and boundaries are untouched.
+  vec2 broadUv = vMapUv * courseTerrainSize / 85.0;
+  float broadTurf = dot(textureLod(roughColourMap, broadUv, 6.0).rgb, vec3(0.2126,0.7152,0.0722));
+  float broadTurf2 = dot(textureLod(roughColourMap, broadUv * 0.37 + vec2(0.27,0.61), 6.0).rgb, vec3(0.2126,0.7152,0.0722));
+  // Coarse mip levels retain metre-scale patches rather than enlarged grass blades.
+  // Grass001 mean luminance is 0.090 in linear space (not 0.35 sRGB).
+  courseColour *= 1.0 + clamp((broadTurf + broadTurf2 - 0.18) * 2.0, -0.085, 0.085) * (1.0-surfaceWeights.b) * (1.0-waterWeight);
   // Contact shading follows the existing semantic mask; geometry/depth stays untouched.
   float bunkerEdge = surfaceWeights.b * (1.0 - smoothstep(0.48, 0.94, surfaceWeights.b));
   courseColour *= 1.0 - bunkerEdge * 0.2;
   vec2 collarOffset = vec2(1.5) / courseTerrainSize;
   float greenNeighbour = max(max(texture2D(courseSurfaceMask, vMapUv + vec2(collarOffset.x,0.0)).g, texture2D(courseSurfaceMask, vMapUv - vec2(collarOffset.x,0.0)).g), max(texture2D(courseSurfaceMask, vMapUv + vec2(0.0,collarOffset.y)).g, texture2D(courseSurfaceMask, vMapUv - vec2(0.0,collarOffset.y)).g));
   float collar = smoothstep(0.4,0.6,greenNeighbour) * (1.0 - surfaceWeights.g) * (1.0-surfaceWeights.b) * (1.0-waterWeight);
-  courseColour = mix(courseColour, vec3(0.105,0.205,0.055), collar * 0.85);
+  courseColour = mix(courseColour, vec3(0.105,0.205,0.055), collar * 0.22);
   float greenEdge = surfaceWeights.g * (1.0 - smoothstep(0.38, 0.9, surfaceWeights.g));
   courseColour *= 1.0 - greenEdge * 0.11;
   float teeCut = 0.97 + 0.03 * sin(vMapUv.x * courseTerrainSize.x * 1.4);
   courseColour = mix(courseColour, vec3(0.20, 0.36, 0.15) * teeCut, teeWeight);
-  courseColour = mix(courseColour, vec3(0.035, 0.12, 0.15), waterWeight);
+  courseColour = mix(courseColour, vec3(0.017, 0.06, 0.052), waterWeight);
   courseColour = pow(max(courseColour, vec3(0.0)), vec3(0.98));
   diffuseColor *= vec4(courseColour, aerialColour.a);
 #endif`,
@@ -6044,45 +6395,10 @@ uniform vec4 courseSurfaceTileSize;`,
   roughnessFactor *= mix(1.0, courseSurfaceRoughness, 1.0 - smoothstep(25.0, 100.0, length(vViewPosition)));`,
           );
         }}
-        customProgramCacheKey={() => "course-twin-terrain-splat-v7-source-aware"}
+        customProgramCacheKey={() => "course-twin-terrain-splat-v10-linear-fine-turf"}
       />
     </mesh>
   );
-}
-
-function useProgressiveCourseImagery(url: string | null, gl: THREE.WebGLRenderer) {
-  const [loaded, setLoaded] = useState<{ texture: THREE.Texture; url: string } | null>(null);
-
-  useEffect(() => {
-    if (!url) return;
-    let active = true;
-    let loadedTexture: THREE.Texture | null = null;
-    const loader = new THREE.TextureLoader();
-    loader.load(
-      url,
-      (texture) => {
-        loadedTexture = texture;
-        texture.colorSpace = THREE.SRGBColorSpace;
-        texture.wrapS = THREE.ClampToEdgeWrapping;
-        texture.wrapT = THREE.ClampToEdgeWrapping;
-        texture.minFilter = THREE.LinearMipmapLinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-        texture.anisotropy = gl.capabilities.getMaxAnisotropy();
-        texture.needsUpdate = true;
-        if (active) setLoaded({ texture, url });
-        else texture.dispose();
-      },
-      undefined,
-      () => undefined,
-    );
-
-    return () => {
-      active = false;
-      loadedTexture?.dispose();
-    };
-  }, [gl, url]);
-
-  return loaded?.url === url ? loaded.texture : null;
 }
 
 function createCourseTwinTerrainMasks(
@@ -6119,6 +6435,13 @@ function createCourseTwinTerrainMasks(
       drawCourseTwinMaskFeature(surfaceContext, feature, bounds, size);
       surfaceContext.globalAlpha = 1;
     }
+  }
+  waterContext.fillStyle = "#0000ff";
+  for (const feature of features.filter(
+    (f) =>
+      (f.type === "rough" || f.type === "course_boundary") && f.source !== "estimated_centerline",
+  )) {
+    drawCourseTwinMaskFeature(waterContext, feature, bounds, size);
   }
   waterContext.fillStyle = "#00ff00";
   for (const feature of features.filter((candidate) => candidate.type === "tee")) {
@@ -6367,13 +6690,22 @@ function WaterMaterial() {
   const normalMap = useMemo(() => waterNormalTexture(), []);
   return (
     <meshPhysicalMaterial
-      color="#285564"
+      color="#254c48"
+      onBeforeCompile={(shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          "#include <opaque_fragment>",
+          `float skyFresnel = pow(1.0-clamp(dot(normal,normalize(vViewPosition)),0.0,1.0),5.0);
+ outgoingLight = mix(outgoingLight,vec3(0.30,0.43,0.48),skyFresnel*0.3);
+ #include <opaque_fragment>`,
+        );
+      }}
+      customProgramCacheKey={() => "course-water-sky-v3"}
       normalMap={normalMap}
-      normalScale={new THREE.Vector2(0.34, 0.34)}
-      roughness={0.13}
+      normalScale={new THREE.Vector2(0.065, 0.065)}
+      roughness={0.24}
       metalness={0.02}
-      clearcoat={0.92}
-      clearcoatRoughness={0.12}
+      clearcoat={0.4}
+      clearcoatRoughness={0.35}
       depthWrite
       polygonOffset
       polygonOffsetFactor={-3}
@@ -6382,7 +6714,7 @@ function WaterMaterial() {
 }
 
 function waterNormalTexture() {
-  const cached = proceduralTextureCache.get("water-normal");
+  const cached = proceduralTextureCache.get("water-normal-periodic-v2");
   if (cached) return cached;
   const canvas = document.createElement("canvas");
   canvas.width = 128;
@@ -6390,12 +6722,19 @@ function waterNormalTexture() {
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Canvas textures are unavailable.");
   const image = context.createImageData(canvas.width, canvas.height);
-  const random = seededRandom(hashString("water-ripples"));
+
   for (let y = 0; y < canvas.height; y += 1) {
     for (let x = 0; x < canvas.width; x += 1) {
       const index = (y * canvas.width + x) * 4;
-      const waveX = Math.sin(y * 0.31 + x * 0.06) * 17 + (random() - 0.5) * 5;
-      const waveY = Math.cos(x * 0.22 - y * 0.04) * 10 + (random() - 0.5) * 4;
+      // Integer frequencies make both edges seamless. Related derivatives of
+      // three oblique waves avoid the old independent X/Y crosshatch.
+      const u = (x / canvas.width) * Math.PI * 2;
+      const v = (y / canvas.height) * Math.PI * 2;
+      const a = Math.cos(3 * u + 2 * v);
+      const b = Math.cos(7 * u - 3 * v + 0.7);
+      const c = Math.cos(u + 5 * v + 1.9);
+      const waveX = 10 * a + 5 * b + 2 * c;
+      const waveY = 6.67 * a - 2.14 * b + 10 * c;
       image.data[index] = clampColour(128 + waveX);
       image.data[index + 1] = clampColour(128 + waveY);
       image.data[index + 2] = 238;
@@ -6406,9 +6745,10 @@ function waterNormalTexture() {
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(18, 18);
+  texture.repeat.set(0.18, 0.18);
+  texture.colorSpace = THREE.NoColorSpace;
   texture.anisotropy = 4;
-  proceduralTextureCache.set("water-normal", texture);
+  proceduralTextureCache.set("water-normal-periodic-v2", texture);
   return texture;
 }
 
@@ -6430,18 +6770,6 @@ function AtmosphericBackdrop({
   const radius = Math.max(spanX, spanZ) * 0.72 + 260;
   const baseY = sampleTerrain(centerX, centerZ) - 8;
   const skyTexture = useMemo(() => createSkyTexture(), []);
-  const horizonTexture = useMemo(() => createHorizonTexture(), []);
-  const cloudTexture = useMemo(() => createCloudTexture(), []);
-  const clouds = Array.from({ length: 16 }, (_, index) => {
-    const angle = (index / 16) * Math.PI * 2;
-    return {
-      x: Math.cos(angle) * 0.76,
-      y: 130 + ((index * 53) % 150),
-      z: Math.sin(angle) * 0.76,
-      width: 0.27 + ((index * 29) % 17) / 100,
-      opacity: 0.42 + ((index * 13) % 19) / 100,
-    };
-  });
 
   return (
     <group>
@@ -6455,41 +6783,12 @@ function AtmosphericBackdrop({
           toneMapped={false}
         />
       </mesh>
-      <mesh position={[centerX, baseY + 31, centerZ]} renderOrder={-20}>
-        <cylinderGeometry args={[radius, radius, 78, 96, 1, true]} />
-        <meshBasicMaterial
-          map={horizonTexture}
-          transparent
-          alphaTest={0.025}
-          depthWrite={false}
-          side={THREE.BackSide}
-          toneMapped={false}
-        />
-      </mesh>
-      {clouds.map((cloud, index) => (
-        <sprite
-          key={index}
-          position={[centerX + radius * cloud.x, baseY + cloud.y, centerZ + radius * cloud.z]}
-          scale={[radius * cloud.width, radius * cloud.width * 0.2, 1]}
-          renderOrder={-30}
-        >
-          <spriteMaterial
-            map={cloudTexture}
-            color="#f4f7f6"
-            opacity={cloud.opacity}
-            transparent
-            depthWrite={false}
-            fog={false}
-            toneMapped={false}
-          />
-        </sprite>
-      ))}
     </group>
   );
 }
 
 function createSkyTexture() {
-  const cached = proceduralTextureCache.get("course-twin-sky");
+  const cached = proceduralTextureCache.get("course-twin-sky-horizon-v2");
   if (cached) return cached;
   const canvas = document.createElement("canvas");
   canvas.width = 1_024;
@@ -6497,20 +6796,23 @@ function createSkyTexture() {
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Unable to create sky texture context.");
   const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
-  gradient.addColorStop(0, "#3d79aa");
-  gradient.addColorStop(0.38, "#619cc1");
-  gradient.addColorStop(0.7, "#9bc2d0");
-  gradient.addColorStop(0.88, "#c2d5d5");
-  gradient.addColorStop(1, "#d2d7c9");
+  // Sphere UV equator is halfway down the texture. The old ramp put its
+  // horizon colour near the south pole, leaving a blue band behind the terrain.
+  gradient.addColorStop(0, "#557f99");
+  gradient.addColorStop(0.3, "#82a6b8");
+  gradient.addColorStop(0.46, "#9bbdcd");
+  gradient.addColorStop(0.495, "#b6ced0");
+  gradient.addColorStop(0.52, "#b6ced0");
+  gradient.addColorStop(0.6, "#9aaeab");
+  gradient.addColorStop(1, "#7c9087");
   context.fillStyle = gradient;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
   const cloudBands = [
-    { x: 92, y: 142, width: 210, opacity: 0.42 },
+    { x: 200, y: 142, width: 160, opacity: 0.32 },
     { x: 330, y: 104, width: 160, opacity: 0.3 },
     { x: 550, y: 174, width: 250, opacity: 0.48 },
     { x: 830, y: 124, width: 190, opacity: 0.34 },
-    { x: 1_004, y: 196, width: 230, opacity: 0.4 },
   ];
   for (const cloud of cloudBands) {
     for (let lobe = -2; lobe <= 2; lobe += 1) {
@@ -6535,100 +6837,7 @@ function createSkyTexture() {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearFilter;
-  proceduralTextureCache.set("course-twin-sky", texture);
-  return texture;
-}
-
-function createCloudTexture() {
-  const cached = proceduralTextureCache.get("course-twin-clouds");
-  if (cached) return cached;
-  const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 192;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Unable to create cloud texture context.");
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  const lobes = [
-    [70, 126, 64, 0.46],
-    [146, 98, 94, 0.72],
-    [242, 80, 118, 0.84],
-    [344, 98, 104, 0.68],
-    [432, 128, 70, 0.4],
-  ] as const;
-  for (const [x, y, radius, opacity] of lobes) {
-    const gradient = context.createRadialGradient(x, y, radius * 0.08, x, y, radius);
-    gradient.addColorStop(0, `rgba(255,255,255,${opacity})`);
-    gradient.addColorStop(0.58, `rgba(246,249,250,${opacity * 0.78})`);
-    gradient.addColorStop(1, "rgba(238,246,248,0)");
-    context.fillStyle = gradient;
-    context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
-  }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  proceduralTextureCache.set("course-twin-clouds", texture);
-  return texture;
-}
-
-function createHorizonTexture() {
-  const cached = proceduralTextureCache.get("course-twin-horizon");
-  if (cached) return cached;
-  const canvas = document.createElement("canvas");
-  canvas.width = 2048;
-  canvas.height = 256;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Unable to create horizon texture context.");
-  const random = seededRandom(hashString("bootle-distant-horizon"));
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  const groundGradient = context.createLinearGradient(0, 168, 0, 256);
-  groundGradient.addColorStop(0, "rgba(69,94,74,0)");
-  groundGradient.addColorStop(0.35, "rgba(66,84,66,0.54)");
-  groundGradient.addColorStop(1, "rgba(31,49,35,0.94)");
-  context.fillStyle = groundGradient;
-  context.fillRect(0, 164, canvas.width, 92);
-
-  for (let index = 0; index < 360; index += 1) {
-    const x = random() * canvas.width;
-    const width = 5 + random() * 15;
-    const height = 14 + random() * 34;
-    const baseline = 192 + random() * 10;
-    context.fillStyle = `rgba(${34 + Math.floor(random() * 18)},${
-      65 + Math.floor(random() * 24)
-    },${41 + Math.floor(random() * 16)},${0.7 + random() * 0.22})`;
-    context.beginPath();
-    context.moveTo(x - width * 0.54, baseline);
-    context.quadraticCurveTo(x - width * 0.66, baseline - height * 0.45, x, baseline - height);
-    context.quadraticCurveTo(
-      x + width * 0.68,
-      baseline - height * 0.46,
-      x + width * 0.54,
-      baseline,
-    );
-    context.closePath();
-    context.fill();
-  }
-
-  for (let index = 0; index < 12; index += 1) {
-    const x = random() * canvas.width;
-    const width = 18 + random() * 34;
-    const roofY = 190 + random() * 8;
-    context.fillStyle = "rgba(88,89,82,0.58)";
-    context.fillRect(x, roofY, width, 16 + random() * 9);
-    context.fillStyle = "rgba(103,84,73,0.62)";
-    context.beginPath();
-    context.moveTo(x - 3, roofY);
-    context.lineTo(x + width * 0.5, roofY - 8 - random() * 6);
-    context.lineTo(x + width + 3, roofY);
-    context.closePath();
-    context.fill();
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.repeat.set(2, 1);
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  proceduralTextureCache.set("course-twin-horizon", texture);
+  proceduralTextureCache.set("course-twin-sky-horizon-v2", texture);
   return texture;
 }
 
@@ -6693,20 +6902,19 @@ function InstancedVegetation({
         .map((p) => ({ ...p, y: sampleTerrain(p.x, p.z) })),
     [bushes, features, sampleTerrain],
   );
-  const textures = useTexture([
-    ...treeBillboards.map(({ url }) => url),
-    ...bushBillboards.map(({ url }) => url),
-  ]);
-
-  useEffect(() => {
-    textures.forEach((texture) => {
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.anisotropy = 4;
-      texture.offset.set(0, 0);
-      texture.repeat.set(1, 1);
-      texture.needsUpdate = true;
-    });
-  }, [textures]);
+  const enhanced = new URLSearchParams(location.search).get("scenery") !== "off";
+  const treeFallback = "/course-twins/common/vegetation/high-detail/tree-oak-hq.webp?v=1";
+  const bushFallback = "/course-twins/common/vegetation/high-detail/shrub-hawthorn-hq.webp?v=1";
+  const treeTexture = useProgressiveCourseImagery(
+    enhanced ? treeBillboards[0].url : treeFallback,
+    gl,
+    treeFallback,
+  );
+  const bushTexture = useProgressiveCourseImagery(
+    enhanced ? bushBillboards[0].url : bushFallback,
+    gl,
+    bushFallback,
+  );
 
   if (trees.length === 0 && bushes.length === 0) return null;
   return (
@@ -6724,14 +6932,13 @@ function InstancedVegetation({
         instances={trees}
         high={renderQuality === "high"}
         fallback={(far) =>
-          treeBillboards.map((asset, variant) => (
+          treeTexture ? (
             <InstancedVegetationBillboard
-              key={asset.url}
-              texture={tropical && palmTexture ? palmTexture : textures[variant]}
-              aspect={asset.aspect}
-              instances={far.filter((tree) => tree.variant === variant)}
+              texture={tropical && palmTexture ? palmTexture : treeTexture}
+              aspect={1}
+              instances={far}
             />
-          ))
+          ) : null
         }
       />
       <BlenderVegetation
@@ -6740,14 +6947,9 @@ function InstancedVegetation({
         instances={bushes}
         high={renderQuality === "high"}
         fallback={(far) =>
-          bushBillboards.map((asset, variant) => (
-            <InstancedVegetationBillboard
-              key={asset.url}
-              texture={textures[treeBillboards.length + variant]}
-              aspect={asset.aspect}
-              instances={far.filter((bush) => bush.variant === variant)}
-            />
-          ))
+          bushTexture ? (
+            <InstancedVegetationBillboard texture={bushTexture} aspect={1} instances={far} />
+          ) : null
         }
       />
     </group>
@@ -6793,6 +6995,18 @@ function InstancedBillboardPlane({
   instances: VegetationInstance[];
   planeRotation: number;
 }) {
+  const depth = useMemo(() => {
+    const material = new THREE.MeshDepthMaterial({
+      depthPacking: THREE.RGBADepthPacking,
+      map: texture,
+      alphaTest: 0.34,
+      side: THREE.DoubleSide,
+    });
+    material.onBeforeCompile = (shader) => courseWindShader(shader, true);
+    material.customProgramCacheKey = () => "course-impostor-wind-depth-v1";
+    return material;
+  }, [texture]);
+  useEffect(() => () => depth.dispose(), [depth]);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   useLayoutEffect(() => {
     const mesh = meshRef.current;
@@ -6815,12 +7029,15 @@ function InstancedBillboardPlane({
       ref={meshRef}
       args={[undefined, undefined, instances.length]}
       castShadow={planeRotation === 0}
+      customDepthMaterial={depth}
     >
       <planeGeometry args={[1, 1]} />
       <meshStandardMaterial
         map={texture}
+        onBeforeCompile={(shader) => courseWindShader(shader, true)}
+        customProgramCacheKey={() => "course-impostor-wind-v1"}
         alphaTest={0.34}
-        transparent
+        transparent={false}
         side={THREE.DoubleSide}
         roughness={0.96}
         metalness={0}
@@ -6875,7 +7092,7 @@ function HoleNumberMarker({
 }) {
   const texture = useMemo(() => holeNumberTexture(number), [number]);
   return (
-    <sprite position={[position[0], position[1] + 5.5, position[2]]} scale={[7.2, 8.2, 1]}>
+    <sprite position={[position[0], position[1] + 5.5, position[2]]} scale={[3.4, 3.8, 1]}>
       <spriteMaterial
         map={texture}
         transparent
@@ -6916,25 +7133,6 @@ function holeNumberTexture(number: number) {
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   proceduralTextureCache.set(key, texture);
   return texture;
-}
-
-function HoleFlag({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      <mesh position={[0, 4.1, 0]} castShadow>
-        <cylinderGeometry args={[0.07, 0.1, 8, 10]} />
-        <meshStandardMaterial color="#f7f3df" roughness={0.5} />
-      </mesh>
-      <mesh position={[1.2, 7.1, 0]} castShadow>
-        <planeGeometry args={[2.4, 1.25]} />
-        <meshStandardMaterial color="#e7ff6a" side={THREE.DoubleSide} roughness={0.7} />
-      </mesh>
-      <mesh position={[0, 0.18, 0]}>
-        <cylinderGeometry args={[0.22, 0.22, 0.18, 20]} />
-        <meshStandardMaterial color="#141f17" roughness={1} />
-      </mesh>
-    </group>
-  );
 }
 
 function NextShotMarker({
@@ -7281,10 +7479,12 @@ function replayVectorPoint(
 }
 
 function StrategyLandingCloud({
+  surfaceAt,
   club,
   sampleTerrain,
   hole,
 }: {
+  surfaceAt: (x: number, z: number) => CourseTwinSurface;
   club: CourseTwinStrategyClub;
   sampleTerrain: CourseTwinTerrainSampler;
   hole: CourseTwinHole;
@@ -7299,6 +7499,23 @@ function StrategyLandingCloud({
     }
     return values;
   }, [club.landingCloud, sampleTerrain]);
+  const colours = useMemo(() => {
+    const values = new Float32Array(club.landingCloud.length * 3);
+    const palette: Record<CourseTwinSurface, string> = {
+      fairway: "#dfff65",
+      green: "#65e6ff",
+      tee: "#dfff65",
+      rough: "#ffbf72",
+      bunker: "#ffbf72",
+      water: "#ff7181",
+      trees: "#ff7181",
+      out_of_bounds: "#ff7181",
+    };
+    club.landingCloud.forEach((p, i) =>
+      new THREE.Color(palette[surfaceAt(p[0], p[2])]).toArray(values, i * 3),
+    );
+    return values;
+  }, [club.landingCloud, surfaceAt]);
   const pointTexture = useMemo(() => strategyPointTexture(), []);
   const areaTexture = useMemo(() => strategyAreaTexture(), []);
   const cloudCenter = useMemo(() => {
@@ -7365,9 +7582,11 @@ function StrategyLandingCloud({
       <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+          <bufferAttribute attach="attributes-color" args={[colours, 3]} />
         </bufferGeometry>
         <pointsMaterial
-          color="#f0ff73"
+          vertexColors
+          toneMapped={false}
           map={pointTexture}
           alphaTest={0.08}
           size={2.5}

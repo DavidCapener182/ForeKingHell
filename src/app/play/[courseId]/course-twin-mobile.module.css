@@ -1,3 +1,18 @@
+/* Keep each mode a complete pill, including the first and last toggle items. */
+.desktopModeButton {
+  border-radius: 9999px;
+}
+
+.desktopNav {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .desktopNav {
+    display: block;
+  }
+}
+
 @media (max-width: 1023px) {
   .viewport :global([data-course-twin-desktop-nav]) {
     display: none !important;

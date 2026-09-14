@@ -59,7 +59,8 @@ for (const file of readdirSync("tools/course-twin-blender/.cache/context").filte
       )
     )
       continue;
-    const type = e.tags.golf;
+    const type =
+      e.tags.natural === "water" || e.tags.landuse === "reservoir" ? "water" : e.tags.golf;
     if (e.tags.highway) {
       if (
         e.tags.bridge === "yes" ||
@@ -156,7 +157,7 @@ for (const file of readdirSync("tools/course-twin-blender/.cache/context").filte
         }
       continue;
     }
-    if (["green", "bunker", "tee", "fairway", "rough"].includes(type))
+    if (["green", "bunker", "tee", "fairway", "rough", "water"].includes(type))
       features.push({
         id: `context-osm-way-${e.id}`,
         type,

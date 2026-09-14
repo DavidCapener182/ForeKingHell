@@ -119,7 +119,11 @@ export function CourseTwinBuildings({ context }: { context: CourseContext | null
       const roof = new THREE.Color(["#555b5b", "#4c5052", "#64574e"][seed % 3]);
       for (let i = 0; i < geometry.attributes.position.count; i++) {
         const c = geometry.attributes.normal.getY(i) > 0.5 ? roof : brick;
-        colour.set([c.r, c.g, c.b], i * 3);
+        const contact =
+          0.86 +
+          0.14 *
+            Math.min(1, Math.max(0, geometry.attributes.position.getY(i) - building.base) / 0.8);
+        colour.set([c.r * contact, c.g * contact, c.b * contact], i * 3);
       }
       geometry.setAttribute("color", new THREE.BufferAttribute(colour, 3));
       const ring = building.ring;
