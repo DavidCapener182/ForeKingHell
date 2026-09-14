@@ -1,3 +1,4 @@
+import { requirePlanUser } from "@/lib/require-plan-access";
 import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import Link from "next/link";
 import { and, count, desc, eq, gte, lte, inArray, or, sql } from "drizzle-orm";
@@ -32,7 +33,7 @@ import { isShotEvidenceEligible } from "@/lib/shot-review";
 
 export const dynamic = "force-dynamic";
 
-export default async function ConditionsAnalysisPage({
+async function ConditionsAnalysisPage({
   searchParams,
 }: {
   searchParams?: Promise<{
@@ -472,4 +473,11 @@ function validDate(value?: string) {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
   const date = new Date(`${value}T00:00:00Z`);
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value ? value : "";
+}
+
+export default async function SubscriptionPage(
+  props: Parameters<typeof ConditionsAnalysisPage>[0],
+) {
+  await requirePlanUser("advanced_analytics");
+  return <ConditionsAnalysisPage {...props} />;
 }

@@ -117,8 +117,12 @@ export function HeroProductStage() {
         data-hero-layer
         data-hero-depth="5"
       >
-        <span>Stop guessing.</span>
-        <span>Start knowing.</span>
+        <span>
+          <b>Stop guessing.</b>
+        </span>
+        <span>
+          <b>Start knowing.</b>
+        </span>
       </h1>
 
       <div className={cinematic.heroGolfer} aria-hidden data-hero-layer data-hero-depth="8">
@@ -136,7 +140,7 @@ export function HeroProductStage() {
           Turn measured shots into a trusted bag, a focused practice job and a smarter plan for the
           course.
         </p>
-        <div className={cinematic.heroActions}>
+        <div className={cinematic.heroActions} data-mobile-cta-origin>
           <Link
             href={marketingJoinBetaHref}
             className={cinematic.primaryAction}
@@ -170,17 +174,6 @@ export function HeroProductStage() {
       </article>
 
       <div className={cinematic.heroForeground} aria-hidden data-hero-layer data-hero-depth="10" />
-      <Image
-        className={cinematic.storyBall}
-        src="/assets/landing/golf-ball.png"
-        alt=""
-        width={256}
-        height={256}
-        sizes="32px"
-        aria-hidden
-        data-hero-layer
-        data-hero-depth="4"
-      />
       <a
         href="#how-it-works"
         className={cinematic.scrollCue}

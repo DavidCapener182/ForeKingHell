@@ -228,6 +228,11 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           <p className="mt-2 text-sm text-muted-foreground">
             Manage your account, sharing and data. Drafts stay here when you move between sections.
           </p>
+          <Button asChild variant="outline" className="mt-4">
+            <Link href="/equipment/launch-monitors/calibration">
+              Equipment · Launch monitor calibration
+            </Link>
+          </Button>
         </header>
         <SettingsAlerts params={params} inviteUrl={inviteUrl} />
         <SettingsWorkspace

@@ -1,3 +1,4 @@
+import { requirePlanUser } from "@/lib/require-plan-access";
 import { AnalyticsMobileLedger } from "@/app/bag/[clubId]/analytics-mobile-ledger";
 import { AnalyticsShotSelection } from "@/app/bag/[clubId]/analytics-shot-selection";
 import { directionalMetricSql } from "@/lib/directional-confidence-sql";
@@ -130,7 +131,7 @@ const clubShotEvidenceColumns: DesktopWorkbenchColumn[] = [
   { id: "session", label: "Session" },
 ];
 
-export default async function ClubAnalyticsPage({ params }: PageProps) {
+async function ClubAnalyticsPage({ params }: PageProps) {
   const { clubId } = await params;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clubId)) notFound();
   const data = await getClubAnalyticsData(clubId);
@@ -1694,4 +1695,9 @@ function formatDate(value: Date | string) {
     month: "short",
     year: "numeric",
   }).format(new Date(value));
+}
+
+export default async function SubscriptionPage(props: Parameters<typeof ClubAnalyticsPage>[0]) {
+  await requirePlanUser("advanced_analytics");
+  return <ClubAnalyticsPage {...props} />;
 }

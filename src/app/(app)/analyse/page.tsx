@@ -1,3 +1,4 @@
+import { requirePlanUser } from "@/lib/require-plan-access";
 import Link from "next/link";
 import Image from "next/image";
 import atmosphere from "@/app/analyse/analyse-atmosphere.module.css";
@@ -33,7 +34,7 @@ import { formatSessionDateRange, validSessionDate } from "@/lib/session-date-ran
 
 export const dynamic = "force-dynamic";
 
-export default async function AnalysePage() {
+async function AnalysePage() {
   const data = await getAnalyseOverview();
 
   if (data.totalShots === 0) {
@@ -837,4 +838,9 @@ function confidenceHeadline(confidence: AnalysisConfidenceLabel) {
 
 function formatYards(value: number | null) {
   return value === null ? "—" : `${Number(value).toFixed(1)} yd`;
+}
+
+export default async function SubscriptionPage() {
+  await requirePlanUser("advanced_analytics");
+  return <AnalysePage />;
 }

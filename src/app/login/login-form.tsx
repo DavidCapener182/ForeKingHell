@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useFormStatus } from "react-dom";
+import Link from "next/link";
 import { KeyRound, Mail } from "lucide-react";
 
 import {
@@ -129,6 +130,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
           type="submit"
           size="lg"
           disabled={passwordPending}
+          aria-busy={passwordPending}
           className="h-[3.125rem] rounded-xl bg-[var(--ios-action)] text-[17px] font-semibold text-white shadow-none active:scale-[0.985] hover:bg-[var(--ios-action-pressed)] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:bg-[#0B7A3B] lg:text-sm lg:font-medium lg:shadow-[0_8px_18px_rgba(11,122,59,0.18)] lg:hover:bg-[#064E3B] lg:focus-visible:ring-ring/50 lg:active:scale-100"
         >
           <KeyRound className="size-4" />
@@ -207,6 +209,7 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
             variant="outline"
             size="lg"
             disabled={magicPending}
+            aria-busy={magicPending}
             className="h-[3.125rem] w-full rounded-xl border-[var(--ios-separator)] bg-[var(--ios-grouped-surface)] text-[17px] font-semibold text-[var(--ios-label)] shadow-none active:scale-[0.985] hover:bg-[var(--ios-fill)] hover:text-[var(--ios-label)] focus-visible:ring-[var(--ios-tint)] lg:h-12 lg:rounded-lg lg:border-slate-200 lg:bg-white lg:text-sm lg:font-medium lg:text-slate-900 lg:hover:bg-slate-100 lg:hover:text-slate-900 lg:focus-visible:ring-ring/50 lg:active:scale-100"
           >
             <Mail className="size-4" />
@@ -228,6 +231,17 @@ export function LoginForm({ error, next }: { error?: string | null; next?: strin
           ) : null}
         </form>
       </div>
+      <p className="text-sm leading-6 text-muted-foreground">
+        Read our{" "}
+        <Link className="underline underline-offset-4" href="/terms">
+          terms and conditions
+        </Link>{" "}
+        and{" "}
+        <Link className="underline underline-offset-4" href="/privacy">
+          privacy policy
+        </Link>{" "}
+        before creating an account.
+      </p>
     </div>
   );
 }

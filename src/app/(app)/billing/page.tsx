@@ -1,22 +1,13 @@
-import { AlertTriangle, Check, Info, Minus, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Info, ShieldCheck } from "lucide-react";
 
 import { FullPlanCheckout } from "@/app/billing/billing-checkout";
 import { BillingHistory } from "@/app/billing/billing-history";
-import layout from "@/app/course-records/course-record-board.module.css";
 import { BillingManageDialog } from "@/app/billing/billing-manage-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+
 import { PageShell, StatusPill } from "@/components/premium";
 import { getBillingPageData, type BillingPlan } from "@/lib/billing";
 
@@ -27,6 +18,8 @@ type BillingPageProps = {
     checkout?: string;
     portal?: string;
     plan?: string;
+    required?: string;
+    feature?: string;
   }>;
 };
 
@@ -38,24 +31,11 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
-const fullPlanComparison = [
-  { feature: "Session imports and history", free: "5 imports / month", full: "Unlimited" },
-  { feature: "Bag and progress views", free: "Essentials", full: "Advanced" },
-  { feature: "AI coach", free: false, full: true },
-  { feature: "Data Chat", free: false, full: true },
-  { feature: "Course strategy", free: false, full: true },
-  { feature: "Private challenges and tournaments", free: false, full: true },
-  { feature: "Friend comparison insights", free: false, full: true },
-  { feature: "Scorecard extracts", free: false, full: "10 / month" },
-] as const;
-
 export default async function BillingPage({ searchParams }: BillingPageProps) {
   const params = await searchParams;
   const data = await getBillingPageData();
   const notice = billingNotice(params?.checkout, params?.portal, params?.plan);
-  const fullPlan = data.plans.find((plan) => plan.key === "pro") ?? null;
   const activePlanName = accountPlanLabel(data.plans, data.activePlanKey);
-  const isFullPlan = data.activePlanKey === "pro" || data.activePlanKey === "full";
   const activePlanLimits = data.planLimits.filter((limit) => limit.planKey === data.activePlanKey);
 
   return (
@@ -83,6 +63,21 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         </Alert>
       ) : null}
 
+      {params?.required ? (
+        <Alert>
+          <Info className="size-4" />
+          <AlertTitle>Upgrade required</AlertTitle>
+          <AlertDescription>
+            This feature requires{" "}
+            {params.required === "coach"
+              ? "Coach / Club"
+              : params.required === "pro"
+                ? "Pro"
+                : "Plus"}{" "}
+            or higher. Choose a plan below.
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <CurrentPlanCard data={data} planName={activePlanName} />
       {!data.stripeConfigured ? (
         <p role="status" className="rounded-xl border p-4 text-sm">
@@ -92,114 +87,47 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
       ) : null}
 
       <section id="compare-plans" className="scroll-mt-24" aria-labelledby="compare-plans-title">
-        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 id="compare-plans-title" className="text-xl font-semibold tracking-tight">
-              Free or Full
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              A straightforward view of the differences that matter day to day.
-            </p>
-          </div>
+        <h2 id="compare-plans-title" className="mb-3 text-xl font-semibold">
+          Compare plans
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          Each paid tier includes the lower tiers. AI allowances replace the lower allowance and
+          share the account&apos;s credit budget.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+          {data.plans
+            .filter((plan) => !plan.internal)
+            .map((plan) => (
+              <Card key={plan.key} className="p-5">
+                <h3 className="text-xl font-semibold">
+                  {plan.name}
+                  {data.activePlanKey === plan.key ? " · Current plan" : ""}
+                </h3>
+                <p>
+                  {plan.monthlyPrice}
+                  {plan.key === "free" ? " forever" : " / month"}
+                </p>
+                {plan.key !== "free" ? (
+                  <p className="text-sm">Or {plan.yearlyPrice} billed yearly</p>
+                ) : null}
+                <p className="text-sm text-muted-foreground">{plan.description}</p>
+                <ul className="grid gap-2 text-sm">
+                  {plan.features.map((feature) => (
+                    <li key={feature}>{feature}</li>
+                  ))}
+                </ul>
+                {plan.key !== "free" && data.activePlanKey === "free" ? (
+                  <FullPlanCheckout
+                    plan={plan}
+                    availability={data.checkoutAvailability[plan.key]}
+                  />
+                ) : null}
+              </Card>
+            ))}
         </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <article className="rounded-xl border p-4">
-            <h3 className="font-semibold">
-              Free {data.activePlanKey === "free" ? "· Current plan" : ""}
-            </h3>
-            <p>£0 · No renewal</p>
-            <p className="mt-2 text-sm">Starter imports and essential views.</p>
-          </article>
-          <article className="rounded-xl border p-4">
-            <h3 className="font-semibold">Full {isFullPlan ? "· Current plan" : ""}</h3>
-            <p>
-              {fullPlan?.monthlyPrice ?? "Unavailable"} / month or{" "}
-              {fullPlan?.yearlyPrice ?? "Unavailable"} / year
-            </p>
-            <p className="mt-2 text-sm">
-              Recurring subscription; confirm final payment terms at checkout.
-            </p>
-          </article>
-        </div>
-        <Card className="mt-4 overflow-hidden py-0">
-          <div className={layout.desktop}>
-            <Table className="text-xs sm:text-sm" containerClassName="rounded-xl">
-              <TableCaption className="sr-only">
-                Comparison of the Free and Full account plans.
-              </TableCaption>
-              <TableHeader>
-                <TableRow className="bg-muted/35 hover:bg-muted/35">
-                  <TableHead className="min-w-40 px-3 py-4 text-foreground sm:min-w-48 sm:px-4">
-                    What you get
-                  </TableHead>
-                  <TableHead className="min-w-24 px-3 py-4 text-foreground sm:min-w-36 sm:px-4">
-                    <PlanColumnHeading label="Free" current={data.activePlanKey === "free"} />
-                  </TableHead>
-                  <TableHead className="min-w-24 px-3 py-4 text-foreground sm:min-w-36 sm:px-4">
-                    <PlanColumnHeading label="Full" current={isFullPlan} />
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell className="px-3 font-medium sm:px-4">Price</TableCell>
-                  <TableCell className="px-3 sm:px-4">£0</TableCell>
-                  <TableCell className="px-3 font-medium whitespace-normal sm:px-4">
-                    {fullPlan ? `${fullPlan.monthlyPrice} / month` : "Not available"}
-                  </TableCell>
-                </TableRow>
-                {fullPlanComparison.map((row) => (
-                  <TableRow key={row.feature}>
-                    <TableCell className="px-3 font-medium whitespace-normal sm:px-4">
-                      {row.feature}
-                    </TableCell>
-                    <TableCell className="px-3 whitespace-normal sm:px-4">
-                      {comparisonValue(row.free)}
-                    </TableCell>
-                    <TableCell className="px-3 whitespace-normal sm:px-4">
-                      {comparisonValue(row.full)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <details className={layout.mobile}>
-            <summary className="min-h-11 cursor-pointer p-4 font-semibold">
-              Complete feature comparison
-            </summary>
-            <dl className="divide-y px-4">
-              {fullPlanComparison.map((row) => (
-                <div key={row.feature} className="py-3">
-                  <dt className="font-medium">{row.feature}</dt>
-                  <dd className="mt-1 text-sm">Free: {comparisonValue(row.free)}</dd>
-                  <dd className="mt-1 text-sm">Full: {comparisonValue(row.full)}</dd>
-                </div>
-              ))}
-            </dl>
-          </details>
-
-          <div className="flex flex-col gap-3 border-t bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-muted-foreground">
-              {isFullPlan
-                ? "Full is your current plan."
-                : data.activePlanKey === "free"
-                  ? "Upgrade when you want the complete coaching and analysis toolkit."
-                  : `${activePlanName} is your current plan; it remains available to manage above.`}
-            </p>
-            {data.activePlanKey === "free" && fullPlan ? (
-              <FullPlanCheckout
-                plan={{
-                  key: fullPlan.key,
-                  monthlyPrice: fullPlan.monthlyPrice,
-                  yearlyPrice: fullPlan.yearlyPrice,
-                }}
-                availability={data.checkoutAvailability[fullPlan.key]}
-              />
-            ) : null}
-          </div>
-        </Card>
+        {data.activePlanKey !== "free" ? (
+          <p className="mt-4 text-sm">Use Manage billing above to change your subscription.</p>
+        ) : null}
       </section>
 
       <BillingHistory
@@ -267,7 +195,7 @@ function CurrentPlanCard({ data, planName }: { data: BillingPageData; planName: 
               <BillingManageDialog disabled={!data.stripeConfigured} />
             ) : data.activePlanKey === "free" ? (
               <Button asChild>
-                <a href="#compare-plans">View Full plan</a>
+                <a href="#compare-plans">Compare plans</a>
               </Button>
             ) : (
               <Button disabled>No billing to manage</Button>
@@ -295,15 +223,6 @@ function CurrentPlanCard({ data, planName }: { data: BillingPageData; planName: 
         ) : null}
       </Card>
     </section>
-  );
-}
-
-function PlanColumnHeading({ label, current }: { label: string; current: boolean }) {
-  return (
-    <div className="flex flex-col items-start gap-1.5">
-      <span className="text-base font-semibold">{label}</span>
-      {current ? <Badge variant="secondary">Current plan</Badge> : null}
-    </div>
   );
 }
 
@@ -393,26 +312,6 @@ function TechnicalList({
       )}
     </div>
   );
-}
-
-function comparisonValue(value: string | boolean) {
-  if (value === true) {
-    return (
-      <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-        <Check className="size-4 text-primary" aria-hidden="true" /> Included
-      </span>
-    );
-  }
-
-  if (value === false) {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-        <Minus className="size-4" aria-hidden="true" /> Not included
-      </span>
-    );
-  }
-
-  return value;
 }
 
 function planStatus(status: string | undefined, activePlanKey: string) {
@@ -526,15 +425,11 @@ function billingNotice(checkout?: string, portal?: string, plan?: string) {
 }
 
 function accountPlanLabel(plans: BillingPlan[], value: string) {
-  if (value === "pro" || value === "full") {
-    return "Full";
-  }
-
   return plans.find((plan) => plan.key === value)?.name ?? label(value);
 }
 
 function accountPlanName(value: string) {
-  return value === "pro" || value === "full" ? "Full" : label(value);
+  return value === "full" ? "Lifetime Full" : value === "coach" ? "Coach / Club" : label(value);
 }
 
 function label(value: string) {

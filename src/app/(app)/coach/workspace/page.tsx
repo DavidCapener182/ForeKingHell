@@ -1,3 +1,5 @@
+import { getActivePlanKeyForUser } from "@/lib/billing";
+import { planHasFeature } from "@/lib/plan-access";
 import Link from "next/link";
 import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import {
@@ -74,6 +76,10 @@ export default async function CoachWorkspacePage({
 }: {
   searchParams?: Promise<{ playerId?: string; saved?: string; error?: string }>;
 }) {
+  const canUseWorkspace = planHasFeature(
+    await getActivePlanKeyForUser(await requireCurrentUserId()),
+    "coach_workspace",
+  );
   const params = await searchParams;
   const data = await getCoachWorkspaceData(params?.playerId);
 
@@ -98,6 +104,14 @@ export default async function CoachWorkspacePage({
             </Button>
           }
         />
+
+        {!canUseWorkspace ? (
+          <p>
+            Reviewing players and managing assignments requires Coach / Club.{" "}
+            <Link href="/billing?required=coach">Compare plans</Link>. Your player inbox remains
+            available below.
+          </p>
+        ) : null}
 
         {params?.saved === "1" ? (
           <Alert>
@@ -658,19 +672,25 @@ type WorkspaceInteraction = typeof coachPlayerInteractions.$inferSelect & {
 async function getCoachWorkspaceData(requestedPlayerId?: string) {
   const coachUserId = await requireCurrentUserId();
   const db = getDb();
-  const rosterRows = await db
-    .select({
-      id: accountMemberships.ownerUserId,
-      name: userProfiles.displayName,
-      fallbackName: users.name,
-      email: users.email,
-    })
-    .from(accountMemberships)
-    .innerJoin(users, eq(users.id, accountMemberships.ownerUserId))
-    .leftJoin(userProfiles, eq(userProfiles.userId, accountMemberships.ownerUserId))
-    .where(
-      and(eq(accountMemberships.memberUserId, coachUserId), eq(accountMemberships.role, "coach")),
-    );
+  const canCoach = planHasFeature(await getActivePlanKeyForUser(coachUserId), "coach_workspace");
+  const rosterRows = canCoach
+    ? await db
+        .select({
+          id: accountMemberships.ownerUserId,
+          name: userProfiles.displayName,
+          fallbackName: users.name,
+          email: users.email,
+        })
+        .from(accountMemberships)
+        .innerJoin(users, eq(users.id, accountMemberships.ownerUserId))
+        .leftJoin(userProfiles, eq(userProfiles.userId, accountMemberships.ownerUserId))
+        .where(
+          and(
+            eq(accountMemberships.memberUserId, coachUserId),
+            eq(accountMemberships.role, "coach"),
+          ),
+        )
+    : [];
   const playerIds = rosterRows.map((player) => player.id);
   const [activityRows, openRows, playerPreferences, playerInbox] = await Promise.all([
     playerIds.length

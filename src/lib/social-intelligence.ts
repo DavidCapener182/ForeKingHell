@@ -1,3 +1,4 @@
+import { requirePlanFeature } from "@/lib/require-plan-access";
 import "server-only";
 
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
@@ -84,6 +85,7 @@ export async function generateSocialSummary(input: {
   visibility: SocialVisibility;
 }) {
   const userId = await requireCurrentUserId();
+  await requirePlanFeature(userId, "player_comparison");
   const profile = await ensureSocialProfileForUser(userId);
   const recentFeed = await getDb()
     .select()

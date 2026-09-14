@@ -1,0 +1,108 @@
+.cookieBanner {
+  position: fixed;
+  z-index: 130;
+  right: 1rem;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  left: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid #587465;
+  border-radius: 1rem;
+  background: #f5f1df;
+  color: #092619;
+  box-shadow: 0 8px 30px #00150930;
+  font-family: var(--font-ui-source), sans-serif;
+}
+.cookieBanner h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.cookieBanner p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+.cookieBanner a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cookieActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.65rem;
+}
+.cookieActions button,
+.settingsButton {
+  min-height: 44px;
+  padding: 0.75rem 1rem;
+  border: 1px solid #42604e;
+  border-radius: 0.65rem;
+  background: #f5f1df;
+  color: #092619;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cookieActions button:focus-visible,
+.settingsButton:focus-visible,
+.mobileCta a:focus-visible {
+  outline: 3px solid #2d7652;
+  outline-offset: 3px;
+}
+.mobileCta {
+  display: none;
+}
+@media (max-width: 767px) {
+  .cookieBanner {
+    right: 0.75rem;
+    left: 0.75rem;
+    display: grid;
+    gap: 0.85rem;
+    padding: 1rem;
+    max-height: calc(100svh - 2rem);
+    overflow-y: auto;
+  }
+  .cookieActions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .cookieActions button {
+    padding-inline: 0.6rem;
+  }
+  .mobileCta {
+    position: fixed;
+    z-index: 75;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem max(1rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom))
+      max(1rem, env(safe-area-inset-left));
+    border-top: 1px solid #53705c;
+    background: #052015;
+    color: #f5f1df;
+    font-size: 0.75rem;
+    line-height: 1.5;
+  }
+  .mobileCta a {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    min-height: 44px;
+    padding: 0.7rem 1rem;
+    border-radius: 999px;
+    background: #f0df00;
+    color: #04180e;
+    font-size: 0.8125rem;
+    font-weight: 800;
+  }
+  :global(body):has([data-cookie-banner]) .mobileCta {
+    visibility: hidden;
+  }
+}

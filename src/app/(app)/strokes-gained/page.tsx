@@ -1,3 +1,4 @@
+import { requirePlanUser } from "@/lib/require-plan-access";
 import { randomUUID } from "node:crypto";
 import {
   getStrokesGainedHistory,
@@ -198,7 +199,7 @@ const strokesGainedSuggestedViews: DesktopSavedViewSuggestion[] = [
   },
 ];
 
-export default async function StrokesGainedPage({ searchParams }: { searchParams: SearchParams }) {
+async function StrokesGainedPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const filters = normalizeStrokesGainedFilters(parseFilters(params));
   const data = await getStrokesGainedHistory(
@@ -2843,4 +2844,9 @@ function SgHistoryPagination({
       )}
     </nav>
   );
+}
+
+export default async function SubscriptionPage(props: Parameters<typeof StrokesGainedPage>[0]) {
+  await requirePlanUser("advanced_analytics");
+  return <StrokesGainedPage {...props} />;
 }

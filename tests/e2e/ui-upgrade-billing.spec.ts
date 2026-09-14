@@ -79,7 +79,7 @@ test("Billing keeps saved paid access and complete history visible on both surfa
           await expect(
             page.getByRole("term").filter({ hasText: "Scorecard extracts" }),
           ).toBeVisible();
-          await page.getByRole("button", { name: /Full.*Details/ }).click();
+          await page.getByRole("button", { name: /Pro.*Details/ }).click();
           const panel = page.getByRole("dialog", { name: "Subscription details" });
           await expect(panel).toContainText("01 Jan 2026 – 01 Jan 2027");
           await expect(panel).toContainText("Ends after this period");

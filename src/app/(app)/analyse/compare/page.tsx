@@ -1,3 +1,4 @@
+import { requirePlanUser } from "@/lib/require-plan-access";
 import Link from "next/link";
 import { ArrowLeft, Crosshair, Share2, Target, TriangleAlert } from "lucide-react";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -52,7 +53,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
   timeStyle: "short",
 });
 
-export default async function SessionComparePage({ searchParams }: { searchParams: SearchParams }) {
+async function SessionComparePage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const filters = filtersFromParams(params);
   const userId = await requireCurrentUserId();
@@ -481,4 +482,9 @@ function hasMeaningfulChange(data: CompareData) {
 
 function formatAbs(value: number) {
   return Math.abs(Math.round(value * 10) / 10);
+}
+
+export default async function SubscriptionPage(props: Parameters<typeof SessionComparePage>[0]) {
+  await requirePlanUser("advanced_analytics");
+  return <SessionComparePage {...props} />;
 }

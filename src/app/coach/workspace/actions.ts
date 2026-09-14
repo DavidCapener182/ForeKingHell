@@ -1,4 +1,5 @@
 "use server";
+import { requirePlanFeature } from "@/lib/require-plan-access";
 
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
@@ -12,6 +13,7 @@ import { requireCurrentUserId } from "@/lib/current-user";
 
 async function persistCoachInteraction(formData: FormData) {
   const coachUserId = await requireCurrentUserId();
+  await requirePlanFeature(coachUserId, "coach_workspace");
   const playerUserId = requiredText(formData, "playerUserId", 80);
   const interactionType = parseCoachInteractionType(formData.get("interactionType"));
   if (!interactionType)
@@ -74,6 +76,7 @@ async function persistCoachInteraction(formData: FormData) {
 
 async function persistCoachInteractionStatus(formData: FormData) {
   const coachUserId = await requireCurrentUserId();
+  await requirePlanFeature(coachUserId, "coach_workspace");
   const playerUserId = requiredText(formData, "playerUserId", 80);
   const interactionId = requiredText(formData, "interactionId", 80);
   const requestedStatus = formData.get("status");

@@ -48,7 +48,9 @@ describe("analysis workspace source contract", () => {
   it("derives owner identity server-side for every mutation", () => {
     const actions = source("src/app/analyse/workspace/actions.ts");
 
-    expect(actions.match(/requireCurrentUserId\(\)/g)?.length).toBe(4);
+    expect(actions.match(/requirePlanUser\("advanced_analytics"\)/g)?.length).toBe(2);
+    expect(actions.match(/requireCurrentUserId\(\)/g)?.length).toBe(2);
+    expect(source("src/lib/require-plan-access.ts")).toContain("await requireCurrentUserId()");
     expect(actions).toContain("eq(sessions.userId, userId)");
     expect(actions).toContain("eq(analysisAnnotations.userId, userId)");
     expect(actions).toContain("eq(analysisSnapshots.userId, userId)");

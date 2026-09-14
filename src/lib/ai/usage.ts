@@ -1,6 +1,7 @@
 import "server-only";
+import { aiFeatureQuota } from "@/lib/ai/feature-quota";
 
-import { and, eq, gte, lt, sql } from "drizzle-orm";
+import { and, count, eq, gte, inArray, lt, sql } from "drizzle-orm";
 
 import { aiUsageEvents, planLimits } from "@/db/schema";
 import { getDb } from "@/db/client";
@@ -182,6 +183,34 @@ export async function reserveAiCredits(input: {
           monthlyRemaining: Math.max(0, input.monthlyLimit - monthlyUsed),
         },
       });
+    }
+
+    const quota = aiFeatureQuota(input.planKeySnapshot, input.featureKey);
+    if (quota) {
+      const [featureUsage] = await tx
+        .select({ value: count() })
+        .from(aiUsageEvents)
+        .where(
+          and(
+            eq(aiUsageEvents.userId, input.userId),
+            inArray(aiUsageEvents.featureKey, quota.features),
+            inArray(aiUsageEvents.status, ["reserved", "success"]),
+            gte(aiUsageEvents.createdAt, quota.start),
+            lt(aiUsageEvents.createdAt, quota.end),
+          ),
+        );
+      if (Number(featureUsage?.value ?? 0) >= quota.limit) {
+        throw new AiAccessError({
+          message: `${quota.label} are exhausted for this plan. Resets ${quota.end.toISOString()} (UTC).`,
+          status: 429,
+          code: "ai_quota_exhausted",
+          details: {
+            featureKey: input.featureKey,
+            limit: quota.limit,
+            resetsAt: quota.end.toISOString(),
+          },
+        });
+      }
     }
 
     const [reservation] = await tx

@@ -5,7 +5,15 @@ import sitemap from "@/app/sitemap";
 
 describe("public metadata boundaries", () => {
   it("indexes only public routes", () => {
-    expect(sitemap().map((entry) => new URL(entry.url).pathname)).toEqual(["/", "/privacy"]);
+    expect(sitemap().map((entry) => new URL(entry.url).pathname)).toEqual([
+      "/",
+      "/privacy",
+      "/terms",
+      "/cookies",
+    ]);
+    expect(
+      sitemap().every((entry) => new URL(entry.url).origin === "https://lmworldtour.app"),
+    ).toBe(true);
   });
 
   it("keeps account and bearer-token routes out of crawlers", () => {

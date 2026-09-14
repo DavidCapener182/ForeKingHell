@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   aiFeatureAccessLabel,
+  aiRequestSettings,
   monthlyAiCreditDefaults,
   planAllowsAiFeature,
   resolveAiModel,
@@ -48,6 +49,33 @@ describe("AI feature policy", () => {
 
     vi.stubEnv("OPENAI_WEEKLY_RECAP_MODEL", "weekly-model");
     expect(resolveAiModel("weekly_recap")).toBe("weekly-model");
+  });
+
+  it("migrates only the first feature group when no overrides exist", () => {
+    for (const key of [
+      "OPENAI_COACH_MODEL",
+      "OPENAI_FAST_MODEL",
+      "OPENAI_SCORECARD_MODEL",
+      "OPENAI_WEEKLY_RECAP_MODEL",
+      "OPENAI_PREMIUM_MODEL",
+    ])
+      vi.stubEnv(key, "");
+    expect(resolveAiModel("coach_chat")).toBe("gpt-6-astra");
+    expect(resolveAiModel("course_strategy")).toBe("gpt-6-astra");
+    expect(resolveAiModel("scorecard_extract")).toBe("gpt-4.1-mini");
+    expect(resolveAiModel("social_caption")).toBe("gpt-4.1-mini");
+    expect(resolveAiModel("weekly_recap")).toBe("gpt-4.1-mini");
+    expect(resolveAiModel("coach_player_summary")).toBe("gpt-4.1-mini");
+    vi.stubEnv("OPENAI_COACH_MODEL", "gpt-4.1-mini");
+    expect(resolveAiModel("coach_chat")).toBe("gpt-4.1-mini");
+  });
+
+  it("adds reasoning headroom only for Astra", () => {
+    expect(aiRequestSettings("gpt-6-astra", 700)).toEqual({
+      reasoning: { effort: "low" },
+      max_output_tokens: 4796,
+    });
+    expect(aiRequestSettings("gpt-4.1-mini", 700)).toEqual({ max_output_tokens: 700 });
   });
 
   it("explains paid access using the feature minimum plan", () => {

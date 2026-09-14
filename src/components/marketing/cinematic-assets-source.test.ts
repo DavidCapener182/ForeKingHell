@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -46,24 +46,5 @@ describe("cinematic marketing assets", () => {
     expect(statSync(join(assetDirectory, "course-twin-mobile.avif")).size).not.toBe(
       statSync(join(assetDirectory, "course-twin-hole.avif")).size,
     );
-  });
-
-  it("uses the generated golf ball for the hero and the cross-section continuity flight", () => {
-    const heroSource = readFileSync(
-      join(root, "src/components/marketing/hero-product-stage.tsx"),
-      "utf8",
-    );
-    const continuitySource = readFileSync(
-      join(root, "src/components/marketing/story-continuity.tsx"),
-      "utf8",
-    );
-
-    expect(heroSource).toContain("/assets/landing/golf-ball.png");
-    expect(continuitySource).toContain('from "next/image"');
-    expect(continuitySource).toContain("/assets/landing/golf-ball.png");
-    expect(continuitySource).toContain("className={styles.storyContinuityTracer}");
-    expect(continuitySource).toContain("firstControlX");
-    expect(continuitySource).toContain("startY = viewportHeight * 1.07");
-    expect(continuitySource).toContain('section: "pricing"');
   });
 });

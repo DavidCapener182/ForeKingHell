@@ -1,6 +1,9 @@
 import { beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ generate: vi.fn(), report: vi.fn(), redirect: vi.fn() }));
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  redirect: mocks.redirect,
+}));
 vi.mock("@/lib/social-intelligence", () => ({
   generateSocialSummary: mocks.generate,
   reportSocialTarget: mocks.report,

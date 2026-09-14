@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest } from "next/server";
+import { readdirSync } from "node:fs";
 
 vi.mock("@supabase/ssr", () => ({
   createServerClient: vi.fn(),
@@ -48,6 +49,40 @@ describe("proxy public service endpoints", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it.each([
+    "/robots.txt",
+    "/sitemap.xml",
+    "/opengraph-image",
+    "/terms",
+    "/cookies",
+    "/thank-you",
+    "/404",
+    "/_vercel/insights/script.js",
+    "/_vercel/insights/view",
+  ])("serves %s without sign-in or basic auth", async (path) => {
+    process.env.FKH_BASIC_AUTH_PASSWORD = "test-only";
+    const response = await proxy(new NextRequest(`https://app.example.com${path}`));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(createServerClient).not.toHaveBeenCalled();
+  });
+
+  it("keeps every existing account and admin route under the protected boundary", async () => {
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+    const roots = new Set<string>();
+    for (const group of ["(app)", "(admin)"]) {
+      for (const file of readdirSync(`src/app/${group}`, { recursive: true, encoding: "utf8" })) {
+        if (file.endsWith("/page.tsx")) roots.add(file.split("/")[0]);
+      }
+    }
+    for (const root of roots) {
+      const response = await proxy(new NextRequest(`https://app.example.com/${root}`));
+      expect(response.status, root).toBe(307);
+      expect(response.headers.get("location"), root).toContain("/login");
+    }
   });
 
   it("serves only the shared Course Twin assets used by the public demo", async () => {
@@ -116,10 +151,9 @@ describe("proxy public service endpoints", () => {
 
     const response = await proxy(new NextRequest("https://app.example.com/private/report.csv"));
 
-    expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe(
-      "https://app.example.com/login?next=%2Fprivate%2Freport.csv",
-    );
+    expect(response.status).toBe(404);
+    expect(response.headers.get("x-middleware-rewrite")).toBe("https://app.example.com/404");
+    expect(response.headers.get("x-middleware-next")).toBeNull();
   });
 });
 

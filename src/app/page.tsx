@@ -16,7 +16,7 @@ import { MarketingFooter } from "@/components/marketing/marketing-footer";
 import { MarketingHeader } from "@/components/marketing/marketing-header";
 import { PrivacyTrustSection } from "@/components/marketing/privacy-trust-section";
 import { PricingSection } from "@/components/marketing/pricing-section";
-import { StoryContinuity } from "@/components/marketing/story-continuity";
+import { StickyMobileCta } from "@/components/marketing/sticky-mobile-cta";
 import { marketingFaqs } from "@/lib/marketing-demo-data";
 
 import cinematic from "@/components/marketing/cinematic.module.css";
@@ -71,7 +71,6 @@ export default function HomePage() {
   return (
     <main className={`${styles.page} ${cinematic.page}`} data-marketing-motion="idle" id="product">
       <MarketingHeader />
-      <StoryContinuity />
       <HeroProductStage />
       <BrandPromise />
       <LazyCourseTwinShowcase />
@@ -83,6 +82,7 @@ export default function HomePage() {
       <BetaAccessSection />
       <LazyMarketingFaq />
       <MarketingFooter />
+      <StickyMobileCta />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

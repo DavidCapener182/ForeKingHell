@@ -1,0 +1,2698 @@
+{
+  "date": "2026-09-14",
+  "reference": "trackman",
+  "warning": "Candidate audit only. No device bias, match probability or correction is estimated.",
+  "sessions": [
+    {
+      "label": "rapsodo_range",
+      "audits": [
+        {
+          "window": {
+            "name": "narrow",
+            "ballSpeed": 2,
+            "launch": 1,
+            "clubSpeed": 2
+          },
+          "acceptedPairs": [],
+          "calibrationEligible": false,
+          "reason": "Metric similarity does not establish shot identity; timing or reviewed sequence anchors are required.",
+          "summary": {
+            "sourceShots": 6,
+            "noCandidate": 5,
+            "oneCandidate": 1,
+            "multipleCandidates": 0,
+            "sharedReferenceShots": 0
+          },
+          "rows": [
+            {
+              "sourceId": "rapsodo_range_1",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_4",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.4,
+                    "launch": 0.9,
+                    "clubSpeed": -1.1,
+                    "carry": 21.3,
+                    "spin": null
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_range_2",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_range_3",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_range_4",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_range_5",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_range_6",
+              "club": "driver",
+              "candidates": []
+            }
+          ]
+        },
+        {
+          "window": {
+            "name": "working",
+            "ballSpeed": 3,
+            "launch": 2,
+            "clubSpeed": 3
+          },
+          "acceptedPairs": [],
+          "calibrationEligible": false,
+          "reason": "Metric similarity does not establish shot identity; timing or reviewed sequence anchors are required.",
+          "summary": {
+            "sourceShots": 6,
+            "noCandidate": 1,
+            "oneCandidate": 2,
+            "multipleCandidates": 3,
+            "sharedReferenceShots": 4
+          },
+          "rows": [
+            {
+              "sourceId": "rapsodo_range_1",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_2",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 0,
+                    "launch": 1.9,
+                    "clubSpeed": -2.9,
+                    "carry": 29.9,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_4",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.4,
+                    "launch": 0.9,
+                    "clubSpeed": -1.1,
+                    "carry": 21.3,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 2.3,
+                    "launch": -1.6,
+                    "clubSpeed": -2.6,
+                    "carry": 7.1,
+                    "spin": null
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_range_2",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_4",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.6,
+                    "launch": 1,
+                    "clubSpeed": -2.2,
+                    "carry": 19.1,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_6",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.6,
+                    "launch": 0,
+                    "clubSpeed": 3,
+                    "carry": 7.1,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_red_2",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.5,
+                    "launch": -1.3,
+                    "clubSpeed": 2.9,
+                    "carry": 10,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_2",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.1,
+                    "launch": 0.4,
+                    "clubSpeed": 2.6,
+                    "carry": 12.2,
+                    "spin": null
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_range_3",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.8,
+                    "launch": -1.1,
+                    "clubSpeed": 2.3,
+                    "carry": 5.2,
+                    "spin": null
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_range_4",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_6",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.8,
+                    "launch": 1.4,
+                    "clubSpeed": 2.4,
+                    "carry": 6,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.5,
+                    "launch": -1.2,
+                    "clubSpeed": -2,
+                    "carry": -6.7,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_red_2",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.7,
+                    "launch": 0.1,
+                    "clubSpeed": 2.3,
+                    "carry": 8.9,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_2",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.3,
+                    "launch": 1.8,
+                    "clubSpeed": 2,
+                    "carry": 11.1,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1,
+                    "launch": -1.6,
+                    "clubSpeed": -0.1,
+                    "carry": -1.8,
+                    "spin": null
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_range_5",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_3",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.2,
+                    "launch": 1.8,
+                    "clubSpeed": 1.5,
+                    "carry": 18,
+                    "spin": null
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_range_6",
+              "club": "driver",
+              "candidates": []
+            }
+          ]
+        },
+        {
+          "window": {
+            "name": "wide",
+            "ballSpeed": 5,
+            "launch": 3,
+            "clubSpeed": 5
+          },
+          "acceptedPairs": [],
+          "calibrationEligible": false,
+          "reason": "Metric similarity does not establish shot identity; timing or reviewed sequence anchors are required.",
+          "summary": {
+            "sourceShots": 6,
+            "noCandidate": 0,
+            "oneCandidate": 1,
+            "multipleCandidates": 5,
+            "sharedReferenceShots": 11
+          },
+          "rows": [
+            {
+              "sourceId": "rapsodo_range_1",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_2",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 0,
+                    "launch": 1.9,
+                    "clubSpeed": -2.9,
+                    "carry": 29.9,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_3",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 0.4,
+                    "launch": 2.7,
+                    "clubSpeed": 2,
+                    "carry": 26.8,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_4",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.4,
+                    "launch": 0.9,
+                    "clubSpeed": -1.1,
+                    "carry": 21.3,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 2.3,
+                    "launch": -1.6,
+                    "clubSpeed": -2.6,
+                    "carry": 7.1,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_6",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.4,
+                    "launch": -0.1,
+                    "clubSpeed": 4.1,
+                    "carry": 9.3,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.1,
+                    "launch": -2.7,
+                    "clubSpeed": -0.3,
+                    "carry": -3.4,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_red_2",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.3,
+                    "launch": -1.4,
+                    "clubSpeed": 4,
+                    "carry": 12.2,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_2",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 0.1,
+                    "launch": 0.3,
+                    "clubSpeed": 3.7,
+                    "carry": 14.4,
+                    "spin": null
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_range_2",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_2",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.2,
+                    "launch": 2,
+                    "clubSpeed": -4,
+                    "carry": 27.7,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_3",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.8,
+                    "launch": 2.8,
+                    "clubSpeed": 0.9,
+                    "carry": 24.6,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_4",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.6,
+                    "launch": 1,
+                    "clubSpeed": -2.2,
+                    "carry": 19.1,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 1.1,
+                    "launch": -1.5,
+                    "clubSpeed": -3.7,
+                    "carry": 4.9,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_6",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.6,
+                    "launch": 0,
+                    "clubSpeed": 3,
+                    "carry": 7.1,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.3,
+                    "launch": -2.6,
+                    "clubSpeed": -1.4,
+                    "carry": -5.6,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_red_2",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.5,
+                    "launch": -1.3,
+                    "clubSpeed": 2.9,
+                    "carry": 10,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_red_3",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.3,
+                    "launch": -0.3,
+                    "clubSpeed": 4.6,
+                    "carry": 8.6,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_2",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.1,
+                    "launch": 0.4,
+                    "clubSpeed": 2.6,
+                    "carry": 12.2,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 0.2,
+                    "launch": -3,
+                    "clubSpeed": 0.5,
+                    "carry": -0.7,
+                    "spin": null
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_range_3",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3,
+                    "launch": 1.5,
+                    "clubSpeed": -3.7,
+                    "carry": 2.7,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_red_3",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -4.4,
+                    "launch": 2.7,
+                    "clubSpeed": 4.6,
+                    "carry": 6.4,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.8,
+                    "launch": -1.1,
+                    "clubSpeed": 2.3,
+                    "carry": 5.2,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.9,
+                    "launch": 0,
+                    "clubSpeed": 0.5,
+                    "carry": -2.9,
+                    "spin": null
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_range_4",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_4",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.8,
+                    "launch": 2.4,
+                    "clubSpeed": -2.8,
+                    "carry": 18,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.1,
+                    "launch": -0.1,
+                    "clubSpeed": -4.3,
+                    "carry": 3.8,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_6",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.8,
+                    "launch": 1.4,
+                    "clubSpeed": 2.4,
+                    "carry": 6,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.5,
+                    "launch": -1.2,
+                    "clubSpeed": -2,
+                    "carry": -6.7,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_red_2",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.7,
+                    "launch": 0.1,
+                    "clubSpeed": 2.3,
+                    "carry": 8.9,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_red_3",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.5,
+                    "launch": 1.1,
+                    "clubSpeed": 4,
+                    "carry": 7.5,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_2",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.3,
+                    "launch": 1.8,
+                    "clubSpeed": 2,
+                    "carry": 11.1,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 1.1,
+                    "launch": -2.7,
+                    "clubSpeed": 1.7,
+                    "carry": 6.3,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1,
+                    "launch": -1.6,
+                    "clubSpeed": -0.1,
+                    "carry": -1.8,
+                    "spin": null
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_range_5",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_2",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.6,
+                    "launch": 1,
+                    "clubSpeed": -3.4,
+                    "carry": 21.1,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_3",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.2,
+                    "launch": 1.8,
+                    "clubSpeed": 1.5,
+                    "carry": 18,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_4",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -4,
+                    "launch": 0,
+                    "clubSpeed": -1.6,
+                    "carry": 12.5,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.3,
+                    "launch": -2.5,
+                    "clubSpeed": -3.1,
+                    "carry": -1.7,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_range_6",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3,
+                    "launch": -1,
+                    "clubSpeed": 3.6,
+                    "carry": 0.5,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_red_2",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.9,
+                    "launch": -2.3,
+                    "clubSpeed": 3.5,
+                    "carry": 3.4,
+                    "spin": null
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_2",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.5,
+                    "launch": -0.6,
+                    "clubSpeed": 3.2,
+                    "carry": 5.6,
+                    "spin": null
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_range_6",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.9,
+                    "launch": -1.2,
+                    "clubSpeed": 3.4,
+                    "carry": -1.4,
+                    "spin": null
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "rapsodo_practice",
+      "audits": [
+        {
+          "window": {
+            "name": "narrow",
+            "ballSpeed": 2,
+            "launch": 1,
+            "clubSpeed": 2
+          },
+          "acceptedPairs": [],
+          "calibrationEligible": false,
+          "reason": "Metric similarity does not establish shot identity; timing or reviewed sequence anchors are required.",
+          "summary": {
+            "sourceShots": 31,
+            "noCandidate": 26,
+            "oneCandidate": 5,
+            "multipleCandidates": 0,
+            "sharedReferenceShots": 0
+          },
+          "rows": [
+            {
+              "sourceId": "rapsodo_practice_1",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.4,
+                    "launch": -0.9,
+                    "clubSpeed": 1.7,
+                    "carry": -11.2,
+                    "spin": -264
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_2",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_3",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_4",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_5",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_6",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.2,
+                    "launch": -0.6,
+                    "clubSpeed": -2,
+                    "carry": -20,
+                    "spin": -1731
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_7",
+              "club": "pw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_8",
+              "club": "5w",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_9",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_10",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_7",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.8,
+                    "launch": 0.3,
+                    "clubSpeed": -1.7,
+                    "carry": -8.9,
+                    "spin": -1140
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_11",
+              "club": "pw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_12",
+              "club": "7i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_13",
+              "club": "5i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_14",
+              "club": "gw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_15",
+              "club": "9i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_16",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_17",
+              "club": "gw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_18",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_19",
+              "club": "8i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_20",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_1",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.1,
+                    "launch": -0.9,
+                    "clubSpeed": 0.8,
+                    "carry": -11.1,
+                    "spin": -1035
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_21",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_22",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_23",
+              "club": "5i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_24",
+              "club": "5w",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_25",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_26",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.8,
+                    "launch": 0.6,
+                    "clubSpeed": 0.5,
+                    "carry": -11,
+                    "spin": -887
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_27",
+              "club": "5i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_28",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_29",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_30",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_31",
+              "club": "sw",
+              "candidates": []
+            }
+          ]
+        },
+        {
+          "window": {
+            "name": "working",
+            "ballSpeed": 3,
+            "launch": 2,
+            "clubSpeed": 3
+          },
+          "acceptedPairs": [],
+          "calibrationEligible": false,
+          "reason": "Metric similarity does not establish shot identity; timing or reviewed sequence anchors are required.",
+          "summary": {
+            "sourceShots": 31,
+            "noCandidate": 20,
+            "oneCandidate": 5,
+            "multipleCandidates": 6,
+            "sharedReferenceShots": 6
+          },
+          "rows": [
+            {
+              "sourceId": "rapsodo_practice_1",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.4,
+                    "launch": -0.9,
+                    "clubSpeed": 1.7,
+                    "carry": -11.2,
+                    "spin": -264
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_2",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_3",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_4",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_1",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.4,
+                    "launch": -0.4,
+                    "clubSpeed": 2.5,
+                    "carry": -12,
+                    "spin": -1070
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_5",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_6",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.2,
+                    "launch": -0.6,
+                    "clubSpeed": -2,
+                    "carry": -20,
+                    "spin": -1731
+                  }
+                },
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.6,
+                    "launch": -1.7,
+                    "clubSpeed": 0.3,
+                    "carry": -30.5,
+                    "spin": -1223
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_7",
+              "club": "pw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_8",
+              "club": "5w",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_9",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_10",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_7",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.8,
+                    "launch": 0.3,
+                    "clubSpeed": -1.7,
+                    "carry": -8.9,
+                    "spin": -1140
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_11",
+              "club": "pw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_12",
+              "club": "7i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_13",
+              "club": "5i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_14",
+              "club": "gw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_15",
+              "club": "9i",
+              "candidates": [
+                {
+                  "referenceId": "iron_9_1",
+                  "referenceGroup": "iron_9",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.9,
+                    "launch": 1.4,
+                    "clubSpeed": -2.8,
+                    "carry": -9.6,
+                    "spin": 6618
+                  }
+                },
+                {
+                  "referenceId": "iron_9_2",
+                  "referenceGroup": "iron_9",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.8,
+                    "launch": -0.5,
+                    "clubSpeed": -2.2,
+                    "carry": -11.8,
+                    "spin": 6235
+                  }
+                },
+                {
+                  "referenceId": "iron_9_5",
+                  "referenceGroup": "iron_9",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 1.7,
+                    "launch": 0,
+                    "clubSpeed": -2.8,
+                    "carry": -4.5,
+                    "spin": 5881
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_16",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_4",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.8,
+                    "launch": 1.3,
+                    "clubSpeed": 0,
+                    "carry": -4.7,
+                    "spin": -748
+                  }
+                },
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 1.9,
+                    "launch": -1.2,
+                    "clubSpeed": -1.5,
+                    "carry": -18.9,
+                    "spin": -1759
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_17",
+              "club": "gw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_18",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_19",
+              "club": "8i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_20",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_1",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.1,
+                    "launch": -0.9,
+                    "clubSpeed": 0.8,
+                    "carry": -11.1,
+                    "spin": -1035
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.7,
+                    "launch": 1.3,
+                    "clubSpeed": 1.7,
+                    "carry": 3.2,
+                    "spin": -209
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_21",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_22",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_23",
+              "club": "5i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_24",
+              "club": "5w",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_25",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.2,
+                    "launch": -1.3,
+                    "clubSpeed": 1.1,
+                    "carry": -25.1,
+                    "spin": -1041
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_26",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.3,
+                    "launch": 1,
+                    "clubSpeed": -1.4,
+                    "carry": -15.9,
+                    "spin": -1167
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 1.3,
+                    "launch": -0.5,
+                    "clubSpeed": 2.3,
+                    "carry": -2.9,
+                    "spin": -261
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.8,
+                    "launch": 0.6,
+                    "clubSpeed": 0.5,
+                    "carry": -11,
+                    "spin": -887
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_27",
+              "club": "5i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_28",
+              "club": "driver",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_29",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_1",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.8,
+                    "launch": -0.8,
+                    "clubSpeed": 2.5,
+                    "carry": -9.1,
+                    "spin": -1117
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_30",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_1",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.3,
+                    "launch": 0.3,
+                    "clubSpeed": 1.4,
+                    "carry": -16.1,
+                    "spin": -1020
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_7",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 2.5,
+                    "launch": -0.5,
+                    "clubSpeed": -1.1,
+                    "carry": -7.6,
+                    "spin": -930
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_31",
+              "club": "sw",
+              "candidates": []
+            }
+          ]
+        },
+        {
+          "window": {
+            "name": "wide",
+            "ballSpeed": 5,
+            "launch": 3,
+            "clubSpeed": 5
+          },
+          "acceptedPairs": [],
+          "calibrationEligible": false,
+          "reason": "Metric similarity does not establish shot identity; timing or reviewed sequence anchors are required.",
+          "summary": {
+            "sourceShots": 31,
+            "noCandidate": 16,
+            "oneCandidate": 1,
+            "multipleCandidates": 14,
+            "sharedReferenceShots": 12
+          },
+          "rows": [
+            {
+              "sourceId": "rapsodo_practice_1",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.6,
+                    "launch": 1.7,
+                    "clubSpeed": -4.3,
+                    "carry": -13.7,
+                    "spin": -1678
+                  }
+                },
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -5,
+                    "launch": 0.6,
+                    "clubSpeed": -2,
+                    "carry": -24.2,
+                    "spin": -1170
+                  }
+                },
+                {
+                  "referenceId": "driver_red_3",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -4,
+                    "launch": 2.9,
+                    "clubSpeed": 4,
+                    "carry": -10,
+                    "spin": -1031
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.4,
+                    "launch": -0.9,
+                    "clubSpeed": 1.7,
+                    "carry": -11.2,
+                    "spin": -264
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.5,
+                    "launch": 0.2,
+                    "clubSpeed": -0.1,
+                    "carry": -19.3,
+                    "spin": -890
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_2",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_3",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.1,
+                    "launch": -0.1,
+                    "clubSpeed": -2,
+                    "carry": -20.7,
+                    "spin": -1513
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.9,
+                    "launch": -2.7,
+                    "clubSpeed": 4,
+                    "carry": -18.2,
+                    "spin": -99
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -4,
+                    "launch": -1.6,
+                    "clubSpeed": 2.2,
+                    "carry": -26.3,
+                    "spin": -725
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_4",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_1",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.4,
+                    "launch": -0.4,
+                    "clubSpeed": 2.5,
+                    "carry": -12,
+                    "spin": -1070
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1,
+                    "launch": 1.8,
+                    "clubSpeed": 3.4,
+                    "carry": 2.3,
+                    "spin": -244
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.1,
+                    "launch": 2.9,
+                    "clubSpeed": 1.6,
+                    "carry": -5.8,
+                    "spin": -870
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_7",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 3.4,
+                    "launch": -1.2,
+                    "clubSpeed": 0,
+                    "carry": -3.5,
+                    "spin": -980
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_5",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_6",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_2",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.5,
+                    "launch": 2.9,
+                    "clubSpeed": -2.3,
+                    "carry": 2.8,
+                    "spin": -763
+                  }
+                },
+                {
+                  "referenceId": "driver_range_4",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.9,
+                    "launch": 1.9,
+                    "clubSpeed": -0.5,
+                    "carry": -5.8,
+                    "spin": -720
+                  }
+                },
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.2,
+                    "launch": -0.6,
+                    "clubSpeed": -2,
+                    "carry": -20,
+                    "spin": -1731
+                  }
+                },
+                {
+                  "referenceId": "driver_range_6",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.9,
+                    "launch": 0.9,
+                    "clubSpeed": 4.7,
+                    "carry": -17.8,
+                    "spin": -1104
+                  }
+                },
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.6,
+                    "launch": -1.7,
+                    "clubSpeed": 0.3,
+                    "carry": -30.5,
+                    "spin": -1223
+                  }
+                },
+                {
+                  "referenceId": "driver_red_2",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.8,
+                    "launch": -0.4,
+                    "clubSpeed": 4.6,
+                    "carry": -14.9,
+                    "spin": -966
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_2",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.4,
+                    "launch": 1.3,
+                    "clubSpeed": 4.3,
+                    "carry": -12.7,
+                    "spin": -1086
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.1,
+                    "launch": -2.1,
+                    "clubSpeed": 2.2,
+                    "carry": -25.6,
+                    "spin": -943
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_7",
+              "club": "pw",
+              "candidates": [
+                {
+                  "referenceId": "pitching_wedge_2",
+                  "referenceGroup": "pitching_wedge",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 4.4,
+                    "launch": 1.6,
+                    "clubSpeed": 2.8,
+                    "carry": 3.5,
+                    "spin": 5504
+                  }
+                },
+                {
+                  "referenceId": "pitching_wedge_4",
+                  "referenceGroup": "pitching_wedge",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 3.8,
+                    "launch": 1.4,
+                    "clubSpeed": 3.8,
+                    "carry": 2.6,
+                    "spin": 5216
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_8",
+              "club": "5w",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_9",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.6,
+                    "launch": -1.2,
+                    "clubSpeed": -4.8,
+                    "carry": -31.9,
+                    "spin": -1802
+                  }
+                },
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -5,
+                    "launch": -2.3,
+                    "clubSpeed": -2.5,
+                    "carry": -42.4,
+                    "spin": -1294
+                  }
+                },
+                {
+                  "referenceId": "driver_red_3",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -4,
+                    "launch": 0,
+                    "clubSpeed": 3.5,
+                    "carry": -28.2,
+                    "spin": -1155
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_2",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -4.8,
+                    "launch": 0.7,
+                    "clubSpeed": 1.5,
+                    "carry": -24.6,
+                    "spin": -1157
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.5,
+                    "launch": -2.7,
+                    "clubSpeed": -0.6,
+                    "carry": -37.5,
+                    "spin": -1014
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_10",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_7",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.8,
+                    "launch": 0.3,
+                    "clubSpeed": -1.7,
+                    "carry": -8.9,
+                    "spin": -1140
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_11",
+              "club": "pw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_12",
+              "club": "7i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_13",
+              "club": "5i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_14",
+              "club": "gw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_15",
+              "club": "9i",
+              "candidates": [
+                {
+                  "referenceId": "iron_9_1",
+                  "referenceGroup": "iron_9",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.9,
+                    "launch": 1.4,
+                    "clubSpeed": -2.8,
+                    "carry": -9.6,
+                    "spin": 6618
+                  }
+                },
+                {
+                  "referenceId": "iron_9_2",
+                  "referenceGroup": "iron_9",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.8,
+                    "launch": -0.5,
+                    "clubSpeed": -2.2,
+                    "carry": -11.8,
+                    "spin": 6235
+                  }
+                },
+                {
+                  "referenceId": "iron_9_5",
+                  "referenceGroup": "iron_9",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 1.7,
+                    "launch": 0,
+                    "clubSpeed": -2.8,
+                    "carry": -4.5,
+                    "spin": 5881
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_16",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_2",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.4,
+                    "launch": 2.3,
+                    "clubSpeed": -1.8,
+                    "carry": 3.9,
+                    "spin": -791
+                  }
+                },
+                {
+                  "referenceId": "driver_range_4",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.8,
+                    "launch": 1.3,
+                    "clubSpeed": 0,
+                    "carry": -4.7,
+                    "spin": -748
+                  }
+                },
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 1.9,
+                    "launch": -1.2,
+                    "clubSpeed": -1.5,
+                    "carry": -18.9,
+                    "spin": -1759
+                  }
+                },
+                {
+                  "referenceId": "driver_range_7",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 2.8,
+                    "launch": -1.2,
+                    "clubSpeed": -4.9,
+                    "carry": -13.9,
+                    "spin": -1071
+                  }
+                },
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.5,
+                    "launch": -2.3,
+                    "clubSpeed": 0.8,
+                    "carry": -29.4,
+                    "spin": -1251
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_2",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.3,
+                    "launch": 0.7,
+                    "clubSpeed": 4.8,
+                    "carry": -11.6,
+                    "spin": -1114
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 1,
+                    "launch": -2.7,
+                    "clubSpeed": 2.7,
+                    "carry": -24.5,
+                    "spin": -971
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_17",
+              "club": "gw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_18",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_19",
+              "club": "8i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_20",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -4.3,
+                    "launch": 2.8,
+                    "clubSpeed": -2,
+                    "carry": -9.8,
+                    "spin": -1115
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_1",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.1,
+                    "launch": -0.9,
+                    "clubSpeed": 0.8,
+                    "carry": -11.1,
+                    "spin": -1035
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.7,
+                    "launch": 1.3,
+                    "clubSpeed": 1.7,
+                    "carry": 3.2,
+                    "spin": -209
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.8,
+                    "launch": 2.4,
+                    "clubSpeed": -0.1,
+                    "carry": -4.9,
+                    "spin": -835
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_7",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 3.7,
+                    "launch": -1.7,
+                    "clubSpeed": -1.7,
+                    "carry": -2.6,
+                    "spin": -945
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_21",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_22",
+              "club": "sw",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_23",
+              "club": "5i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_24",
+              "club": "5w",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_25",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_4",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -5,
+                    "launch": 2.7,
+                    "clubSpeed": -1.6,
+                    "carry": -5.3,
+                    "spin": -818
+                  }
+                },
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.3,
+                    "launch": 0.2,
+                    "clubSpeed": -3.1,
+                    "carry": -19.5,
+                    "spin": -1829
+                  }
+                },
+                {
+                  "referenceId": "driver_range_6",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -4,
+                    "launch": 1.7,
+                    "clubSpeed": 3.6,
+                    "carry": -17.3,
+                    "spin": -1202
+                  }
+                },
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.7,
+                    "launch": -0.9,
+                    "clubSpeed": -0.8,
+                    "carry": -30,
+                    "spin": -1321
+                  }
+                },
+                {
+                  "referenceId": "driver_red_2",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.9,
+                    "launch": 0.4,
+                    "clubSpeed": 3.5,
+                    "carry": -14.4,
+                    "spin": -1064
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_2",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.5,
+                    "launch": 2.1,
+                    "clubSpeed": 3.2,
+                    "carry": -12.2,
+                    "spin": -1184
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.1,
+                    "launch": -2.4,
+                    "clubSpeed": 2.9,
+                    "carry": -17,
+                    "spin": -415
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.2,
+                    "launch": -1.3,
+                    "clubSpeed": 1.1,
+                    "carry": -25.1,
+                    "spin": -1041
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_26",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 0.1,
+                    "launch": 2.1,
+                    "clubSpeed": -3.7,
+                    "carry": -5.4,
+                    "spin": -1675
+                  }
+                },
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.3,
+                    "launch": 1,
+                    "clubSpeed": -1.4,
+                    "carry": -15.9,
+                    "spin": -1167
+                  }
+                },
+                {
+                  "referenceId": "driver_red_2",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.5,
+                    "launch": 2.3,
+                    "clubSpeed": 2.9,
+                    "carry": -0.3,
+                    "spin": -910
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_1",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 0.9,
+                    "launch": -2.7,
+                    "clubSpeed": 1.4,
+                    "carry": -17.2,
+                    "spin": -1087
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 1.3,
+                    "launch": -0.5,
+                    "clubSpeed": 2.3,
+                    "carry": -2.9,
+                    "spin": -261
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.8,
+                    "launch": 0.6,
+                    "clubSpeed": 0.5,
+                    "carry": -11,
+                    "spin": -887
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_27",
+              "club": "5i",
+              "candidates": []
+            },
+            {
+              "sourceId": "rapsodo_practice_28",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_range_2",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.6,
+                    "launch": 0.7,
+                    "clubSpeed": -4.6,
+                    "carry": -19.5,
+                    "spin": -743
+                  }
+                },
+                {
+                  "referenceId": "driver_range_3",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.2,
+                    "launch": 1.5,
+                    "clubSpeed": 0.3,
+                    "carry": -22.6,
+                    "spin": -1442
+                  }
+                },
+                {
+                  "referenceId": "driver_range_4",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -5,
+                    "launch": -0.3,
+                    "clubSpeed": -2.8,
+                    "carry": -28.1,
+                    "spin": -700
+                  }
+                },
+                {
+                  "referenceId": "driver_range_5",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.3,
+                    "launch": -2.8,
+                    "clubSpeed": -4.3,
+                    "carry": -42.3,
+                    "spin": -1711
+                  }
+                },
+                {
+                  "referenceId": "driver_range_6",
+                  "referenceGroup": "driver_range",
+                  "referenceNormalised": null,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -4,
+                    "launch": -1.3,
+                    "clubSpeed": 2.4,
+                    "carry": -40.1,
+                    "spin": -1084
+                  }
+                },
+                {
+                  "referenceId": "driver_red_2",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.9,
+                    "launch": -2.6,
+                    "clubSpeed": 2.3,
+                    "carry": -37.2,
+                    "spin": -946
+                  }
+                },
+                {
+                  "referenceId": "driver_red_3",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.7,
+                    "launch": -1.6,
+                    "clubSpeed": 4,
+                    "carry": -38.6,
+                    "spin": -1064
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_2",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -3.5,
+                    "launch": -0.9,
+                    "clubSpeed": 2,
+                    "carry": -35,
+                    "spin": -1066
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_29",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_red_1",
+                  "referenceGroup": "driver_red",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -4,
+                    "launch": 2.9,
+                    "clubSpeed": -0.3,
+                    "carry": -7.8,
+                    "spin": -1197
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_1",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.8,
+                    "launch": -0.8,
+                    "clubSpeed": 2.5,
+                    "carry": -9.1,
+                    "spin": -1117
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -0.4,
+                    "launch": 1.4,
+                    "clubSpeed": 3.4,
+                    "carry": 5.2,
+                    "spin": -291
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_5",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.5,
+                    "launch": 2.5,
+                    "clubSpeed": 1.6,
+                    "carry": -2.9,
+                    "spin": -917
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_7",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 4,
+                    "launch": -1.6,
+                    "clubSpeed": 0,
+                    "carry": -0.6,
+                    "spin": -1027
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_30",
+              "club": "driver",
+              "candidates": [
+                {
+                  "referenceId": "driver_orange_1",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -2.3,
+                    "launch": 0.3,
+                    "clubSpeed": 1.4,
+                    "carry": -16.1,
+                    "spin": -1020
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_3",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": -1.9,
+                    "launch": 2.5,
+                    "clubSpeed": 2.3,
+                    "carry": -1.8,
+                    "spin": -194
+                  }
+                },
+                {
+                  "referenceId": "driver_orange_7",
+                  "referenceGroup": "driver_orange",
+                  "referenceNormalised": true,
+                  "status": "unverified_candidate",
+                  "differencesSourceMinusReference": {
+                    "ballSpeed": 2.5,
+                    "launch": -0.5,
+                    "clubSpeed": -1.1,
+                    "carry": -7.6,
+                    "spin": -930
+                  }
+                }
+              ]
+            },
+            {
+              "sourceId": "rapsodo_practice_31",
+              "club": "sw",
+              "candidates": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -15,6 +15,7 @@ const PUBLIC_PATH_PREFIXES = [
   "/brand/",
   "/share/",
   "/course-twins/common/",
+  "/_vercel/insights/",
 ];
 const PUBLIC_PATHS = new Set([
   "/",
@@ -24,6 +25,13 @@ const PUBLIC_PATHS = new Set([
   "/manifest.webmanifest",
   "/offline",
   "/privacy",
+  "/terms",
+  "/cookies",
+  "/thank-you",
+  "/404",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/opengraph-image",
   "/auth/callback",
   "/api/cron/tour-leaderboards",
   "/api/cron/course-twin-builds",
@@ -31,6 +39,59 @@ const PUBLIC_PATHS = new Set([
   "/api/security/csp-report",
   "/api/stripe/webhook",
   "/sw.js",
+]);
+
+// Unknown top-level links render the public 404 instead of asking visitors to
+// sign in. Unrecognised roots are rewritten, never passed through to app data.
+const PROTECTED_PATH_ROOTS = new Set([
+  "_next",
+  "achievements",
+  "admin",
+  "analyse",
+  "api",
+  "auth",
+  "bag",
+  "billing",
+  "challenges",
+  "coach",
+  "companion",
+  "companion-runtime",
+  "compare",
+  "course-records",
+  "course-twins",
+  "courses",
+  "dashboard",
+  "data-chat",
+  "equipment",
+  "feed",
+  "friends",
+  "goals",
+  "groups",
+  "handicap",
+  "import",
+  "leaderboard",
+  "partners",
+  "play",
+  "practice",
+  "profile",
+  "progress",
+  "providers",
+  "quick-bag",
+  "rapsodo",
+  "rounds",
+  "sessions",
+  "settings",
+  "shared",
+  "shots",
+  "simulator-lab",
+  "social-intelligence",
+  "speed",
+  "stats",
+  "strokes-gained",
+  "surface",
+  "today",
+  "tournaments",
+  "welcome",
 ]);
 
 const INVALID_SESSION_ERROR_CODES = new Set([
@@ -52,6 +113,10 @@ const INVALID_SESSION_MESSAGE_PARTS = [
 export async function proxy(request: NextRequest) {
   const password = process.env.FKH_BASIC_AUTH_PASSWORD;
   const { pathname } = request.nextUrl;
+
+  if (!isPublicPath(pathname) && !PROTECTED_PATH_ROOTS.has(pathname.split("/")[1])) {
+    return NextResponse.rewrite(new URL("/404", request.url), { status: 404 });
+  }
 
   if (password && !isPublicPath(pathname)) {
     const authorization = request.headers.get("authorization");

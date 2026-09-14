@@ -1,3 +1,5 @@
+import { getActivePlanKeyForUser } from "@/lib/billing";
+import { planHasFeature } from "@/lib/plan-access";
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
 import {
@@ -110,6 +112,10 @@ export default async function CoachReportsPage({
 }) {
   const params = await searchParams;
   const userId = await requireCurrentUserId();
+  const canCreateReport = planHasFeature(
+    await getActivePlanKeyForUser(userId),
+    "selective_reports",
+  );
   const historyPage = Math.min(100000, Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1));
   const links = await getDb()
     .select({
@@ -211,11 +217,19 @@ export default async function CoachReportsPage({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ReportBuilder
-                templates={coachReportTemplates}
-                copy={sectionCopy}
-                includeComparisons={params.include === "comparisons"}
-              />
+              {canCreateReport ? (
+                <ReportBuilder
+                  templates={coachReportTemplates}
+                  copy={sectionCopy}
+                  includeComparisons={params.include === "comparisons"}
+                />
+              ) : (
+                <p>
+                  Creating reports requires Plus or higher.{" "}
+                  <Link href="/billing?required=plus">Compare plans</Link>. You can still revoke
+                  existing reports below.
+                </p>
+              )}
             </CardContent>
           </Card>
 

@@ -1,3 +1,4 @@
+import { requirePlanUser } from "@/lib/require-plan-access";
 import { getDirectionAttention } from "@/lib/direction-attention";
 import { DirectionAttention } from "@/app/analyse/workspace/direction-attention";
 import Link from "next/link";
@@ -61,7 +62,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-GB", {
 });
 const numberFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
 
-export default async function AnalysisWorkspacePage() {
+async function AnalysisWorkspacePage() {
   const [data, directionAttention] = await Promise.all([
     getAnalysisWorkspaceData(),
     getDirectionAttention(),
@@ -1008,4 +1009,9 @@ function EvidenceFields({ value }: { value: Record<string, unknown> }) {
       ))}
     </dl>
   );
+}
+
+export default async function SubscriptionPage() {
+  await requirePlanUser("advanced_analytics");
+  return <AnalysisWorkspacePage />;
 }

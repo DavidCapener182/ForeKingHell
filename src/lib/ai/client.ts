@@ -1,7 +1,12 @@
 import "server-only";
 
 import { readAiGenerationCache, hashAiRequest, writeAiGenerationCache } from "@/lib/ai/cache";
-import { getAiFeature, resolveAiModel, type AiFeatureKey } from "@/lib/ai/features";
+import {
+  aiRequestSettings,
+  getAiFeature,
+  resolveAiModel,
+  type AiFeatureKey,
+} from "@/lib/ai/features";
 import {
   AiAccessError,
   finalizeAiCreditReservation,
@@ -62,10 +67,16 @@ export async function generateAiJson<T extends object = Record<string, unknown>>
   const feature = getAiFeature(input.featureKey);
   const entitlement = await requireAiFeaturePlan(input.userId, input.featureKey);
   const model = resolveAiModel(input.featureKey);
+  const maxOutputTokens = input.maxOutputTokens ?? feature.maxOutputTokens;
   const requestHash = hashAiRequest({
+    version: 2,
     featureKey: input.featureKey,
     model,
     payload: input.cachePayload ?? input.messages,
+    messages: input.messages,
+    schemaName: input.schemaName,
+    schema: input.schema,
+    settings: aiRequestSettings(model, maxOutputTokens),
   });
 
   if (input.useCache ?? Boolean(feature.cacheTtlMs)) {
@@ -108,7 +119,7 @@ export async function generateAiJson<T extends object = Record<string, unknown>>
     model,
     requestHash,
     entitlement,
-    maxOutputTokens: input.maxOutputTokens ?? feature.maxOutputTokens,
+    maxOutputTokens,
     cacheTtlMs: feature.cacheTtlMs,
   });
 }
@@ -149,10 +160,13 @@ async function callOpenAiJson<T extends object>(input: {
   });
 
   let upstream: Response;
+  let responsePayload: unknown;
+  const startedAt = Date.now();
 
   try {
     upstream = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
+      signal: AbortSignal.timeout(45_000),
       headers: {
         authorization: `Bearer ${apiKey}`,
         "content-type": "application/json",
@@ -168,9 +182,10 @@ async function callOpenAiJson<T extends object>(input: {
             strict: true,
           },
         },
-        max_output_tokens: input.maxOutputTokens,
+        ...aiRequestSettings(input.model, input.maxOutputTokens),
       }),
     });
+    responsePayload = await upstream.json();
   } catch (error) {
     await finalizeAiCreditReservation({
       eventId: reservation.eventId,
@@ -183,8 +198,6 @@ async function callOpenAiJson<T extends object>(input: {
     });
     throw error;
   }
-
-  const responsePayload = (await upstream.json().catch(() => null)) as unknown;
 
   if (!upstream.ok) {
     await finalizeAiCreditReservation({
@@ -247,7 +260,11 @@ async function callOpenAiJson<T extends object>(input: {
     status: "success",
     responseId: readResponseId(responsePayload),
     tokenStats: readTokenStats(responsePayload),
-    metadataJson: input.metadataJson,
+    metadataJson: {
+      ...input.metadataJson,
+      durationMs: Date.now() - startedAt,
+      ...readUsageDetails(responsePayload),
+    },
   });
 
   return {
@@ -283,6 +300,13 @@ export function aiErrorPayload(error: unknown) {
 }
 
 function parseResponseJson<T extends object>(payload: unknown): T {
+  if (!isRecord(payload) || payload.status !== "completed" || payload.error) {
+    throw new AiAccessError({
+      message: "The AI provider could not complete this request.",
+      status: 502,
+      code: "ai_upstream_error",
+    });
+  }
   const text = readResponseText(payload);
   const parsed = JSON.parse(text) as unknown;
 
@@ -294,10 +318,6 @@ function parseResponseJson<T extends object>(payload: unknown): T {
 }
 
 function readResponseText(payload: unknown) {
-  if (isRecord(payload) && typeof payload.output_text === "string") {
-    return payload.output_text;
-  }
-
   if (!isRecord(payload) || !Array.isArray(payload.output)) {
     throw new Error("OpenAI response did not include text.");
   }
@@ -305,12 +325,19 @@ function readResponseText(payload: unknown) {
   const chunks: string[] = [];
 
   for (const item of payload.output) {
-    if (!isRecord(item) || !Array.isArray(item.content)) {
+    if (!isRecord(item) || item.type !== "message" || !Array.isArray(item.content)) {
       continue;
     }
 
     for (const content of item.content) {
-      if (isRecord(content) && typeof content.text === "string") {
+      if (isRecord(content) && content.type === "refusal") {
+        throw new AiAccessError({
+          message: "The AI provider could not complete this request.",
+          status: 502,
+          code: "ai_upstream_error",
+        });
+      }
+      if (isRecord(content) && content.type === "output_text" && typeof content.text === "string") {
         chunks.push(content.text);
       }
     }
@@ -344,4 +371,17 @@ function readTokenStats(payload: unknown): AiUsageTokenStats | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function readUsageDetails(payload: unknown) {
+  if (!isRecord(payload) || !isRecord(payload.usage)) return {};
+  const usage = payload.usage;
+  const output = isRecord(usage.output_tokens_details) ? usage.output_tokens_details : {};
+  const input = isRecord(usage.input_tokens_details) ? usage.input_tokens_details : {};
+  return {
+    reasoningTokens: typeof output.reasoning_tokens === "number" ? output.reasoning_tokens : null,
+    cachedInputTokens: typeof input.cached_tokens === "number" ? input.cached_tokens : null,
+    cacheWriteTokens:
+      typeof input.cache_write_tokens === "number" ? input.cache_write_tokens : null,
+  };
 }

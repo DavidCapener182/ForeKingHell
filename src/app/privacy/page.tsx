@@ -1,7 +1,14 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { PageHeader, PageShell } from "@/components/premium";
 import { Button } from "@/components/ui/button";
-import { BRAND_NAME } from "@/lib/brand";
+import { BRAND_CONTACT_EMAIL, BRAND_NAME } from "@/lib/brand";
+export const metadata: Metadata = {
+  title: "Privacy policy",
+  description:
+    "How LM World Tour uses your golf data, account details, AI features and optional analytics, and how to manage your information.",
+  alternates: { canonical: "/privacy" },
+};
 const sections = [
   {
     id: "stored-data",
@@ -26,7 +33,17 @@ const sections = [
   {
     id: "analytics",
     title: "Product analytics",
-    body: "Where enabled, Plausible records product events such as imports, round creation, AI coach generation, app installation and invitation acceptance. The app does not send raw shot rows as analytics event properties.",
+    body: "With your permission, Vercel Web Analytics measures visits and marketing actions on public pages. Analytics is off until you allow it. Account pages, sign-in pages and private share links are excluded; query strings and fragments are removed from event URLs. Public events contain no account identifiers or golf records. Change your choice at any time on the Cookies page.",
+  },
+  {
+    id: "service-providers",
+    title: "Service providers",
+    body: "Vercel hosts the website and provides optional public-page analytics. Supabase supports sign-in and account data services. Requested AI features send the relevant evidence to the configured AI provider. Payment services process information needed for a purchase when you use paid features. These services also process technical information needed to operate, secure and deliver their functions.",
+  },
+  {
+    id: "storage-choices",
+    title: "Cookies and browser storage",
+    body: "Essential cookies and browser storage support sign-in, saved preferences and features such as offline use. Your optional analytics preference is remembered in this browser for up to 180 days. Choosing essential storage only leaves optional analytics off and does not prevent you from using the product.",
   },
   {
     id: "data-controls",
@@ -47,9 +64,15 @@ export default function PrivacyPage() {
               Sign in
             </Link>
           </Button>
+          <Button asChild variant="ghost">
+            <Link href="/terms">Terms</Link>
+          </Button>
+          <Button asChild variant="ghost">
+            <Link href="/cookies">Cookie preferences</Link>
+          </Button>
         </nav>
         <PageHeader
-          title={`${BRAND_NAME} data notice`}
+          title={`${BRAND_NAME} privacy policy`}
           description="The golf data the app uses, what is shared with AI and analytics, and the controls available to you."
           actions={
             <Button asChild>
@@ -128,6 +151,21 @@ export default function PrivacyPage() {
               </Button>
             </article>
           </div>
+        </section>
+        <section className="rounded-xl border p-5" aria-labelledby="privacy-contact-title">
+          <h2 id="privacy-contact-title" className="text-lg font-semibold">
+            Contact
+          </h2>
+          <p className="mt-3 text-base leading-7 text-muted-foreground">
+            For questions about your information or a privacy request, email{" "}
+            <a
+              href={`mailto:${BRAND_CONTACT_EMAIL}`}
+              className="break-words underline underline-offset-4"
+            >
+              {BRAND_CONTACT_EMAIL}
+            </a>
+            .
+          </p>
         </section>
       </div>
     </PageShell>

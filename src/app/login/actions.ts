@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 
-import { BRAND_NAME } from "@/lib/brand";
 import { ensureUserProfile } from "@/lib/current-user";
 import { safeNextPath } from "@/lib/safe-next-path";
 import { getSiteOrigin } from "@/lib/site-origin";
@@ -33,30 +32,37 @@ export async function sendMagicLinkAction(
     .toLowerCase();
   const next = safeNextPath(String(formData.get("next") ?? "")) ?? "/dashboard";
 
-  if (!email) {
-    return { status: "error", message: "Enter an email address." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { status: "error", message: "Enter a valid email address." };
   }
 
   await clearSupabaseAuthCookies();
   const supabase = await createSupabaseServerClient();
   const redirectTo = new URL("/auth/callback", getSiteOrigin());
   redirectTo.searchParams.set("next", next);
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: redirectTo.toString(),
-      shouldCreateUser: true,
-    },
-  });
+  let result: Awaited<ReturnType<typeof supabase.auth.signInWithOtp>>;
+  try {
+    result = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: redirectTo.toString(),
+        shouldCreateUser: true,
+      },
+    });
+  } catch {
+    return {
+      status: "error",
+      message:
+        "We could not confirm your email-link request. Check your inbox before trying again.",
+    };
+  }
+  const { error } = result;
 
   if (error) {
     return { status: "error", message: error.message };
   }
 
-  return {
-    status: "success",
-    message: `Check your email for the ${BRAND_NAME} sign-in link.`,
-  };
+  redirect(`/thank-you?next=${encodeURIComponent(next)}`);
 }
 
 export async function signInWithPasswordAction(

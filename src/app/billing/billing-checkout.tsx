@@ -8,7 +8,7 @@ export function FullPlanCheckout({
   plan,
   availability,
 }: {
-  plan: { key: string; monthlyPrice: string; yearlyPrice: string };
+  plan: { name?: string; key: string; monthlyPrice: string; yearlyPrice: string };
   availability: { monthly: boolean; yearly: boolean };
 }) {
   const ready = useClientReady();
@@ -23,7 +23,7 @@ export function FullPlanCheckout({
   return (
     <div className="grid w-full min-w-0 gap-3">
       <label className="grid gap-1 text-sm">
-        Full plan billing interval
+        {plan.name ?? "Pro"} billing interval
         <select
           className="min-h-11 rounded-lg border bg-background px-3"
           value={interval}
@@ -47,14 +47,14 @@ export function FullPlanCheckout({
         </p>
       ) : null}
       <Button disabled={!ready || !available} onClick={() => setOpen(true)}>
-        Review Full plan
+        Review {plan.name ?? "Pro"} plan
       </Button>
       <ResponsiveDetailPanel
         open={open}
         onOpenChange={(value) => {
           if (!pending) setOpen(value);
         }}
-        title="Review Full plan"
+        title={`Review ${plan.name ?? "Pro"} plan`}
         description="Opening this review does not start checkout or charge you."
       >
         <div className="grid gap-4">
@@ -62,8 +62,9 @@ export function FullPlanCheckout({
             {price} per {period}
           </p>
           <p>
-            Recurring Full subscription. You will review the final amount and payment terms on
-            Stripe before authorising payment. Your current access changes only after confirmation.
+            Recurring {plan.name ?? "Pro"} subscription. You will review the final amount and
+            payment terms on Stripe before authorising payment. Your current access changes only
+            after confirmation.
           </p>
           {error ? <p role="alert">{error}</p> : null}
           <Button variant="outline" disabled={pending} onClick={() => setOpen(false)}>

@@ -1,3 +1,4 @@
+import { requirePlanUser } from "@/lib/require-plan-access";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays } from "lucide-react";
 import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 type SearchParams = Promise<{ sessionId?: string | string[] }>;
 
-export default async function SessionImpactPage({ searchParams }: { searchParams: SearchParams }) {
+async function SessionImpactPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const requestedId = Array.isArray(params.sessionId) ? params.sessionId[0] : params.sessionId;
   const data = await getSessionImpactData(requestedId);
@@ -174,4 +175,9 @@ function shotEvidenceSqlPredicate() {
 
 function formatLabel(value: string) {
   return value.replace(/[_-]+/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+export default async function SubscriptionPage(props: Parameters<typeof SessionImpactPage>[0]) {
+  await requirePlanUser("advanced_analytics");
+  return <SessionImpactPage {...props} />;
 }

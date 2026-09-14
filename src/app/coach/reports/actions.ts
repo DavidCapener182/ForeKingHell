@@ -32,6 +32,7 @@ import {
   type CoachReportNote,
 } from "@/lib/coach-report";
 import { requireCurrentUserId } from "@/lib/current-user";
+import { requirePlanUser } from "@/lib/require-plan-access";
 import { getProductPreferences } from "@/lib/product-preferences";
 import { getProgressData } from "@/lib/progress-data";
 import { createShareToken, getShareExpiry, hashShareToken } from "@/lib/share-links";
@@ -40,7 +41,7 @@ const LOOKBACK_DAYS = 28;
 
 async function persistCoachReport(formData: FormData) {
   const db = getDb();
-  const userId = await requireCurrentUserId();
+  const userId = await requirePlanUser("selective_reports");
   const suppliedRequestId = formData.get("requestId");
   if (
     suppliedRequestId !== null &&

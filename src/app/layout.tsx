@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Libre_Baskerville, Plus_Jakarta_Sans } from "next/font/google";
-import Script from "next/script";
+import { AnalyticsConsent } from "@/components/marketing/analytics-consent";
 import { InteractionFeedback } from "@/components/interaction-feedback";
 import { ThemeBootstrapScript } from "@/components/theme-bootstrap-script";
 import { ThemeController } from "@/components/theme-controller";
@@ -110,27 +110,10 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col antialiased">
         <ThemeController />
-        <PlausibleScript />
+        <AnalyticsConsent />
         <InteractionFeedback />
         {children}
       </body>
     </html>
-  );
-}
-
-function PlausibleScript() {
-  const domain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
-
-  if (!domain) {
-    return null;
-  }
-
-  return (
-    <Script
-      defer
-      data-domain={domain}
-      src="https://plausible.io/js/script.js"
-      strategy="afterInteractive"
-    />
   );
 }

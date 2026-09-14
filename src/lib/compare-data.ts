@@ -1,3 +1,5 @@
+import { getActivePlanKeyForUser } from "@/lib/billing";
+import { planHasFeature } from "@/lib/plan-access";
 import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
@@ -614,6 +616,16 @@ export async function getPlayerCompareData(
 ): Promise<PlayerCompareData> {
   const db = getDb();
   const viewerUserId = await requireCurrentUserId();
+  if (!planHasFeature(await getActivePlanKeyForUser(viewerUserId), "player_comparison")) {
+    return {
+      filters,
+      players: [],
+      playerSides: [],
+      playerA: null,
+      playerB: null,
+      delta: emptyPlayerDelta(),
+    };
+  }
   const [publicProfiles, viewerProfiles, friendIds, blockedIds] = await Promise.all([
     db
       .select()

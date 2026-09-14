@@ -71,6 +71,7 @@ export const mobileCapabilities = {
   ),
   profile: companionMore(),
   equipment: companionMore(),
+  "launch-monitor-calibration": companionMore(),
   rapsodo: companionMore(),
   providers: companionMore(),
   billing: companionMore(),
@@ -168,6 +169,7 @@ const companionExactRoutes = [
   "/courses/new",
   "/equipment",
   "/equipment/experiments",
+  "/equipment/launch-monitors/calibration",
 ] as const;
 const companionExceptions = ["/profile", "/groups", "/courses/strategy"] as const;
 const summaryOnlyPrefixes = ["/coach", "/leaderboard", "/achievements"] as const;

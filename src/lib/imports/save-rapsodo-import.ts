@@ -1,8 +1,11 @@
+import { monthlyImportAllowance } from "@/lib/imports/import-allowance";
+import { getActivePlanKeyForUser } from "@/lib/billing";
+import { planHasFeature } from "@/lib/plan-access";
 import { createHash } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
 
 import {
   clubs,
@@ -16,6 +19,7 @@ import {
   strokesGainedBaselines,
   strokesGainedShotEvents,
   users,
+  usageEvents,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { evaluateAchievementsAfterImport } from "@/lib/achievements/service";
@@ -269,6 +273,13 @@ export async function saveLaunchMonitorImport(
   try {
     const userId = await requireCurrentUserId();
     const validatedInput = validateInput(input);
+    const plan = await getActivePlanKeyForUser(userId);
+    if (
+      ["square", "trackman"].includes(validatedInput.source) &&
+      !planHasFeature(plan, "premium_imports")
+    ) {
+      throw new ImportValidationError("Square and TrackMan imports require Pro or higher.");
+    }
     const parsed = await parseLaunchMonitorImportCsv({
       rawCsvText: validatedInput.rawCsvText,
       fileName: validatedInput.fileName,
@@ -600,6 +611,7 @@ async function persistImport(
 ) {
   const db = getDb();
   const userId = input.userId;
+  const plan = await getActivePlanKeyForUser(userId);
   const preferredUnits = "yards";
   const now = new Date();
   const sessionDate = parseSessionDate(input.sessionDate);
@@ -688,6 +700,49 @@ async function persistImport(
         qualityTriage: emptyImportQualityTriageSummary(),
       };
     }
+
+    // Updating the user's row above serialises all imports for this account.
+    // Charge only new imports; duplicate retries return before this quota check.
+    const { start: monthStart, end: monthEnd } = monthlyImportAllowance(plan, 0, now);
+    const [usage] = await tx
+      .select({ total: sql<number>`coalesce(sum(${usageEvents.quantity}), 0)::int` })
+      .from(usageEvents)
+      .where(
+        and(
+          eq(usageEvents.userId, userId),
+          eq(usageEvents.eventType, "subscription_import"),
+          gte(usageEvents.createdAt, monthStart),
+          lt(usageEvents.createdAt, monthEnd),
+        ),
+      );
+    let used = usage?.total ?? 0;
+    if (used === 0) {
+      const [legacy] = await tx
+        .select({ total: count() })
+        .from(importFiles)
+        .where(
+          and(
+            eq(importFiles.userId, userId),
+            ne(importFiles.status, "duplicate"),
+            gte(importFiles.createdAt, monthStart),
+            lt(importFiles.createdAt, monthEnd),
+          ),
+        );
+      used = legacy?.total ?? 0;
+      if (used > 0)
+        await tx.insert(usageEvents).values({
+          userId,
+          eventType: "subscription_import",
+          quantity: used,
+          metadataJson: { migratedMonthlyUsage: true },
+        });
+    }
+    if (!monthlyImportAllowance(plan, used, now).allowed) {
+      throw new ImportValidationError(
+        "Your 5 monthly imports are used. Upgrade to Plus for unlimited imports, or wait until next month (UTC).",
+      );
+    }
+    await tx.insert(usageEvents).values({ userId, eventType: "subscription_import", quantity: 1 });
 
     const [session] = await tx
       .insert(sessions)

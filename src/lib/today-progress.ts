@@ -1,3 +1,4 @@
+import { practiceSampleContext, stablePracticeReadout } from "@/lib/practice-comparison-readout";
 import { mean, sampleStandardDeviation } from "@/lib/analysis-statistics";
 import { clubSortValue, formatClubType } from "@/lib/club-format";
 import { isRoundSessionType } from "@/lib/round-sessions";
@@ -38,6 +39,7 @@ export type TodayProgressClub = {
   equipmentLabel: string;
   status: "compared" | "equipment-changed" | "unknown-equipment" | "low-sample" | "new-club";
   reason: string;
+  readout: string | null;
   verdict: TodayProgressVerdict;
   currentShotCount: number;
   previousShotCount: number;
@@ -167,6 +169,9 @@ export function buildTodayProgress({
       : [
           `${clubType ? `${formatClubType(clubType)} in the ${scope === "session" ? "selected upload" : "selected practice day"}` : scope === "session" ? "Selected upload" : "Selected practice day"} compared with ${formatDate(previous.summary.dateKey)}.`,
           clubVerdictSummary(compared),
+          ...compared
+            .filter((club) => club.readout)
+            .map((club) => `${club.clubLabel}: ${club.readout}.`),
           ...carryTradeoffs,
           verdict === "mixed"
             ? "Some comparable measurements improved while others slipped."
@@ -209,6 +214,7 @@ export function buildTodayProgress({
       "Comparisons match the same saved club and club type. Changed or unidentified equipment stays visible without being treated as comparable.",
       "Each comparison needs at least 3 available readings for that metric on both dates. Fewer than 10 readings is an early signal. Missing or questioned direction is omitted, never counted as zero.",
       "Control uses mean absolute sideways miss; carry spread uses standard deviation. A 2 yd change counts as a control or consistency signal. Carry and ball speed changes alone do not establish improvement.",
+      "These are descriptive changes, not statistical proof of improvement or decline. Unequal samples can capture different variation; more shots do not automatically increase standard deviation. Device differences are not calibrated by this comparison.",
       "A carry loss of at least 10 yd and 10% alongside better control or consistency is shown as a mixed trade-off. This is a review cue, not a claim about your intent or the cause of shorter shots.",
       "Excluded shots, warm-ups, data errors, pitches, chips, recovery shots and rounds do not contribute. Restored shots follow your review choice. Multiple uploads on one practice date count as one day.",
       "The recent trend needs at least 3 dates with the same equipment and measured metrics throughout. Each date and club has equal weight. Weather and playing conditions are not adjusted, so a change does not establish its cause.",
@@ -318,7 +324,18 @@ function compareClub(
     equipmentLabel:
       [shot.clubBrand, shot.clubModel].filter(Boolean).join(" ") || "Unspecified equipment",
     status,
-    reason,
+    reason: [reason, practiceSampleContext(group.eligible.length, prior?.eligible.length ?? 0)]
+      .filter(Boolean)
+      .join(" "),
+    readout:
+      status === "compared"
+        ? stablePracticeReadout({
+            carry: metrics.find((metric) => metric.key === "carry")!.delta,
+            ballSpeed: metrics.find((metric) => metric.key === "ballSpeed")!.delta,
+            offline: metrics.find((metric) => metric.key === "offline")!.delta,
+            carrySpread: metrics.find((metric) => metric.key === "carrySpread")!.delta,
+          })
+        : null,
     verdict: enough ? metricVerdict(metrics) : "building",
     currentShotCount: group.eligible.length,
     previousShotCount: prior?.eligible.length ?? 0,
@@ -508,8 +525,8 @@ function reportHeadline(
       : "Better than your previous practice"
     : verdict === "worse"
       ? scoped
-        ? "Setbacks in the comparable clubs"
-        : "Behind your previous practice"
+        ? "Wider dispersion in the comparable clubs"
+        : "Wider dispersion than your previous practice"
       : verdict === "mixed"
         ? `${subject}: improvements and setbacks`
         : `${subject}: broadly steady`;
@@ -518,7 +535,7 @@ function reportHeadline(
 function clubVerdictSummary(clubs: TodayProgressClub[]) {
   const labels = {
     better: "improved",
-    worse: "slipped",
+    worse: "wider dispersion",
     mixed: "mixed",
     steady: "steady",
   } as const;

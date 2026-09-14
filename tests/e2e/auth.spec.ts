@@ -78,7 +78,7 @@ test.describe("authentication", () => {
     await page.goto("/privacy");
 
     await expect(page).toHaveURL(/\/privacy/);
-    await expect(page.getByRole("heading", { name: "LM World Tour data notice" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "LM World Tour privacy policy" })).toBeVisible();
   });
 
   test("recovers from a corrupted Supabase refresh cookie", async ({ context, page }) => {

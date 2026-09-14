@@ -1,3 +1,6 @@
+import { getActivePlanKeyForUser } from "@/lib/billing";
+import { requireCurrentUserId } from "@/lib/current-user";
+import { planHasFeature } from "@/lib/plan-access";
 import { SocialTaskForm } from "@/app/social-intelligence/social-task-form";
 import { SavedRecaps } from "@/app/social-intelligence/saved-recaps";
 import { SafetyRecords } from "@/app/social-intelligence/safety-records";
@@ -59,6 +62,10 @@ const socialSafetySuggestedViews: DesktopSavedViewSuggestion[] = [
 ];
 
 export default async function SocialIntelligencePage() {
+  const canGenerate = planHasFeature(
+    await getActivePlanKeyForUser(await requireCurrentUserId()),
+    "player_comparison",
+  );
   const data = await getSocialIntelligencePageData();
   const safetyRows: SocialSafetyRow[] = [
     ...data.moderation.map((event) => ({
@@ -107,15 +114,22 @@ export default async function SocialIntelligencePage() {
             <p className="text-sm text-muted-foreground">
               Use your latest activity as the source. Saved recaps remain separate from feed posts.
             </p>
-            <SocialTaskForm
-              task="generate"
-              sourceCount={data.recentFeed.slice(0, 8).length}
-              sourcePeriod={
-                data.recentFeed.length
-                  ? `${dateFormatter.format(data.recentFeed[Math.min(7, data.recentFeed.length - 1)].createdAt)}–${dateFormatter.format(data.recentFeed[0].createdAt)} UK`
-                  : "No source activity yet"
-              }
-            />
+            {canGenerate ? (
+              <SocialTaskForm
+                task="generate"
+                sourceCount={data.recentFeed.slice(0, 8).length}
+                sourcePeriod={
+                  data.recentFeed.length
+                    ? `${dateFormatter.format(data.recentFeed[Math.min(7, data.recentFeed.length - 1)].createdAt)}–${dateFormatter.format(data.recentFeed[0].createdAt)} UK`
+                    : "No source activity yet"
+                }
+              />
+            ) : (
+              <p>
+                Social intelligence recaps require Pro or higher.{" "}
+                <a href="/billing?required=pro">Compare plans</a>.
+              </p>
+            )}
           </section>
           <section className="grid gap-3">
             <h2 className="font-semibold">Report content</h2>
