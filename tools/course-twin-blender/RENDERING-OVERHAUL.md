@@ -57,12 +57,12 @@ Production build, TypeScript and scoped ESLint pass. 88 targeted Vitest tests an
 
 Fixed DPR 1, 1184×844 canvas, high quality, 12 s initial warm-up and 5 s frame windows per pose. Values are **before → after**, milliseconds for timings. These are a single development run per pose, not a claim of universal speed improvement.
 
-| Course / view | Median | p95 | p99 | Max | Draw calls | Triangles | Geometries | Textures |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| aintree / aerial | 11.1 → 12.3 | 15.4 → 16.1 | 17.5 → 17.9 | 19.7 → 18.5 | 68 → 55 | 964,675 → 1,098,947 | 52 → 47 | 52 → 56 |
-| aintree / ground | 8.9 → 10.1 | 13.1 → 13.8 | 15.8 → 15.1 | 35.9 → 16.0 | 75 → 55 | 1,239,892 → 952,378 | 59 → 48 | 64 → 59 |
-| bootle / aerial | 9.7 → 11.5 | 14.6 → 15.7 | 16.7 → 17.1 | 17.5 → 20.0 | 79 → 64 | 1,230,275 → 1,382,900 | 58 → 52 | 49 → 56 |
-| bootle / ground | 12.8 → 12.2 | 17.7 → 16.7 | 20.7 → 18.3 | 22.8 → 20.7 | 80 → 63 | 1,473,679 → 1,394,102 | 63 → 56 | 59 → 60 |
+| Course / view    |      Median |         p95 |         p99 |         Max | Draw calls |             Triangles | Geometries | Textures |
+| ---------------- | ----------: | ----------: | ----------: | ----------: | ---------: | --------------------: | ---------: | -------: |
+| aintree / aerial | 11.1 → 12.3 | 15.4 → 16.1 | 17.5 → 17.9 | 19.7 → 18.5 |    68 → 55 |   964,675 → 1,098,947 |    52 → 47 |  52 → 56 |
+| aintree / ground |  8.9 → 10.1 | 13.1 → 13.8 | 15.8 → 15.1 | 35.9 → 16.0 |    75 → 55 |   1,239,892 → 952,378 |    59 → 48 |  64 → 59 |
+| bootle / aerial  |  9.7 → 11.5 | 14.6 → 15.7 | 16.7 → 17.1 | 17.5 → 20.0 |    79 → 64 | 1,230,275 → 1,382,900 |    58 → 52 |  49 → 56 |
+| bootle / ground  | 12.8 → 12.2 | 17.7 → 16.7 | 20.7 → 18.3 | 22.8 → 20.7 |    80 → 63 | 1,473,679 → 1,394,102 |    63 → 56 |  59 → 60 |
 
 Actual shadows add work: aerial median rose about 1–2 ms despite fewer draw calls; Bootle ground-level improved slightly. Aintree resource-body totals were 7,070,474 → 13,122,875 bytes; Bootle 5,901,048 → 6,559,909. These include optional imagery, cached bodies and loading behaviour, so do not attribute the entire difference to the 653,237-byte new PNG set or equate it to cold network transfer.
 

@@ -85,7 +85,7 @@ export function DriverSpeedDevelopment({ data }: { data: SpeedDevelopmentSummary
     >
       <DataPanel id="driver-speed-development" className="w-full">
         <SectionHeader
-          title={<h2>{displayValue(summary.project.label, "Driver carry project")}</h2>}
+          title={displayValue(summary.project.label, "Driver carry project")}
           description="Build the ingredients behind the carry outcome, then protect the speed when a ball and target are added."
           action={<StatusPill tone={summary.readiness.tone}>{summary.readiness.label}</StatusPill>}
         />
@@ -263,7 +263,7 @@ export function DriverSpeedDevelopment({ data }: { data: SpeedDevelopmentSummary
 
       <DataPanel className="w-full">
         <SectionHeader
-          title={<h2>Where speed is lost</h2>}
+          title="Where speed is lost"
           description="Four separate questions: ceiling, ball transfer, playable Driver and speed that reaches the course."
         />
         <CardContent className="p-4 sm:p-5" data-speed-transfer-funnel>
@@ -323,7 +323,7 @@ export function DriverSpeedDevelopment({ data }: { data: SpeedDevelopmentSummary
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <DataPanel stretch className="w-full">
           <SectionHeader
-            title={<h2>Speed without chaos</h2>}
+            title="Speed without chaos"
             description={displayValue(
               summary.chaos.comparisonLabel,
               "Comparable speed and Driver evidence is not available yet.",
@@ -356,7 +356,7 @@ export function DriverSpeedDevelopment({ data }: { data: SpeedDevelopmentSummary
 
         <DataPanel stretch className="w-full">
           <SectionHeader
-            title={<h2>{displayValue(summary.plan.title, "Today’s speed session")}</h2>}
+            title={displayValue(summary.plan.title, "Today’s speed session")}
             description={planDescription || "Session prescription pending"}
             action={
               <StatusPill tone={planModeTone(summary.plan.mode)}>
@@ -416,7 +416,7 @@ export function DriverSpeedDevelopment({ data }: { data: SpeedDevelopmentSummary
 
       <DataPanel className="w-full">
         <SectionHeader
-          title={<h2>Speed ladder</h2>}
+          title="Speed ladder"
           description="Unlock each level when all three latest qualifying session averages meet it. A single fast swing does not move the ladder."
           action={
             <StatusPill tone="sky">
@@ -479,7 +479,7 @@ export function DriverSpeedDevelopment({ data }: { data: SpeedDevelopmentSummary
       {summary.verdict ? (
         <DataPanel className="w-full">
           <SectionHeader
-            title={<h2>Latest speed-session result</h2>}
+            title="Latest speed-session result"
             description={summary.verdict.label}
             action={<StatusPill tone={summary.verdict.tone}>{summary.verdict.grade}</StatusPill>}
           />

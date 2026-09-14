@@ -6,48 +6,48 @@ Tee features carry IDs, source and optional hole ownership, but no verified colo
 
 Saved selections are device-local, separated by course, package version and coordinate origin. Custom locations remain user-selected, not surveyed. Unknown holes, invalid numbers and out-of-package positions are rejected on restoration.
 
-| Course | Holes | Tee polygons | Holes with owned mapped tees | Invalid reference coordinates |
-|---|---:|---:|---:|---:|
-| Aberystwyth Golf Course | 18 | 18 | 0 | 0 |
-| Aintree Golf Centre | 9 | 9 | 0 | 0 |
-| Aldenham Golf Club | 18 | 18 | 0 | 0 |
-| Alexander Park Resort | 18 | 0 | 0 | 0 |
-| Alsager Golf and Country Club | 18 | 0 | 0 | 0 |
-| Altrincham Golf Course | 18 | 0 | 0 | 0 |
-| Arrowe Park Golf Course | 18 | 0 | 0 | 0 |
-| Arscott | 18 | 0 | 0 | 0 |
-| Ash Valley Golf Club | 18 | 18 | 0 | 0 |
-| Ashton & Lea Golf Club | 18 | 18 | 0 | 0 |
-| Aspley Guise & Woburn Sands Golf Club | 18 | 0 | 0 | 0 |
-| Astbury Golf Course | 18 | 18 | 0 | 0 |
-| Badgemore Park Golf Club | 18 | 0 | 0 | 0 |
-| Barkway Park Golf Club | 18 | 0 | 0 | 0 |
-| Barnard Castle Golf Course | 18 | 0 | 0 | 0 |
-| Bearwood Lakes Golf Club | 18 | 0 | 0 | 0 |
-| Belton Park Golf Club | 18 | 0 | 0 | 0 |
-| Bentham Golf Club | 18 | 18 | 0 | 0 |
-| Benton Hall Golf and Country Club | 18 | 18 | 0 | 0 |
-| Bird Hills Golf Centre | 18 | 0 | 0 | 0 |
-| Blackwell Golf Club | 18 | 0 | 0 | 0 |
-| Bletchingley Golf Course | 18 | 0 | 0 | 0 |
-| Bootle Golf Course (Bootle) | 18 | 0 | 0 | 0 |
-| Bowood Park Golf Course | 18 | 0 | 0 | 0 |
-| Bransford Golf Club | 18 | 0 | 0 | 0 |
-| Brean Golf Club | 18 | 0 | 0 | 0 |
-| Brett Vale Golf Course | 18 | 18 | 0 | 0 |
-| Brickhampton Court Golf Complex | 18 | 0 | 0 | 0 |
-| Bridport and West Dorset Golf Club | 18 | 0 | 0 | 0 |
-| Brookmans Park Golf Course | 18 | 0 | 0 | 0 |
-| Buckingham Golf Club | 18 | 0 | 0 | 0 |
-| Bulbury Woods Golf Club | 18 | 0 | 0 | 0 |
-| Doral - Blue Monster | 18 | 18 | 2 | 0 |
-| Ellesmere Port | 18 | 0 | 0 | 0 |
-| Firestone South | 18 | 0 | 0 | 0 |
-| Mountain Park Hotel and Golf Club - Mountain Park | 9 | 0 | 0 | 0 |
-| Quail Hollow Club | 18 | 0 | 0 | 0 |
-| Sedgefield Country Club | 18 | 0 | 0 | 0 |
-| Teeth of the Dog | 18 | 0 | 0 | 0 |
-| TPC Sawgrass - THE PLAYERS Stadium Course | 18 | 0 | 0 | 0 |
+| Course                                            | Holes | Tee polygons | Holes with owned mapped tees | Invalid reference coordinates |
+| ------------------------------------------------- | ----: | -----------: | ---------------------------: | ----------------------------: |
+| Aberystwyth Golf Course                           |    18 |           18 |                            0 |                             0 |
+| Aintree Golf Centre                               |     9 |            9 |                            0 |                             0 |
+| Aldenham Golf Club                                |    18 |           18 |                            0 |                             0 |
+| Alexander Park Resort                             |    18 |            0 |                            0 |                             0 |
+| Alsager Golf and Country Club                     |    18 |            0 |                            0 |                             0 |
+| Altrincham Golf Course                            |    18 |            0 |                            0 |                             0 |
+| Arrowe Park Golf Course                           |    18 |            0 |                            0 |                             0 |
+| Arscott                                           |    18 |            0 |                            0 |                             0 |
+| Ash Valley Golf Club                              |    18 |           18 |                            0 |                             0 |
+| Ashton & Lea Golf Club                            |    18 |           18 |                            0 |                             0 |
+| Aspley Guise & Woburn Sands Golf Club             |    18 |            0 |                            0 |                             0 |
+| Astbury Golf Course                               |    18 |           18 |                            0 |                             0 |
+| Badgemore Park Golf Club                          |    18 |            0 |                            0 |                             0 |
+| Barkway Park Golf Club                            |    18 |            0 |                            0 |                             0 |
+| Barnard Castle Golf Course                        |    18 |            0 |                            0 |                             0 |
+| Bearwood Lakes Golf Club                          |    18 |            0 |                            0 |                             0 |
+| Belton Park Golf Club                             |    18 |            0 |                            0 |                             0 |
+| Bentham Golf Club                                 |    18 |           18 |                            0 |                             0 |
+| Benton Hall Golf and Country Club                 |    18 |           18 |                            0 |                             0 |
+| Bird Hills Golf Centre                            |    18 |            0 |                            0 |                             0 |
+| Blackwell Golf Club                               |    18 |            0 |                            0 |                             0 |
+| Bletchingley Golf Course                          |    18 |            0 |                            0 |                             0 |
+| Bootle Golf Course (Bootle)                       |    18 |            0 |                            0 |                             0 |
+| Bowood Park Golf Course                           |    18 |            0 |                            0 |                             0 |
+| Bransford Golf Club                               |    18 |            0 |                            0 |                             0 |
+| Brean Golf Club                                   |    18 |            0 |                            0 |                             0 |
+| Brett Vale Golf Course                            |    18 |           18 |                            0 |                             0 |
+| Brickhampton Court Golf Complex                   |    18 |            0 |                            0 |                             0 |
+| Bridport and West Dorset Golf Club                |    18 |            0 |                            0 |                             0 |
+| Brookmans Park Golf Course                        |    18 |            0 |                            0 |                             0 |
+| Buckingham Golf Club                              |    18 |            0 |                            0 |                             0 |
+| Bulbury Woods Golf Club                           |    18 |            0 |                            0 |                             0 |
+| Doral - Blue Monster                              |    18 |           18 |                            2 |                             0 |
+| Ellesmere Port                                    |    18 |            0 |                            0 |                             0 |
+| Firestone South                                   |    18 |            0 |                            0 |                             0 |
+| Mountain Park Hotel and Golf Club - Mountain Park |     9 |            0 |                            0 |                             0 |
+| Quail Hollow Club                                 |    18 |            0 |                            0 |                             0 |
+| Sedgefield Country Club                           |    18 |            0 |                            0 |                             0 |
+| Teeth of the Dog                                  |    18 |            0 |                            0 |                             0 |
+| TPC Sawgrass - THE PLAYERS Stadium Course         |    18 |            0 |                            0 |                             0 |
 
 Total packages: 40. Official tee-colour mapping remains an evidence gap across the catalogue. Context may add visual tee polygons, but unowned polygons are not automatically assigned to neighbouring holes.
 
@@ -69,7 +69,6 @@ Total packages: 40. Official tee-colour mapping remains an evidence gap across t
 3. Physical-phone checks and cross-device/account-synced tee preferences are not implemented; saved tee locations are local to this browser.
 
 No commit, push or deployment was performed.
-
 
 ## Final refinements
 
