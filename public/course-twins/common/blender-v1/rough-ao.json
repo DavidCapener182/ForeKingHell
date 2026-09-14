@@ -1,0 +1,10 @@
+{
+  "licence": "CC0-1.0",
+  "author": "ForeKingHell original procedural bake",
+  "file": "rough-ao.png",
+  "sha256": "20fd1e55ad5f5882a124ef0c6ff7c4b4f6827db0bdcd1cf78e502f40d5a1dd6d",
+  "bytes": 130677,
+  "channels": "linear R ambient occlusion; no sunlight or albedo",
+  "metresPerTile": 2,
+  "preset": "neutral daylight; indirect only; fades 30 to 90 m"
+}

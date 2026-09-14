@@ -1,5 +1,5 @@
 """Bounded, sequential OSM downloads for existing local courses; cached and reproducible."""
-import pathlib,json,math,subprocess,xml.etree.ElementTree as E,hashlib,time
+import pathlib,json,math,subprocess,xml.etree.ElementTree as E,hashlib,time,sys
 root=pathlib.Path.cwd();cache=root/'tools/course-twin-blender/.cache/context';cache.mkdir(exist_ok=True,parents=True)
 report=[];total=0
 for path in sorted((root/'src/generated/course-twins').glob('*.json')):
@@ -13,6 +13,8 @@ for path in sorted((root/'src/generated/course-twins').glob('*.json')):
  if (bbox[2]-bbox[0])*(bbox[3]-bbox[1])>.01: continue
  file=cache/f'{path.stem}.osm';url='https://api.openstreetmap.org/api/0.6/map?bbox='+','.join(f'{n:.7f}' for n in bbox)
  if not file.exists():
+  if "--offline" in sys.argv:
+   report.append({"course":path.stem,"status":"not-cached"});continue
   result=subprocess.run(['curl','--fail','--silent','--show-error','--max-time','25','--max-filesize','16000000','-A','ForeKingHellOfflineCourseContext/1.0',url,'-o',str(file)],capture_output=True)
   if result.returncode: report.append({'course':path.stem,'status':'unavailable'});print(path.stem,'unavailable',flush=True);continue
  total+=file.stat().st_size
@@ -26,7 +28,7 @@ for path in sorted((root/'src/generated/course-twins').glob('*.json')):
   is_road=tags.get('highway') in ['motorway','trunk','primary','secondary','tertiary','residential','unclassified','service','living_street','pedestrian','footway','path','cycleway','track']
   if not is_road and (len(refs)<4 or refs[0]!=refs[-1]):continue
   kind=tags.get('golf')
-  if kind not in ['green','bunker','tee','fairway','rough'] and 'building' not in tags and not is_road and tags.get('amenity')!='parking':continue
+  if kind not in ['green','bunker','tee','fairway','rough'] and 'building' not in tags and not is_road and tags.get('amenity')!='parking' and tags.get('natural')!='water' and tags.get('landuse')!='reservoir':continue
   if tags.get('building') in ['no','construction']:continue
   elements.append({'id':w.get('id'),'tags':tags,'geometry':[nodes[n] for n in refs]})
  output={'courseId':m['course']['id'],'sourceUrl':url,'sourceSha256':hashlib.sha256(file.read_bytes()).hexdigest(),'retrievedAt':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime(file.stat().st_mtime)),'elements':elements}

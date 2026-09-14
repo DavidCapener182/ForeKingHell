@@ -21,7 +21,7 @@ describe("course-specific optional scenery catalogue", () => {
       expect(context.decorativeOnly).toBe(true);
       expect(context.sourceSha256).toMatch(/^[a-f0-9]{64}$/);
       for (const feature of context.features) {
-        expect(["green", "bunker", "tee", "fairway", "rough"]).toContain(feature.type);
+        expect(["green", "bunker", "tee", "fairway", "rough", "water"]).toContain(feature.type);
         expect(feature.rings[0].length).toBeGreaterThanOrEqual(4);
         expect(feature.rings.flat(2).every(Number.isFinite)).toBe(true);
       }

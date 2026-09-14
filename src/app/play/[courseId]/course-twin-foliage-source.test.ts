@@ -31,12 +31,11 @@ const highDetailSurfaceMaps = [
 ] as const;
 
 describe("Course Twin high-detail foliage", () => {
-  it("uses high-detail local alpha assets in the instanced authenticated renderer", () => {
-    for (const asset of highDetailAssets) {
-      expect(sceneSource).toContain(`/course-twins/common/vegetation/high-detail/${asset}`);
+  it("uses matching Blender albedo impostors in the instanced authenticated renderer", () => {
+    for (const asset of ["tree_small_02-impostor.png", "shrub_04-impostor.png"]) {
+      expect(sceneSource).toContain(`/course-twins/common/blender-v1/${asset}`);
       expect(
-        statSync(resolve(process.cwd(), "public/course-twins/common/vegetation/high-detail", asset))
-          .size,
+        statSync(resolve(process.cwd(), "public/course-twins/common/blender-v1", asset)).size,
       ).toBeGreaterThan(150_000);
     }
 
@@ -46,6 +45,7 @@ describe("Course Twin high-detail foliage", () => {
 
     const billboardSource = sceneSource.slice(
       sceneSource.indexOf("function InstancedBillboardPlane"),
+      sceneSource.indexOf("function HoleGeometry"),
     );
     expect(billboardSource).toContain("<meshStandardMaterial");
     expect(billboardSource).toContain("transparent");

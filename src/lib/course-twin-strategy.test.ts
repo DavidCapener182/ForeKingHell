@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { createCourseTwinSurfaceClassifier } from "./course-twin-surface";
 
 import type { CourseTwinManifest } from "@/lib/course-twin-contract";
-import { buildCourseTwinStrategy, type CourseTwinBagProfile } from "@/lib/course-twin-strategy";
+import {
+  previewCourseTwinAim,
+  buildCourseTwinStrategy,
+  type CourseTwinBagProfile,
+} from "@/lib/course-twin-strategy";
 
 const manifest: CourseTwinManifest = {
   schemaVersion: 1,
@@ -141,3 +146,69 @@ function rectangle(
     ],
   };
 }
+
+describe("interactive Plan aiming", () => {
+  it("rotates the same dispersion samples without changing club carry and recomputes surfaces", () => {
+    const club = buildCourseTwinStrategy({ manifest, holeNumber: 1, bag }).clubs[0];
+    const straight = previewCourseTwinAim(manifest, manifest.holes[0], club, [240, 0, 0]);
+    const sideways = previewCourseTwinAim(manifest, manifest.holes[0], club, [0, 0, 240]);
+    expect(sideways.carryMedianYd).toBe(straight.carryMedianYd);
+    straight.landingCloud.forEach((point, i) => {
+      expect(sideways.landingCloud[i][0]).toBeCloseTo(-point[2]);
+      expect(sideways.landingCloud[i][2]).toBeCloseTo(point[0]);
+    });
+    expect(sideways.probabilities.out_of_bounds).toBeGreaterThan(
+      straight.probabilities.out_of_bounds,
+    );
+    expect(Object.values(sideways.probabilities).reduce((a, b) => a + b, 0)).toBeCloseTo(1, 3);
+    expect(previewCourseTwinAim(manifest, manifest.holes[0], club, [240, 0, 0])).toEqual(straight);
+  });
+
+  it("uses a shorter club to move the landing area closer and never follows a dogleg", () => {
+    const clubs = buildCourseTwinStrategy({ manifest, holeNumber: 1, bag }).clubs;
+    const dogleg = {
+      ...manifest.holes[0],
+      centerline: [
+        [0, 0, 0],
+        [50, 0, 0],
+        [50, 0, 200],
+      ] as [number, number, number][],
+    };
+    const previews = clubs.map((club) => previewCourseTwinAim(manifest, dogleg, club, [240, 0, 0]));
+    const long = previews.find((c) => c.clubId === "driver")!;
+    const short = previews.find((c) => c.clubId === "5i")!;
+    const mean = (c: typeof long) =>
+      c.landingCloud.reduce((sum, p) => sum + p[0], 0) / c.landingCloud.length;
+    expect(mean(long)).toBeGreaterThan(mean(short) + 30);
+    expect(mean(long)).toBeGreaterThan(170);
+  });
+});
+
+it("counts exactly the visible Plan cloud against updated display boundaries", () => {
+  const club = buildCourseTwinStrategy({ manifest, holeNumber: 1, bag }).clubs[0];
+  const displayed = { ...manifest, features: [rectangle("fairway", 0, 270, -4, 4)] };
+  const result = previewCourseTwinAim(displayed, manifest.holes[0], club, [240, 0, 0]);
+  const classify = createCourseTwinSurfaceClassifier(displayed, 1);
+  expect(result.landingCloud).toHaveLength(320);
+  for (const [surface, probability] of Object.entries(result.probabilities)) {
+    const count = result.landingCloud.filter((p) => classify(p[0], p[2]) === surface).length;
+    expect(probability).toBeCloseTo(count / result.landingCloud.length, 3);
+  }
+  expect(result.probabilities.rough).toBeGreaterThan(0.3);
+  expect(result.probabilities.fairway).toBeLessThan(0.7);
+});
+
+it("moves the shot origin with the selected tee and recalculates landing surfaces and leave", () => {
+  const club = buildCourseTwinStrategy({ manifest, holeNumber: 1, bag }).clubs[0];
+  const first = previewCourseTwinAim(manifest, manifest.holes[0], club, [240, 0, 0]);
+  const alternate = { ...manifest.holes[0], tee: [40, 0, 60] as [number, number, number] };
+  const moved = previewCourseTwinAim(manifest, alternate, club, [280, 0, 60]);
+  first.landingCloud.forEach((point, i) => {
+    expect(moved.landingCloud[i][0]).toBeCloseTo(point[0] + 40);
+    expect(moved.landingCloud[i][2]).toBeCloseTo(point[2] + 60);
+  });
+  expect(moved.carryMedianYd).toBe(first.carryMedianYd);
+  expect(moved.probabilities).not.toEqual(first.probabilities);
+  expect(moved.averageRemainingYd).not.toBe(first.averageRemainingYd);
+  expect(manifest.holes[0].tee).toEqual([0, 0, 0]);
+});

@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import postgres from "postgres";
 
 import { generateCourseTwinCompletion } from "./generator.mjs";
+import { localManifestFromCompletion } from "./local-catalogue.mjs";
 
 const courseId = requiredArgument("--course-id");
 const slug = requiredArgument("--slug");
@@ -37,24 +38,7 @@ try {
     );
   }
 
-  const manifest = {
-    ...completion.manifest,
-    terrain: {
-      ...completion.manifest.terrain,
-      heightmap: completion.manifest.terrain.heightmap
-        ? {
-            ...completion.manifest.terrain.heightmap,
-            url: `/course-twins/${slug}/terrain.f32`,
-          }
-        : null,
-      imagery: completion.manifest.terrain.imagery
-        ? {
-            ...completion.manifest.terrain.imagery,
-            url: `/course-twins/${slug}/imagery.jpg`,
-          }
-        : null,
-    },
-  };
+  const manifest = localManifestFromCompletion(completion, slug);
   const manifestPath = resolve(generatedDirectory, `${slug}.json`);
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(
