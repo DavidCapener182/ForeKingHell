@@ -110,43 +110,166 @@
   margin-top: 1.3rem;
   scroll-margin-top: 6rem;
 }
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  text-align: left;
-  margin-top: 0.75rem;
-  font-size: 0.8rem;
+.clubGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
 }
-.table th,
-.table td {
-  padding: 0.7rem 0.4rem;
-  vertical-align: top;
+.clubCard {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  padding: 1.2rem;
+  background: var(--background);
 }
-.table th:first-child {
-  width: 25%;
-  padding-left: 0;
+.clubHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 0.75rem;
 }
-.table thead th {
+.clubHeader h4 {
+  font-size: 1.4rem;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+}
+.clubHeader p {
   font-size: 0.7rem;
-  font-weight: 500;
+  color: var(--muted-foreground);
+  margin-top: 0.15rem;
+}
+.shotBadge {
+  flex-shrink: 0;
+  border-radius: 2rem;
+  padding: 0.3rem 0.6rem;
+  background: var(--muted);
+  font-size: 0.7rem;
+}
+.carryHeadline {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  align-items: end;
+}
+.carryHeadline span {
+  display: block;
+  font-size: 0.7rem;
   color: var(--muted-foreground);
 }
-.table tbody tr {
-  border-top: 1px solid var(--border);
-}
-.table strong {
-  font-weight: 600;
+.carryHeadline strong {
+  display: block;
+  font-size: 1.85rem;
+  font-weight: 650;
+  letter-spacing: -0.035em;
   font-variant-numeric: tabular-nums;
 }
-.table small,
-.club span {
-  display: block;
+.carryHeadline > div:last-child {
+  text-align: right;
+}
+.carryHeadline > div:last-child strong {
+  font-size: 1.15rem;
+}
+.carryGraphic {
+  margin-top: 0.8rem;
+}
+.rangeTrack {
+  position: relative;
+  height: 1rem;
+  border-radius: 0.25rem;
+  background: var(--muted);
+  background-image: linear-gradient(to right, transparent calc(100% - 1px), var(--border) 0);
+  background-size: 25% 100%;
+}
+.rangeBand {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 2px;
+  max-width: 100%;
+  border-radius: 0.25rem;
+  background: #8daf9e;
+}
+.averageMarker {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 3px;
+  transform: translateX(-50%);
+  background: var(--foreground);
+  border-radius: 2px;
+}
+.carryGraphic p {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.3rem;
   color: var(--muted-foreground);
+  font-size: 0.6rem;
+  margin-top: 0.4rem;
+}
+.carryGraphic .rangeCaption {
+  font-size: 0.65rem;
+}
+.clubMetrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  border-block: 1px solid var(--border);
+  padding: 0.85rem 0;
+  margin-top: 0.85rem;
+}
+.clubMetrics dt {
+  font-size: 0.65rem;
+  color: var(--muted-foreground);
+}
+.clubMetrics dd {
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 0.15rem;
+}
+.clubMetrics small {
+  font-size: 0.6rem;
+  color: var(--muted-foreground);
+}
+.direction {
+  margin-top: 0.85rem;
+}
+.direction > p {
   font-size: 0.7rem;
-  font-weight: 400;
-  line-height: 1.5;
-  margin-top: 0.2rem;
+  font-weight: 550;
+}
+.directionTrack {
+  display: flex;
+  overflow: hidden;
+  border-radius: 1rem;
+  height: 0.65rem;
+  margin-top: 0.55rem;
+  background: var(--muted);
+}
+.leftShots {
+  background: #758fae;
+}
+.centreShots {
+  background: #3d8d71;
+}
+.rightShots {
+  background: #c79458;
+}
+.directionLabels {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.65rem;
+  margin-top: 0.4rem;
+}
+.clubFooter {
+  color: var(--muted-foreground);
+  font-size: 0.6rem;
+  border-top: 1px solid var(--border);
+  margin-top: 0.85rem;
+  padding-top: 0.6rem;
 }
 .uploads {
   border-top: 1px solid var(--border);
@@ -174,52 +297,9 @@
   outline: 2px solid var(--ring);
   outline-offset: 3px;
 }
-.mobileLabel {
-  display: none;
-}
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
 @container (max-width: 49.99rem) {
-  .table,
-  .table tbody {
-    display: block;
-  }
-  .table thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-  }
-  .table tbody tr {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.75rem;
-    padding: 1rem 0;
-  }
-  .table td,
-  .table th:first-child {
-    width: auto;
-    min-width: 0;
-    padding: 0;
-  }
-  .club {
-    grid-column: 1/-1;
-  }
-  .mobileLabel {
-    display: block;
-    font-size: 0.65rem;
-    color: var(--muted-foreground);
-    margin-bottom: 0.25rem;
+  .clubGrid {
+    grid-template-columns: minmax(0, 1fr);
   }
   .totals {
     grid-template-columns: repeat(2, minmax(0, 1fr));
