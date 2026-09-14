@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { planHoleFromTee } from "./course-twin-plan-tees";
 import { createCourseTwinSurfaceClassifier } from "./course-twin-surface";
 
 import type { CourseTwinManifest } from "@/lib/course-twin-contract";
 import {
   previewCourseTwinAim,
+  nudgeCourseTwinAim,
   buildCourseTwinStrategy,
   type CourseTwinBagProfile,
 } from "@/lib/course-twin-strategy";
@@ -211,4 +213,51 @@ it("moves the shot origin with the selected tee and recalculates landing surface
   expect(moved.probabilities).not.toEqual(first.probabilities);
   expect(moved.averageRemainingYd).not.toBe(first.averageRemainingYd);
   expect(manifest.holes[0].tee).toEqual([0, 0, 0]);
+});
+
+it("ranks a forward tee by remaining route distance while retaining the scorecard yards", () => {
+  const open = { ...manifest, features: [rectangle("fairway", -500, 800, -500, 500)] };
+  const clubs = buildCourseTwinStrategy({
+    manifest: open,
+    holeNumber: 1,
+    bag: [profile("driver", 250, 1, 1), profile("pw", 100, 1, 1)],
+  }).clubs;
+  const forward = planHoleFromTee(open.holes[0], [146.56, 0, 0]);
+  const rank = (hole: typeof forward) =>
+    clubs
+      .map((c) => previewCourseTwinAim(open, hole, c, null))
+      .sort((a, b) => a.expectedRiskStrokes - b.expectedRiskStrokes);
+  expect(rank(open.holes[0])[0].clubId).toBe("driver");
+  expect(rank(forward)[0].clubId).toBe("pw");
+  expect(forward.yards).toBe(260);
+  const wedge = rank(forward).find((c) => c.clubId === "pw")!;
+  expect(wedge.expectedRiskStrokes).toBeCloseTo(wedge.averageRemainingYd / 620, 2);
+});
+
+it("nudges initial, reset and explicit aim exactly two degrees without doubling lateral bias", () => {
+  const hole = manifest.holes[0];
+  const original = buildCourseTwinStrategy({ manifest, holeNumber: 1, bag }).clubs[0];
+  const club = {
+    ...original,
+    aimOffsetYd: 12,
+    shotModel: { ...original.shotModel, sideMeanYd: 35 },
+  };
+  for (const initial of [null, [160, 0, 70] as [number, number, number], null]) {
+    for (const degrees of [-2, 2]) {
+      const before = previewCourseTwinAim(manifest, hole, club, initial);
+      const aim = nudgeCourseTwinAim(hole, club, initial, degrees);
+      const after = previewCourseTwinAim(manifest, hole, club, aim);
+      const angle = (degrees * Math.PI) / 180;
+      before.landingCloud.forEach((point, index) => {
+        expect(after.landingCloud[index][0]).toBeCloseTo(
+          point[0] * Math.cos(angle) - point[2] * Math.sin(angle),
+          8,
+        );
+        expect(after.landingCloud[index][2]).toBeCloseTo(
+          point[0] * Math.sin(angle) + point[2] * Math.cos(angle),
+          8,
+        );
+      });
+    }
+  }
 });

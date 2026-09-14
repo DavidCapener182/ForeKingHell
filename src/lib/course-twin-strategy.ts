@@ -132,14 +132,11 @@ export function previewCourseTwinAim(
   club: CourseTwinStrategyClub,
   target: CourseTwinPoint | null,
 ): CourseTwinStrategyClub {
-  const aim =
-    target ??
-    offsetPerpendicular(
-      hole,
-      pointAlongHole(hole, club.carryMedianYd),
-      club.carryMedianYd,
-      club.aimOffsetYd * 0.9144,
-    );
+  const aim = target ?? defaultCourseTwinAim(hole, club);
+  const route = [hole.tee, ...hole.centerline.slice(1), hole.green];
+  const effectiveDistanceYd = route
+    .slice(1)
+    .reduce((distance, point, index) => distance + distance2d(route[index], point) / 0.9144, 0);
   return simulateClubAim(
     manifest.course.id,
     hole,
@@ -155,7 +152,35 @@ export function previewCourseTwinAim(
     DEFAULT_SAMPLE_COUNT,
     0,
     aim,
+    effectiveDistanceYd,
   );
+}
+
+/** The intended heading excludes measured lateral shot bias. */
+export function defaultCourseTwinAim(hole: CourseTwinHole, club: CourseTwinStrategyClub) {
+  return offsetPerpendicular(
+    hole,
+    pointAlongHole(hole, club.carryMedianYd),
+    club.carryMedianYd,
+    club.aimOffsetYd * 0.9144,
+  );
+}
+
+export function nudgeCourseTwinAim(
+  hole: CourseTwinHole,
+  club: CourseTwinStrategyClub,
+  target: CourseTwinPoint | null,
+  degrees: number,
+): CourseTwinPoint {
+  const aim = target ?? defaultCourseTwinAim(hole, club);
+  const dx = aim[0] - hole.tee[0],
+    dz = aim[2] - hole.tee[2];
+  const angle = (degrees * Math.PI) / 180;
+  return [
+    hole.tee[0] + dx * Math.cos(angle) - dz * Math.sin(angle),
+    hole.tee[1],
+    hole.tee[2] + dx * Math.sin(angle) + dz * Math.cos(angle),
+  ];
 }
 
 function bestClubStrategy(
@@ -182,6 +207,7 @@ function simulateClubAim(
   sampleCount: number,
   aimOffsetYd: number,
   target?: CourseTwinPoint,
+  effectiveDistanceYd = hole.yards,
 ): CourseTwinStrategyClub {
   const random = seededRandom(
     hashString(`${courseId}:${hole.holeNumber}:${profile.clubId}:${aimOffsetYd}`),
@@ -225,7 +251,7 @@ function simulateClubAim(
     probabilities.bunker * 0.62 +
     probabilities.rough * 0.12 +
     averageRemainingYd / 620 +
-    Math.abs(profile.carryMedianYd - hole.yards) / 240;
+    Math.abs(profile.carryMedianYd - effectiveDistanceYd) / 240;
 
   return {
     clubId: profile.clubId,

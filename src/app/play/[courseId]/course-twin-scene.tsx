@@ -7,7 +7,7 @@ import {
   planHoleFromTee,
   type PlanTees,
 } from "@/lib/course-twin-plan-tees";
-import { previewCourseTwinAim } from "@/lib/course-twin-strategy";
+import { nudgeCourseTwinAim, previewCourseTwinAim } from "@/lib/course-twin-strategy";
 import { HoleFlag } from "./course-twin-flag";
 import { CourseTwinSunlight } from "./course-twin-sunlight";
 import { CourseTwinDaylight } from "./course-twin-daylight";
@@ -2412,29 +2412,13 @@ export function CourseTwinScene({
   })();
 
   const nudgePlanAim = (degrees: number) => {
-    if (!strategyClub?.landingCloud.length) return;
-    const target =
-      planAimPoint ??
-      strategyClub.landingCloud.reduce<CourseTwinPoint>(
-        (sum, p) => [
-          sum[0] + p[0] / strategyClub.landingCloud.length,
-          0,
-          sum[2] + p[2] / strategyClub.landingCloud.length,
-        ],
-        [0, 0, 0],
-      );
-    const dx = target[0] - planHole.tee[0],
-      dz = target[2] - planHole.tee[2];
-    const angle = (degrees * Math.PI) / 180;
+    if (!baseStrategyClub) return;
     setPlanAim({
       hole: selectedHole.holeNumber,
-      point: [
-        planHole.tee[0] + dx * Math.cos(angle) - dz * Math.sin(angle),
-        planHole.tee[1],
-        planHole.tee[2] + dx * Math.sin(angle) + dz * Math.cos(angle),
-      ],
+      point: nudgeCourseTwinAim(planHole, baseStrategyClub, planAimPoint, degrees),
     });
   };
+
   const planAimControls = (
     <div className="mt-2 flex gap-2" data-plan-aim-controls>
       <button
