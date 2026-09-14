@@ -145,15 +145,14 @@ export default async function TodayCompanionPage({
       ? getTodayProgressHistory({ beforeDateKey: latestData.dateKey }).catch(() => null)
       : Promise.resolve([]),
   ]);
-  const progress =
-    latestData?.rawShots.length && progressHistory
-      ? buildTodayProgress({
-          dateKey: latestData.dateKey,
-          rawShots: latestData.rawShots,
-          previousDays: progressHistory,
-          scope: "day",
-        })
-      : null;
+  const progress = latestData?.rawShots.length
+    ? buildTodayProgress({
+        dateKey: latestData.dateKey,
+        rawShots: latestData.rawShots,
+        previousDays: progressHistory ?? [],
+        scope: "day",
+      })
+    : null;
   const correctionClubs = clubOptions.map((club) => ({
     value: club.value,
     label: [formatCompanionClubType(club.clubType), club.brand, club.model]

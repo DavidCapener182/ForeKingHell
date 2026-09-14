@@ -1,3 +1,4 @@
+import { buildTodayPracticeRecap, type TodayPracticeRecapModel } from "@/lib/today-practice-recap";
 import { practiceSampleContext, stablePracticeReadout } from "@/lib/practice-comparison-readout";
 import { mean, sampleStandardDeviation } from "@/lib/analysis-statistics";
 import { clubSortValue, formatClubType } from "@/lib/club-format";
@@ -59,6 +60,7 @@ export type TodayProgressRecentDay = TodayProgressDaySummary & {
   baselineDateKey: string | null;
 };
 export type TodayProgressReport = {
+  practice: TodayPracticeRecapModel;
   scope: "day" | "session";
   latest: TodayProgressDaySummary;
   previous: TodayProgressDaySummary | null;
@@ -185,6 +187,10 @@ export function buildTodayProgress({
           .join(" ");
 
   return {
+    practice: buildTodayPracticeRecap(
+      [...latest.clubs.values()].flatMap((group) => group.raw),
+      [...latest.clubs.values()].flatMap((group) => group.eligible),
+    ),
     scope,
     latest: latest.summary,
     previous: previous?.summary ?? null,

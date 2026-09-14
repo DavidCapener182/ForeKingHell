@@ -328,16 +328,15 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
       ? getTodayProgressHistory({ beforeDateKey: data.dateKey }).catch(() => null)
       : Promise.resolve([]),
   ]);
-  const progress =
-    hasProgressScope && progressHistory
-      ? buildTodayProgress({
-          dateKey: data.dateKey,
-          rawShots: data.rawShots,
-          previousDays: progressHistory,
-          scope: data.filters.sessionId ? "session" : "day",
-          clubType: progressClubType,
-        })
-      : null;
+  const progress = hasProgressScope
+    ? buildTodayProgress({
+        dateKey: data.dateKey,
+        rawShots: data.rawShots,
+        previousDays: progressHistory ?? [],
+        scope: data.filters.sessionId ? "session" : "day",
+        clubType: progressClubType,
+      })
+    : null;
   const socialContext: TodaySocialContext = {
     loaded: socialLoaded,
     challenges: challengeData?.active ?? [],
