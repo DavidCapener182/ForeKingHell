@@ -1,4 +1,5 @@
 "use client";
+import { PbMetricToggle } from "./pb-metric-toggle";
 import { ShotEvidenceSheet } from "@/app/shots/shot-evidence-sheet";
 
 import Link from "next/link";
@@ -47,6 +48,7 @@ export function BestShotsBoard({
 
   return (
     <section className={styles.board} aria-label="Best shots by club" data-best-shots-board>
+      <PbMetricToggle label="Highlight PB distance" />
       <div className={styles.mobileControls}>
         <label>
           Club
@@ -61,18 +63,6 @@ export function BestShotsBoard({
                 {formatClubType(item.clubType)}
               </option>
             ))}
-          </select>
-        </label>
-        <label>
-          Record
-          <select
-            disabled={!ready}
-            aria-label="Choose distance record"
-            value={metric}
-            onChange={(event) => select(club.clubId, event.target.value as Metric)}
-          >
-            <option value="carry">Longest carry</option>
-            <option value="total">Longest total</option>
           </select>
         </label>
       </div>
