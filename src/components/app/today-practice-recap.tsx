@@ -101,9 +101,22 @@ export function TodayPracticeRecap({
       <div id="today-practice-clubs" className={styles.clubs}>
         <h3>What you hit, club by club</h3>
         <p className={styles.note}>
-          Carry is distance through the air; total includes roll. Bars show carry range with a
-          marker for the average, on the same scale for every club.
+          Carry is distance through the air; total includes roll. On the upper bar, pale green shows
+          the carry range, the dark marker is the average, and grey is the shared distance scale.
         </p>
+        <div className={styles.directionLegend} aria-label="Shot finish colour legend">
+          <strong>Shot finish</strong>
+          <span>
+            <i className={styles.leftShots} aria-hidden="true" /> Left of target
+          </span>
+          <span>
+            <i className={styles.centreShots} aria-hidden="true" /> Within 2 yd
+          </span>
+          <span>
+            <i className={styles.rightShots} aria-hidden="true" /> Right of target
+          </span>
+          <span className={styles.legendHint}>Section width = share of shots</span>
+        </div>
         <div className={styles.clubGrid}>
           {recap.clubs.map((club) => {
             const scale = Math.max(recap.longest?.value ?? 0, 1);
