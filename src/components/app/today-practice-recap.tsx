@@ -176,10 +176,9 @@ export function TodayPracticeRecap({
                   ).map(([label, metric, unit]) => (
                     <div key={label}>
                       <dt>{label}</dt>
-                      <dd>{reading(metric.value, unit)}</dd>
-                      {metric.value === null && label === "Carry spread" ? (
-                        <small>Needs 3 readings</small>
-                      ) : null}
+                      <dd className={metric.value === null ? styles.unavailableMetric : undefined}>
+                        {reading(metric.value, unit)}
+                      </dd>
                     </div>
                   ))}
                 </dl>
@@ -215,6 +214,9 @@ export function TodayPracticeRecap({
                   <p>
                     {club.source} · {club.recorded} recorded · {club.included} trusted full shots
                   </p>
+                  {club.spread.value === null ? (
+                    <p>Carry spread needs at least 3 carry readings.</p>
+                  ) : null}
                   <p>
                     Shortest carry {reading(club.shortestCarry, "yd")}. Readings: {club.carry.count}{" "}
                     carry, {club.totalCount} total, {club.speed.count} speed, {club.offline.count}{" "}

@@ -223,14 +223,16 @@
   color: var(--muted-foreground);
 }
 .clubMetrics dd {
+  line-height: 1.5rem;
   font-size: 0.9rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   margin-top: 0.15rem;
 }
-.clubMetrics small {
-  font-size: 0.6rem;
-  color: var(--muted-foreground);
+.clubMetrics .unavailableMetric {
+  font-size: 0.75rem;
+  line-height: 1.5rem;
+  white-space: nowrap;
 }
 .direction {
   margin-top: 0.5rem;
