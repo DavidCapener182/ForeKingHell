@@ -176,8 +176,14 @@ export function TodayPracticeRecap({
                   ).map(([label, metric, unit]) => (
                     <div key={label}>
                       <dt>{label}</dt>
-                      <dd className={metric.value === null ? styles.unavailableMetric : undefined}>
-                        {reading(metric.value, unit)}
+                      <dd>
+                        {metric.value === null ? (
+                          <span aria-label="Not measured" title="Not measured">
+                            —
+                          </span>
+                        ) : (
+                          reading(metric.value, unit)
+                        )}
                       </dd>
                     </div>
                   ))}
