@@ -333,6 +333,40 @@ html[data-theme="clubhouse"]
   box-shadow: none;
 }
 
+/* The command search is one control: its icon and input share a focus boundary. */
+[data-slot="command-input-wrapper"] [data-slot="command-input"] {
+  min-height: 0;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  padding-block: 0;
+  background: transparent;
+}
+
+[data-slot="command-input-wrapper"] [data-slot="command-input"]:focus-visible {
+  outline: none !important;
+  box-shadow: none;
+}
+
+[data-slot="command-input-wrapper"]
+  [data-slot="input-group"]:has([data-slot="command-input"]:focus-visible) {
+  outline: 3px solid var(--ring);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+html[data-theme="clubhouse"]
+  [data-slot="command-input-wrapper"]
+  [data-slot="input-group"]:has([data-slot="command-input"]:focus-visible) {
+  outline-color: var(--clubhouse-focus);
+}
+
+html[data-theme="high-contrast"]
+  [data-slot="command-input-wrapper"]
+  [data-slot="input-group"]:has([data-slot="command-input"]:focus-visible) {
+  outline-color: #ffff00;
+}
+
 html[data-theme="clubhouse"] :where(.premium-route-tabs, .premium-mobile-bar) {
   border-color: var(--surface-border);
   border-radius: var(--radius);
