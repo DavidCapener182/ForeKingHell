@@ -1,3 +1,4 @@
+import { currentBagClubs } from "@/lib/club-format";
 import { type TodayRound, getTodayRound } from "@/lib/today-round-data";
 import { TodayRoundView } from "./today-round-view";
 import { TodayHydrationBoundary } from "@/components/app/today-hydration-boundary";
@@ -304,7 +305,13 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     cookies(),
     getTodayHomeActivity(userId),
     getDb()
-      .select({ value: clubs.id, type: clubs.type, brand: clubs.brand, model: clubs.model })
+      .select({
+        value: clubs.id,
+        type: clubs.type,
+        brand: clubs.brand,
+        model: clubs.model,
+        active: clubs.active,
+      })
       .from(clubs)
       .where(eq(clubs.userId, userId)),
   ]);
@@ -348,7 +355,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     userId,
     shotIds: selectedReviewShots.map((shot) => shot.id),
   });
-  const correctionClubs = ownedClubs.map((club) => ({
+  const correctionClubs = currentBagClubs(ownedClubs).map((club) => ({
     value: club.value,
     label: [formatClubType(club.type), club.brand, club.model].filter(Boolean).join(" "),
   }));
