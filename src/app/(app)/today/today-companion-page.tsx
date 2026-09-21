@@ -1,3 +1,4 @@
+import { currentBagClubs } from "@/lib/club-format";
 import { getTodayRound } from "@/lib/today-round-data";
 import { TodayRoundView } from "./today-round-view";
 import { TodayHydrationBoundary } from "@/components/app/today-hydration-boundary";
@@ -138,7 +139,13 @@ export default async function TodayCompanionPage({
   const [shotDetails, clubOptions, progressHistory] = await Promise.all([
     getTodayShotDetailRows({ userId, shotIds: latestShots.map((shot) => shot.id) }),
     getDb()
-      .select({ value: clubs.id, clubType: clubs.type, brand: clubs.brand, model: clubs.model })
+      .select({
+        value: clubs.id,
+        type: clubs.type,
+        brand: clubs.brand,
+        model: clubs.model,
+        active: clubs.active,
+      })
       .from(clubs)
       .where(eq(clubs.userId, userId)),
     latestData?.rawShots.length
@@ -153,11 +160,9 @@ export default async function TodayCompanionPage({
         scope: "day",
       })
     : null;
-  const correctionClubs = clubOptions.map((club) => ({
+  const correctionClubs = currentBagClubs(clubOptions).map((club) => ({
     value: club.value,
-    label: [formatCompanionClubType(club.clubType), club.brand, club.model]
-      .filter(Boolean)
-      .join(" "),
+    label: [formatCompanionClubType(club.type), club.brand, club.model].filter(Boolean).join(" "),
   }));
   return (
     <PageShell>

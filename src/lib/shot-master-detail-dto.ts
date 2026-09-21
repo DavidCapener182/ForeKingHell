@@ -1,6 +1,6 @@
 import { assessFlightEvidence, type SessionDataConfidence } from "@/lib/session-data-confidence";
 import type { ShotMasterDetailRow } from "@/app/shots/shots-master-detail-table";
-import { formatClubModelName, formatClubType } from "@/lib/club-format";
+import { formatClubIdentityLabel, formatClubType } from "@/lib/club-format";
 import { isPermanentShotDeletionRestricted } from "@/lib/shot-deletion";
 import { recordEligibility, type RecordEligibilityReason } from "@/lib/shot-records";
 import {
@@ -99,7 +99,7 @@ export function buildShotMasterDetailDto(shot: ShotMasterDetailSource): ShotMast
     fileNameLabel: shot.fileName ?? "Untitled session",
     shotNumberLabel: shot.shotNumber?.toString() ?? "--",
     holeLabel: formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber),
-    clubLabel: formatClubModelName({
+    clubLabel: formatClubIdentityLabel({
       type: shot.clubType,
       brand: shot.clubBrand,
       model: shot.clubModel,

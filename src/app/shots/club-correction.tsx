@@ -85,3 +85,69 @@ export function ClubCorrection({
     </details>
   );
 }
+
+export function BulkClubCorrection({ shotIds, clubs }: { shotIds: string[]; clubs: Option[] }) {
+  const router = useRouter();
+  const [clubId, setClubId] = useState("");
+  const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState("");
+  return (
+    <div className="grid w-full gap-2 border-t pt-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="bulk-shot-club" className="text-sm font-medium">
+          Change selected to
+        </label>
+        <select
+          id="bulk-shot-club"
+          value={clubId}
+          disabled={pending}
+          onChange={(event) => setClubId(event.target.value)}
+          className="min-h-10 rounded-md border bg-background px-3 text-sm"
+        >
+          <option value="">Choose from your bag</option>
+          {clubs.map((club) => (
+            <option key={club.value} value={club.value}>
+              {club.label}
+            </option>
+          ))}
+        </select>
+        <Button
+          size="sm"
+          disabled={pending || !clubId || !shotIds.length}
+          onClick={() => {
+            const ids = [...new Set(shotIds)];
+            const target = clubId;
+            startTransition(async () => {
+              let completed = 0;
+              const warnings = new Set<string>();
+              try {
+                for (const id of ids) {
+                  setMessage(`Updating ${completed + 1} of ${ids.length} shots…`);
+                  const result = await correctShotClubAction(id, target);
+                  completed += 1;
+                  if (result.warning) warnings.add(result.warning);
+                }
+                setMessage(
+                  `${completed} shots updated to ${clubs.find((club) => club.value === target)?.label}. ${[...warnings].join(" ")}`,
+                );
+              } catch (error) {
+                setMessage(
+                  `${completed} of ${ids.length} shots updated. ${error instanceof Error ? error.message : "Update failed."} You can retry; already updated shots are safe to repeat.`,
+                );
+              } finally {
+                router.refresh();
+              }
+            });
+          }}
+        >
+          {pending ? "Updating selected…" : `Update ${shotIds.length} selected shots`}
+        </Button>
+      </div>
+      {message ? (
+        <p role="status" className="text-sm">
+          {message}
+        </p>
+      ) : null}
+    </div>
+  );
+}
