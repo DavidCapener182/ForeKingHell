@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
-import { correctShotClubAction } from "@/app/(app)/shots/actions";
+import { correctShotClubAction, correctShotsClubAction } from "@/app/(app)/shots/actions";
 import { Button } from "@/components/ui/button";
 
 type Option = { value: string; label: string };
@@ -118,21 +118,17 @@ export function BulkClubCorrection({ shotIds, clubs }: { shotIds: string[]; club
             const ids = [...new Set(shotIds)];
             const target = clubId;
             startTransition(async () => {
-              let completed = 0;
-              const warnings = new Set<string>();
+              setMessage(`Updating ${ids.length} selected shots…`);
               try {
-                for (const id of ids) {
-                  setMessage(`Updating ${completed + 1} of ${ids.length} shots…`);
-                  const result = await correctShotClubAction(id, target);
-                  completed += 1;
-                  if (result.warning) warnings.add(result.warning);
-                }
+                const result = await correctShotsClubAction(ids, target);
                 setMessage(
-                  `${completed} shots updated to ${clubs.find((club) => club.value === target)?.label}. ${[...warnings].join(" ")}`,
+                  `${result.count} shots updated to ${clubs.find((club) => club.value === target)?.label}. ${result.warning ?? ""}`,
                 );
               } catch (error) {
                 setMessage(
-                  `${completed} of ${ids.length} shots updated. ${error instanceof Error ? error.message : "Update failed."} You can retry; already updated shots are safe to repeat.`,
+                  error instanceof Error
+                    ? error.message
+                    : "Could not update the selection. Try again.",
                 );
               } finally {
                 router.refresh();

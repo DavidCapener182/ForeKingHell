@@ -128,6 +128,131 @@ export async function correctShotClub(input: {
   return warning ? { ...changed, warning } : changed;
 }
 
+/** Apply a whole selection atomically and refresh derived evidence once per scope. */
+export async function correctShotsClub(input: {
+  userId: string;
+  shotIds: string[];
+  clubId: string;
+}) {
+  const { userId, clubId } = input;
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (
+    !Array.isArray(input.shotIds) ||
+    !input.shotIds.length ||
+    input.shotIds.length > 50 ||
+    ![clubId, ...input.shotIds].every((id) => typeof id === "string" && uuid.test(id))
+  )
+    throw new Error("Choose between 1 and 50 shots and an active club from your bag.");
+  const shotIds = [...new Set(input.shotIds)];
+  const changed = await getDb().transaction(async (tx) => {
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).for("update");
+    const references = await tx
+      .select({ sessionId: shots.sessionId })
+      .from(shots)
+      .where(and(inArray(shots.id, shotIds), eq(shots.userId, userId)));
+    if (references.length !== shotIds.length)
+      throw new Error("One or more shots are unavailable. Refresh and try again.");
+    const sessionIds = [...new Set(references.map((shot) => shot.sessionId))].sort();
+    const ownedSessions = await tx
+      .select({
+        id: sessions.id,
+        updatedAt: sessions.updatedAt,
+        scorecardJson: sessions.scorecardJson,
+      })
+      .from(sessions)
+      .where(and(inArray(sessions.id, sessionIds), eq(sessions.userId, userId)))
+      .orderBy(asc(sessions.id))
+      .for("update");
+    if (ownedSessions.length !== sessionIds.length)
+      throw new Error("One or more sessions are unavailable.");
+    for (const session of ownedSessions) assertOfflineRoundPrecondition({ ...session, userId });
+    const ownedShots = await tx
+      .select({
+        id: shots.id,
+        sessionId: shots.sessionId,
+        clubId: shots.clubId,
+        clubType: shots.clubType,
+        playContext: shots.playContext,
+        reviewStatus: shots.reviewStatus,
+        qualityTag: shots.qualityTag,
+      })
+      .from(shots)
+      .where(and(inArray(shots.id, shotIds), eq(shots.userId, userId)))
+      .orderBy(asc(shots.id))
+      .for("update");
+    if (
+      ownedShots.length !== shotIds.length ||
+      ownedShots.some((shot) => !sessionIds.includes(shot.sessionId))
+    )
+      throw new Error("The selection changed. Refresh and try again.");
+    const [club] = await tx
+      .select({ id: clubs.id, type: clubs.type })
+      .from(clubs)
+      .where(and(eq(clubs.id, clubId), eq(clubs.userId, userId), eq(clubs.active, true)))
+      .limit(1);
+    if (!club) throw new Error("Choose an active club from your bag.");
+    const updates = ownedShots.filter(
+      (shot) => shot.clubId !== club.id || shot.clubType !== club.type,
+    );
+    if (updates.length) {
+      await tx
+        .update(shots)
+        .set({ clubId: club.id, clubType: club.type })
+        .where(
+          and(
+            inArray(
+              shots.id,
+              updates.map((shot) => shot.id),
+            ),
+            eq(shots.userId, userId),
+          ),
+        );
+      await tx.insert(shotReviewEvents).values(
+        updates.map((shot) => ({
+          userId,
+          shotId: shot.id,
+          previousStatus: shot.reviewStatus,
+          status: shot.reviewStatus,
+          reason: `Club corrected from ${shot.clubType} (${shot.clubId}) to ${club.type} (${club.id}). Measurements retained.`,
+          confidence: 1,
+          source: "user" as const,
+          previousQualityTag: shot.qualityTag,
+          resultingQualityTag: shot.qualityTag,
+        })),
+      );
+      const changedSessionIds = new Set(updates.map((shot) => shot.sessionId));
+      for (const session of ownedSessions.filter((session) => changedSessionIds.has(session.id))) {
+        if (session.scorecardJson?.length) {
+          const scorecard = await recalculateRoundAssignments(session.id, userId, tx);
+          await rebuildRoundStrokesGainedEvents(
+            session.id,
+            userId,
+            scorecard ?? session.scorecardJson,
+            tx,
+          );
+        } else {
+          await tx
+            .update(sessions)
+            .set({ updatedAt: nextRoundVersionTime(session.updatedAt) })
+            .where(and(eq(sessions.id, session.id), eq(sessions.userId, userId)));
+        }
+        await recordOfflineRoundCommit(tx, userId, session.id);
+      }
+      await refreshStockYardagesForClubs(tx, {
+        userId,
+        clubContexts: updates.flatMap((shot) => [
+          { clubId: shot.clubId, playContext: shot.playContext },
+          { clubId: club.id, playContext: shot.playContext },
+        ]),
+        calculatedAt: new Date(),
+      });
+    }
+    return { sessionIds, count: shotIds.length };
+  });
+  const warning = await refreshCorrectedPracticeEvidence(userId, changed.sessionIds);
+  return { ...changed, warning };
+}
+
 /** Edit or merge a bag club and refresh every affected session, not just the open round. */
 export async function updateClubIdentity(input: {
   userId: string;
