@@ -13,22 +13,20 @@ test.describe("clean-database companion smoke", () => {
 
   test("navigates the core companion on a clean database", async ({ page }) => {
     await page.goto("/surface/companion?next=%2Ftoday", { waitUntil: "commit" });
-    await expectCompanionRoute(page, "Today", /\/today(?:\?|$)/);
+    await expectCompanionRoute(page, "Home", /\/today(?:\?|$)/);
 
     const primaryNavigation = page.getByRole("navigation", { name: "Mobile primary" });
     await expect(primaryNavigation).toBeVisible();
     await expect(primaryNavigation.getByRole("link")).toHaveText([
-      "Today",
-      "Sessions",
-      "Practice",
-      "Play",
+      "Home",
       "Bag",
+      "Play",
+      "Activity",
     ]);
 
     for (const destination of [
-      { navigationLabel: "Practice", routeLabel: "Practice", path: /\/practice(?:\?|$)/ },
       { navigationLabel: "Play", routeLabel: "Play", path: /\/play(?:\?|$)/ },
-      { navigationLabel: "Sessions", routeLabel: "Sessions", path: /\/sessions(?:\?|$)/ },
+      { navigationLabel: "Activity", routeLabel: "Activity", path: /\/sessions(?:\?|$)/ },
       { navigationLabel: "Bag", routeLabel: "Bag", path: /\/bag(?:\?|$)/ },
     ]) {
       await primaryNavigation
