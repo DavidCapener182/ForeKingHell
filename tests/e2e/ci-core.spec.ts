@@ -57,9 +57,15 @@ async function expectCompanionRoute(
 ) {
   // The CI dev server compiles each destination on its first visit.
   await expect(page).toHaveURL(path, { timeout: 60_000 });
-  await expect(page.locator("[data-mobile-route-label]:visible").first()).toHaveText(routeLabel, {
-    timeout: 60_000,
-  });
+  if (routeLabel === "Activity") {
+    await expect(page.getByRole("heading", { name: "Activity", exact: true }).first()).toBeVisible({
+      timeout: 60_000,
+    });
+  } else {
+    await expect(page.locator("[data-mobile-route-label]:visible").first()).toHaveText(routeLabel, {
+      timeout: 60_000,
+    });
+  }
   await expect(page.locator("main#main-content:visible").first()).toBeVisible();
   await expect(page.locator("body")).not.toContainText(/Internal Server Error|Application error/i);
 }
