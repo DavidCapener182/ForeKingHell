@@ -46,7 +46,7 @@ test.describe("clean-database companion smoke", () => {
       .getByRole("dialog")
       .getByRole("link", { name: "Import & Sync", exact: true })
       .click();
-    await expectCompanionRoute(page, "Import data", /\/import(?:\?|$)/);
+    await expectCompanionRoute(page, "Import", /\/import(?:\?|$)/);
   });
 });
 
@@ -57,8 +57,8 @@ async function expectCompanionRoute(
 ) {
   // The CI dev server compiles each destination on its first visit.
   await expect(page).toHaveURL(path, { timeout: 60_000 });
-  if (routeLabel === "Activity") {
-    await expect(page.getByRole("heading", { name: "Activity", exact: true }).first()).toBeVisible({
+  if (routeLabel === "Activity" || routeLabel === "Import") {
+    await expect(page.getByRole("heading", { name: routeLabel, exact: true }).first()).toBeVisible({
       timeout: 60_000,
     });
   } else {
