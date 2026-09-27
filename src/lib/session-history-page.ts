@@ -21,7 +21,8 @@ export async function getSessionHistoryPage(
   input: SessionHistorySearchParamsInput,
   includeShotPatterns: boolean,
 ) {
-  const pageSize = includeShotPatterns ? HISTORY_PAGE_SIZE : 10;
+  // historyPage is shared by companion and workbench surface switches.
+  const pageSize = HISTORY_PAGE_SIZE;
   const db = getDb();
   const [catalog] = await db.execute<{ total: number; sources: string[]; clubs: string[] }>(sql`
     select count(*)::int as total, coalesce(array_agg(distinct s.source), array[]::text[]) as sources,

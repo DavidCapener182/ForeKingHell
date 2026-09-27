@@ -169,25 +169,27 @@ export default async function TodayCompanionPage({
     <PageShell>
       <MobileAppShell className="gap-6" data-today-companion>
         <MobileTodayGreeting initialNow={now.toISOString()} />
-        <MobileHomeOverview
-          shotCount={latestShots.length}
-          sessionCount={latestData?.sessions.length ?? 0}
-          dateLabel={latestData?.dateLabel ?? null}
-          focusLabel={currentPlan?.title ?? recommendation.clubLabel ?? null}
-          progressHeadline={progress?.headline ?? null}
-          progressSummary={progress?.summary ?? null}
-          best={
-            progress?.practice.longest
-              ? `${progress.practice.longest.club}: ${Math.round(progress.practice.longest.value)} yd longest carry`
-              : null
-          }
-          needsWork={progress?.setbacks[0]?.text ?? null}
-          improved={progress?.improvements[0]?.text ?? null}
-          recentDays={(progress?.recentTrend.days ?? []).map((day) => ({
-            dateKey: day.dateKey,
-            shotCount: day.shotCount,
-          }))}
-        />
+        {latestData ? (
+          <MobileHomeOverview
+            shotCount={latestShots.length}
+            sessionCount={latestData?.sessions.length ?? 0}
+            dateLabel={latestData?.dateLabel ?? null}
+            focusLabel={currentPlan?.title ?? recommendation.clubLabel ?? null}
+            progressHeadline={progress?.headline ?? null}
+            progressSummary={progress?.summary ?? null}
+            best={
+              progress?.practice.longest
+                ? `${progress.practice.longest.club}: ${Math.round(progress.practice.longest.value)} yd longest carry`
+                : null
+            }
+            needsWork={progress?.setbacks[0]?.text ?? null}
+            improved={progress?.improvements[0]?.text ?? null}
+            recentDays={(progress?.recentTrend.days ?? []).map((day) => ({
+              dateKey: day.dateKey,
+              shotCount: day.shotCount,
+            }))}
+          />
+        ) : null}
         {latestRound ? <TodayRoundView round={latestRound} /> : null}
         {latestRound ? (
           <div id="today-practice-progress" className="scroll-mt-24 border-t border-border pt-5">
