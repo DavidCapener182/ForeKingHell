@@ -9,6 +9,7 @@ export function HistoryLoadMore({
   savedTotal,
   page,
   pages,
+  pageSize,
   query,
 }: {
   loaded: number;
@@ -16,6 +17,7 @@ export function HistoryLoadMore({
   savedTotal: number;
   page: number;
   pages: number;
+  pageSize?: number;
   query: string;
 }) {
   const href = (next: number) => {
@@ -31,8 +33,8 @@ export function HistoryLoadMore({
       className="flex flex-wrap items-center justify-between gap-3 border-t py-4"
     >
       <p className="text-sm text-muted-foreground">
-        {loaded ? (page - 1) * 24 + 1 : 0}–{(page - 1) * 24 + loaded} of {total} matching sessions ·{" "}
-        {savedTotal} saved. Search and filters cover all saved history.
+        {loaded ? (page - 1) * (pageSize ?? 24) + 1 : 0}–{(page - 1) * (pageSize ?? 24) + loaded} of{" "}
+        {total} matching sessions · {savedTotal} saved. Search and filters cover all saved history.
       </p>
       <div className="flex gap-2">
         {page > 1 ? (
