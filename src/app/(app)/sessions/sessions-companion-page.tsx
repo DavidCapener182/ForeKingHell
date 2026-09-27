@@ -33,15 +33,7 @@ export default async function SessionsCompanionPage({
 
   return (
     <PageShell>
-      <PageHeader
-        title="History"
-        description="Practice, simulator sessions and rounds in date order."
-        actions={
-          <Button asChild className="min-h-11">
-            <Link href="/import">Import session</Link>
-          </Button>
-        }
-      />
+      <PageHeader title="Activity" description="Practice sessions and rounds, newest first." />
       <MobileAppShell className="gap-4" data-sessions-companion>
         {result.savedTotal > 0 ? (
           <SessionsCompanionList
@@ -75,6 +67,7 @@ export default async function SessionsCompanionPage({
         savedTotal={result.savedTotal}
         page={result.page}
         pages={result.pages}
+        pageSize={result.pageSize}
         query={result.query}
       />
     </PageShell>

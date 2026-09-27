@@ -18,8 +18,9 @@ import { BestShotsEntry } from "@/components/app/best-shots-entry";
 import { buildMobileTodayReview, practiceDateKey } from "@/lib/mobile-today-review";
 import { buildMobileTodayChange } from "@/lib/mobile-today-briefing";
 import { formatCompanionClubType } from "@/lib/club-format";
-import { ArrowRight, Flag, Upload, Activity, Trophy, Target } from "lucide-react";
+import { Flag, Upload, Activity, Trophy, Target } from "lucide-react";
 import { MobileTodayGreeting } from "@/components/app/mobile-today-greeting";
+import { MobileHomeOverview } from "@/components/app/mobile-home-overview";
 import { MobileSection } from "@/components/app/mobile-screen";
 import { MobileGroupedList, MobileListRow } from "@/components/app/mobile-primitives";
 import Link from "next/link";
@@ -168,11 +169,25 @@ export default async function TodayCompanionPage({
     <PageShell>
       <MobileAppShell className="gap-6" data-today-companion>
         <MobileTodayGreeting initialNow={now.toISOString()} />
-        <Button asChild variant="outline" className="min-h-11 self-end">
-          <Link href="/practice">
-            Next practice <ArrowRight className="size-4" aria-hidden />
-          </Link>
-        </Button>
+        <MobileHomeOverview
+          shotCount={latestShots.length}
+          sessionCount={latestData?.sessions.length ?? 0}
+          dateLabel={latestData?.dateLabel ?? null}
+          focusLabel={currentPlan?.title ?? recommendation.clubLabel ?? null}
+          progressHeadline={progress?.headline ?? null}
+          progressSummary={progress?.summary ?? null}
+          best={
+            progress?.practice.longest
+              ? `${progress.practice.longest.club}: ${Math.round(progress.practice.longest.value)} yd longest carry`
+              : null
+          }
+          needsWork={progress?.setbacks[0]?.text ?? null}
+          improved={progress?.improvements[0]?.text ?? null}
+          recentDays={(progress?.recentTrend.days ?? []).map((day) => ({
+            dateKey: day.dateKey,
+            shotCount: day.shotCount,
+          }))}
+        />
         {latestRound ? <TodayRoundView round={latestRound} /> : null}
         {latestRound ? (
           <div id="today-practice-progress" className="scroll-mt-24 border-t border-border pt-5">
@@ -184,7 +199,6 @@ export default async function TodayCompanionPage({
             </p>
           </div>
         ) : null}
-        <TodayProgressReport report={progress} historyError={progressHistory === null} />
         {!latestData ? (
           <Alert>
             <AlertTitle>Today’s review couldn’t load</AlertTitle>
@@ -258,6 +272,17 @@ export default async function TodayCompanionPage({
                 ]
           }
         />
+
+        {progress ? (
+          <details className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+            <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">
+              Detailed practice report · {latestData?.dateLabel ?? "Latest evidence"}
+            </summary>
+            <div className="pt-3">
+              <TodayProgressReport report={progress} historyError={progressHistory === null} />
+            </div>
+          </details>
+        ) : null}
 
         <TodayWorkspaceTabs
           panels={{
