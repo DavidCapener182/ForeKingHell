@@ -9,7 +9,7 @@ function source(path: string) {
 }
 
 describe("product brief acceptance", () => {
-  it("keeps the consolidated desktop and five-destination mobile navigation", () => {
+  it("keeps the consolidated desktop and four-destination mobile navigation", () => {
     expect(buildDesktopNavGroups(true).map((group) => group.label)).toEqual([
       "Home",
       "Practice",
@@ -23,11 +23,10 @@ describe("product brief acceptance", () => {
       "Admin",
     ]);
     expect(mobilePrimaryItems.map((item) => item.label)).toEqual([
-      "Today",
-      "Sessions",
-      "Practice",
-      "Play",
+      "Home",
       "Bag",
+      "Play",
+      "Activity",
     ]);
   });
 
