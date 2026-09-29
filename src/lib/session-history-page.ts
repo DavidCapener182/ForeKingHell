@@ -21,6 +21,8 @@ export async function getSessionHistoryPage(
   input: SessionHistorySearchParamsInput,
   includeShotPatterns: boolean,
 ) {
+  // historyPage is shared by companion and workbench surface switches.
+  const pageSize = HISTORY_PAGE_SIZE;
   const db = getDb();
   const [catalog] = await db.execute<{ total: number; sources: string[]; clubs: string[] }>(sql`
     select count(*)::int as total, coalesce(array_agg(distinct s.source), array[]::text[]) as sources,
@@ -58,7 +60,7 @@ export async function getSessionHistoryPage(
     sql`${history} select count(*)::int as total from matching`,
   );
   const total = count?.total ?? 0;
-  const pages = Math.max(1, Math.ceil(total / HISTORY_PAGE_SIZE));
+  const pages = Math.max(1, Math.ceil(total / pageSize));
   const requested = Number(input.historyPage ?? 1);
   let page = Math.min(pages, Number.isSafeInteger(requested) && requested > 0 ? requested : 1);
   // A saved focused URL can reach its owned matching record beyond the first page.
@@ -67,13 +69,13 @@ export async function getSessionHistoryPage(
       position: number;
     }>(sql`${history} select position::int from
       (select id, row_number() over(order by date desc, id desc) as position from matching) ranked where id::text=${filters.sessionId}`);
-    if (position) page = Math.ceil(position.position / HISTORY_PAGE_SIZE);
+    if (position) page = Math.ceil(position.position / pageSize);
   }
   const ids = await db.execute<{ id: string }>(
-    sql`${history} select id from matching order by date desc, id desc limit ${HISTORY_PAGE_SIZE} offset ${(page - 1) * HISTORY_PAGE_SIZE}`,
+    sql`${history} select id from matching order by date desc, id desc limit ${pageSize} offset ${(page - 1) * pageSize}`,
   );
   const rows = ids.length
-    ? await getRecentSessionHistory(userId, HISTORY_PAGE_SIZE, {
+    ? await getRecentSessionHistory(userId, pageSize, {
         includeShotPatterns,
         sessionIds: ids.map((row) => row.id),
       })
@@ -92,6 +94,7 @@ export async function getSessionHistoryPage(
     savedTotal: catalog?.total ?? 0,
     page,
     pages,
+    pageSize,
     filterOptions,
     query: query.toString(),
   };

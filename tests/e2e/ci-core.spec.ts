@@ -13,23 +13,21 @@ test.describe("clean-database companion smoke", () => {
 
   test("navigates the core companion on a clean database", async ({ page }) => {
     await page.goto("/surface/companion?next=%2Ftoday", { waitUntil: "commit" });
-    await expectCompanionRoute(page, "Today", /\/today(?:\?|$)/);
+    await expectCompanionRoute(page, "Home", /\/today(?:\?|$)/);
 
     const primaryNavigation = page.getByRole("navigation", { name: "Mobile primary" });
     await expect(primaryNavigation).toBeVisible();
     await expect(primaryNavigation.getByRole("link")).toHaveText([
-      "Today",
-      "Sessions",
-      "Practice",
-      "Play",
+      "Home",
       "Bag",
+      "Play",
+      "Activity",
     ]);
 
     for (const destination of [
-      { navigationLabel: "Practice", routeLabel: "Practice", path: /\/practice(?:\?|$)/ },
       { navigationLabel: "Play", routeLabel: "Play", path: /\/play(?:\?|$)/ },
-      { navigationLabel: "Sessions", routeLabel: "Sessions", path: /\/sessions(?:\?|$)/ },
-      { navigationLabel: "Bag", routeLabel: "Bag", path: /\/bag(?:\?|$)/ },
+      { navigationLabel: "Activity", routeLabel: "Activity", path: /\/sessions(?:\?|$)/ },
+      { navigationLabel: "Bag", routeLabel: "Your bag", path: /\/bag(?:\?|$)/ },
     ]) {
       await primaryNavigation
         .getByRole("link", { name: destination.navigationLabel, exact: true })
@@ -48,7 +46,7 @@ test.describe("clean-database companion smoke", () => {
       .getByRole("dialog")
       .getByRole("link", { name: "Import & Sync", exact: true })
       .click();
-    await expectCompanionRoute(page, "Import data", /\/import(?:\?|$)/);
+    await expectCompanionRoute(page, "Import", /\/import(?:\?|$)/);
   });
 });
 
@@ -59,9 +57,15 @@ async function expectCompanionRoute(
 ) {
   // The CI dev server compiles each destination on its first visit.
   await expect(page).toHaveURL(path, { timeout: 60_000 });
-  await expect(page.locator("[data-mobile-route-label]:visible").first()).toHaveText(routeLabel, {
-    timeout: 60_000,
-  });
+  if (routeLabel === "Activity" || routeLabel === "Import") {
+    await expect(page.getByRole("heading", { name: routeLabel, exact: true }).first()).toBeVisible({
+      timeout: 60_000,
+    });
+  } else {
+    await expect(page.locator("[data-mobile-route-label]:visible").first()).toHaveText(routeLabel, {
+      timeout: 60_000,
+    });
+  }
   await expect(page.locator("main#main-content:visible").first()).toBeVisible();
   await expect(page.locator("body")).not.toContainText(/Internal Server Error|Application error/i);
 }

@@ -126,11 +126,10 @@ function buildNavGroups(isAdmin: boolean, includeSecondary: boolean): AppNavGrou
 }
 
 const mobilePrimaryDefinitions = [
-  { id: "today", label: "Today", group: "today" },
-  { id: "sessions", label: "Sessions", group: "review" },
-  { id: "practice", label: "Practice", group: "practice" },
-  { id: "play-companion", label: "Play", group: "strategy" },
+  { id: "today", label: "Home", group: "today" },
   { id: "bag", label: "Bag", group: "bag" },
+  { id: "play-companion", label: "Play", group: "strategy" },
+  { id: "sessions", label: "Activity", group: "review" },
 ] as const;
 
 export const mobilePrimaryItems: AppNavItem[] = mobilePrimaryDefinitions.map(

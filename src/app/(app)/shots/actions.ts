@@ -3,7 +3,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
-import { correctShotClub } from "@/lib/shot-club-correction";
+import { correctShotClub, correctShotsClub } from "@/lib/shot-club-correction";
 import { getDb } from "@/db/client";
 import { rapsodoSyncSessions, sessions, shotReviewEvents, shots } from "@/db/schema";
 import { requireCurrentUserId } from "@/lib/current-user";
@@ -32,6 +32,15 @@ export async function correctShotClubAction(shotId: string, clubId: string) {
   revalidatePath("/quick-bag");
   revalidatePath(`/rounds/${changed.sessionId}`);
   return { previousClubId: changed.previousClubId, warning: changed.warning };
+}
+
+export async function correctShotsClubAction(shotIds: string[], clubId: string) {
+  const userId = await requireCurrentUserId();
+  const changed = await correctShotsClub({ userId, shotIds, clubId });
+  revalidateShotDerivedRoutes(changed.sessionIds);
+  revalidatePath("/quick-bag");
+  for (const sessionId of changed.sessionIds) revalidatePath(`/rounds/${sessionId}`);
+  return { count: changed.count, warning: changed.warning };
 }
 
 export async function reviewShotsAction(input: ShotReviewActionInput) {

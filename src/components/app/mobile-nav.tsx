@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, MoreHorizontal, Search, Upload, X } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Search, X } from "lucide-react";
 import { NotificationCentre } from "@/components/app/workbench/notification-centre";
 
 import {
@@ -64,7 +64,16 @@ type MobileNavProps = {
 
 const xpFormatter = new Intl.NumberFormat("en-GB");
 
-export function MobileNav({ pathname, totalXp, level, profile, isAdmin = false }: MobileNavProps) {
+export function MobileNav({
+  pathname: rawPathname,
+  totalXp,
+  level,
+  profile,
+  isAdmin = false,
+}: MobileNavProps) {
+  // Next's internal companion rewrite can be visible to server rendering while
+  // the browser keeps the public route. Use the public path for labels and tabs.
+  const pathname = rawPathname.replace(/^\/companion-runtime(?=\/)/, "");
   const params = useSearchParams();
   const savedPlanId = pathname === "/practice" ? params.get("planId") : null;
   const requestedSettingsSection = pathname === "/settings" ? params.get("section") : null;
@@ -156,7 +165,14 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin = false }
         data-mobile-root={!backNavigation ? "true" : undefined}
         className="ios-app-header fixed left-0 top-0 z-[60] h-[calc(3.25rem+12px+env(safe-area-inset-top,0px))] w-dvw max-w-full px-3 pt-[calc(env(safe-area-inset-top,0px)+12px)]"
       >
-        <div className="grid h-[3.25rem] grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-2">
+        <div
+          className={cn(
+            "grid h-[3.25rem] items-center gap-2",
+            backNavigation
+              ? "grid-cols-[2.75rem_minmax(0,1fr)_2.75rem]"
+              : "grid-cols-[minmax(0,1fr)_auto]",
+          )}
+        >
           <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
             {backNavigation ? (
               <Button
@@ -181,11 +197,16 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin = false }
                 <Button
                   type="button"
                   variant="ghost"
-                  size="icon"
-                  className="ios-nav-button focus-aaa relative z-10 size-11"
+                  className="ios-nav-button focus-aaa relative z-10 min-h-11 max-w-full justify-start gap-2 px-1"
                   aria-label={`Open more tools and profile for ${profileLabel}`}
                 >
-                  <MoreHorizontal className="size-5" aria-hidden />
+                  <span
+                    className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/15 text-xs font-bold text-primary"
+                    aria-hidden
+                  >
+                    {profileLabel.slice(0, 1).toUpperCase()}
+                  </span>
+                  <span className="truncate text-xs font-semibold">{profileLabel}</span>
                 </Button>
               </SheetTrigger>
             )}
@@ -316,8 +337,11 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin = false }
             </SheetContent>
           </Sheet>
 
-          <div className="relative grid min-w-0 place-items-center">
+          <div
+            className={cn("relative grid min-w-0 place-items-center", !backNavigation && "hidden")}
+          >
             <p
+              suppressHydrationWarning
               className={cn(
                 "ios-inline-title w-full max-w-full min-w-0 truncate text-center transition-opacity duration-150 motion-reduce:transition-none",
                 compactTitleVisible ? "opacity-100" : "pointer-events-none opacity-0",
@@ -346,12 +370,10 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin = false }
             <Button
               asChild
               variant="ghost"
-              size="icon"
-              className="ios-nav-button focus-aaa size-11 justify-self-end"
+              className="ios-nav-button focus-aaa min-h-9 justify-self-end rounded-full border border-border px-3 text-[0.65rem] font-bold"
             >
               <Link href="/import" aria-label="Import launch-monitor data">
-                <Upload className="size-5" />
-                <span className="sr-only">Import</span>
+                <span aria-hidden>+ Import</span>
               </Link>
             </Button>
           )}
@@ -359,7 +381,7 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin = false }
       </header>
 
       <nav aria-label="Mobile primary" className="fixed bottom-0 left-0 z-40 w-dvw max-w-full">
-        <div className="ios-tab-bar grid grid-cols-5 px-1 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-1">
+        <div className="ios-tab-bar grid grid-cols-4 px-1 pb-[calc(0.35rem+env(safe-area-inset-bottom))] pt-1">
           {mobilePrimaryItems.map((item) => {
             const Icon = item.icon;
             const active = item.isActive(pathname);
