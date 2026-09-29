@@ -7,6 +7,12 @@ updates:
       day: monday
       time: "06:00"
       timezone: Europe/London
+    # React Three Fiber currently requires React <19.3. Revisit with a compatible renderer.
+    ignore:
+      - dependency-name: react
+        versions: [">=19.3.0"]
+      - dependency-name: react-dom
+        versions: [">=19.3.0"]
     groups:
       next-react:
         patterns: ["next", "eslint-config-next", "react", "react-dom", "@types/react*"]
