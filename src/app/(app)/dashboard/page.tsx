@@ -26,8 +26,7 @@ import { getCurrentPracticePlanSummary } from "@/lib/practice-planner";
 import { formatHandicapValue } from "@/lib/round-handicap";
 import { getSpeedCoachCardData } from "@/lib/speed-training-data";
 import type { SpeedDevelopmentSummary } from "@/lib/speed-development";
-import { getProgressData } from "@/lib/progress-data";
-import { ProgressComparison } from "@/app/progress/progress-comparison";
+import { TodayClubTrendsPanel } from "@/components/app/today-club-trends-panel";
 
 export const dynamic = "force-dynamic";
 
@@ -75,11 +74,10 @@ async function dashboardCourseEvidence(userId: string) {
 export default async function DashboardPage() {
   if (!process.env.DATABASE_URL?.trim()) return <DashboardUnavailable />;
   const userId = await requireCurrentUserId();
-  const [data, currentPlan, speed, progress, courseRows, latestActivityRound] = await Promise.all([
+  const [data, currentPlan, speed, courseRows, latestActivityRound] = await Promise.all([
     getDashboardData(),
     getCurrentPracticePlanSummary(userId),
     getSpeedCoachCardData(userId),
-    getProgressData(userId),
     dashboardCourseEvidence(userId),
     getTodayRound(userId),
   ]);
@@ -176,7 +174,7 @@ export default async function DashboardPage() {
   const sections = [
     ["practice", "Practice"],
     ["driver-speed", "Driver & speed"],
-    ["changes", "Changes"],
+    ["club-progress", "Changes"],
     ["delivery", "Club delivery"],
     ["readiness", "Round readiness"],
     ["current-work", "Current work"],
@@ -202,6 +200,7 @@ export default async function DashboardPage() {
             </Button>
           }
         />
+        <TodayClubTrendsPanel mode="dashboard" />
         {latestActivityRound ? <TodayRoundView round={latestActivityRound} /> : null}
         {latestActivityRound ? (
           <div id="today-practice-progress" className="scroll-mt-24 border-t border-border pt-5">
@@ -315,13 +314,6 @@ export default async function DashboardPage() {
             </summary>
             <DriverDevelopmentPanel compact />
           </details>
-        </section>
-        <section id="changes" className="grid scroll-mt-24 gap-3">
-          <SectionHeader
-            title="Since your previous comparable session"
-            description="Compare dated measurements for the same club. Missing or incompatible evidence never becomes a zero change."
-          />
-          <ProgressComparison clubs={progress.comparisons} />
         </section>
         <section id="delivery" className="grid scroll-mt-24 gap-3">
           <SectionHeader

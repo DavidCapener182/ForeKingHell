@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import postgres from "postgres";
 
 test("Today automatically reviews populated practice history on both surfaces", async ({
@@ -87,12 +87,19 @@ test("Today automatically reviews populated practice history on both surfaces", 
         page.on("pageerror", (error) => errors.push(`${surface}: ${error.message}`));
         await page.goto(`/surface/${surface}?next=%2Ftoday`);
         const report = page.locator("[data-today-progress-report]");
+        await openPracticeDayReport(page);
         await expect(report).toBeVisible({ timeout: 60000 });
+        await openPracticeDayReport(page);
         await expect(report).toHaveAttribute("data-progress-verdict", "better");
+        await openPracticeDayReport(page);
         await expect(report).toContainText(/better|improv/i);
+        await openPracticeDayReport(page);
         await expect(report).toContainText(/recent|trend/i);
+        await openPracticeDayReport(page);
         await expect(report).toContainText(/7i|7 iron|7-iron/i);
+        await openPracticeDayReport(page);
         await expect(report).toContainText("Driver");
+        await openPracticeDayReport(page);
         await expect(report).toContainText("24");
         expect(
           await report.evaluate((element) => Boolean(element.closest('[role="tabpanel"]'))),
@@ -102,13 +109,16 @@ test("Today automatically reviews populated practice history on both surfaces", 
         await expect(workspace).toHaveAttribute("data-ready", "true", { timeout: 60000 });
         await workspace.getByRole("tab", { name: "Evidence", exact: true }).click();
         await expect(workspace.getByRole("tabpanel")).toBeVisible();
+        await openPracticeDayReport(page);
         await expect(report).toBeVisible();
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1),
         ).toBe(false);
         if (surface === "workbench") {
           await page.goto("/today?club=driver");
+          await openPracticeDayReport(page);
           await expect(report.getByRole("heading", { level: 2 })).toContainText("Driver");
+          await openPracticeDayReport(page);
           await expect(report).not.toContainText("7i");
         }
         await report
@@ -116,29 +126,45 @@ test("Today automatically reviews populated practice history on both surfaces", 
             `a[href="/today?date=${dateKey(2)}${surface === "workbench" ? "&club=driver" : ""}"]`,
           )
           .click();
+        await openPracticeDayReport(page);
         await expect(report.locator("time").first()).toHaveAttribute("datetime", dateKey(2));
         if (surface === "workbench") {
+          await openPracticeDayReport(page);
           await expect(report.getByRole("heading", { level: 2 })).toContainText("Driver");
+          await openPracticeDayReport(page);
           await expect(report).toHaveAttribute("data-progress-verdict", "building");
+          await openPracticeDayReport(page);
           await expect(report).not.toContainText("7i");
+          await openPracticeDayReport(page);
           await expect(report).toContainText("0 of 0 trusted full shots");
           await expect(page.locator("[data-today-shot-point]")).toHaveCount(0);
           await report.locator(`a[href="/today?date=${dateKey(4)}&club=driver"]`).click();
+          await openPracticeDayReport(page);
           await expect(report.locator("time").first()).toHaveAttribute("datetime", dateKey(4));
+          await openPracticeDayReport(page);
           await expect(report.getByRole("heading", { level: 2 })).toContainText("Driver");
+          await openPracticeDayReport(page);
           await expect(report).not.toContainText("7i");
+          await openPracticeDayReport(page);
           await expect(report).toContainText("12 of 12 trusted full shots");
           await page.goto(`/today?date=${dateKey(3)}&club=driver`);
+          await openPracticeDayReport(page);
           await expect(report.getByRole("heading", { level: 2 })).toContainText("Driver");
+          await openPracticeDayReport(page);
           await expect(report).toHaveAttribute("data-progress-verdict", "building");
+          await openPracticeDayReport(page);
           await expect(report).toContainText("0 of 0 trusted full shots");
           await expect(
             report.locator(`a[href="/today?date=${dateKey(4)}&club=driver"]`),
           ).toBeVisible();
           await page.goto("/today?club=invalid-report-scope");
+          await openPracticeDayReport(page);
           await expect(report).not.toContainText("invalid-report-scope");
+          await openPracticeDayReport(page);
           await expect(report).toContainText("7i");
+          await openPracticeDayReport(page);
           await expect(report).toContainText("Driver");
+          await openPracticeDayReport(page);
           await expect(report.locator('a[href*="&club="]')).toHaveCount(0);
         }
         if (surface === "companion") {
@@ -242,10 +268,15 @@ test("Today keeps the latest completed practice after the calendar day changes",
         page.on("pageerror", (error) => errors.push(`${surface}: ${error.message}`));
         await page.goto(`/surface/${surface}?next=%2Ftoday`);
         const report = page.locator("[data-today-progress-report]");
+        await openPracticeDayReport(page);
         await expect(report).toBeVisible({ timeout: 60000 });
+        await openPracticeDayReport(page);
         await expect(report.locator("time").first()).toHaveAttribute("datetime", dateKey(1));
+        await openPracticeDayReport(page);
         await expect(report).toHaveAttribute("data-progress-verdict", "better");
+        await openPracticeDayReport(page);
         await expect(report.locator(`a[href="/today?date=${dateKey(3)}"]`)).toBeVisible();
+        await openPracticeDayReport(page);
         await expect(report).toContainText("12 of 12 trusted full shots");
         await expect(page.getByText("Practice complete · Today", { exact: true })).toHaveCount(0);
 
@@ -279,10 +310,15 @@ test("Today keeps the latest completed practice after the calendar day changes",
           await expect(page).toHaveURL(
             (url) => url.searchParams.get("club") === "driver" && !url.searchParams.has("date"),
           );
+          await openPracticeDayReport(page);
           await expect(report.locator("time").first()).toHaveAttribute("datetime", dateKey(1));
+          await openPracticeDayReport(page);
           await expect(report.getByRole("heading", { level: 2 })).toContainText("Driver");
+          await openPracticeDayReport(page);
           await expect(report).toHaveAttribute("data-progress-verdict", "building");
+          await openPracticeDayReport(page);
           await expect(report).toContainText("0 of 0 trusted full shots");
+          await openPracticeDayReport(page);
           await expect(report).not.toContainText("7i");
           await expect(page.locator("[data-today-shot-point]")).toHaveCount(0);
 
@@ -344,4 +380,13 @@ function practiceDatesFrom(now: Date) {
     day.setUTCDate(day.getUTCDate() - daysAgo);
     return formatter.format(day);
   };
+}
+
+// The practice-day report retains its own baseline below the shared session answer.
+async function openPracticeDayReport(page: Page) {
+  const report = page.locator("[data-today-progress-report]");
+  await report.waitFor({ state: "attached", timeout: 60000 });
+  const disclosure = page.locator("details").filter({ has: report }).first();
+  if ((await disclosure.getAttribute("open")) === null)
+    await disclosure.locator(":scope > summary").click();
 }

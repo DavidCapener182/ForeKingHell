@@ -1,3 +1,4 @@
+import { TodayClubTrendsPanel } from "@/components/app/today-club-trends-panel";
 import { currentBagClubs } from "@/lib/club-format";
 import { type TodayRound, getTodayRound } from "@/lib/today-round-data";
 import { TodayRoundView } from "./today-round-view";
@@ -73,11 +74,8 @@ import {
 import { TodayWorkspaceTabs } from "@/app/today/today-workspace-tabs";
 import { TodayDataQuality } from "@/app/today/today-data-quality";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import {
-  TodayShotCharts,
-  type TodayChartClubStatus,
-  type TodayChartShot,
-} from "@/app/today/today-shot-charts";
+import type { TodayChartClubStatus, TodayChartShot } from "@/app/today/today-shot-charts";
+import { LazyTodayShotCharts as TodayShotCharts } from "@/app/today/lazy-today-shot-charts";
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
 import { isEstimatedClubData } from "@/lib/club-analytics";
 import { calculateClubFaceAngleDeg } from "@/lib/club-face-angle";
@@ -385,6 +383,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
       <TodayHoverStyles comparisons={data.clubComparisons} />
       <TodayDesktopDashboard
         latestRound={latestRound}
+        activeRoundId={activeRound?.id}
+        requestedProgressClub={requestedClub}
         correctionClubs={correctionClubs}
         data={data}
         socialContext={socialContext}
@@ -418,6 +418,8 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
 
 function TodayDesktopDashboard({
   latestRound,
+  activeRoundId,
+  requestedProgressClub,
   correctionClubs,
   data,
   socialContext,
@@ -445,6 +447,8 @@ function TodayDesktopDashboard({
   recentActivity,
 }: {
   latestRound: TodayRound | null;
+  activeRoundId?: string;
+  requestedProgressClub: string;
   correctionClubs: Array<{ value: string; label: string }>;
   data: TodayPracticeData;
   socialContext: TodaySocialContext;
@@ -482,6 +486,23 @@ function TodayDesktopDashboard({
         shotDatabaseHref={shotDatabaseHref}
         roundFocused={Boolean(latestRound)}
       />
+      {activeRoundId ? (
+        <Link
+          className="inline-flex min-h-11 items-center text-sm font-medium underline"
+          href={`/rounds/${activeRoundId}`}
+        >
+          Continue round
+        </Link>
+      ) : null}
+      <TodayClubTrendsPanel
+        selectedShots={
+          requestedProgressClub
+            ? data.rawShots.filter(
+                (s) => s.clubType === requestedProgressClub || s.clubId === requestedProgressClub,
+              )
+            : data.rawShots
+        }
+      />
       {latestRound ? <TodayRoundView round={latestRound} /> : null}
       {latestRound ? (
         <div id="today-practice-progress" className="scroll-mt-24 border-t border-border pt-6">
@@ -493,11 +514,19 @@ function TodayDesktopDashboard({
           </p>
         </div>
       ) : null}
-      <TodayProgressReport
-        report={progress}
-        historyError={progressUnavailable}
-        clubType={progressClubType}
-      />
+      <details className="rounded-2xl border p-4">
+        <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">
+          Practice-day comparison · separate daily baseline
+        </summary>
+        <TodayProgressReport
+          report={progress}
+          historyError={progressUnavailable}
+          clubType={progressClubType}
+        />
+      </details>
+      <p className="text-xs text-muted-foreground">
+        Practice recommendation and pooled previous-shot review · a separate historical baseline.
+      </p>
       <TodayDecisionHero state={primaryState} recommendation={recommendation} data={data} />
       <BestShotsEntry />
 

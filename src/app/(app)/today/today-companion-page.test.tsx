@@ -4,6 +4,9 @@ import type { PracticePlannerContext } from "@/lib/practice-planner";
 import type { TodayPracticeData, TodayPracticeShot } from "@/lib/today-session-data";
 import { buildMobileTodayReview, practiceDateKey } from "@/lib/mobile-today-review";
 
+vi.mock("@/components/app/today-club-trends-panel", () => ({
+  TodayClubTrendsPanel: () => <section data-club-progress>Shared session progress</section>,
+}));
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
   useSearchParams: () => new URLSearchParams(),
@@ -271,7 +274,7 @@ describe("mobile post-practice review", () => {
 });
 
 describe("mobile round review", () => {
-  it("leads with the round while retaining practice, progress and planning", async () => {
+  it("leads with shared progress while retaining round, practice and planning", async () => {
     vi.mocked(getTodayRound).mockResolvedValueOnce({
       session: {
         id: "round",
@@ -284,6 +287,7 @@ describe("mobile round review", () => {
       tee: null,
     } as TodayRound);
     const html = renderToStaticMarkup(await TodayCompanionPage({}));
+    expect(html.indexOf("data-club-progress")).toBeLessThan(html.indexOf("data-today-round"));
     expect(html).toContain("data-today-round");
     expect(html).toContain("Ellesmere Port");
     expect(html).toContain("data-today-progress-report");

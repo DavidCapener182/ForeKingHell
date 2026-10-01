@@ -11,7 +11,7 @@ export default function TodayLoading() {
           className="gap-3 py-3"
           role="status"
           aria-busy="true"
-          aria-label="Loading Today answer"
+          aria-label="Loading shared club progress"
         >
           <CardHeader className="grid gap-2">
             <Skeleton className="h-3 w-28" />
