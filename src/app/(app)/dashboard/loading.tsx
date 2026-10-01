@@ -7,7 +7,7 @@ export default function DashboardLoading() {
     <PageShell>
       <div role="status" aria-live="polite" aria-busy="true" className="grid gap-4">
         <AppLoadingSkeleton variant="answer" />
-        <section className="grid gap-3 md:grid-cols-4" aria-label="Loading dashboard metrics">
+        <section className="grid gap-3 md:grid-cols-4" aria-label="Loading shared club progress">
           {Array.from({ length: 4 }, (_, index) => (
             <Skeleton key={index} className="h-28 rounded-xl" />
           ))}

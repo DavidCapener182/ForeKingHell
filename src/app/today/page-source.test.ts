@@ -48,7 +48,7 @@ describe("latest practice desktop dashboard", () => {
     expect(primaryAnswerSource).toContain("data-today-sync-state");
     expect(primaryAnswerSource).not.toContain("<Progress");
     expect(primaryAnswerSource).toContain('new Event("fkh-offline-retry-requested")');
-    expect(loadingSource).toContain("Loading Today answer");
+    expect(loadingSource).toContain("Loading shared club progress");
     expect(loadingSource).toContain("Loading latest shot pattern");
     expect(loadingSource.match(/role="status"/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
     expect(loadingSource.match(/aria-busy="true"/g)?.length ?? 0).toBeGreaterThanOrEqual(2);

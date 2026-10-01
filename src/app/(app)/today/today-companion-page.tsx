@@ -1,3 +1,4 @@
+import { TodayClubTrendsPanel } from "@/components/app/today-club-trends-panel";
 import { currentBagClubs } from "@/lib/club-format";
 import { getTodayRound } from "@/lib/today-round-data";
 import { TodayRoundView } from "./today-round-view";
@@ -68,6 +69,8 @@ export default async function TodayCompanionPage({
   const params = await searchParams;
   const latestRound = await getTodayRound(userId, params ?? {});
   const dateParam = Array.isArray(params?.date) ? params.date[0] : params?.date;
+  const sessionParam = Array.isArray(params?.session) ? params.session[0] : params?.session;
+  const clubParam = Array.isArray(params?.club) ? params.club[0] : params?.club;
   const selectedDate = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : undefined;
   const [context, currentPlan, activeRound, recent, latestData] = await Promise.all([
     getPracticePlannerContext(userId, { compactTraining: true, includeSpeed: false }),
@@ -76,7 +79,9 @@ export default async function TodayCompanionPage({
     getTodayActivity(userId),
     getTodayPracticeData({
       date: selectedDate,
-      scope: "day",
+      sessionId: sessionParam && sessionParam !== "all" ? sessionParam : undefined,
+      club: clubParam,
+      scope: sessionParam && sessionParam !== "all" ? "session" : "day",
       practiceOnly: true,
     }).catch(() => null),
   ]);
@@ -169,7 +174,30 @@ export default async function TodayCompanionPage({
     <PageShell>
       <MobileAppShell className="gap-6" data-today-companion>
         <MobileTodayGreeting initialNow={now.toISOString()} />
-        {latestData ? (
+        <Button asChild variant="outline" className="min-h-11 w-fit">
+          <Link href="/practice">Next practice</Link>
+        </Button>
+        {activeRound ? (
+          <Link
+            className="inline-flex min-h-11 items-center text-sm font-medium underline"
+            href={`/rounds/${activeRound.id}`}
+          >
+            Continue round · {activeRound.courseName ?? "Round in progress"}
+          </Link>
+        ) : null}
+        <TodayClubTrendsPanel
+          selectedShots={
+            clubParam && clubParam !== "all"
+              ? latestShots.filter(
+                  (s) => s.clubType === clubParam.trim().toLowerCase() || s.clubId === clubParam,
+                )
+              : latestShots
+          }
+        />
+        <details className="rounded-2xl border p-4">
+          <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">
+            Practice-day overview · daily aggregate
+          </summary>
           <MobileHomeOverview
             shotCount={latestShots.length}
             sessionCount={latestData?.sessions.length ?? 0}
@@ -189,7 +217,7 @@ export default async function TodayCompanionPage({
               shotCount: day.shotCount,
             }))}
           />
-        ) : null}
+        </details>
         {latestRound ? <TodayRoundView round={latestRound} /> : null}
         {latestRound ? (
           <div id="today-practice-progress" className="scroll-mt-24 border-t border-border pt-5">
@@ -278,7 +306,7 @@ export default async function TodayCompanionPage({
         {progress ? (
           <details className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
             <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">
-              Detailed practice report · {latestData?.dateLabel ?? "Latest evidence"}
+              Practice-day comparison · {latestData?.dateLabel ?? "Latest evidence"}
             </summary>
             <div className="pt-3">
               <TodayProgressReport report={progress} historyError={progressHistory === null} />
