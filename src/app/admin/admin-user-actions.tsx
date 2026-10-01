@@ -141,7 +141,12 @@ export function AdminUserDirectory({
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id}>
+                <tr
+                  key={user.id}
+                  tabIndex={0}
+                  className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                  onClick={() => setSelectedId(user.id)}
+                >
                   <th scope="row" data-column="user">
                     {user.displayName}
                     <span className="block text-xs font-normal">

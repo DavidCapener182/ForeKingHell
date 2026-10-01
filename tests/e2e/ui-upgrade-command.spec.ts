@@ -63,6 +63,8 @@ test("G02/G03: collapsible sections and one search on both surfaces", async ({ p
         "/sessions/00000000-0000-4000-8000-000000000123",
       );
       await input.fill("sessions");
+      // Search results arrive after the query debounce; navigate the settled list.
+      await expect(dialog.getByRole("link", { name: /Coastal fixture session/ })).toBeVisible();
       const active = dialog.locator('[data-command-active="true"]');
       await input.press("Home");
       const first = await active.getAttribute("id");
@@ -95,9 +97,13 @@ test("G02/G03: collapsible sections and one search on both surfaces", async ({ p
       name: "Search command palette",
     });
     await navigationInput.fill("handicap");
+    await expect(navigationDialog.getByRole("link", { name: /Handicap/ }).first()).toBeVisible();
     await navigationInput.press("Home");
     await navigationInput.press("Enter");
     await expect(page).toHaveURL(/\/handicap(?:\?|$)/);
+    await expect(
+      page.getByRole("heading", { level: 1, name: "Handicap", exact: true }),
+    ).toBeVisible();
     await expect(navigationDialog).toBeHidden();
   }
   await page.goto("/surface/companion?next=%2Ftoday");

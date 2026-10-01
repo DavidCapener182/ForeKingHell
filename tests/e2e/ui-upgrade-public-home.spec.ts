@@ -133,7 +133,7 @@ test("Public home keeps all sections, complete pricing and example controls usab
     viewport: { width: 390, height: 844 },
   });
   const staticPage = await noScript.newPage();
-  await staticPage.goto("http://localhost:3116/", {
+  await staticPage.goto(new URL("/", String(info.project.use.baseURL)).href, {
     waitUntil: "domcontentloaded",
     timeout: 90000,
   });

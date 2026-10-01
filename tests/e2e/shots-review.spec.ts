@@ -1,4 +1,6 @@
-import { expect, test, type Request } from "@playwright/test";
+import { expect, test, type Request, type Page } from "@playwright/test";
+
+import { prepareFlightPathFixture } from "./flight-path-fixture";
 
 import { authStorageState, hasAuthenticatedE2e, hasLocalAuthBypass } from "./helpers";
 
@@ -10,6 +12,17 @@ test.describe("shot review controls", () => {
     !hasAuthenticatedE2e,
     "Enable the local Playwright auth bypass or provide an auth state for shot review checks.",
   );
+
+  const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
+  test.beforeEach(async ({ page }, info) => {
+    fixtureCleanup.set(
+      page,
+      await prepareFlightPathFixture(page, String(info.project.use.baseURL), true),
+    );
+  });
+  test.afterEach(async ({ page }) => {
+    await fixtureCleanup.get(page)?.();
+  });
 
   test("bulk Exclude confirmation emits one intercepted Next-Action POST", async ({ page }) => {
     const nextActionPosts: Request[] = [];
@@ -31,12 +44,12 @@ test.describe("shot review controls", () => {
     });
 
     await page.goto("/shots", { waitUntil: "commit" });
-    await expect(page.getByRole("heading", { name: "Shot Explorer" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Shots", exact: true })).toBeVisible();
 
     const firstShotCheckbox = page.getByRole("checkbox", { name: /^Select .+ shot .+$/ }).first();
     if ((await firstShotCheckbox.count()) === 0) {
       await page.reload({ waitUntil: "commit" });
-      await expect(page.getByRole("heading", { name: "Shot Explorer" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Shots", exact: true })).toBeVisible();
     }
     test.skip(
       (await firstShotCheckbox.count()) === 0,
@@ -83,7 +96,7 @@ test.describe("shot review controls", () => {
     });
 
     await page.goto("/shots", { waitUntil: "commit" });
-    await expect(page.getByRole("heading", { name: "Shot Explorer" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Shots", exact: true })).toBeVisible();
 
     const firstShotCheckbox = page.getByRole("checkbox", { name: /^Select .+ shot .+$/ }).first();
     test.skip(
@@ -131,7 +144,7 @@ test.describe("shot review controls", () => {
     });
 
     await page.goto("/shots", { waitUntil: "commit" });
-    await expect(page.getByRole("heading", { name: "Shot Explorer" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Shots", exact: true })).toBeVisible();
 
     const firstActions = page.getByRole("button", { name: /^Actions for .+ shot .+$/ }).first();
     test.skip((await firstActions.count()) === 0, "The bypass account has no shot-row menu.");

@@ -10,8 +10,29 @@ permissions:
 
 jobs:
   browser-matrix:
+    name: Browser quality (${{ matrix.project }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        project:
+          - chromium
+          - firefox
+          - webkit
+          - desktop-1024x768
+          - desktop-1280x720
+          - desktop-1366x768
+          - desktop-1440x900
+          - desktop-1920x1080
+          - desktop-2560x1440
+          - mobile-small
+          - mobile-iphone
+          - mobile-webkit
+          - mobile-pixel
+          - tablet-ipad-mini
+          - phone-landscape
     services:
       postgres:
         image: postgres:17-alpine
@@ -64,9 +85,20 @@ jobs:
           NODE
       - run: npm run db:migrate
       - run: npx playwright install --with-deps chromium firefox webkit
-      - run: npm run test:e2e
+      - run: npm run test:e2e -- --project=${{ matrix.project }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-results-${{ matrix.project }}
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14
       - run: npm run build
+        id: production-build
+        if: always() && matrix.project == 'chromium'
       - run: npm run test:lighthouse
+        if: always() && matrix.project == 'chromium' && steps.production-build.outcome == 'success'
 
   dependency-audit:
     runs-on: ubuntu-latest

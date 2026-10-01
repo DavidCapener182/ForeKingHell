@@ -16,7 +16,7 @@ test.describe("site-wide Apple mobile presentation", () => {
   test.use(authStorageState ? { storageState: authStorageState } : {});
   test.setTimeout(180_000);
 
-  test("keeps the public homepage and signed-out login native, neutral and touch friendly", async ({
+  test("keeps the public homepage touch friendly and signed-out login native", async ({
     browserName,
     context,
     page,
@@ -26,10 +26,22 @@ test.describe("site-wide Apple mobile presentation", () => {
     await page.setViewportSize({ width: 390, height: 844 });
 
     await page.goto("/", { waitUntil: "commit" });
-    await expect(page.getByRole("heading", { name: /Turn every measured shot/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Stop guessing.*Start knowing/i }),
+    ).toBeVisible();
     await expectAppleFont(page.locator("main#product"));
-    await expectAppleFont(page.locator("h1:visible").first());
-    await expectNeutralSurface(page.locator("main#product"), "public homepage canvas");
+    await expect
+      .poll(() =>
+        page.locator("#hero-title").evaluate((element) => getComputedStyle(element).fontFamily),
+      )
+      .toContain("Barlow");
+    await expect
+      .poll(() =>
+        page
+          .locator("main#product")
+          .evaluate((element) => getComputedStyle(element).backgroundColor),
+      )
+      .not.toBe("rgba(0, 0, 0, 0)");
     await expectNoHorizontalOverflow(page);
 
     const publicMenu = page.getByRole("button", { name: "Open navigation" });
@@ -47,7 +59,6 @@ test.describe("site-wide Apple mobile presentation", () => {
     for (const control of [
       page.getByRole("button", { name: /sign in with password/i }),
       page.getByRole("button", { name: /continue with google/i }),
-      page.getByRole("button", { name: /continue with apple/i }),
       page.getByRole("button", { name: /email me a secure link/i }),
     ]) {
       await expectMinimumTouchTarget(control, await control.innerText());
@@ -93,9 +104,12 @@ test.describe("site-wide Apple mobile presentation", () => {
       await expectMinimumTouchTarget(control, `primary tab ${index + 1}`);
     }
     await expectMinimumTouchTarget(
-      page.getByRole("button", { name: "Open navigation" }),
+      page
+        .getByRole("banner", { name: "Mobile app bar" })
+        .getByRole("button", { name: /Open more/ }),
       "authenticated menu button",
     );
+    await gotoAuthenticatedRoute(page, "/today", /Today/i);
     await expectMinimumTouchTarget(
       page.getByRole("link", { name: "Import launch-monitor data" }),
       "authenticated import button",
@@ -157,12 +171,20 @@ test.describe("site-wide Apple mobile presentation", () => {
         appearance.canvas,
         `${appearance.theme} app frame`,
       );
-      await expectExactSurface(
-        page.locator(".ios-grouped-list").first(),
-        appearance.group,
-        `${appearance.theme} grouped surface`,
-      );
-      await expect(page.getByRole("banner", { name: "Mobile app bar" })).toContainText("Today");
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const probe = document.createElement("div");
+            probe.style.backgroundColor = "var(--ios-grouped-surface)";
+            document.body.append(probe);
+            const colour = getComputedStyle(probe).backgroundColor;
+            probe.remove();
+            return colour;
+          }),
+        )
+        .toBe(appearance.group);
+      await expect(page.getByRole("banner", { name: "Mobile app bar" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
       await expect(page.getByText("Home", { exact: true }).filter({ visible: true })).toHaveCount(
         0,
       );

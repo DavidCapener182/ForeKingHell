@@ -2,6 +2,12 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 
+import { prepareFlightPathFixture } from "./flight-path-fixture";
+const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
+test.afterEach(async ({ page }) => {
+  await fixtureCleanup.get(page)?.();
+});
+
 import { authStorageState, hasAuthenticatedE2e, hasLocalAuthBypass } from "./helpers";
 
 const allViewports = [
@@ -59,7 +65,11 @@ test.describe("layout audit", () => {
     test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run authenticated layout audit.");
     test.use(authStorageState ? { storageState: authStorageState } : {});
 
-    test("static app routes stay within their intended canvas", async ({ context, page }) => {
+    test("static app routes stay within their intended canvas", async ({ context, page }, info) => {
+      fixtureCleanup.set(
+        page,
+        await prepareFlightPathFixture(page, String(info.project.use.baseURL), true, true),
+      );
       test.skip(
         !hasLocalAuthBypass && (!authStorageState || !existsSync(authStorageState)),
         "Set PLAYWRIGHT_AUTH_STATE to run authenticated layout audit.",
@@ -151,6 +161,7 @@ type NavigationFailure = {
 };
 
 async function expectLayoutBounds(page: Page, route: string, viewport: LayoutViewport) {
+  await expect(page.getByRole("main")).toBeVisible();
   const readMetrics = () =>
     page.evaluate(() => ({
       path: location.pathname,

@@ -9,13 +9,16 @@ export function localAuthBypassEnabled(baseURL: string) {
   );
 }
 
-export function createLocalBypassStorageState(baseURL: string): InlineStorageState {
+export function createLocalBypassStorageState(
+  baseURL: string,
+  userId = "c0c02d1e-605a-47c5-a023-83a1c0d18195",
+): InlineStorageState {
   const url = new URL(baseURL);
   const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
   const token = [
     encode({ alg: "none", typ: "JWT" }),
     encode({
-      sub: "c0c02d1e-605a-47c5-a023-83a1c0d18195",
+      sub: userId,
       email: "playwright@forekinghell.local",
       user_metadata: { name: "Playwright" },
     }),
@@ -29,7 +32,7 @@ export function createLocalBypassStorageState(baseURL: string): InlineStorageSta
         value: encodeURIComponent(JSON.stringify({ access_token: token })),
         domain: url.hostname,
         path: "/",
-        expires: Math.floor(Date.now() / 1000) + 60 * 60,
+        expires: -1,
         httpOnly: false,
         secure: false,
         sameSite: "Lax",

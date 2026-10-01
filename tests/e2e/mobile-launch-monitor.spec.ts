@@ -1,75 +1,84 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { prepareFlightPathFixture } from "./flight-path-fixture";
+
 import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
 
 test.describe("mobile launch monitor loop", () => {
   test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run mobile launch checks.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
 
-  test.beforeEach(async ({ page }) => {
+  const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
+  test.beforeEach(async ({ page }, info) => {
     await page.setViewportSize({ width: 390, height: 844 });
+    fixtureCleanup.set(
+      page,
+      await prepareFlightPathFixture(page, String(info.project.use.baseURL), true),
+    );
+  });
+  test.afterEach(async ({ page }) => {
+    await fixtureCleanup.get(page)?.();
   });
 
-  test("starts the dashboard with the AI caddie brief below the fixed app bar", async ({
+  test("starts Today with measured session highlights below the fixed app bar", async ({
     page,
   }) => {
-    await gotoAuthenticatedOrSkip(page, "/dashboard", /Today's AI Caddie Brief/i);
-
-    await expect(
-      page.getByRole("heading", { name: /practice|import|build/i }).first(),
-    ).toBeVisible();
-    await expect(page.getByText("Structured JSON")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Start today's practice" })).toHaveAttribute(
+    await gotoAuthenticatedOrSkip(page, "/today", /Today/i);
+    const highlights = page.getByRole("region", { name: "Your session highlights" });
+    await expect(highlights).toBeVisible();
+    await expect(page.getByRole("link", { name: "Next practice", exact: true })).toHaveAttribute(
       "href",
-      /\/practice\?source=caddie&time=/,
+      /\/practice/,
     );
-
-    const layout = await page.evaluate(() => {
-      const appBar = document.querySelector('[aria-label="Mobile app bar"]');
-      const main = document.querySelector("main");
-      const caddie = Array.from(document.querySelectorAll("section")).find((section) =>
-        section.textContent?.includes("Today's AI Caddie Brief"),
-      );
-
-      return {
-        appBarBottom: appBar?.getBoundingClientRect().bottom ?? 0,
-        mainTop: main?.getBoundingClientRect().top ?? 0,
-        caddieTop: caddie?.getBoundingClientRect().top ?? 0,
-        horizontalOverflow: document.documentElement.scrollWidth - window.innerWidth,
-      };
-    });
-
+    const layout = await page.evaluate(() => ({
+      appBarBottom: document.querySelector('[aria-label="Mobile app bar"]')!.getBoundingClientRect()
+        .bottom,
+      mainTop: document.querySelector("main")!.getBoundingClientRect().top,
+      highlightsTop: document
+        .querySelector('[aria-label="Your session highlights"]')!
+        .getBoundingClientRect().top,
+      overflow: document.documentElement.scrollWidth - innerWidth,
+    }));
     expect(layout.mainTop).toBeGreaterThanOrEqual(layout.appBarBottom - 1);
-    expect(layout.caddieTop).toBeGreaterThan(layout.appBarBottom);
-    expect(layout.horizontalOverflow).toBeLessThanOrEqual(2);
+    expect(layout.highlightsTop).toBeGreaterThan(layout.appBarBottom);
+    expect(layout.overflow).toBeLessThanOrEqual(2);
   });
 
   test("uses a route-level CSV import wizard on mobile", async ({ page }) => {
-    await gotoAuthenticatedOrSkip(page, "/import?source=csv#csv-import", /CSV import/i);
-
-    await expect(
-      page.locator("[data-mobile-route-label]", { hasText: "CSV import" }),
-    ).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Import launch monitor shots" })).toBeVisible();
-    await expect(page.locator('#csv-import [data-import-ready="true"]')).toBeVisible();
-    await expect(page.getByText("Other sources")).toHaveCount(0);
+    await gotoAuthenticatedOrSkip(page, "/import?source=csv#csv-import", /Choose a range CSV/i);
+    await expect(page.getByRole("button", { name: "Quick range import" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(page.getByRole("button", { name: "Choose CSV from Files" })).toBeVisible();
+    await page.getByRole("button", { name: "Full import workflow" }).click();
+    await expect(page.locator('[data-import-ready="true"]')).toBeVisible();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 
   test("keeps CSV as a source choice, not a sheet-hosted wizard", async ({ page }) => {
     await gotoAuthenticatedOrSkip(page, "/import", /Choose your source/i);
 
-    const csvSource = page.getByRole("link", { name: "CSV" });
+    const csvSource = page.getByRole("link", { name: "Choose CSV files", exact: true });
     await expect(csvSource).toBeVisible();
-    await expect(csvSource).toHaveAttribute("href", /\/import\?source=csv#csv-import/);
-    await expect(page.getByText(/We do not store your Rapsodo password/i)).toBeVisible();
+    await expect(csvSource).toHaveAttribute("href", /#csv-import/);
+    await page.getByRole("radio", { name: "Rapsodo R-Cloud", exact: true }).focus();
+    await page.keyboard.press("Space");
+    await expect(page.getByRole("radio", { name: "Rapsodo R-Cloud", exact: true })).toBeChecked();
+    await expect(
+      page.getByRole("link", { name: "Continue to R-Cloud", exact: true }),
+    ).toBeVisible();
   });
 
-  test("surfaces mobile dispersion before the shot list", async ({ page }) => {
-    await gotoAuthenticatedOrSkip(page, "/shots", /Dispersion map/i);
-
-    await expect(page.getByRole("heading", { name: "Dispersion map" })).toBeVisible();
-    await expect(page.locator('[aria-label="Club dispersion filters"]')).toBeVisible();
-    await expect(page.locator("#dispersion [data-media-container]").first()).toBeVisible();
+  test("mobile shot explorer exposes measured evidence and source inspection", async ({ page }) => {
+    await gotoAuthenticatedOrSkip(page, "/shots", /^Shots/i);
+    await expect(page.getByRole("searchbox", { name: "Search shots" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Filters/ })).toBeVisible();
+    await expect(page.getByText("60 matching", { exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Import/ }).first()).toHaveAttribute(
+      "href",
+      /\/import/,
+    );
   });
 
   test("keeps five primary tabs clear of content and exposes the analysis loop", async ({
@@ -79,15 +88,16 @@ test.describe("mobile launch monitor loop", () => {
 
     const nav = page.getByRole("navigation", { name: "Mobile primary" });
     await expect(nav.locator(".ios-tab-item")).toHaveCount(5);
-    await expect(nav.getByRole("link")).toHaveCount(4);
-    await expect(nav.getByRole("link", { name: "Home" })).toBeVisible();
+    await expect(nav.getByRole("link")).toHaveCount(5);
+    await expect(nav.getByRole("link", { name: "Today" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Sessions" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Analyse" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    await expect(nav.getByRole("link", { name: "Play" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Bag" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Practice" })).toBeVisible();
-    await nav.getByRole("button", { name: "Open more navigation" }).click();
+    await page
+      .getByRole("banner", { name: "Mobile app bar" })
+      .getByRole("button", { name: /Open more/ })
+      .click();
     await expect(page.getByRole("link", { name: "Profile" }).first()).toHaveAttribute(
       "href",
       "/profile",
@@ -116,18 +126,16 @@ test.describe("mobile launch monitor loop", () => {
     );
   });
 
-  test("starts practice with a mobile launch-monitor cockpit", async ({ page }) => {
-    await gotoAuthenticatedOrSkip(page, "/practice", /Active session mode/i);
-
-    const cockpit = page.locator("section", { hasText: "Active session mode" }).first();
-    await expect(cockpit).toBeVisible();
+  test("starts practice with a measured programme and source evidence", async ({ page }) => {
+    await gotoAuthenticatedOrSkip(page, "/practice", /Recommended for you/i);
     await expect(
-      cockpit.getByText(/Practice scoring is driven by imported launch-monitor shots/i),
+      page.getByRole("heading", { name: "Today's Range Plan", exact: true }),
     ).toBeVisible();
-    await expect(cockpit.getByText("Carry", { exact: true })).toBeVisible();
-    await expect(cockpit.getByText("Spin", { exact: true })).toBeVisible();
-    await expect(cockpit.getByText("Smash", { exact: true })).toBeVisible();
-    await expect(cockpit.getByText("Readiness", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Start practice", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /Open the session behind this practice/ }),
+    ).toHaveAttribute("href", /\/sessions\//);
+    await expect(page.getByRole("heading", { name: "Practice blocks", exact: true })).toBeVisible();
   });
 
   test("keeps the Apple mobile shell when an iPhone rotates to landscape", async ({ page }) => {
@@ -137,7 +145,7 @@ test.describe("mobile launch monitor loop", () => {
     const mobileNav = page.getByRole("navigation", { name: "Mobile primary" });
     await expect(mobileNav).toBeVisible();
     await expect(mobileNav.locator(".ios-tab-item")).toHaveCount(5);
-    await expect(mobileNav.getByRole("link")).toHaveCount(4);
+    await expect(mobileNav.getByRole("link")).toHaveCount(5);
     await expect(page.locator(".ios-mobile-screen")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Primary navigation" })).toHaveCount(0);
 
@@ -170,11 +178,20 @@ test.describe("mobile launch monitor loop", () => {
       })
       .click();
     await expect(page).toHaveURL(/\/sessions$/);
+    await expectPageReady(page, /History|Sessions/i);
+    await expect(
+      page
+        .getByRole("navigation", { name: "Mobile primary" })
+        .getByRole("link", { name: "Sessions", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
     expect(
       await page.evaluate(() => window.sessionStorage.getItem("fkh:mobile-tab-scroll:/today")),
     ).toBe("700");
 
-    await page.goto("/today", { waitUntil: "domcontentloaded" });
+    await page
+      .getByRole("navigation", { name: "Mobile primary" })
+      .getByRole("link", { name: "Today", exact: true })
+      .click();
     await expect(page).toHaveURL(/\/today$/);
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(700);
   });
@@ -182,7 +199,9 @@ test.describe("mobile launch monitor loop", () => {
 
 async function gotoAuthenticatedOrSkip(page: Page, path: string, expectedText: RegExp | string) {
   skipWhenNoAuth();
-  await page.goto(path, { waitUntil: "domcontentloaded" });
+  await page.goto(`/surface/companion?next=${encodeURIComponent(path)}`, {
+    waitUntil: "domcontentloaded",
+  });
   await page.waitForLoadState("networkidle", { timeout: 2_000 }).catch(() => {});
 
   test.skip(/\/login(?:\?|$)/.test(page.url()), "Stored auth state redirected to login.");

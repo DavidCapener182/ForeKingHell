@@ -1,4 +1,5 @@
 import path from "node:path";
+import { prepareFlightPathFixture } from "./flight-path-fixture";
 import { expect, test, type Page } from "@playwright/test";
 
 import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
@@ -34,6 +35,16 @@ const selectedViewports = requestedViewports.size
 test.describe("companion visual regression matrix", () => {
   test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE or enable the local auth bypass.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
+  const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
+  test.beforeEach(async ({ page }, info) => {
+    fixtureCleanup.set(
+      page,
+      await prepareFlightPathFixture(page, String(info.project.use.baseURL), true),
+    );
+  });
+  test.afterEach(async ({ page }) => {
+    await fixtureCleanup.get(page)?.();
+  });
   test.setTimeout(1_800_000);
 
   test("matches the approved route, viewport and theme baselines", async ({
@@ -81,10 +92,8 @@ async function gotoSurface(
   await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => {});
   await expectPageReady(page, ready);
   if (route === "/practice" && surface === "companion") {
-    await expect(
-      page.getByRole("button", { name: /Save & Start Practice|Start Practice/i }),
-    ).toBeEnabled();
-    await expect(page.getByRole("button", { name: "Next slide" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Start practice", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Next slide", exact: true })).toBeEnabled();
   }
   const mobilePattern = page.locator('[data-mobile-shot-pattern-hydrated="true"]');
   if ((await mobilePattern.count()) > 0) {

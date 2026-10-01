@@ -67,7 +67,10 @@ test.describe("redesigned flagship workflows", () => {
     for (const width of [320, 390, 430, 768, 1024, 1440, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       await expect(panel).toBeVisible();
-      await expect(panel.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Today", exact: true }),
+      ).toBeVisible();
+      await expect(panel.getByRole("heading", { level: 2 }).first()).toBeVisible();
       const evidence = await panel.locator("[data-decision-evidence]").boundingBox();
       expect(evidence).not.toBeNull();
       for (const link of await panel.getByRole("link").all()) {

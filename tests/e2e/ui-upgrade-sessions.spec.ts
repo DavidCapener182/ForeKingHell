@@ -1,4 +1,15 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { prepareFlightPathFixture } from "./flight-path-fixture";
+const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
+test.beforeEach(async ({ page }, info) => {
+  fixtureCleanup.set(
+    page,
+    await prepareFlightPathFixture(page, String(info.project.use.baseURL), true),
+  );
+});
+test.afterEach(async ({ page }) => {
+  await fixtureCleanup.get(page)?.();
+});
 test.skip(process.env.PLAYWRIGHT_E2E_AUTH_BYPASS !== "1", "Requires authorised local fixture");
 test("P04 History UI and scoped shot detail", async ({ page }, info) => {
   test.skip(info.project.name !== "chromium", "Explicit viewport matrix");

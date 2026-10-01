@@ -93,7 +93,12 @@ export function RoundsScoringIndex({ rounds }: { rounds: RoundsWorkspaceRound[] 
         </div>
 
         <div className="hidden min-w-0 overflow-x-auto md:block">
-          <table className="w-full min-w-[920px] text-sm">
+          <table
+            className="w-full min-w-[920px] text-sm"
+            data-main-table-target="true"
+            aria-label="Round history table"
+            tabIndex={-1}
+          >
             <caption className="sr-only">
               Chronological rounds with date, course, tee, score, score to par, handicap impact and
               main verdict.

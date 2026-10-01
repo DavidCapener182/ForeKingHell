@@ -561,6 +561,7 @@ export function AchievementsClient({ data, focusAchievementId, presentation }: P
                 </>
               ) : (
                 <div
+                  role="region"
                   aria-label="Latest achievements gained desktop list"
                   className="max-h-[22rem] space-y-3 overflow-y-auto pr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   tabIndex={0}

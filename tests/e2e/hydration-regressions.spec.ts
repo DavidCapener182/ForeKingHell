@@ -1,26 +1,34 @@
 import { expect, test, type ConsoleMessage, type Page } from "@playwright/test";
 
+import { prepareFlightPathFixture } from "./flight-path-fixture";
 import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
 
 test.describe("hydration regressions", () => {
   test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run hydration checks.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
 
-  test("Bag confidence controls hydrate without replacing server markup", async ({ page }) => {
+  test("Bag confidence controls hydrate without replacing server markup", async ({
+    page,
+  }, info) => {
     skipWhenNoAuth();
-    const errors = captureHydrationErrors(page);
+    const cleanup = await prepareFlightPathFixture(page, String(info.project.use.baseURL), true);
+    try {
+      const errors = captureHydrationErrors(page);
 
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto(`/surface/workbench?next=${encodeURIComponent("/bag")}`, {
-      waitUntil: "commit",
-    });
-    await expectPageReady(page, /Bag confidence ladder/i);
-    const findingsTrigger = page.getByRole("button", { name: "Review all gap findings" });
-    await expect(findingsTrigger).toBeVisible();
-    await findingsTrigger.click();
-    await expect(findingsTrigger).toHaveAttribute("data-state", "open");
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto(`/surface/workbench?next=${encodeURIComponent("/bag")}`, {
+        waitUntil: "commit",
+      });
+      await expectPageReady(page, /Distance ladder/i);
+      const findingsTrigger = page.getByRole("button", { name: /Review all gap findings/ });
+      await expect(findingsTrigger).toBeVisible();
+      await findingsTrigger.click();
+      await expect(findingsTrigger).toHaveAttribute("data-state", "open");
 
-    expect(errors).toEqual([]);
+      expect(errors).toEqual([]);
+    } finally {
+      await cleanup();
+    }
   });
 
   test("Play companion actions hydrate without replacing server markup", async ({ page }) => {
@@ -31,10 +39,10 @@ test.describe("hydration regressions", () => {
     await page.goto(`/surface/companion?next=${encodeURIComponent("/play")}`, {
       waitUntil: "commit",
     });
-    const actionsTrigger = page.getByRole("button", { name: "More play actions" });
+    const actionsTrigger = page.getByRole("button", { name: "Change course or tee" });
     await expect(actionsTrigger).toBeVisible();
     await actionsTrigger.click();
-    await expect(page.getByText("Play actions", { exact: true })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Course and tee" })).toBeVisible();
 
     expect(errors).toEqual([]);
   });

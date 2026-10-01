@@ -1,3 +1,4 @@
+import { prepareFlightPathFixture } from "./flight-path-fixture";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
@@ -16,6 +17,7 @@ test.describe("phone companion journeys", () => {
   test.setTimeout(360_000);
 
   let mutatingFixture: MutatingCompanionFixture | null = null;
+  let localCleanup: (() => Promise<void>) | null = null;
 
   test.beforeEach(async ({ browserName, page }, testInfo) => {
     test.skip(
@@ -24,9 +26,19 @@ test.describe("phone companion journeys", () => {
     );
     skipWhenNoAuth();
     await page.setViewportSize({ width: 390, height: 844 });
+    if (testInfo.title.startsWith("7-10:") || testInfo.title.startsWith("local companion"))
+      localCleanup = await prepareFlightPathFixture(
+        page,
+        String(testInfo.project.use.baseURL),
+        true,
+        false,
+        testInfo.title.startsWith("7-10:") ? "4de11156-16fd-4a36-84e0-fadda53456b0" : undefined,
+      );
   });
 
   test.afterEach(async () => {
+    await localCleanup?.();
+    localCleanup = null;
     await mutatingFixture?.cleanup();
     mutatingFixture = null;
   });
@@ -180,29 +192,37 @@ test.describe("phone companion journeys", () => {
   test("7-10: prepares a course, changes holes, opens Strategy and checks Quick Bag", async ({
     page,
   }) => {
-    await openCompanion(page, "/play", /Selected course/i);
+    await openCompanion(
+      page,
+      "/play?courseId=4de11156-16fd-4a36-84e0-fadda53456b0",
+      /Selected course/i,
+    );
     await expect(page.getByRole("button", { name: /Change course or tee/i })).toBeVisible();
-    await page.getByRole("link", { name: "Course Strategy" }).click();
-    await expectPageReady(page, /Overall game plan/i);
-    await expect(page.getByText("Hole 1", { exact: true })).toBeVisible();
-    await expect(page.getByText("Recommended club", { exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Prepare Course", exact: true }).click();
+    await expectPageReady(page, /Recommended play/i);
+    await expect(page.getByRole("heading", { name: "Hole 1", exact: true })).toBeVisible();
+    await expect(page.getByText(/Recommended play/).first()).toBeVisible();
 
     const nextHole = page.getByRole("button", { name: "Next hole" });
     await expect(nextHole).toBeEnabled();
     await nextHole.click();
-    await expect(page.getByText("Hole 2", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Hole 2", exact: true })).toBeVisible();
+    await page.getByText("Save for the course", { exact: true }).click();
     await page
-      .getByRole("button", { name: /^(?:Save Strategy on This Device|Refresh Saved Strategy)$/ })
+      .getByRole("button", { name: "Save caddie book on this device", exact: true })
       .click();
-    await expect(page.getByRole("button", { name: "Refresh Saved Strategy" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Refresh saved caddie book", exact: true }),
+    ).toBeVisible();
 
-    const courseTwinLink = page.getByRole("link", { name: /View this hole in Course Twin/i });
+    const courseTwinLink = page.getByRole("link", { name: "Course Twin", exact: true });
     if ((await courseTwinLink.count()) > 0) {
       await courseTwinLink.click();
+      await expect(page).toHaveURL(/\/play\/[a-f0-9-]+\?/, { timeout: 45_000 });
       await expectPageReady(page, /Course Twin/i);
       const modeGroup = page.getByRole("group", { name: "Course Twin mode" });
-      await expect(modeGroup.getByRole("button", { name: "Strategy" })).toHaveAttribute(
-        "aria-pressed",
+      await expect(modeGroup.getByRole("radio", { name: "Plan", exact: true })).toHaveAttribute(
+        "aria-checked",
         "true",
       );
       await expect(page.getByRole("navigation", { name: "Mobile primary" })).toHaveCount(0);
@@ -214,35 +234,54 @@ test.describe("phone companion journeys", () => {
 
     await page.goto("/quick-bag", { waitUntil: "commit" });
     await expectPageReady(page, /Quick Bag/i);
-    await expect(page.getByRole("textbox", { name: "Target distance" })).toBeVisible();
-    await expect(page.locator("[data-quick-bag-hydrated]")).toHaveAttribute(
+    await expect(page.getByRole("spinbutton", { name: "Target distance" })).toBeVisible();
+    await expect(page.getByLabel("Quick Bag", { exact: true })).toHaveAttribute(
       "data-quick-bag-hydrated",
       "true",
     );
-    await page.getByRole("button", { name: "Search club" }).click();
+    await page.getByRole("radio", { name: "Search club", exact: true }).click();
     await page.getByRole("searchbox", { name: "Search by club" }).fill("Driver");
     const driverEvidence = page.getByRole("button", { name: /Open Driver evidence/i }).first();
     await expect(driverEvidence).toBeVisible();
     await driverEvidence.click();
     await expect(page.getByRole("heading", { name: /Driver/i }).first()).toBeVisible();
     await page.keyboard.press("Escape");
-    await page.getByRole("button", { name: "Target distance" }).click();
-    await page.getByRole("textbox", { name: "Target distance" }).fill("165");
-    await expect(page.locator("[data-quick-bag-best-match]")).toContainText(/Best match for 165/i);
+    await page.getByRole("radio", { name: "Target distance", exact: true }).click();
+    await page.getByRole("spinbutton", { name: "Target distance" }).fill("165");
+    await expect(page.locator("[data-quick-bag-best-match]")).toContainText(
+      /Nearest measured option for 165/i,
+    );
+    await expect(page.locator("[data-quick-bag-best-match]")).toContainText(
+      /outside a supported range/,
+    );
+    await page.getByRole("spinbutton", { name: "Target distance" }).fill("152");
+    await expect(page.locator("[data-quick-bag-best-match]")).toContainText(
+      /Nearest measured option for 152/i,
+    );
   });
 
   test("local companion controls preserve the current document", async ({ page }) => {
     await openCompanion(page, "/sessions", /Sessions/i);
+    await expect(page.locator("[data-session-toolbar]")).toHaveAttribute("data-ready", "true");
     const sessionsDocument = await markCurrentDocument(page);
-    const sessionsUrl = page.url();
-    await page.getByRole("radio", { name: "Practice", exact: true }).click();
-    await expect(page.getByRole("radio", { name: "Practice", exact: true })).toBeChecked();
+    await page.getByRole("button", { name: /^Filters/ }).click();
+    const historyFilters = page.getByRole("dialog", { name: "Filter history", exact: true });
+    await historyFilters.getByRole("button", { name: /Session type/ }).click();
+    await page.getByRole("option", { name: "Practice & simulator", exact: true }).click();
+    await historyFilters.getByRole("button", { name: "Apply filters", exact: true }).click();
+    await expect(page).toHaveURL(/\/sessions\?type=practice/);
     await expectCurrentDocument(page, sessionsDocument);
-    expect(page.url()).toBe(sessionsUrl);
 
     await openCompanion(page, "/quick-bag", /Quick Bag/i);
+    await expect(page.getByLabel("Quick Bag", { exact: true })).toHaveAttribute(
+      "data-quick-bag-hydrated",
+      "true",
+    );
     const bagDocument = await markCurrentDocument(page);
     const bagUrl = page.url();
+    await page.getByRole("radio", { name: "Search club", exact: true }).click();
+    await expect(page.getByRole("radio", { name: "Search club", exact: true })).toBeChecked();
+    await expectCurrentDocument(page, bagDocument);
     await page.getByRole("radio", { name: "Target distance", exact: true }).click();
     await expect(page.getByRole("radio", { name: "Target distance", exact: true })).toBeChecked();
     await expectCurrentDocument(page, bagDocument);

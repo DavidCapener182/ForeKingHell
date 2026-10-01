@@ -63,5 +63,6 @@ async function expectCompanionRoute(
     timeout: 60_000,
   });
   await expect(page.locator("main#main-content:visible").first()).toBeVisible();
+  await expect(page.locator('[data-mobile-nav-hydrated="true"]')).toBeVisible();
   await expect(page.locator("body")).not.toContainText(/Internal Server Error|Application error/i);
 }

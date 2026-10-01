@@ -242,7 +242,7 @@ describe("production readiness gate", () => {
     expect(playwright).toContain('devices["iPhone 13"]');
     expect(playwright).toContain('process.env.PLAYWRIGHT_SERVER_MODE === "production"');
     expect(playwright).toContain("npm run start -- --port");
-    expect(playwright).toContain("npm run dev -- --webpack --port");
+    expect(playwright).toContain("npm run dev -- --webpack --disable-source-maps --port");
     expect(productionGate).toContain('PLAYWRIGHT_SERVER_MODE: "production"');
     for (const name of [
       "NEXT_PUBLIC_SITE_URL",
@@ -535,6 +535,6 @@ describe("production readiness gate", () => {
     }
     expect(desktopWorkbenchSource).toContain("expectNoHorizontalOverflow");
     expect(desktopWorkbenchSource).toContain("expectNoCrampedWorkbenchText");
-    expect(desktopWorkbenchSource).toContain("dashboard bento panels stay readable");
+    expect(desktopWorkbenchSource).toContain("dashboard evidence sections stay readable");
   });
 });

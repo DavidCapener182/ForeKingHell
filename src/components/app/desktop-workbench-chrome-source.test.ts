@@ -442,7 +442,8 @@ describe("desktop workbench chrome source", () => {
     expect(dialogBlock).toContain("<CommandList");
     expect(dialogBlock).toContain("<CommandEmpty>");
     expect(dialogBlock).toContain("<CommandGroup");
-    expect(dialogBlock).toContain('aria-label="Command palette results"');
+    // cmdk uses its label prop to name the rendered listbox.
+    expect(dialogBlock).toContain('label="Command palette results"');
     expect(commandLinkBlock).toContain("id={`command-palette-option-${index}`}");
     expect(commandLinkBlock).toContain("<CommandMenuItem");
     expect(commandLinkBlock).toContain("aria-selected={active}");

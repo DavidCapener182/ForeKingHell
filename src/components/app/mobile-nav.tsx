@@ -90,6 +90,11 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin = false }
   const groups = useMemo(() => buildMobileMoreGroups(isAdmin), [isAdmin]);
   const [query, setQuery] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setHydrated(true), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
   const moreCloseRef = useRef<HTMLButtonElement>(null);
   const search = params.toString();
   const location = `${pathname}${search ? `?${search}` : ""}`;
@@ -151,6 +156,7 @@ export function MobileNav({ pathname, totalXp, level, profile, isAdmin = false }
     <>
       <header
         aria-label="Mobile app bar"
+        data-mobile-nav-hydrated={hydrated ? "true" : "false"}
         data-companion-hero-header={heroRoute ? "true" : undefined}
         data-hero-collapsed={compactTitleVisible ? "true" : "false"}
         data-mobile-root={!backNavigation ? "true" : undefined}

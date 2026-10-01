@@ -1,4 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
+import { prepareFlightPathFixture } from "./flight-path-fixture";
+const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
+test.beforeEach(async ({ page }, info) => {
+  fixtureCleanup.set(
+    page,
+    await prepareFlightPathFixture(page, String(info.project.use.baseURL), true),
+  );
+});
+test.afterEach(async ({ page }) => {
+  await fixtureCleanup.get(page)?.();
+});
 
 import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
 
@@ -12,7 +23,7 @@ test.describe("visual spacing audit", () => {
     { name: "today", path: "/today", text: /Latest Practice Review|Today/i },
     { name: "import", path: "/import", text: /Import|Rapsodo|Upload CSV/i },
     { name: "rapsodo", path: "/rapsodo", text: /Rapsodo Inbox|cloud sync/i },
-    { name: "shots", path: "/shots", text: /Your shots|Shot explorer/i },
+    { name: "shots", path: "/shots", text: /^Shots|Import your first measured shots/im },
     { name: "bag", path: "/bag", text: /Bag health|Bag confidence ladder|Bag score trend/i },
     { name: "bag-longest", path: "/bag/longest", text: /Longest/i },
     { name: "simulator-lab", path: "/simulator-lab", text: /Performance Lab/i },

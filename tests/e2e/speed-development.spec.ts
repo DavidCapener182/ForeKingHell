@@ -1,4 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
+import { prepareFlightPathFixture } from "./flight-path-fixture";
+const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
+test.beforeEach(async ({ page }, info) => {
+  fixtureCleanup.set(
+    page,
+    await prepareFlightPathFixture(page, String(info.project.use.baseURL), true),
+  );
+});
+test.afterEach(async ({ page }) => {
+  await fixtureCleanup.get(page)?.();
+});
 
 import { expectPageReady, skipWhenNoAuth } from "./helpers";
 
@@ -10,8 +21,8 @@ test.describe("Driver Speed Development", () => {
     test.setTimeout(180_000);
 
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/speed", { waitUntil: "domcontentloaded" });
-    await expectPageReady(page, /Driver Speed Development/i);
+    await page.goto("/surface/workbench?next=%2Fspeed", { waitUntil: "domcontentloaded" });
+    await expectPageReady(page, /Speed Centre|Speed/i);
 
     const programme = page.locator("[data-driver-speed-development]");
     await expect(programme).toBeVisible();

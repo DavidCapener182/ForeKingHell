@@ -50,9 +50,9 @@ test.describe("UI upgrade shared components", () => {
       const header = page.locator("[data-ui-page-header]");
       await expect(header).toBeVisible();
       await expect(header.getByRole("heading", { level: 1 })).toHaveCount(1);
-      await expect(header.getByRole("link", { name: "Start quick range" })).toBeVisible();
-      await header.getByRole("link", { name: "Start quick range" }).focus();
-      await expect(header.getByRole("link", { name: "Start quick range" })).toBeFocused();
+      await expect(header.getByRole("button", { name: "Add goal", exact: true })).toBeVisible();
+      await header.getByRole("button", { name: "Add goal", exact: true }).focus();
+      await expect(header.getByRole("button", { name: "Add goal", exact: true })).toBeFocused();
       const bounds = await header.boundingBox();
       expect(bounds).not.toBeNull();
       expect(bounds!.x).toBeGreaterThanOrEqual(0);

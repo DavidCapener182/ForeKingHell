@@ -740,12 +740,14 @@ export function DesktopWorkbenchChrome({
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
+      event.stopPropagation();
       setActiveCommandIndex((safeActiveCommandIndex + 1) % filteredCommands.length);
       return;
     }
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
+      event.stopPropagation();
       setActiveCommandIndex(
         (safeActiveCommandIndex - 1 + filteredCommands.length) % filteredCommands.length,
       );
@@ -754,18 +756,21 @@ export function DesktopWorkbenchChrome({
 
     if (event.key === "Home") {
       event.preventDefault();
+      event.stopPropagation();
       setActiveCommandIndex(0);
       return;
     }
 
     if (event.key === "End") {
       event.preventDefault();
+      event.stopPropagation();
       setActiveCommandIndex(filteredCommands.length - 1);
       return;
     }
 
     if (event.key === "Enter" && activeCommand) {
       event.preventDefault();
+      event.stopPropagation();
       selectCommand(activeCommand);
     }
   }

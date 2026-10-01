@@ -114,7 +114,7 @@ export function DesktopCommandPalette({
           <CommandList
             id="command-palette-results"
             className="max-h-[29rem] p-2"
-            aria-label="Command palette results"
+            label="Command palette results"
             data-command-results
           >
             <CommandEmpty>

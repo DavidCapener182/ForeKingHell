@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   CheckCircle2,
   Cuboid,
@@ -71,6 +71,8 @@ export type CourseLibraryEntry = {
   favourite: boolean;
 };
 
+const subscribeHydration = () => () => {};
+
 type LibraryFilter = "played" | "favourite" | "twin" | "strategy" | "records";
 
 export function CourseLibrary({
@@ -86,6 +88,11 @@ export function CourseLibrary({
   initialView?: "grid" | "table";
   initialLocation?: string;
 }) {
+  const hydrated = useSyncExternalStore(
+    subscribeHydration,
+    () => true,
+    () => false,
+  );
   const [query, setQuery] = useState(initialQuery);
   const [view, setView] = useState<"grid" | "table">(initialView);
   const [location, setLocation] = useState(initialLocation);
@@ -171,7 +178,7 @@ export function CourseLibrary({
   }
 
   return (
-    <section className="grid gap-5" data-course-library>
+    <section className="grid gap-5" data-course-library data-course-library-hydrated={hydrated}>
       <div className="grid gap-3 rounded-xl border bg-card p-3 shadow-sm lg:grid-cols-[minmax(280px,1fr)_auto] lg:items-center">
         <InputGroup className="h-11 bg-background lg:max-w-xl">
           <InputGroupAddon>
