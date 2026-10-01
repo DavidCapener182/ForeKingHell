@@ -36,7 +36,7 @@ describe("dashboard desktop source", () => {
     expect(source).not.toContain('return "Holding steady";');
   });
 
-  it("puts recommended practice before pinned metrics and deeper evidence", () => {
+  it("puts shared progress first, followed by recommended practice and pinned metrics", () => {
     const layout = source.slice(source.indexOf("export default async function DashboardPage"));
     expect(layout.match(/<PageShell/g)).toHaveLength(1);
     expect(layout).toContain("data-dashboard-ui");
@@ -45,6 +45,10 @@ describe("dashboard desktop source", () => {
     expect(layout.indexOf('aria-label="Recommended practice"')).toBeLessThan(
       layout.indexOf("metrics.map"),
     );
+    expect(layout.indexOf('<TodayClubTrendsPanel mode="dashboard"')).toBeLessThan(
+      layout.indexOf('aria-label="Recommended practice"'),
+    );
+    expect(layout).not.toContain("<ProgressComparison");
     expect(layout).toContain("data.dashboardPins.includes");
     expect(layout).toContain("<DashboardSpeedDevelopmentCard");
     expect(layout).toContain("<StatusTimeline");

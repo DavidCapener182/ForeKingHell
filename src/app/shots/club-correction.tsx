@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
-import { correctShotClubAction } from "@/app/(app)/shots/actions";
+import { correctShotClubAction, correctShotsClubAction } from "@/app/(app)/shots/actions";
 import { Button } from "@/components/ui/button";
 
 type Option = { value: string; label: string };
@@ -83,5 +83,67 @@ export function ClubCorrection({
         ) : null}
       </div>
     </details>
+  );
+}
+
+export function BulkClubCorrection({ shotIds, clubs }: { shotIds: string[]; clubs: Option[] }) {
+  const router = useRouter();
+  const [clubId, setClubId] = useState("");
+  const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState("");
+  return (
+    <div className="grid w-full gap-2 border-t pt-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="bulk-shot-club" className="text-sm font-medium">
+          Change selected to
+        </label>
+        <select
+          id="bulk-shot-club"
+          value={clubId}
+          disabled={pending}
+          onChange={(event) => setClubId(event.target.value)}
+          className="min-h-10 rounded-md border bg-background px-3 text-sm"
+        >
+          <option value="">Choose from your bag</option>
+          {clubs.map((club) => (
+            <option key={club.value} value={club.value}>
+              {club.label}
+            </option>
+          ))}
+        </select>
+        <Button
+          size="sm"
+          disabled={pending || !clubId || !shotIds.length}
+          onClick={() => {
+            const ids = [...new Set(shotIds)];
+            const target = clubId;
+            startTransition(async () => {
+              setMessage(`Updating ${ids.length} selected shots…`);
+              try {
+                const result = await correctShotsClubAction(ids, target);
+                setMessage(
+                  `${result.count} shots updated to ${clubs.find((club) => club.value === target)?.label}. ${result.warning ?? ""}`,
+                );
+              } catch (error) {
+                setMessage(
+                  error instanceof Error
+                    ? error.message
+                    : "Could not update the selection. Try again.",
+                );
+              } finally {
+                router.refresh();
+              }
+            });
+          }}
+        >
+          {pending ? "Updating selected…" : `Update ${shotIds.length} selected shots`}
+        </Button>
+      </div>
+      {message ? (
+        <p role="status" className="text-sm">
+          {message}
+        </p>
+      ) : null}
+    </div>
   );
 }

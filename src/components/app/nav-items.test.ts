@@ -9,31 +9,21 @@ import {
 } from "@/components/app/nav-items";
 
 describe("application navigation hierarchy", () => {
-  it("keeps five action-first mobile destinations", () => {
+  it("keeps four clear mobile destinations", () => {
     expect(mobilePrimaryItems.map((item) => [item.label, item.href])).toEqual([
-      ["Today", "/today"],
-      ["Sessions", "/sessions"],
-      ["Practice", "/practice"],
-      ["Play", "/play"],
+      ["Home", "/today"],
       ["Bag", "/bag"],
+      ["Play", "/play"],
+      ["Activity", "/sessions"],
     ]);
-
-    expect(mobilePrimaryItems.find((item) => item.label === "Practice")?.isActive("/coach")).toBe(
-      true,
-    );
-    expect(
-      mobilePrimaryItems
-        .find((item) => item.label === "Practice")
-        ?.isActive("/practice/quick-range"),
-    ).toBe(true);
     expect(mobilePrimaryItems.find((item) => item.label === "Play")?.isActive("/play/bootle")).toBe(
       true,
     );
-    expect(mobilePrimaryItems.find((item) => item.label === "Sessions")?.isActive("/shots")).toBe(
+    expect(mobilePrimaryItems.find((item) => item.label === "Activity")?.isActive("/shots")).toBe(
       true,
     );
     expect(
-      mobilePrimaryItems.find((item) => item.label === "Sessions")?.isActive("/progress"),
+      mobilePrimaryItems.find((item) => item.label === "Activity")?.isActive("/progress"),
     ).toBe(true);
     expect(mobilePrimaryItems.find((item) => item.label === "Bag")?.isActive("/quick-bag")).toBe(
       true,
@@ -73,7 +63,7 @@ describe("application navigation hierarchy", () => {
   });
 
   it("gives mobile chrome a stable route title", () => {
-    expect(mobilePageTitle("/today")).toBe("Today");
+    expect(mobilePageTitle("/today")).toBe("Home");
     expect(mobilePageTitle("/rounds/round-1")).toBe("Rounds");
     expect(mobilePageTitle("/progress")).toBe("Progress");
     expect(mobilePageTitle("/import/result")).toBe("Import result");

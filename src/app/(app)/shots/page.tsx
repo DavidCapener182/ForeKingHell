@@ -1,3 +1,4 @@
+import { currentBagClubs } from "@/lib/club-format";
 import styles from "@/app/shots/shot-explorer.module.css";
 import {
   assessFlightEvidence,
@@ -58,7 +59,7 @@ import {
   shots,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
-import { formatClubModelName, formatClubType, isTrackedClubType } from "@/lib/club-format";
+import { formatClubIdentityLabel, formatClubType, isTrackedClubType } from "@/lib/club-format";
 import { isPlaywrightE2eAuthBypassEnabled, requireCurrentUserId } from "@/lib/current-user";
 import {
   excludedRecordQualityTags,
@@ -491,7 +492,13 @@ async function getLiveShotDatabase(filters: ShotFilters) {
     db.select({ value: count() }).from(importRows).where(eq(importRows.userId, userId)),
     db.select({ value: count() }).from(sessions).where(eq(sessions.userId, userId)),
     db
-      .select({ id: clubs.id, type: clubs.type, brand: clubs.brand, model: clubs.model })
+      .select({
+        id: clubs.id,
+        type: clubs.type,
+        brand: clubs.brand,
+        model: clubs.model,
+        active: clubs.active,
+      })
       .from(clubs)
       .where(eq(clubs.userId, userId))
       .orderBy(asc(clubs.type)),
@@ -660,7 +667,7 @@ async function getLiveShotDatabase(filters: ShotFilters) {
     })),
     dispersionShots,
     totalFilteredShots: filteredCount?.value ?? 0,
-    correctionClubs: clubRows.map((club) => ({
+    correctionClubs: currentBagClubs(clubRows).map((club) => ({
       value: club.id,
       label: [formatClubType(club.type), club.brand, club.model].filter(Boolean).join(" · "),
     })),
@@ -871,7 +878,7 @@ function serializeShotForMasterDetail(shot: SavedShotRow): ShotMasterDetailRow {
     fileNameLabel: shot.fileName ?? "Untitled session",
     shotNumberLabel: shot.shotNumber?.toString() ?? "--",
     holeLabel: formatHole(shot.courseHoleNumber, shot.courseHoleShotNumber),
-    clubLabel: formatClubModelName({
+    clubLabel: formatClubIdentityLabel({
       type: shot.clubType,
       brand: shot.clubBrand,
       model: shot.clubModel,

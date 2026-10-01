@@ -1,10 +1,17 @@
-import { mobilePrimaryItems } from "@/components/app/nav-items";
+const offlineSections = ["today", "sessions", "practice", "play", "bag"] as const;
+
+function sectionForPath(pathname: string) {
+  if (pathname === "/progress" || pathname.startsWith("/progress/")) return "sessions";
+  return offlineSections.find(
+    (section) => pathname === `/${section}` || pathname.startsWith(`/${section}/`),
+  );
+}
 
 /** The worker returns an offline document at the failed request URL, not just /offline. */
 export function offlineDestination(url: URL) {
   const explicit = url.pathname === "/offline" ? url.searchParams.get("section") : null;
-  const selected = mobilePrimaryItems.find((item) => item.href.slice(1) === explicit);
-  if (selected) return { section: selected.href.slice(1), target: selected.href };
+  const selected = offlineSections.find((section) => section === explicit);
+  if (selected) return { section: selected, target: `/${selected}` };
   let targetUrl = url;
   if (url.pathname === "/surface/companion") {
     const next = url.searchParams.get("next");
@@ -13,9 +20,9 @@ export function offlineDestination(url: URL) {
       if (candidate.origin === url.origin) targetUrl = candidate;
     }
   }
-  const item = mobilePrimaryItems.find((candidate) => candidate.isActive(targetUrl.pathname));
+  const section = sectionForPath(targetUrl.pathname);
   return {
-    section: item?.href.slice(1) ?? "today",
-    target: item ? `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}` : "/today",
+    section: section ?? "today",
+    target: section ? `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}` : "/today",
   };
 }

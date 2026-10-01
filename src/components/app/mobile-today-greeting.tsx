@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { MobileLargeTitle } from "./mobile-screen";
 
 export function MobileTodayGreeting({ initialNow }: { initialNow: string }) {
   const [now, setNow] = useState(() => new Date(initialNow));
@@ -14,14 +13,18 @@ export function MobileTodayGreeting({ initialNow }: { initialNow: string }) {
     };
   }, []);
   return (
-    <MobileLargeTitle
-      title="Today"
-      eyebrow={new Intl.DateTimeFormat("en-GB", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        timeZone: "Europe/London",
-      }).format(now)}
-    />
+    <header className="mobile-home-greeting">
+      <h1 className="sr-only" data-mobile-route-label>
+        Home
+      </h1>
+      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        {new Intl.DateTimeFormat("en-GB", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          timeZone: "Europe/London",
+        }).format(now)}
+      </p>
+    </header>
   );
 }

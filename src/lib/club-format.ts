@@ -77,6 +77,16 @@ export function formatClubModelName(club: {
   );
 }
 
+export function formatClubIdentityLabel(club: {
+  type: string;
+  brand?: string | null;
+  model?: string | null;
+}) {
+  const type = formatClubType(club.type);
+  const equipment = formatClubModelName(club);
+  return equipment === type ? type : `${type} · ${equipment}`;
+}
+
 export function clubSortValue(value: string) {
   if (value === "driver") {
     return 10;
@@ -122,4 +132,17 @@ export function clubAccent(value: string) {
   }
 
   return "#C2410C";
+}
+
+/** Current bag choices, without retired equipment or generic duplicates. */
+export function currentBagClubs<
+  T extends { type: string; active: boolean; brand?: string | null; model?: string | null },
+>(clubs: T[]): T[] {
+  const active = clubs.filter((club) => club.active);
+  const namedTypes = new Set(
+    active.filter((club) => club.brand?.trim() || club.model?.trim()).map((club) => club.type),
+  );
+  return active.filter(
+    (club) => club.brand?.trim() || club.model?.trim() || !namedTypes.has(club.type),
+  );
 }

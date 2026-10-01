@@ -130,7 +130,7 @@ export type ShotMiniDispersionPoint = {
 
 type DetailTab = "overview" | "source" | "history";
 
-import { ClubCorrection } from "./club-correction";
+import { BulkClubCorrection, ClubCorrection } from "./club-correction";
 
 export function ShotsMasterDetailTable({
   shots,
@@ -210,6 +210,7 @@ export function ShotsMasterDetailTable({
         {selectedRows.length > 0 ? (
           <ShotBulkToolbar
             shotIds={selectedRows}
+            correctionClubs={correctionClubs}
             selectedCount={selectedRows.length}
             restrictedDeleteCount={restrictedDeleteCount}
             onInspect={() => {
@@ -512,6 +513,7 @@ export function ShotsMasterDetailTable({
 
 export function ShotBulkToolbar({
   shotIds,
+  correctionClubs = [],
   selectedCount,
   restrictedDeleteCount = 0,
   onClear,
@@ -519,6 +521,7 @@ export function ShotBulkToolbar({
 }: {
   shotIds: string[];
   selectedCount: number;
+  correctionClubs?: Array<{ value: string; label: string }>;
   restrictedDeleteCount?: number;
   onClear: () => void;
   onInspect: () => void;
@@ -558,6 +561,9 @@ export function ShotBulkToolbar({
           </p>
         ) : null}
       </div>
+      {correctionClubs.length > 0 ? (
+        <BulkClubCorrection shotIds={shotIds} clubs={correctionClubs} />
+      ) : null}
     </div>
   );
 }

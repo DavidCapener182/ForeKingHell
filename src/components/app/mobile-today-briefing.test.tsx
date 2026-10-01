@@ -62,7 +62,7 @@ describe("Today companion briefing", () => {
   it("renders the date and title without redundant greeting space", () => {
     const html = renderToStaticMarkup(<MobileTodayGreeting initialNow="2026-09-05T08:00:00Z" />);
     expect(html).toContain("Saturday 5 September");
-    expect(html).toContain("Today");
+    expect(html).toContain('data-mobile-route-label="true">Home</h1>');
     expect(html).not.toContain("Good morning");
     expect(html).not.toContain("Your golf companion");
   });
