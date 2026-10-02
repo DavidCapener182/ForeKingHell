@@ -337,17 +337,19 @@ test.describe("phone companion journeys", () => {
     await expect(inbox.getByText("Playwright range session", { exact: true })).toBeVisible();
     await inbox.getByRole("button", { name: /Playwright range session/i }).click();
 
-    const preview = page.locator("[data-rapsodo-companion-preview]");
-    await expect(preview).toHaveAttribute("data-hydrated", "true");
-    await expect(preview).toContainText("18 shots");
-    const uncertain = preview.locator("[data-uncertain-club-mappings]");
-    await expect(uncertain.locator("select")).toHaveCount(1);
-    await uncertain.locator("select").selectOption("7i");
-    await preview.getByRole("button", { name: "Import and review" }).click();
+    const preview = page.getByRole("dialog", { name: "Session preview", exact: true });
+    await expect(preview).toBeVisible();
+    await expect(preview).toContainText("18 of 18 shots");
+    const uncertain = preview.getByRole("combobox", { name: "Confirm club", exact: true });
+    await expect(uncertain).toHaveCount(1);
+    await uncertain.click();
+    await page.getByRole("option", { name: "7 Iron", exact: true }).click();
+    await preview.getByRole("button", { name: "Import 18 shots and review", exact: true }).click();
 
     await expect(page).toHaveURL(/\/import\/result\?sessionId=[0-9a-f-]+/);
     mutatingFixture.trackSession(new URL(page.url()).searchParams.get("sessionId"));
     await expect(page.locator("[data-session-verdict]")).toBeVisible();
+    await page.getByRole("button", { name: "Show shot pattern", exact: true }).click();
     await expect(page.getByRole("img", { name: /Dispersion chart/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /Shot Explorer|Shot rows/i })).toHaveCount(0);
     expect(page.url()).not.toContain("/shots");
