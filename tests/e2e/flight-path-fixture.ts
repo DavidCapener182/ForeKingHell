@@ -94,11 +94,11 @@ export async function prepareFlightPathFixture(
           const carry = baseline + (index % 6);
           const side = index % 3 === 0 ? -5 : index % 3 === 1 ? 6 : 0;
           const ballSpeed = clubType === "Driver" ? 145 : clubType === "7 Iron" ? 105 : 80;
-          await tx`insert into fkh_shots (user_id, session_id, club_id, shot_at, club_type,
+          await tx`insert into fkh_shots (user_id, session_id, club_id, shot_at, shot_number, club_type,
             carry_yd, total_yd, side_carry_yd, ball_speed_mph, club_speed_mph,
             launch_angle_deg, launch_direction_deg, club_path_deg, face_angle_deg,
             apex_ft, smash_factor, spin_rate, spin_axis, source_raw_json)
-            values (${userId}, ${sessionId}, ${fixtureClubId}, now(), ${clubType}, ${carry}, ${carry + 5}, ${side},
+            values (${userId}, ${sessionId}, ${fixtureClubId}, now() - ${(clubs.length - 1 - clubIndex) * 20 + (19 - index)} * interval '1 second', ${clubIndex * 20 + index + 1}, ${clubType}, ${carry}, ${carry + 5}, ${side},
               ${ballSpeed}, ${ballSpeed / 1.4}, 18, ${side / 5}, 2, 1, 85, 1.4, 4500, ${side}, '{}')`;
         }
       }
@@ -109,7 +109,7 @@ export async function prepareFlightPathFixture(
         const baselineSessionId = randomUUID();
         await tx`insert into fkh_sessions (id, user_id, source, type, date, raw_csv_text, file_name)
           values (${baselineSessionId}, ${userId}, 'rapsodo', 'range', now() - interval '3 days', '', 'flight-path-baseline-e2e.csv')`;
-        await tx`insert into fkh_shots (user_id, session_id, club_id, shot_at, club_type,
+        await tx`insert into fkh_shots (user_id, session_id, club_id, shot_at, shot_number, club_type,
           carry_yd, total_yd, side_carry_yd, ball_speed_mph, club_speed_mph, launch_angle_deg,
           launch_direction_deg, club_path_deg, face_angle_deg, apex_ft, smash_factor, spin_rate, spin_axis, source_raw_json)
           select user_id, ${baselineSessionId}, club_id, now() - interval '3 days', club_type,

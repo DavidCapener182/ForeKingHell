@@ -66,7 +66,11 @@ test("Shot pattern exposes full mobile setup and selected projection scope", asy
     for (const surface of ["workbench", "companion"]) {
       await page.goto(
         `/surface/${surface}?next=${encodeURIComponent(`/courses/${course.id}/shot-pattern`)}`,
+        { waitUntil: "domcontentloaded" },
       );
+      await expect(
+        page.getByRole("img", { name: "Shot pattern course view", exact: true }),
+      ).toBeVisible();
       for (const [width, height] of [
         [1440, 900],
         [1280, 800],

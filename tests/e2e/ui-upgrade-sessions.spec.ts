@@ -26,9 +26,13 @@ test("P04 History UI and scoped shot detail", async ({ page }, info) => {
   });
   for (const surface of ["workbench", "companion"]) {
     await page.goto(`/surface/${surface}?next=${encodeURIComponent("/sessions")}`);
-    await expect(page.getByRole("heading", { level: 1, name: "History", exact: true })).toBeVisible(
-      { timeout: 60000 },
-    );
+    await expect(
+      page.getByRole("heading", {
+        level: 1,
+        name: surface === "companion" ? "Activity" : "History",
+        exact: true,
+      }),
+    ).toBeVisible({ timeout: 60000 });
     for (const [width, height] of [
       [1440, 900],
       [1280, 800],

@@ -40,7 +40,7 @@ test.describe("visual spacing audit", () => {
     { name: "rounds-new", path: "/rounds/new", text: /New round|Add round/i },
     { name: "handicap", path: "/handicap", text: /Handicap/i },
     { name: "courses", path: "/courses", text: /Courses/i },
-    { name: "courses-new", path: "/courses/new", text: /New course|Add course/i },
+    { name: "courses-new", path: "/courses/new", text: /New course|Add (?:a )?course/i },
     { name: "course-records", path: "/course-records", text: /Course records|Course Champion/i },
     { name: "challenges", path: "/challenges", text: /Challenges/i },
     { name: "tournaments", path: "/tournaments", text: /Tournaments|Daily, weekly/i },

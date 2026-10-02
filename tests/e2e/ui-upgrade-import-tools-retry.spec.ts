@@ -20,6 +20,7 @@ test("Import history tools recover from a failed chunk with keyboard focus", asy
   const db = postgres(value!, { max: 1 });
   let owner: string | undefined;
   let attempts = 0;
+  let failLoads = true;
   let release: () => void = () => {};
   let gate = Promise.resolve();
   const errors: string[] = [];
@@ -42,12 +43,27 @@ test("Import history tools recover from a failed chunk with keyboard focus", asy
         path: "/",
       },
     ]);
-    await page.route("**/*desktop-workbench-controls_tsx.js", async (route) => {
-      attempts += 1;
-      if (attempts === 1) {
-        await gate;
-        await route.fulfill({ status: 503, contentType: "text/javascript", body: "" });
-      } else await route.continue();
+    await page.route("**/_next/static/chunks/*.js", async (route) => {
+      const response = await route.fetch();
+      const body = await response.text();
+      // Turbopack may merge the component into a generically named chunk.
+      // Its async-loader bootstrap is needed for initial hydration; fail only
+      // the chunk containing the component itself, not that bootstrap.
+      const historyComponent = body.includes(
+        '"[project]/src/app/import/import-history-table-tools.tsx [app-client] (ecmascript)", ((__turbopack_context__)',
+      );
+      const webpackComponent = /import-history-table-tools_tsx\.js(?:\?.*)?$/.test(
+        route.request().url(),
+      );
+      if (historyComponent || webpackComponent) {
+        attempts += 1;
+        if (failLoads) {
+          await gate;
+          await route.fulfill({ status: 503, contentType: "text/javascript", body: "" });
+          return;
+        }
+      }
+      await route.fulfill({ response, body });
     });
     for (const surface of ["workbench", "companion"]) {
       for (const [width, height] of [
@@ -56,6 +72,7 @@ test("Import history tools recover from a failed chunk with keyboard focus", asy
         [360, 800],
       ]) {
         attempts = 0;
+        failLoads = true;
         gate = new Promise<void>((resolve) => {
           release = resolve;
         });
@@ -70,10 +87,13 @@ test("Import history tools recover from a failed chunk with keyboard focus", asy
         release();
         await expect(tools.getByRole("alert")).toContainText("could not load");
         const retry = tools.getByRole("button", { name: "Retry file tools", exact: true });
+        expect(attempts).toBeGreaterThanOrEqual(1);
+        const failedAttempts = attempts;
+        failLoads = false;
         await retry.focus();
         await page.keyboard.press("Enter");
         await expect(tools.getByRole("button", { name: "Saved views", exact: true })).toBeFocused();
-        expect(attempts).toBe(2);
+        expect(attempts).toBeGreaterThan(failedAttempts);
         const title = await tools.getByText("Import file library", { exact: true }).boundingBox();
         expect(title?.width).toBeGreaterThanOrEqual(120);
         expect(title?.height).toBeLessThan(65);

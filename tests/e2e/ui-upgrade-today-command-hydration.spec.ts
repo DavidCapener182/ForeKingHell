@@ -30,6 +30,7 @@ test("Today command palette does not mutate dehydrated page content", async ({ b
       const context = await browser.newContext({
         viewport: { width: surface === "workbench" ? 1440 : 390, height: 900 },
       });
+      let blockedPageChunks = 0;
       let releasePage!: () => void;
       const pageChunkGate = new Promise<void>((resolve) => {
         releasePage = resolve;
@@ -44,13 +45,20 @@ test("Today command palette does not mutate dehydrated page content", async ({ b
           },
         ]);
         const page = await context.newPage();
-        await page.route(
-          (url) => decodeURIComponent(url.pathname).includes("/today/page.js"),
-          async (route) => {
+        await page.route("**/_next/static/chunks/*.js", async (route) => {
+          const response = await route.fetch();
+          const body = await response.text();
+          const pathname = decodeURIComponent(new URL(route.request().url()).pathname);
+          if (
+            pathname.includes("/today/page.js") ||
+            body.includes("[project]/src/components/app/today-club-trends.tsx [app-client]") ||
+            body.includes("[project]/src/app/today/today-workspace-tabs.tsx [app-client]")
+          ) {
+            blockedPageChunks += 1;
             await pageChunkGate;
-            await route.continue();
-          },
-        );
+          }
+          await route.fulfill({ response, body });
+        });
         page.on("console", (msg) => {
           if (/hydration|hydrated|didn't match/i.test(msg.text()))
             warnings.push(`${surface}: ${msg.text()}`);
@@ -62,6 +70,7 @@ test("Today command palette does not mutate dehydrated page content", async ({ b
           "data-command-centre-ready",
           "true",
         );
+        await expect.poll(() => blockedPageChunks).toBeGreaterThan(0);
         const trigger = page.locator("button:visible:not(:disabled)").first();
         await trigger.focus();
         await page.keyboard.press("Control+k");

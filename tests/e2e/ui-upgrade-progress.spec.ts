@@ -38,7 +38,7 @@ test("P01: shared URL tabs and explicit unavailable comparison across surfaces",
       await page.setViewportSize(viewport);
       const tabs = page.getByRole("tablist", { name: "Progress sections" });
       await expect(tabs).toBeVisible();
-      await expect(page.locator("[data-progress-tabs]")).toHaveAttribute("data-ready", "true");
+      await expect(page.locator("[data-progress-tabs]:visible")).toHaveAttribute("data-ready", "true");
       await expect(
         page.getByRole("heading", { level: 1, name: "Progress", exact: true }),
       ).toHaveCount(1);
@@ -104,9 +104,11 @@ test("P01: shared URL tabs and explicit unavailable comparison across surfaces",
         "aria-selected",
         "true",
       );
-      await expect(page.locator("[data-progress-snapshot]")).toContainText(
-        "Historical composite scores are not stored",
-      );
+      await expect(
+        page
+          .getByRole("tabpanel", { name: "Performance", exact: true })
+          .locator("[data-progress-snapshot]"),
+      ).toContainText("Historical composite scores are not stored");
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth > window.innerWidth + 1,
       );

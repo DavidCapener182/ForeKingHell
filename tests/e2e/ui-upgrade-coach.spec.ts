@@ -23,6 +23,13 @@ test("Coach exposes diagnosis, source details and conversation on both surfaces"
     await expect(page.getByRole("heading", { name: "Coach", exact: true })).toBeVisible({
       timeout: 60000,
     });
+    const tools = page.getByRole("button", { name: "Coach tools", exact: true });
+    await tools.click();
+    await expect(page.getByRole("menuitem", { name: "Players", exact: true })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Reports", exact: true })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Driver Speed Development", exact: true })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(tools).toBeFocused();
     for (const [width, height] of [
       [1440, 900],
       [1280, 800],

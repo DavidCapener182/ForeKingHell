@@ -77,7 +77,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { savedInsightUpdatedEvent } from "@/components/app/desktop-save-insight-button";
-import { desktopSavedViewsUpdatedEvent } from "@/components/app/desktop-workbench-controls";
+import { desktopSavedViewsUpdatedEvent } from "@/components/app/desktop-saved-view-events";
 import { NotificationCentre } from "@/components/app/workbench/notification-centre";
 import { WorkspaceSwitcher } from "@/components/app/workbench/workspace-switcher";
 import { cn } from "@/lib/utils";

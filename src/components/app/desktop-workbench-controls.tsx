@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { desktopSavedViewsUpdatedEvent } from "@/components/app/desktop-saved-view-events";
+export { desktopSavedViewsUpdatedEvent } from "@/components/app/desktop-saved-view-events";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   Check,
@@ -76,7 +78,6 @@ type DesktopWorkbenchControlsProps = {
 };
 
 const densityStorageKey = "fkh:desktop-workbench-density";
-export const desktopSavedViewsUpdatedEvent = "fkh:desktop-saved-views-updated";
 
 export function DesktopWorkbenchControls({
   viewKey,

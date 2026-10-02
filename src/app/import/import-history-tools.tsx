@@ -17,7 +17,7 @@ export function ImportHistoryTools(props: ComponentProps<ToolsComponent>) {
     requested.current = true;
     setFailed(false);
     setLoading(true);
-    void import("@/components/app/desktop-workbench-controls")
+    void import("./import-history-table-tools")
       .then((module) => {
         if (alive.current) setTools(() => module.DesktopWorkbenchControls);
       })

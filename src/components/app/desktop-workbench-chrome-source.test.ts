@@ -279,7 +279,7 @@ describe("desktop workbench chrome source", () => {
     );
 
     expect(source).toContain(
-      'import { desktopSavedViewsUpdatedEvent } from "@/components/app/desktop-workbench-controls";',
+      'import { desktopSavedViewsUpdatedEvent } from "@/components/app/desktop-saved-view-events";',
     );
     expect(source).toContain(
       "const syncSavedViews = () => setSavedViewCommands(readSavedViewCommands())",
