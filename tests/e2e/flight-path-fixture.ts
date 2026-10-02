@@ -112,7 +112,7 @@ export async function prepareFlightPathFixture(
         await tx`insert into fkh_shots (user_id, session_id, club_id, shot_at, shot_number, club_type,
           carry_yd, total_yd, side_carry_yd, ball_speed_mph, club_speed_mph, launch_angle_deg,
           launch_direction_deg, club_path_deg, face_angle_deg, apex_ft, smash_factor, spin_rate, spin_axis, source_raw_json)
-          select user_id, ${baselineSessionId}, club_id, now() - interval '3 days', club_type,
+          select user_id, ${baselineSessionId}, club_id, shot_at - interval '3 days', shot_number, club_type,
           carry_yd - 2, total_yd - 2, side_carry_yd, ball_speed_mph, club_speed_mph, launch_angle_deg,
           launch_direction_deg, club_path_deg, face_angle_deg, apex_ft, smash_factor, spin_rate, spin_axis, source_raw_json
           from fkh_shots where session_id = ${sessionId}`;
