@@ -62,7 +62,7 @@ test.describe("redesigned flagship workflows", () => {
     page,
   }) => {
     await page.goto("/surface/workbench?next=%2Ftoday", { waitUntil: "domcontentloaded" });
-    await expectPageReady(page, /Today/i);
+    await expectPageReady(page, /Today|Home/i);
     const panel = page.locator("[data-today-decision-hero]");
     for (const width of [320, 390, 430, 768, 1024, 1440, 1920]) {
       await page.setViewportSize({ width, height: 900 });

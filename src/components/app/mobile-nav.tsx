@@ -169,7 +169,7 @@ export function MobileNav({
         data-companion-hero-header={heroRoute ? "true" : undefined}
         data-hero-collapsed={compactTitleVisible ? "true" : "false"}
         data-mobile-root={!backNavigation ? "true" : undefined}
-        className="ios-app-header fixed left-0 top-0 z-[60] h-[calc(3.25rem+12px+env(safe-area-inset-top,0px))] w-dvw max-w-full px-3 pt-[calc(env(safe-area-inset-top,0px)+12px)]"
+        className="ios-app-header fixed left-0 top-0 z-40 h-[calc(3.25rem+12px+env(safe-area-inset-top,0px))] w-dvw max-w-full px-3 pt-[calc(env(safe-area-inset-top,0px)+12px)]"
       >
         <div
           className={cn(

@@ -27,7 +27,7 @@ test.describe("clean-database companion smoke", () => {
     for (const destination of [
       { navigationLabel: "Play", routeLabel: "Play", path: /\/play(?:\?|$)/ },
       { navigationLabel: "Activity", routeLabel: "Activity", path: /\/sessions(?:\?|$)/ },
-      { navigationLabel: "Bag", routeLabel: "Your bag", path: /\/bag(?:\?|$)/ },
+      { navigationLabel: "Bag", routeLabel: "Bag", path: /\/bag(?:\?|$)/ },
     ]) {
       await primaryNavigation
         .getByRole("link", { name: destination.navigationLabel, exact: true })
@@ -57,7 +57,7 @@ async function expectCompanionRoute(
 ) {
   // The CI dev server compiles each destination on its first visit.
   await expect(page).toHaveURL(path, { timeout: 60_000 });
-  if (routeLabel === "Activity" || routeLabel === "Import") {
+  if (routeLabel === "Activity" || routeLabel === "Import" || routeLabel === "Bag") {
     await expect(page.getByRole("heading", { name: routeLabel, exact: true }).first()).toBeVisible({
       timeout: 60_000,
     });

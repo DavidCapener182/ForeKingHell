@@ -34,7 +34,10 @@ const selectedViewports = requestedViewports.size
 
 test.describe("companion visual regression matrix", () => {
   test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE or enable the local auth bypass.");
-  test.use(authStorageState ? { storageState: authStorageState } : {});
+  test.use({
+    ...(authStorageState ? { storageState: authStorageState } : {}),
+    reducedMotion: "reduce",
+  });
   const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
   test.beforeEach(async ({ page }, info) => {
     fixtureCleanup.set(
@@ -73,6 +76,7 @@ test.describe("companion visual regression matrix", () => {
             fullPage: false,
             maxDiffPixelRatio: 0.01,
             stylePath: visualStyle,
+            mask: [page.locator(".mobile-home-greeting > p")],
           });
         }
       }

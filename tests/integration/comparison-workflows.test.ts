@@ -1,3 +1,4 @@
+import { grantFixturePlan } from "../support/paid-fixture";
 import {
   saveWorkspaceComparisonWithStateAction,
   deleteWorkspaceComparisonWithStateAction,
@@ -44,6 +45,7 @@ describe.skipIf(!enabled)("saved comparison state", () => {
       users = (
         await sql`insert into fkh_users(name) values('Synthetic comparer'),('Synthetic foreign comparer') returning id`
       ).map((r) => r.id);
+      await grantFixturePlan(sql, users);
       actor.id = users[0];
       const ids: string[] = [];
       for (const userId of [users[0], users[0], users[1]])
@@ -105,6 +107,7 @@ describe.skipIf(!enabled)("saved comparison state", () => {
     users = (
       await sql`insert into fkh_users(name) values('Synthetic workspace owner'),('Synthetic other owner') returning id`
     ).map((row) => row.id);
+    await grantFixturePlan(sql, users);
     actor.id = users[0];
     const owned =
       await sql`insert into fkh_clubs(user_id,type,normalized_club_key) values(${actor.id},'7i','seven'),(${actor.id},'8i','eight') returning id`;
@@ -139,6 +142,7 @@ describe.skipIf(!enabled)("saved comparison state", () => {
     users = (
       await sql`insert into fkh_users(name) values('Synthetic player A'),('Synthetic player B') returning id`
     ).map((row) => row.id);
+    await grantFixturePlan(sql, users);
     actor.id = users[0];
     for (const id of users)
       await sql`insert into fkh_user_profiles(user_id,username,display_name) values(${id},${id},'Synthetic player')`;

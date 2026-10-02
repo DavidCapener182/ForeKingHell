@@ -153,7 +153,7 @@ test("round and Shot Explorer club corrections share atomic evidence refresh and
       .locator("details")
       .filter({ has: page.locator("summary").filter({ hasText: /^Correct club$/ }) });
     await correction.locator("summary").click();
-    await correction.getByLabel("Club", { exact: true }).selectOption(iron.id);
+    await correction.getByRole("combobox", { name: "Club", exact: true }).selectOption(iron.id);
     await correction.getByRole("button", { name: "Update club", exact: true }).click();
     await expect(correction.getByRole("status")).toContainText("Club updated");
     expect(

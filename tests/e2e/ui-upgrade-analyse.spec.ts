@@ -30,9 +30,11 @@ test("Analysis overview retains provenance and scoped entry points", async ({ pa
       const hero = page.locator("[data-analysis-hero]");
       await expect(hero).toBeVisible();
       await expect(hero.locator("img")).toHaveJSProperty("complete", true);
-      expect(
-        await hero.locator("img").evaluate((image) => (image as HTMLImageElement).naturalWidth),
-      ).toBeGreaterThan(0);
+      await expect
+        .poll(() =>
+          hero.locator("img").evaluate((image) => (image as HTMLImageElement).naturalWidth),
+        )
+        .toBeGreaterThan(0);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
       ).toBe(true);

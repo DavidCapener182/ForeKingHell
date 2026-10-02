@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { randomUUID } from "node:crypto";
 import { hasLocalAuthBypass } from "./helpers";
 import { canRunMutatingCompanionE2e, MutatingCompanionFixture } from "./mutating-companion-fixture";
 
@@ -21,10 +22,20 @@ test("review context survives regeneration, save and a desktop saved-plan deep l
   const sql = postgres(databaseUrl!, { max: 1 });
   const user = process.env.PLAYWRIGHT_MUTATING_TEST_USER_ID!;
   const fixture = new MutatingCompanionFixture();
+  let clubId: string | undefined;
+  const otherUserId = randomUUID();
   try {
+    const fileName = `practice-handoff-${randomUUID()}.csv`;
+    fixture.trackFileName(fileName);
+    const [club] =
+      await sql`insert into fkh_clubs(user_id,type,normalized_club_key) values(${user},'7i',${fileName}) returning id`;
+    clubId = club.id;
     const [source] =
-      await sql`select id from fkh_sessions where user_id=${user} order by date asc limit 1`;
-    expect(source).toBeTruthy();
+      await sql`insert into fkh_sessions(user_id,source,type,date,file_name,raw_csv_text) values(${user},'rapsodo','range',now(),${fileName},'Synthetic handoff evidence') returning id`;
+    fixture.trackSession(source.id);
+    for (let i = 1; i <= 3; i++)
+      await sql`insert into fkh_shots(user_id,session_id,club_id,club_type,shot_at,shot_number,carry_yd,total_yd,review_status,source_raw_json) values(${user},${source.id},${club.id},'7i',now(),${i},${150 + i},${160 + i},'included','{}'::jsonb)`;
+    await sql`insert into fkh_users(id,email,name) values(${otherUserId},${`${otherUserId}@example.test`},'Practice handoff outsider')`;
     await page.setViewportSize({ width: 390, height: 844 });
     // Verify compatibility with the original import-result links too.
     await page.goto(
@@ -80,7 +91,7 @@ test("review context survives regeneration, save and a desktop saved-plan deep l
     const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
     const token = [
       encode({ alg: "none" }),
-      encode({ sub: "02a77bc2-93c8-4c7b-8995-ddc099782904", email: "empty@forekinghell.local" }),
+      encode({ sub: otherUserId, email: "empty@forekinghell.local" }),
       "playwright",
     ].join(".");
     const isolated = await browser.newContext({ baseURL: process.env.PLAYWRIGHT_BASE_URL });
@@ -107,6 +118,8 @@ test("review context survives regeneration, save and a desktop saved-plan deep l
     await isolated.close();
   } finally {
     await fixture.cleanup();
+    if (clubId) await sql`delete from fkh_clubs where id=${clubId} and user_id=${user}`;
+    await sql`delete from fkh_users where id=${otherUserId}`;
     await sql.end();
   }
 });

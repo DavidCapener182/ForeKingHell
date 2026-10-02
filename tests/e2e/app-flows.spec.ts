@@ -137,7 +137,7 @@ test.describe("authenticated app flows", () => {
       waitUntil: "domcontentloaded",
       timeout: 60_000,
     });
-    await expectPageReady(page, /Today/i);
+    await expectPageReady(page, /Today|Home/i);
     expect(delayed).toBe(true);
     await expect(page.getByRole("main")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Mobile primary" })).toBeVisible();
@@ -152,7 +152,7 @@ test.describe("authenticated app flows", () => {
     await expectPageReady(page, /^Shots|Import your first measured shots/im);
     const navigation = page.getByRole("navigation", { name: "Mobile primary" });
     await expect(navigation).toBeVisible();
-    await expect(navigation.getByRole("link", { name: "Sessions" })).toHaveAttribute(
+    await expect(navigation.getByRole("link", { name: "Activity" })).toHaveAttribute(
       "aria-current",
       "page",
     );

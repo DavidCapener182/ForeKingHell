@@ -14,6 +14,7 @@ export async function prepareFlightPathFixture(
   competitions = false,
   secondSession = false,
   stockExclusion = false,
+  strokesGained = false,
 ): Promise<
   (() => Promise<void>) & { sessionId?: string; challengeId?: string; tournamentId?: string }
 > {
@@ -49,6 +50,12 @@ export async function prepareFlightPathFixture(
         values (${userId}, 'lifetime_full', '{"value":true}', 'e2e-fixture')`;
       await tx`insert into fkh_sessions (id, user_id, source, type, date, raw_csv_text, file_name)
         values (${sessionId}, ${userId}, 'rapsodo', 'range', now(), '', 'flight-path-e2e.csv')`;
+      if (strokesGained) {
+        await tx`insert into fkh_strokes_gained_shot_events
+          (user_id, session_id, category, start_lie, end_lie, start_distance_yd, end_distance_yd, hole_number, stroke_number, strokes_gained)
+          values (${userId}, ${sessionId}, 'approach', 'fairway', 'green', 150, 5, 1, 1, 0.4),
+                 (${userId}, ${sessionId}, 'putting', 'green', 'holed', 5, 0, 1, 2, -0.2)`;
+      }
       if (roundCourseId) {
         await tx`update fkh_sessions set type = 'real_round', play_context = 'on_course', course_id = ${roundCourseId}, course_name = 'Aintree Golf Centre' where id = ${sessionId}`;
         await tx`update fkh_sessions set tee_set_id = (select id from fkh_tee_sets where course_id = ${roundCourseId} order by created_at limit 1),
@@ -71,8 +78,11 @@ export async function prepareFlightPathFixture(
             ["Pitching Wedge", 105],
           ] as const)
         : ([["7 Iron", 150]] as const);
-      for (const [clubType, baseline] of clubs) {
-        const fixtureClubId = multipleClubs ? randomUUID() : clubId;
+      for (const [clubIndex, [clubType, baseline]] of clubs.entries()) {
+        // Keep tied recommendation ordering stable while each fixture owns unique IDs.
+        const fixtureClubId = multipleClubs
+          ? `${userId.slice(0, 24)}${String(clubIndex + 1).padStart(12, "0")}`
+          : clubId;
         await tx`insert into fkh_clubs (id, user_id, type, normalized_club_key)
           values (${fixtureClubId}, ${userId}, ${clubType}, ${clubType.toLowerCase().replaceAll(" ", "-")})`;
         if (multipleClubs) {

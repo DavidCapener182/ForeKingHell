@@ -26,7 +26,11 @@ test.describe("phone companion journeys", () => {
     );
     skipWhenNoAuth();
     await page.setViewportSize({ width: 390, height: 844 });
-    if (testInfo.title.startsWith("7-10:") || testInfo.title.startsWith("local companion"))
+    if (
+      testInfo.title.startsWith("7-10:") ||
+      testInfo.title.startsWith("11-12:") ||
+      testInfo.title.startsWith("local companion")
+    )
       localCleanup = await prepareFlightPathFixture(
         page,
         String(testInfo.project.use.baseURL),
@@ -61,26 +65,28 @@ test.describe("phone companion journeys", () => {
     await page.getByRole("button", { name: "Apply adjustments" }).click();
     await expect(page.locator("[data-current-practice-plan]")).toContainText(/30\s*min/);
     await expect(page.locator("[data-practice-block-carousel] button[aria-pressed]")).toHaveCount(
-      3,
+      6,
     );
     await page.getByRole("button", { name: "Start practice", exact: true }).click();
     const rangeMode = page.locator("[data-active-range-mode]");
     await expect(rangeMode).toBeVisible();
-    mutatingFixture.trackPracticePlan(await rangeMode.getAttribute("data-practice-plan-id"));
-    await expect(rangeMode.getByText("Block 1 of 3", { exact: true })).toBeVisible();
+    const practicePlanId = await rangeMode.getAttribute("data-practice-plan-id");
+    expect(practicePlanId).toBeTruthy();
+    mutatingFixture.trackPracticePlan(practicePlanId);
+    await expect(rangeMode.getByText("Block 1 of 6", { exact: true })).toBeVisible();
     await expect(page.getByText(/activity only/i)).toBeVisible();
 
     await page.getByRole("button", { name: "Complete Block" }).click();
-    await expect(rangeMode.getByText("Block 2 of 3", { exact: true })).toBeVisible();
+    await expect(rangeMode.getByText("Block 2 of 6", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Session options", exact: true }).click();
     await page.getByRole("button", { name: /Skip block/ }).click();
-    await expect(rangeMode.getByText("Block 3 of 3", { exact: true })).toBeVisible();
+    await expect(rangeMode.getByText("Block 3 of 6", { exact: true })).toBeVisible();
     await expect(page.getByRole("progressbar")).toHaveAttribute(
       "aria-label",
       "Practice blocks completed",
     );
     await page.getByRole("button", { name: "Previous practice block" }).click();
-    await expect(rangeMode.getByText("Block 2 of 3", { exact: true })).toBeVisible();
+    await expect(rangeMode.getByText("Block 2 of 6", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Session options" }).click();
     await page.getByRole("button", { name: "Finish practice", exact: true }).click();
@@ -153,13 +159,26 @@ test.describe("phone companion journeys", () => {
     await expect(page.getByRole("img", { name: /Dispersion chart/i })).toBeVisible();
     await page.getByRole("radio", { name: "Flight", exact: true }).click();
     await expect(page.getByRole("img", { name: /Flight chart/i })).toBeVisible();
-    await expect(page.locator("[data-plan-versus-actual]")).toContainText("Plan versus actual");
+    await expect(
+      page.getByRole("heading", { name: "Planned practice review", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Open matched plan", exact: true }),
+    ).toHaveAttribute(
+      "href",
+      new RegExp(`planId=${practicePlanId}.*sourceSessionId=${savedSessionId}`),
+    );
     await expect(page.getByRole("link", { name: "Build next plan" })).toBeVisible();
     await expect(page.getByRole("link", { name: /Bag confidence|Shot rows/i })).toHaveCount(0);
 
     await page.goto("/sessions", { waitUntil: "commit" });
     await expectPageReady(page, /Sessions/i);
-    await page.getByRole("radio", { name: "Practice", exact: true }).click();
+    await page.getByRole("button", { name: /^Filters/ }).click();
+    const historyFilters = page.getByRole("dialog", { name: "Filter history", exact: true });
+    await historyFilters.getByRole("button", { name: /Session type$/ }).click();
+    await page.getByRole("option", { name: "Practice & simulator", exact: true }).click();
+    await historyFilters.getByRole("button", { name: "Apply filters", exact: true }).click();
+    await expect(page).toHaveURL(/type=practice/);
     const measuredReview = page.locator(`a[href="/sessions/${savedSessionId}"]`).first();
     await expect(measuredReview).toBeVisible();
     await measuredReview.click();
@@ -174,7 +193,13 @@ test.describe("phone companion journeys", () => {
     await page.getByRole("tab", { name: "Clubs & shots", exact: true }).click();
     await expect(page.getByRole("region", { name: "Session metric story" })).toBeVisible();
     await page.getByRole("tab", { name: "Next practice", exact: true }).click();
-    await expect(page.locator(`a[href*="sourceSessionId=${savedSessionId}"]`)).toBeVisible();
+    const nextPractice = page.getByRole("tabpanel", { name: "Next practice", exact: true });
+    await expect(
+      nextPractice.getByRole("link", { name: "Choose practice", exact: true }),
+    ).toBeVisible();
+    await expect(
+      nextPractice.getByRole("link", { name: "Choose practice", exact: true }),
+    ).toHaveAttribute("href", new RegExp(`sourceSessionId=${savedSessionId}`));
 
     // Retrying the exact file must return the same record, including its practice result.
     await page.goto("/import?source=csv", { waitUntil: "domcontentloaded" });
@@ -186,7 +211,15 @@ test.describe("phone companion journeys", () => {
     });
     await page.getByRole("button", { name: "Open saved review", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/import/result\\?sessionId=${savedSessionId}`));
-    await expect(page.locator("[data-plan-versus-actual]")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Planned practice review", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Open matched plan", exact: true }),
+    ).toHaveAttribute(
+      "href",
+      new RegExp(`planId=${practicePlanId}.*sourceSessionId=${savedSessionId}`),
+    );
   });
 
   test("7-10: prepares a course, changes holes, opens Strategy and checks Quick Bag", async ({
@@ -320,13 +353,14 @@ test.describe("phone companion journeys", () => {
     expect(page.url()).not.toContain("/shots");
   });
 
-  test("11-12: hands desktop-only work off and persists Full Site", async ({ page }) => {
-    await openCompanion(page, "/strokes-gained", /available on the full desktop site/i);
-    await expect(page.getByText("Strokes Gained needs detailed shot-event tables.")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Review latest round" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Open Quick Bag" })).toBeVisible();
-
-    await page.getByRole("link", { name: "Open Full Site" }).click();
+  test("11-12: switches to the full workspace and persists Full Site", async ({ page }) => {
+    await openCompanion(page, "/strokes-gained", /Expected-strokes baseline|Strokes gained/i);
+    await expect(page.getByRole("navigation", { name: "Mobile primary" })).toBeVisible();
+    await page.getByRole("button", { name: /Open more tools and profile/ }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("link", { name: "Open full desktop site", exact: true })
+      .click();
     await expectPageReady(page, /Expected-strokes baseline|Scoring diagnosis/i);
     await expect(page.locator('[data-app-surface="workbench"]')).toBeVisible();
     await expect(page.locator("[data-desktop-workbench-hydrated]")).toHaveAttribute(

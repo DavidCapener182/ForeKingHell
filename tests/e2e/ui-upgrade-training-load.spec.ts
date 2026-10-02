@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { grantFixturePlan } from "../support/paid-fixture";
 import { readFile } from "node:fs/promises";
 test("Training Load keeps range and complete entry workflow on both surfaces", async ({
   page,
@@ -26,6 +27,7 @@ test("Training Load keeps range and complete entry workflow on both surfaces", a
   try {
     const [user] = await db`insert into fkh_users(name) values('UI impact isolated') returning id`;
     owner = user.id;
+    await grantFixturePlan(db, [owner!]);
     const [session] =
       await db`insert into fkh_sessions(user_id,source,type,date,file_name,raw_csv_text) values(${owner!},'rapsodo','range','2026-09-01','Impact synthetic session','synthetic') returning id`;
     const [club] =
@@ -48,7 +50,7 @@ test("Training Load keeps range and complete entry workflow on both surfaces", a
         path: "/",
       },
     ]);
-    await db`insert into fkh_golf_training_sessions(user_id,source_type,title,session_date,rpe,session_load,duration_minutes) values(${owner!},'manual','Recent synthetic practice','2026-09-06',5,100,30),(${owner!},'manual','Older synthetic practice','2026-08-01',5,90,25)`;
+    await db`insert into fkh_golf_training_sessions(user_id,source_type,title,session_date,rpe,session_load,duration_minutes) values(${owner!},'manual','Recent synthetic practice',current_date - 2,5,100,30),(${owner!},'manual','Older synthetic practice','2026-08-01',5,90,25)`;
     for (const surface of ["workbench", "companion"]) {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(

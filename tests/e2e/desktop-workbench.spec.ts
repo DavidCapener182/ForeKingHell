@@ -74,6 +74,9 @@ test.describe("desktop workbench", () => {
           ? "4de11156-16fd-4a36-84e0-fadda53456b0"
           : undefined,
         /challenge and tournament detail/.test(info.title),
+        false,
+        false,
+        /priority pages/.test(info.title),
       ),
     );
   });
@@ -94,7 +97,7 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Dashboard|Today/i);
+    await expectPageReady(page, /Dashboard|Today|Home/i);
 
     await page.keyboard.press("ControlOrMeta+K");
     await expect(page.getByRole("dialog", { name: /command palette/i })).toBeVisible();
@@ -969,7 +972,7 @@ test.describe("desktop workbench", () => {
     for (const [label, target] of [
       ["Practice", "practice"],
       ["Driver & speed", "driver-speed"],
-      ["Changes", "changes"],
+      ["Changes", "club-progress"],
       ["Club delivery", "delivery"],
       ["Round readiness", "readiness"],
       ["Current work", "current-work"],
@@ -2482,6 +2485,7 @@ test.describe("desktop workbench", () => {
     const rapsodoSessionsTable = page.locator(
       'table[data-workbench-export-table="rapsodo-sessions"]',
     );
+    await page.getByText("Remote session table and export", { exact: true }).click();
     await expect(rapsodoSessionsTable).toBeVisible();
     await page.getByRole("button", { name: /Columns/i }).click();
     await setMenuItemCheckbox(page, /^Shots$/i, false);
@@ -2496,7 +2500,9 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/providers");
     await expectPageReady(page, /Providers/i);
     await expectNoAiRail(page, /AI provider rail/i);
+    await page.getByRole("tab", { name: "Diagnostics", exact: true }).click();
     await expect(page.getByText(/Provider import health/i).first()).toBeVisible();
+    await page.getByRole("tab", { name: "Connections", exact: true }).click();
     await expect(
       page
         .getByText(/live\/current/i)
@@ -2560,7 +2566,7 @@ test.describe("desktop workbench", () => {
     await expect(progressComparison).toBeVisible();
     await expect(progressComparison.getByRole("searchbox", { name: "Search clubs" })).toBeVisible();
     await expect(
-      progressComparison.getByRole("combobox", { name: "Comparison measure" }),
+      progressComparison.getByRole("button", { name: /Comparison measure$/ }),
     ).toBeVisible();
 
     await gotoAppRoute(page, "/strokes-gained");
@@ -2881,7 +2887,7 @@ test.describe("desktop workbench", () => {
     await expectNoHorizontalOverflow(page, "training load chart accessibility");
   });
 
-  test("platform, simulator, safety and admin pages use selective desktop rails", async ({
+  test("platform, simulator, safety and admin pages expose evidence and usable registers", async ({
     page,
   }) => {
     skipWhenNoDesktopAuth();
@@ -2895,6 +2901,7 @@ test.describe("desktop workbench", () => {
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Performance Lab/i }),
     ).toHaveCount(0);
+    await page.getByRole("tab", { name: "Gapping", exact: true }).click();
     const simulatorMatrixRegion = page.getByRole("region", {
       name: /Simulator gapping matrix chart accessibility/i,
     });
@@ -2917,6 +2924,7 @@ test.describe("desktop workbench", () => {
     await expect(page.getByRole("button", { name: /Open AI assistant for Handicap/i })).toHaveCount(
       0,
     );
+    await page.getByRole("tab", { name: "Eligible-round trend", exact: true }).click();
     const handicapTrendRegion = page
       .getByRole("region", { name: /Handicap trend chart accessibility/i })
       .filter({ visible: true });
@@ -2942,78 +2950,82 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/social-intelligence");
     await expectAppText(page, /Recaps & Safety/i, 45_000);
     await expectNoAiRail(page, /AI safety rail/i);
-    await expect(page.getByRole("button", { name: /Submit report/i })).toHaveAttribute(
-      "data-confirm-message",
-      /Submit this social report/i,
-    );
+    await page.getByRole("button", { name: "Report content", exact: true }).click();
+    const reportContent = page.getByRole("dialog", { name: "Report content", exact: true });
+    await expect(
+      reportContent.getByRole("button", { name: "Review request", exact: true }),
+    ).toBeVisible();
+    await expect(
+      reportContent.getByRole("button", { name: "Confirm report", exact: true }),
+    ).toHaveCount(0);
+    await page.keyboard.press("Escape");
 
     await gotoAppRoute(page, "/admin");
     await expectAppText(page, /Operating pages|Admin/i, 45_000);
     await expectNoAiRail(page, /AI admin rail/i);
 
     await gotoAppRoute(page, "/admin/system-checks");
-    await expectAppText(page, /Provider status and platform checks/i, 45_000);
+    await expectAppText(page, /System health console/i, 45_000);
     await expectNoAiRail(page, /AI admin rail/i);
-    await expect(page.getByRole("link", { name: /Open provider console/i })).toHaveAttribute(
-      "href",
-      "/providers#provider-health",
-    );
-    await expect(page.getByRole("link", { name: /Review provider jobs/i })).toHaveAttribute(
-      "href",
-      "/providers#provider-jobs",
-    );
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "Admin system checks table",
-    );
     await expect(
-      page.locator('table[data-workbench-export-table="admin-system-checks"]'),
+      page.getByRole("region", { name: "Read-only live probes", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("region", { name: "Service summary", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Health register table", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator('table[data-workbench-export-table="admin-system-health"]'),
     ).toBeVisible();
     await page.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /Impact/i, false);
-    await expect(page.locator('th[data-column="impact"]')).toBeHidden();
+    await setMenuItemCheckbox(page, /Evidence/i, false);
+    await expect(page.locator('th[data-column="evidence"]')).toBeHidden();
     await page.keyboard.press("Escape");
     const [systemChecksDownload] = await Promise.all([
       page.waitForEvent("download"),
       page.getByRole("button", { name: /^Export$/i }).click(),
     ]);
-    expect(systemChecksDownload.suggestedFilename()).toBe("forekinghell-admin-system-checks.csv");
+    expect(systemChecksDownload.suggestedFilename()).toBe("admin-system-health-filtered.csv");
 
     await page.setViewportSize({ width: 2200, height: 1100 });
     await gotoAppRoute(page, "/admin");
     await expectAppText(page, /Operations console/i, 45_000);
-    await expect(page.getByRole("complementary", { name: /AI admin rail/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Generate admin report/i }).first()).toBeVisible();
+    await expectNoAiRail(page, /AI admin rail/i);
+    await expect(page.getByRole("link", { name: /^System checks/ }).first()).toBeVisible();
     await page.setViewportSize({ width: 1440, height: 900 });
 
     await gotoAppRoute(page, "/partners");
     await expectAppText(page, /Sponsors and partner offers/i, 45_000);
-    await expect(page.getByText(/Campaign, asset and plan requirements/i)).toBeVisible();
-    await expect(page.getByText("Plan requirements", { exact: true })).toBeVisible();
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "Sponsor pipeline table",
-    );
+    const sponsors = page.getByRole("region", { name: "Sponsor pipeline", exact: true });
+    await expect(sponsors).toBeVisible();
+    await expect(sponsors.getByRole("button", { name: "Saved views", exact: true })).toBeVisible();
     await expect(
-      page.locator('table[data-workbench-export-table="partner-sponsors"]'),
+      sponsors.getByRole("table", { name: "Sponsor pipeline ordered by name", exact: true }),
     ).toBeVisible();
+    await sponsors.getByRole("combobox", { name: "Ownership", exact: true }).selectOption("owned");
+    await expect(sponsors).toContainText("No sponsors match this view.");
     await expectNoAiRail(page, /AI partner rail/i);
 
     await gotoAppRoute(page, "/admin/users");
     await expectAppText(page, /Account management/i, 45_000);
-    await expect(page.getByRole("table", { name: /Admin user accounts/i })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Admin user accounts table", exact: true }),
+    ).toBeVisible();
 
     await gotoAppRoute(page, "/admin/billing");
     await expectAppText(page, /Billing and entitlements/i, 45_000);
-    await expect(page.getByRole("table", { name: /Admin subscription rows/i })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Subscriptions", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Current entitlements", exact: true }),
+    ).toBeVisible();
 
     await gotoAppRoute(page, "/admin/moderation");
     await expectAppText(page, /Moderation queue/i, 45_000);
-    await expect(page.getByText("User reports", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "User reports", exact: true })).toBeVisible();
 
     await gotoAppRoute(page, "/admin/challenges");
     await expectAppText(page, /Challenges and tournaments/i, 45_000);
-    await expect(page.getByRole("table", { name: /Admin challenge boards/i })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Challenge boards", exact: true })).toBeVisible();
   });
 });
 
@@ -3146,6 +3158,7 @@ async function waitForHref(
 
 async function expectDenseRouteReady(page: Page, scope: string) {
   if (scope === "bag") {
+    await page.getByRole("button", { name: /Full gapping evidence/i }).click();
     await expect(page.getByRole("table", { name: /Full bag gapping table/i })).toBeVisible({
       timeout: 45_000,
     });
@@ -3153,14 +3166,15 @@ async function expectDenseRouteReady(page: Page, scope: string) {
   }
 
   if (scope === "progress") {
-    await expect(
-      page.getByRole("region", { name: /Progress trends chart accessibility/i }),
-    ).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByRole("region", { name: "Club comparison", exact: true })).toBeVisible({
+      timeout: 45_000,
+    });
     return;
   }
 
   if (scope === "compare") {
-    await expect(page.locator('[data-workbench-scope="club-comparison-metrics"]')).toBeVisible({
+    await page.getByRole("tab", { name: "Clubs", exact: true }).click();
+    await expect(page.locator('[data-workbench-scope="comparison-clubs"]')).toBeVisible({
       timeout: 45_000,
     });
   }

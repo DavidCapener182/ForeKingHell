@@ -24,6 +24,7 @@ test.describe("Driver Speed Development", () => {
     await page.goto("/surface/workbench?next=%2Fspeed", { waitUntil: "domcontentloaded" });
     await expectPageReady(page, /Speed Centre|Speed/i);
 
+    await page.getByRole("tab", { name: "Driver development", exact: true }).click();
     const programme = page.locator("[data-driver-speed-development]");
     await expect(programme).toBeVisible();
     await expect(programme.locator("[data-speed-project-readiness]")).toBeVisible();
@@ -37,7 +38,7 @@ test.describe("Driver Speed Development", () => {
     await expectNoHorizontalOverflow(page, "Speed Centre");
 
     await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
-    await expectPageReady(page, /Dashboard|Today/i);
+    await expectPageReady(page, /Dashboard|Today|Home/i);
     const dashboardCard = page.locator("[data-dashboard-speed-development]");
     await expect(dashboardCard).toBeVisible();
     await expect(dashboardCard).toContainText("Next physical target");
@@ -55,7 +56,9 @@ test.describe("Driver Speed Development", () => {
     });
     await expectPageReady(page, /Practice Planner/i);
     await expect(page.getByText("Speed warm-up", { exact: true })).toBeVisible();
-    await expect(page.getByText("Speed Block 2", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Controlled speed baseline", exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("Driver transfer", { exact: true })).toBeVisible();
     await expectNoHorizontalOverflow(page, "Speed Practice workbench");
   });

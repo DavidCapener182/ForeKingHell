@@ -1,5 +1,6 @@
 import { expect as baseExpect, test } from "@playwright/test";
 import postgres from "postgres";
+import { grantFixturePlan } from "../support/paid-fixture";
 // Full-page server queries may compile while other isolated fixtures run in development.
 const expect = baseExpect.configure({ timeout: 30_000 });
 test("SG history reaches every saved page and keeps charts and draft source scoped", async ({
@@ -25,6 +26,7 @@ test("SG history reaches every saved page and keeps charts and draft source scop
   try {
     const [user] = await db`insert into fkh_users(name) values('SG history isolated') returning id`;
     owner = user.id;
+    await grantFixturePlan(db, [owner!]);
     const rounds =
       await db`insert into fkh_sessions(user_id,source,type,date,course_name,raw_csv_text) select ${owner!},'manual','round','2026-09-01'::timestamptz,'Recent SG course ' || n,'fixture' from generate_series(1,8) n returning id`;
     for (const round of rounds)

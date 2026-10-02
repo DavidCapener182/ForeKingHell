@@ -23,7 +23,7 @@ test.describe("mobile launch monitor loop", () => {
   test("starts Today with measured session highlights below the fixed app bar", async ({
     page,
   }) => {
-    await gotoAuthenticatedOrSkip(page, "/today", /Today/i);
+    await gotoAuthenticatedOrSkip(page, "/today", /Today|Home/i);
     const highlights = page.getByRole("region", { name: "Your session highlights" });
     await expect(highlights).toBeVisible();
     await expect(page.getByRole("link", { name: "Next practice", exact: true })).toHaveAttribute(
@@ -81,19 +81,18 @@ test.describe("mobile launch monitor loop", () => {
     );
   });
 
-  test("keeps five primary tabs clear of content and exposes the analysis loop", async ({
+  test("keeps four primary tabs clear of content and exposes the analysis loop", async ({
     page,
   }) => {
     await gotoAuthenticatedOrSkip(page, "/analyse", /Evidence hub|Analyse/i);
 
     const nav = page.getByRole("navigation", { name: "Mobile primary" });
-    await expect(nav.locator(".ios-tab-item")).toHaveCount(5);
-    await expect(nav.getByRole("link")).toHaveCount(5);
-    await expect(nav.getByRole("link", { name: "Today" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Sessions" })).toBeVisible();
+    await expect(nav.locator(".ios-tab-item")).toHaveCount(4);
+    await expect(nav.getByRole("link")).toHaveCount(4);
+    await expect(nav.getByRole("link", { name: "Home" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Activity" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Play" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Bag" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Practice" })).toBeVisible();
     await page
       .getByRole("banner", { name: "Mobile app bar" })
       .getByRole("button", { name: /Open more/ })
@@ -140,12 +139,12 @@ test.describe("mobile launch monitor loop", () => {
 
   test("keeps the Apple mobile shell when an iPhone rotates to landscape", async ({ page }) => {
     await page.setViewportSize({ width: 844, height: 390 });
-    await gotoAuthenticatedOrSkip(page, "/today", /Latest session|Today/i);
+    await gotoAuthenticatedOrSkip(page, "/today", /Latest session|Today|Home/i);
 
     const mobileNav = page.getByRole("navigation", { name: "Mobile primary" });
     await expect(mobileNav).toBeVisible();
-    await expect(mobileNav.locator(".ios-tab-item")).toHaveCount(5);
-    await expect(mobileNav.getByRole("link")).toHaveCount(5);
+    await expect(mobileNav.locator(".ios-tab-item")).toHaveCount(4);
+    await expect(mobileNav.getByRole("link")).toHaveCount(4);
     await expect(page.locator(".ios-mobile-screen")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Primary navigation" })).toHaveCount(0);
 
@@ -166,7 +165,7 @@ test.describe("mobile launch monitor loop", () => {
   test("restores each primary tab scroll position and reveals the compact title", async ({
     page,
   }) => {
-    await gotoAuthenticatedOrSkip(page, "/today", /Latest session|Today/i);
+    await gotoAuthenticatedOrSkip(page, "/today", /Latest session|Today|Home/i);
     await page.evaluate(() => window.sessionStorage.removeItem("fkh:mobile-tab-scroll:/today"));
     await page.evaluate(() => window.scrollTo({ top: 700, behavior: "auto" }));
     await expect(page.locator(".ios-inline-title")).toHaveCSS("opacity", "1");
@@ -174,15 +173,15 @@ test.describe("mobile launch monitor loop", () => {
     await page
       .getByRole("navigation", { name: "Mobile primary" })
       .getByRole("link", {
-        name: "Sessions",
+        name: "Activity",
       })
       .click();
     await expect(page).toHaveURL(/\/sessions$/);
-    await expectPageReady(page, /History|Sessions/i);
+    await expectPageReady(page, /History|Sessions|Activity/i);
     await expect(
       page
         .getByRole("navigation", { name: "Mobile primary" })
-        .getByRole("link", { name: "Sessions", exact: true }),
+        .getByRole("link", { name: "Activity", exact: true }),
     ).toHaveAttribute("aria-current", "page");
     expect(
       await page.evaluate(() => window.sessionStorage.getItem("fkh:mobile-tab-scroll:/today")),
@@ -190,7 +189,7 @@ test.describe("mobile launch monitor loop", () => {
 
     await page
       .getByRole("navigation", { name: "Mobile primary" })
-      .getByRole("link", { name: "Today", exact: true })
+      .getByRole("link", { name: "Home", exact: true })
       .click();
     await expect(page).toHaveURL(/\/today$/);
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(700);

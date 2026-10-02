@@ -2049,6 +2049,12 @@ function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] })
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
+      @container today-summary (min-width: 44rem) {
+        .today-summary-grid {
+          grid-template-columns: 12rem minmax(0, 1fr);
+          align-items: center;
+        }
+      }
       @media (min-width: 1000px) {
         .today-top-grid {
           grid-template-columns: minmax(0, 2fr) minmax(17rem, 1fr);
@@ -2069,15 +2075,8 @@ function TodayHoverStyles({ comparisons }: { comparisons: ClubDayComparison[] })
           grid-template-columns: repeat(2, minmax(0, 1fr));
           grid-template-areas: "mode plan";
         }
-        .today-summary-grid {
-          grid-template-columns: 8rem minmax(0, 1fr);
-          align-items: center;
-        }
       }
       @media (min-width: 1280px) {
-        .today-summary-grid {
-          grid-template-columns: 12rem minmax(0, 1fr);
-        }
         .today-mode-header {
           flex-direction: row;
           align-items: flex-start;
@@ -2338,7 +2337,9 @@ function WhatChangedCard({
   className?: string;
 }) {
   return (
-    <div className={`rounded-lg border border-border bg-card p-3 shadow-sm ${className}`}>
+    <div
+      className={`@container/today-summary min-w-0 rounded-lg border border-border bg-card p-3 shadow-sm ${className}`}
+    >
       <div className="today-summary-grid grid gap-3">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -2351,11 +2352,11 @@ function WhatChangedCard({
           </div>
           <Route className="size-5 text-[var(--status-information-foreground)] @sm/today-summary:hidden" />
         </div>
-        <div className="grid gap-2 md:grid-cols-3">
+        <div className="grid min-w-0 gap-2 @sm/today-summary:grid-cols-3">
           {items.map((item) => (
             <div
               key={`${item.label}-${item.value}`}
-              className={`rounded-lg border px-3 py-2 ${verdictCardClass(item.tone)}`}
+              className={`min-w-0 rounded-lg border px-3 py-2 ${verdictCardClass(item.tone)}`}
             >
               <p className="text-sm font-semibold text-foreground">{item.label}</p>
               <p className="mt-1 text-xl font-semibold tracking-normal text-foreground">

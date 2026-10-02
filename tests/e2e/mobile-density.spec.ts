@@ -48,14 +48,13 @@ test.describe("companion and workbench density contract", () => {
 
     for (const viewport of phoneViewports) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      await openSurface(page, "companion", "/today", /Today/i);
+      await openSurface(page, "companion", "/today", /Today|Home/i);
 
       const mobileNav = page.getByRole("navigation", { name: "Mobile primary" });
       await expect(mobileNav).toBeVisible();
-      await expect(mobileNav.getByRole("link", { name: "Today" })).toBeVisible();
-      await expect(mobileNav.getByRole("link", { name: "Practice" })).toBeVisible();
+      await expect(mobileNav.getByRole("link", { name: "Home" })).toBeVisible();
       await expect(mobileNav.getByRole("link", { name: "Play" })).toBeVisible();
-      await expect(mobileNav.getByRole("link", { name: "Sessions" })).toBeVisible();
+      await expect(mobileNav.getByRole("link", { name: "Activity" })).toBeVisible();
       await expect(mobileNav.getByRole("link", { name: "Bag" })).toBeVisible();
       await expect(
         page

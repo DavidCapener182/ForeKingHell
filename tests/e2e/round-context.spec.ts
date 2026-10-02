@@ -211,9 +211,8 @@ test("round context completion and tee corrections preserve scorecards and enfor
     await page.screenshot({ path: testInfo.outputPath("context-desktop.png"), fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(
-      `/surface/companion?next=${encodeURIComponent(`/rounds/${round.id}?view=evidence`)}`,
+      `/surface/companion?next=${encodeURIComponent(`/rounds/${round.id}?view=corrections`)}`,
     );
-    await page.locator("summary").filter({ hasText: "Notes and score details" }).click();
     await expect(page.getByRole("textbox", { name: "Round notes", exact: true })).toHaveValue(
       "Retain these context notes",
     );

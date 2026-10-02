@@ -19,8 +19,8 @@ test.describe("visual spacing audit", () => {
   test.setTimeout(1_200_000);
 
   const routes = [
-    { name: "dashboard", path: "/dashboard", text: /Dashboard|Today/i },
-    { name: "today", path: "/today", text: /Latest Practice Review|Today/i },
+    { name: "dashboard", path: "/dashboard", text: /Dashboard|Today|Home/i },
+    { name: "today", path: "/today", text: /Latest Practice Review|Today|Home/i },
     { name: "import", path: "/import", text: /Import|Rapsodo|Upload CSV/i },
     { name: "rapsodo", path: "/rapsodo", text: /Rapsodo Inbox|cloud sync/i },
     { name: "shots", path: "/shots", text: /^Shots|Import your first measured shots/im },

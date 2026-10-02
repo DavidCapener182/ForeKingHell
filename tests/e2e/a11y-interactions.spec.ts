@@ -15,15 +15,15 @@ test.describe("accessible mobile interactions", () => {
   test("primary tabs expose current state, 44px targets and a visible keyboard focus ring", async ({
     page,
   }) => {
-    await openCompanionRoute(page, "/today", /Today/i);
+    await openCompanionRoute(page, "/today", /Today|Home/i);
 
     const navigation = page.getByRole("navigation", { name: "Mobile primary" });
     const destinations = navigation.locator(".ios-tab-item");
-    await expect(destinations).toHaveCount(5);
+    await expect(destinations).toHaveCount(4);
     await expect
       .poll(() => destinations.allTextContents())
-      .toEqual(["Today", "Sessions", "Practice", "Play", "Bag"]);
-    await expect(navigation.getByRole("link", { name: "Today" })).toHaveAttribute(
+      .toEqual(["Home", "Bag", "Play", "Activity"]);
+    await expect(navigation.getByRole("link", { name: "Home" })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -76,7 +76,7 @@ test.describe("accessible mobile interactions", () => {
   }) => {
     // At 200% browser zoom a 1280px display exposes roughly a 640 CSS-pixel layout viewport.
     await page.setViewportSize({ width: 640, height: 720 });
-    await openCompanionRoute(page, "/today", /Today/i);
+    await openCompanionRoute(page, "/today", /Today|Home/i);
 
     await expect(page.getByRole("main")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Mobile primary" })).toBeVisible();

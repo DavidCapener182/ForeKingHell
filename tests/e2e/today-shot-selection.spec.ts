@@ -39,16 +39,16 @@ test.describe("Today exact-shot chart inspection", () => {
     if (/\/login(?:\?|$)/.test(page.url())) {
       test.skip(true, "The configured authenticated browser state has expired.");
     }
-    await expectPageReady(page, /Today/i);
+    await expectPageReady(page, /Today|Home/i);
     await expect(page.getByRole("tab", { name: "Evidence", exact: true })).toHaveAttribute(
       "aria-selected",
       "true",
     );
 
-    const point = page.locator("[data-today-shot-point]").first();
-    if ((await point.count()) === 0) {
-      test.skip(true, "No chartable shot exists for the authenticated user's current Today view.");
-    }
+    // SVG paint order puts later markers above coincident shots in this fixture.
+    const point = page.locator("[data-today-shot-point]").last();
+    // The owned measured-shot fixture is populated; the charts load in a client chunk.
+    await expect(point).toBeVisible();
 
     const shotId = await point.getAttribute("data-today-shot-point");
     expect(shotId).toBeTruthy();

@@ -1,3 +1,4 @@
+import { grantFixturePlan } from "../support/paid-fixture";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { revalidatePath } from "next/cache";
@@ -48,6 +49,7 @@ describe.skipIf(!enabled)("analysis workspace persisted evidence", () => {
       users = (
         await sql`insert into fkh_users(name) values('Synthetic analyst'),('Synthetic foreign analyst') returning id`
       ).map((row) => row.id);
+      await grantFixturePlan(sql, users);
       actor.id = users[0];
       const [session] =
         await sql`insert into fkh_sessions(user_id,source,type,date,raw_csv_text) values(${actor.id},'csv','range',now(),'raw') returning id`;
@@ -89,6 +91,7 @@ describe.skipIf(!enabled)("analysis workspace persisted evidence", () => {
     users = (
       await sql`insert into fkh_users(name) values('Synthetic annotation owner'),('Synthetic other owner') returning id`
     ).map((row) => row.id);
+    await grantFixturePlan(sql, users);
     actor.id = users[0];
     const [session] =
       await sql`insert into fkh_sessions(user_id,source,type,date,raw_csv_text) values(${users[1]},'csv','range',now(),'raw') returning id`;

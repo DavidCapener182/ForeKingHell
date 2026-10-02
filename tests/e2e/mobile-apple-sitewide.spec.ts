@@ -5,7 +5,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { authStorageState, expectPageReady, skipWhenNoAuth } from "./helpers";
 
 const mobileRoutes = [
-  { path: "/today", ready: /Today's recommendation|Today/i },
+  { path: "/today", ready: /Today's recommendation|Today|Home/i },
   { path: "/practice", ready: /Recommended session|Practice/i },
   { path: "/play", ready: /Selected course|Play/i },
   { path: "/sessions", ready: /Recent history|Sessions/i },
@@ -94,7 +94,7 @@ test.describe("site-wide Apple mobile presentation", () => {
       await expectNeutralSurface(mobileAppBar, `${route.path} app bar`);
       await expectNeutralSurface(mobileNav.locator(".ios-tab-bar"), `${route.path} tab bar`);
       await expect(mobileNav).toBeVisible();
-      await expect(mobileNav.locator(".ios-tab-item")).toHaveCount(5);
+      await expect(mobileNav.locator(".ios-tab-item")).toHaveCount(4);
       await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeHidden();
       await expectNoHorizontalOverflow(page);
     }
@@ -109,10 +109,12 @@ test.describe("site-wide Apple mobile presentation", () => {
         .getByRole("button", { name: /Open more/ }),
       "authenticated menu button",
     );
-    await gotoAuthenticatedRoute(page, "/today", /Today/i);
+    await gotoAuthenticatedRoute(page, "/today", /Today|Home/i);
     await expectMinimumTouchTarget(
-      page.getByRole("link", { name: "Import launch-monitor data" }),
-      "authenticated import button",
+      page
+        .getByRole("banner", { name: "Mobile app bar" })
+        .getByRole("button", { name: /Open more/ }),
+      "authenticated profile button",
     );
   });
 
@@ -123,7 +125,7 @@ test.describe("site-wide Apple mobile presentation", () => {
     runOnceInBaseChromium(browserName, testInfo.project.name);
     skipWhenNoAuth();
     await page.setViewportSize({ width: 844, height: 390 });
-    await gotoAuthenticatedRoute(page, "/today", /Latest session|Today/i);
+    await gotoAuthenticatedRoute(page, "/today", /Latest session|Today|Home/i);
 
     const appFrame = page.locator("div[data-mobile-platform='apple']").first();
     const mobileNav = page.getByRole("navigation", { name: "Mobile primary" });
@@ -161,7 +163,7 @@ test.describe("site-wide Apple mobile presentation", () => {
       },
     ]) {
       await page.emulateMedia({ colorScheme: appearance.scheme });
-      await gotoAuthenticatedRoute(page, "/today", /Today's recommendation|Today/i);
+      await gotoAuthenticatedRoute(page, "/today", /Today's recommendation|Today|Home/i);
 
       await expect(page.locator("html")).toHaveAttribute("data-theme", appearance.theme);
       await expect(page.locator("html")).toHaveAttribute("data-theme-preference", /.+/);
@@ -184,10 +186,12 @@ test.describe("site-wide Apple mobile presentation", () => {
         )
         .toBe(appearance.group);
       await expect(page.getByRole("banner", { name: "Mobile app bar" })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Today", exact: true })).toBeVisible();
-      await expect(page.getByText("Home", { exact: true }).filter({ visible: true })).toHaveCount(
-        0,
-      );
+      await expect(page.getByRole("heading", { name: "Home", exact: true })).toBeVisible();
+      await expect(
+        page
+          .getByRole("navigation", { name: "Mobile primary" })
+          .getByRole("link", { name: "Home", exact: true }),
+      ).toBeVisible();
       await expectExactSurface(
         page.locator("[data-today-primary-action]"),
         "rgb(255, 255, 255)",
@@ -221,7 +225,7 @@ test.describe("site-wide Apple mobile presentation", () => {
       { width: 1440, height: 900 },
     ]) {
       await page.setViewportSize(viewport);
-      await gotoAuthenticatedRoute(page, "/today", /Latest session|Today/i, "workbench");
+      await gotoAuthenticatedRoute(page, "/today", /Latest session|Today|Home/i, "workbench");
 
       await expect(page.locator('[data-app-surface="workbench"]')).toBeVisible();
       if (viewport.width >= 1024) {
@@ -331,8 +335,13 @@ async function expectNoHorizontalOverflow(page: Page) {
 
 async function expectMinimumTouchTarget(locator: Locator, label: string) {
   await expect(locator, `${label} should be visible`).toBeVisible();
-  const box = await locator.boundingBox();
-  expect(box, `${label} should have a measurable touch target`).not.toBeNull();
-  expect(box?.width ?? 0, `${label} width`).toBeGreaterThanOrEqual(44);
-  expect(box?.height ?? 0, `${label} height`).toBeGreaterThanOrEqual(44);
+  await expect
+    .poll(
+      async () => {
+        const box = await locator.boundingBox();
+        return box ? Math.min(box.width, box.height) : 0;
+      },
+      { message: `${label} should have a measurable 44px touch target` },
+    )
+    .toBeGreaterThanOrEqual(44);
 }

@@ -77,10 +77,22 @@ test("best shots keeps carry, total, raw maxima and original evidence distinct",
     await page.goto(
       "/surface/companion?next=" + encodeURIComponent("/bag/longest?club=3w&metric=carry"),
     );
-    await page.getByLabel("Choose distance record").selectOption("total");
+    await page
+      .getByRole("group", { name: "Highlight PB distance" })
+      .getByRole("button", { name: "Total PB", exact: true })
+      .click();
     await expect(record).toContainText("325 yd");
-    await page.getByLabel("Choose distance record").selectOption("carry");
+    await page
+      .getByRole("group", { name: "Highlight PB distance" })
+      .getByRole("button", { name: "Carry PB", exact: true })
+      .click();
     await expect(record).toContainText("275 yd");
+    // Assess the settled selected-state colours, after the toggle's short transition.
+    await page.getByRole("group", { name: "Highlight PB distance" }).evaluate(async (group) => {
+      await Promise.all(
+        group.getAnimations({ subtree: true }).map((animation) => animation.finished),
+      );
+    });
     await injectAxe(page);
     const violations = await page.evaluate(async () => {
       const axe = (

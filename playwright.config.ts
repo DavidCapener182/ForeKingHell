@@ -146,7 +146,7 @@ export default defineConfig({
     : {
         command: useProductionServer
           ? `npm run start -- --port ${port}`
-          : `npm run dev -- --webpack --disable-source-maps --port ${port}`,
+          : `npm run dev -- --turbopack --disable-source-maps --port ${port}`,
         url: `${baseURL}/login`,
         reuseExistingServer: useProductionServer ? false : !process.env.CI,
         timeout: 120_000,

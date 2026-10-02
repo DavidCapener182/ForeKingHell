@@ -7,6 +7,33 @@ test.describe("hydration regressions", () => {
   test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run hydration checks.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
 
+  test("Performance Lab confidence timeline hydrates its SVG descriptions", async ({
+    page,
+  }, info) => {
+    const cleanup = await prepareFlightPathFixture(page, String(info.project.use.baseURL), true);
+    try {
+      const errors = captureHydrationErrors(page);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto("/surface/workbench?next=%2Fsimulator-lab");
+      await expectPageReady(page, /Performance Lab/i);
+      await expect(page.locator('[data-url-tabs][data-ready="true"]')).toBeVisible();
+      await expect(
+        page
+          .locator("svg title")
+          .filter({ hasText: /shots used across/ })
+          .first(),
+      ).toBeAttached();
+      await page.getByRole("tab", { name: "Gapping", exact: true }).click();
+      await expect(page.getByRole("tab", { name: "Gapping", exact: true })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(errors).toEqual([]);
+    } finally {
+      await cleanup();
+    }
+  });
+
   test("Bag confidence controls hydrate without replacing server markup", async ({
     page,
   }, info) => {
@@ -57,7 +84,7 @@ test.describe("hydration regressions", () => {
       ["/import", /Import|Upload CSV/i],
       ["/handicap", /Handicap/i],
       ["/courses", /Courses/i],
-      ["/today", /Latest Practice Review|Today/i],
+      ["/today", /Latest Practice Review|Today|Home/i],
       ["/coach", /Coach/i],
       ["/feed", /Feed/i],
       ["/progress", /Progress/i],
