@@ -74,10 +74,16 @@ test("round and Shot Explorer club corrections share atomic evidence refresh and
       .filter({ has: page.locator(`input[name="shotId"][value="${shotId}"]`) })
       .filter({ has: page.getByRole("button", { name: "Save", exact: true }) });
     await expect(page.getByRole("region", { name: "Round correction tools" })).toBeVisible();
-    await page
-      .locator("summary")
-      .filter({ hasText: /^Shot corrections/ })
-      .click();
+    await expect(page.getByRole("tab", { name: "Corrections", exact: true })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    const shotDetails = page.locator("details").filter({
+      has: page.locator("summary").filter({ hasText: /^Shot corrections/ }),
+    });
+    if ((await shotDetails.getAttribute("open")) === null)
+      await shotDetails.locator("summary").click();
+    await expect(form).toBeVisible();
     await form.getByRole("combobox").selectOption(wedge.id);
     await sql.unsafe(
       `create function ${key}() returns trigger language plpgsql as $$ begin if new.session_id='${round.id}'::uuid then raise exception 'deliberate derived evidence rejection'; end if; return new; end $$`,
@@ -152,7 +158,8 @@ test("round and Shot Explorer club corrections share atomic evidence refresh and
     const correction = page
       .locator("details")
       .filter({ has: page.locator("summary").filter({ hasText: /^Correct club$/ }) });
-    await correction.locator("summary").click();
+    if ((await correction.getAttribute("open")) === null)
+      await correction.locator("summary").click();
     await correction.getByRole("combobox", { name: "Club", exact: true }).selectOption(iron.id);
     await correction.getByRole("button", { name: "Update club", exact: true }).click();
     await expect(correction.getByRole("status")).toContainText("Club updated");

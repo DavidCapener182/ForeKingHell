@@ -49,7 +49,7 @@ export async function prepareFlightPathFixture(
       await tx`insert into fkh_entitlements (user_id, entitlement_key, value_json, source)
         values (${userId}, 'lifetime_full', '{"value":true}', 'e2e-fixture')`;
       await tx`insert into fkh_sessions (id, user_id, source, type, date, raw_csv_text, file_name)
-        values (${sessionId}, ${userId}, 'rapsodo', 'range', now(), '', 'flight-path-e2e.csv')`;
+        values (${sessionId}, ${userId}, 'rapsodo', 'range', date_trunc('day', now()), '', 'flight-path-e2e.csv')`;
       if (strokesGained) {
         await tx`insert into fkh_strokes_gained_shot_events
           (user_id, session_id, category, start_lie, end_lie, start_distance_yd, end_distance_yd, hole_number, stroke_number, strokes_gained)
@@ -108,7 +108,7 @@ export async function prepareFlightPathFixture(
       if (secondSession) {
         const baselineSessionId = randomUUID();
         await tx`insert into fkh_sessions (id, user_id, source, type, date, raw_csv_text, file_name)
-          values (${baselineSessionId}, ${userId}, 'rapsodo', 'range', now() - interval '3 days', '', 'flight-path-baseline-e2e.csv')`;
+          values (${baselineSessionId}, ${userId}, 'rapsodo', 'range', date_trunc('day', now()) - interval '3 days', '', 'flight-path-baseline-e2e.csv')`;
         await tx`insert into fkh_shots (user_id, session_id, club_id, shot_at, shot_number, club_type,
           carry_yd, total_yd, side_carry_yd, ball_speed_mph, club_speed_mph, launch_angle_deg,
           launch_direction_deg, club_path_deg, face_angle_deg, apex_ft, smash_factor, spin_rate, spin_axis, source_raw_json)

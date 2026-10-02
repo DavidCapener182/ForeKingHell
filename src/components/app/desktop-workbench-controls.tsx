@@ -77,6 +77,10 @@ type DesktopWorkbenchControlsProps = {
   };
 };
 
+// Firefox restores dynamic button disabled states across reloads unless opted out.
+// Let React own the hydration guard instead of restoring an earlier enabled state.
+const firefoxButtonState = { autoComplete: "off" } as const;
+
 const densityStorageKey = "fkh:desktop-workbench-density";
 
 export function DesktopWorkbenchControls({
@@ -405,6 +409,7 @@ export function DesktopWorkbenchControls({
                 variant="outline"
                 size="sm"
                 data-filter-control
+                {...firefoxButtonState}
                 disabled={!hydrated}
               >
                 <Save className="size-4" />
@@ -484,6 +489,7 @@ export function DesktopWorkbenchControls({
                 variant="outline"
                 size="sm"
                 data-filter-control
+                {...firefoxButtonState}
                 disabled={!hydrated}
               >
                 <Columns3 className="size-4" />
@@ -524,6 +530,7 @@ export function DesktopWorkbenchControls({
                 variant="outline"
                 size="sm"
                 data-filter-control
+                {...firefoxButtonState}
                 disabled={!hydrated}
               >
                 <SlidersHorizontal className="size-4" />
@@ -558,6 +565,7 @@ export function DesktopWorkbenchControls({
               variant="outline"
               size="sm"
               onClick={exportCurrentTable}
+              {...firefoxButtonState}
               disabled={!hydrated}
               data-export-current-view
               data-export-table-id={exportTableId}
@@ -593,6 +601,7 @@ export function DesktopWorkbenchControls({
               variant="outline"
               size="sm"
               onClick={() => void copyCurrentViewLink()}
+              {...firefoxButtonState}
               disabled={!hydrated}
               data-copy-current-view
             >

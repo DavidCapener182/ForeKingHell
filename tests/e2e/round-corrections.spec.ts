@@ -74,7 +74,8 @@ test("scorecard corrections are discoverable, recover after failure and preserve
     await expect(page.getByText("No scorecard holes are saved.", { exact: true })).toHaveCount(0);
     const form = page.locator("#mobile-hole-1");
     const details = page.locator("details").filter({ has: form });
-    await details.locator("summary").click();
+    if ((await details.getAttribute("open")) === null) await details.locator("summary").click();
+    await expect(form).toBeVisible();
     await form.getByLabel("Score", { exact: true }).fill("5");
     await form.getByLabel("Putts", { exact: true }).fill("3");
     await form.getByLabel("Penalties", { exact: true }).fill("1");
@@ -152,11 +153,15 @@ test("scorecard corrections are discoverable, recover after failure and preserve
     await page.goto(
       `/surface/workbench?next=${encodeURIComponent(`/rounds/${round.id}?view=corrections`)}`,
     );
-    await page
-      .locator("summary")
-      .filter({ hasText: /^Hole-by-hole scorecard/ })
-      .click();
+    await expect(page.getByRole("tab", { name: "Corrections", exact: true })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     const desktop = page.locator("#hole-1");
+    const desktopDetails = page.locator("details").filter({ has: desktop });
+    if ((await desktopDetails.getAttribute("open")) === null)
+      await desktopDetails.locator("summary").click();
+    await expect(desktop).toBeVisible();
     await expect(desktop.getByLabel("Score", { exact: true })).toHaveValue("5");
     await desktop.getByLabel("Score", { exact: true }).fill("6");
     await desktop.getByRole("button", { name: "Save hole", exact: true }).click();

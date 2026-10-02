@@ -77,7 +77,8 @@ test.describe("redesigned flagship workflows", () => {
         await expect(link).toBeVisible();
         const box = await link.boundingBox();
         expect(box).not.toBeNull();
-        expect(box!.height).toBeGreaterThanOrEqual(44);
+        // Browser layout APIs can return44px with subpixel floating-point noise.
+        expect(Math.round(box!.height * 100) / 100).toBeGreaterThanOrEqual(44);
         const intersects =
           box!.x < evidence!.x + evidence!.width &&
           box!.x + box!.width > evidence!.x &&

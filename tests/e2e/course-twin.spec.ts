@@ -37,6 +37,10 @@ test.describe("Course Twin", () => {
     page,
   }, info) => {
     test.setTimeout(360_000);
+    test.skip(
+      !["chromium", "firefox", "webkit"].includes(info.project.name),
+      "The package sweep creates identical desktop contexts; run once per browser engine.",
+    );
     skipWhenNoAuth();
     const cleanup = await prepareFlightPathFixture(page, String(info.project.use.baseURL), true);
     try {
@@ -104,7 +108,9 @@ test.describe("Course Twin", () => {
           const pathname = new URL(request.url()).pathname;
           const errorText = request.failure()?.errorText;
           if (
-            errorText !== "net::ERR_ABORTED" &&
+            !new Set(["net::ERR_ABORTED", "NS_BINDING_ABORTED", "cancelled"]).has(
+              errorText ?? "",
+            ) &&
             coursePaths.some((path) => pathname.startsWith(path))
           ) {
             courseRequestFailures.push(`network ${pathname}: ${errorText}`);

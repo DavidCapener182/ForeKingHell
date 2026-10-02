@@ -43,17 +43,23 @@ test("best shots keeps carry, total, raw maxima and original evidence distinct",
       "/surface/workbench?next=" + encodeURIComponent("/bag/longest?club=3w&metric=carry"),
     );
     const record = page.locator("[data-selected-record]");
-    await expect(record).toContainText("275 yd");
-    await expect(record).toContainText("Shot 1");
+    const expectRecord = async (text: string) => {
+      // Wait for the requested record before checking the exit transition settled.
+      await expect(record.filter({ hasText: text })).toHaveCount(1);
+      await expect(record).toHaveCount(1);
+      await expect(record).toContainText(text);
+    };
+    await expectRecord("275 yd");
+    await expectRecord("Shot 1");
     await expect(page.getByText(/A higher raw carry of 400 yd/)).toBeVisible();
     await page.getByRole("button", { name: "3W longest total: 325 yd", exact: true }).click();
-    await expect(record).toContainText("325 yd");
-    await expect(record).toContainText("Shot 2");
+    await expectRecord("325 yd");
+    await expectRecord("Shot 2");
     await expect(page).toHaveURL(/metric=total/);
     await page.reload();
-    await expect(record).toContainText("Shot 2");
+    await expectRecord("Shot 2");
     await page.goBack();
-    await expect(record).toContainText("275 yd");
+    await expectRecord("275 yd");
     await expect(page.getByRole("link", { name: "Inspect shot 1", exact: true })).toHaveAttribute(
       "href",
       new RegExp(`shotId=${ids[0]}`),
@@ -63,7 +69,7 @@ test("best shots keeps carry, total, raw maxima and original evidence distinct",
     await expect(page.locator("[data-selected-shot=true]")).toHaveCount(1);
     await expect(page.locator("[data-selected-shot=true]")).toContainText("275");
     await page.goBack();
-    await expect(record).toContainText("275 yd");
+    await expectRecord("275 yd");
     for (const width of [320, 390, 430, 768, 1024, 1440, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       expect(
@@ -81,12 +87,12 @@ test("best shots keeps carry, total, raw maxima and original evidence distinct",
       .getByRole("group", { name: "Highlight PB distance" })
       .getByRole("button", { name: "Total PB", exact: true })
       .click();
-    await expect(record).toContainText("325 yd");
+    await expectRecord("325 yd");
     await page
       .getByRole("group", { name: "Highlight PB distance" })
       .getByRole("button", { name: "Carry PB", exact: true })
       .click();
-    await expect(record).toContainText("275 yd");
+    await expectRecord("275 yd");
     // Assess the settled selected-state colours, after the toggle's short transition.
     await page.getByRole("group", { name: "Highlight PB distance" }).evaluate(async (group) => {
       await Promise.all(
