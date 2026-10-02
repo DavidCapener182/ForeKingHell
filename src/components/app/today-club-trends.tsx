@@ -229,7 +229,12 @@ export function TodayClubTrends({
             onValueChange={(id) => chooseClub(latestSeries(clubs, id)!)}
             className="min-w-0"
           >
-            <div className="min-w-0 overflow-x-auto">
+            <div
+              role="region"
+              aria-label="Progress club options"
+              tabIndex={0}
+              className="min-w-0 overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
               <TabsList aria-label="Progress club" className="h-auto justify-start">
                 {physicalClubs
                   .filter((c) => c.family === activeFamily)
@@ -265,7 +270,12 @@ export function TodayClubTrends({
         onValueChange={(key) => update({ cpMetric: key })}
         className="min-w-0"
       >
-        <div className="min-w-0 overflow-x-auto">
+        <div
+          role="region"
+          aria-label="Progress metric options"
+          tabIndex={0}
+          className="min-w-0 overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
           <TabsList aria-label="Progress metric" className="h-auto justify-start">
             {trendMetrics.map((m) => (
               <TabsTrigger

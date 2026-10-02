@@ -121,6 +121,11 @@ test("round context completion and tee corrections preserve scorecards and enfor
     await lastHole.getByRole("button", { name: "Save hole", exact: true }).click();
     await expect(lastHole.getByRole("alert")).toContainText("Saved just now");
     const holeRequest = lastRequest!;
+    // The saved alert precedes the end of the action's streamed route refresh.
+    // Finish that response before reload can cancel it and trigger the dev error boundary.
+    const holeResponse = await holeRequest.response();
+    expect(holeResponse?.status()).toBe(200);
+    expect(await holeResponse!.finished()).toBeNull();
     await page.reload();
     await context.getByRole("combobox", { name: "Status", exact: true }).click();
     await page.getByRole("option", { name: "Complete", exact: true }).click();
@@ -279,6 +284,8 @@ async function replayAction(page: Page, request: Request, overrides: Record<stri
         .forEach(([key, value]) => body.append(key, value));
       body.append("0", fields["0"]);
       const response = await fetch(url, { method: "POST", headers, body });
+      // Drain the RSC stream, including route revalidation, before the next mutation.
+      await response.arrayBuffer();
       return { status: response.status };
     },
     { url: request.url(), headers, fields },

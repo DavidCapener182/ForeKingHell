@@ -92,7 +92,12 @@ export function RoundsScoringIndex({ rounds }: { rounds: RoundsWorkspaceRound[] 
           </label>
         </div>
 
-        <div className="hidden min-w-0 overflow-x-auto md:block">
+        <div
+          role="region"
+          aria-label="Round history scroll area"
+          tabIndex={0}
+          className="hidden min-w-0 overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:block"
+        >
           <table
             className="w-full min-w-[920px] text-sm"
             data-main-table-target="true"

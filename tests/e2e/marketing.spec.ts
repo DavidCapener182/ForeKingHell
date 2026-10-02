@@ -71,7 +71,8 @@ test.describe("public product landing", () => {
     await expect(
       page.getByRole("heading", { name: /Stop guessing.*Start knowing/i }),
     ).toBeVisible();
-    if ((page.viewportSize()?.width ?? 1024) < 1024) {
+    // The public header switches to its menu at the 1100px CSS breakpoint.
+    if ((page.viewportSize()?.width ?? 1024) <= 1100) {
       await expect(page.getByRole("button", { name: "Open navigation" })).toBeVisible();
     } else {
       await expect(

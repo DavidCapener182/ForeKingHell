@@ -59,7 +59,13 @@ export function UntitledTabs({
   }, [selectedKey]);
   return (
     <div className={styles.root}>
-      <div className={styles.strip} ref={strip}>
+      <div
+        className={styles.strip}
+        ref={strip}
+        role="region"
+        aria-label={`${label} tabs`}
+        tabIndex={0}
+      >
         <div {...tabListProps} ref={list} className={styles.list}>
           {items.map((item) => (
             <UnderlineTab key={item.id} item={item} state={state} instanceId={instanceId} />
