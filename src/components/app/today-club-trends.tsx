@@ -609,6 +609,7 @@ export function TodayClubTrends({
                               r="12"
                               fill="var(--primary)"
                               fillOpacity="0.09"
+                              pointerEvents="none"
                             />
                           )}
                           <circle

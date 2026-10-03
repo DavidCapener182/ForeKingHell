@@ -89,7 +89,7 @@ test("shared progress: instant controls, scope, preferences, gaps and responsive
       await panel.getByRole("button", { name: "Last 20", exact: true }).click();
       await expect(panel.getByLabel("Inspect session points").getByRole("button")).toHaveCount(20);
       const plottedPoints = panel.locator("[data-session-point]");
-      for (const index of [2, 10, 18]) {
+      for (const index of [2, 3, 2, 10, 11, 10, 18]) {
         const plottedPoint = plottedPoints.nth(index);
         const date = (await plottedPoint.locator("title").textContent())!.split(": ")[0];
         await plottedPoint.scrollIntoViewIfNeeded();
