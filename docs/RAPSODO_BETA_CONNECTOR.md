@@ -24,3 +24,7 @@ Authenticated beta API retrieval was checked on David's three sessions from 3 Oc
 Live responses use `date` on the session list and `TARGET RANGE` with a space; the connector normalizes labels and sorts by `date`, with regression coverage. Local evidence is in `output/rapsodo-beta-validation-2026-10-03/`.
 
 The app sign-in journey, a saved database import and provider club writeback remain unverified. The captured-response validation itself did not save sessions.
+
+## Temporary release audit exception
+
+David approved an exception on 3 October 2026 for `GHSA-vfj7-8cjw-p6xm` (unpatched `braces` recursion denial of service), expiring at 00:00 UTC on 10 October 2026. `scripts/dependency-audit.mjs` permits only this high-severity advisory and inherited findings whose entire dependency chain is development-only in the lockfile. Critical findings, new advisories, production dependencies, missing audit results and expiry all fail the release gate. This accepts the existing development-tool risk temporarily; it does not patch the dependency. Replace the exception with a patched upstream release when available.
