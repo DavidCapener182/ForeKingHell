@@ -34,6 +34,12 @@ describe("provider token account binding", () => {
     state.userId = null;
     expect(await getStoredRapsodoToken()).toBeNull();
   });
+  it("persists beta selection with the encrypted token and defaults new standard logins to standard", async () => {
+    await setStoredRapsodoToken("beta-token", null, true);
+    expect((await getStoredRapsodoToken())?.beta).toBe(true);
+    await setStoredRapsodoToken("standard-token", null);
+    expect((await getStoredRapsodoToken())?.beta).toBe(false);
+  });
   it("rejects expired and tampered connections", async () => {
     vi.useFakeTimers();
     await setStoredRapsodoToken("synthetic-provider-token", null);
