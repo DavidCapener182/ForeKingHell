@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -143,18 +143,57 @@ export function TodayClubTrends({
       .map((p) => metricReading(p, metricKey, evidence).value) ?? [],
   ).slice(-windowSize);
   const nonMissing = values.filter((v): v is number => v !== null);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const gradientId = useId();
+  const [chartSize, setChartSize] = useState({ width: 760, height: 288 });
+  const hasReadings = nonMissing.length > 0;
+  useEffect(() => {
+    const element = chartRef.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      if (width > 0 && height > 0) setChartSize({ width, height });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [club?.id, selection.unavailable, hasReadings]);
   // Always include zero; the full metric scale avoids exaggerating small changes.
   const min = Math.min(0, ...nonMissing);
   const max = Math.max(metricKey === "smashFactor" ? 0.1 : 1, ...nonMissing) * 1.1;
-  const x = (i: number) => (points.length === 1 ? 470 : 70 + (i * 780) / (points.length - 1));
-  const y = (v: number) => 215 - ((v - min) / (max - min)) * 175;
+  const left = 52;
+  const right = chartSize.width - 28;
+  const top = 24;
+  const bottom = chartSize.height - 40;
+  const x = (i: number) =>
+    points.length === 1 ? (left + right) / 2 : left + (i * (right - left)) / (points.length - 1);
+  const y = (v: number) => bottom - ((v - min) / (max - min)) * (bottom - top);
   const path = (numbers: (number | null)[]) =>
     numbers
       .map((v, i) =>
         v === null ? "" : `${i > 0 && numbers[i - 1] !== null ? "L" : "M"} ${x(i)} ${y(v)}`,
       )
       .join(" ");
+  const areaPath = values
+    .reduce<{ paths: string[]; segment: number[] }>(
+      (result, value, i) => {
+        if (value !== null) result.segment.push(i);
+        if ((value === null || i === values.length - 1) && result.segment.length) {
+          const indices = result.segment;
+          if (indices.length > 1)
+            result.paths.push(
+              `M ${x(indices[0])} ${bottom} ` +
+                indices.map((index) => `L ${x(index)} ${y(values[index]!)}`).join(" ") +
+                ` L ${x(indices.at(-1)!)} ${bottom} Z`,
+            );
+          result.segment = [];
+        }
+        return result;
+      },
+      { paths: [], segment: [] },
+    )
+    .paths.join(" ");
   const focused = points.find((p) => p.sessionId === inspected) ?? comparison?.current;
+  const focusedIndex = points.findIndex((p) => p.sessionId === focused?.sessionId);
   const bagClubs =
     mode === "today" && query.has("cpSession")
       ? physicalClubs.flatMap((c) => {
@@ -469,88 +508,175 @@ export function TodayClubTrends({
             leave breaks.
           </p>
           {nonMissing.length ? (
-            <svg
-              viewBox="0 0 900 260"
-              className="block h-[200px] w-full min-w-0 sm:h-[250px]"
-              preserveAspectRatio="none"
-              role="img"
-              aria-label={`${club.label} ${metric.label} session graph, ${metric.unit || "ratio"}; use the inspection buttons for exact values`}
-            >
-              {[0, 0.5, 1].map((ratio) => (
-                <g key={ratio}>
-                  <line
-                    x1="70"
-                    x2="850"
-                    y1={y(min + ratio * (max - min))}
-                    y2={y(min + ratio * (max - min))}
-                    stroke="currentColor"
-                    opacity="0.15"
-                  />
-                  <text
-                    x="60"
-                    y={y(min + ratio * (max - min)) + 4}
-                    textAnchor="end"
-                    fill="currentColor"
-                    fontSize="13"
-                  >
-                    {(min + ratio * (max - min)).toFixed(metric.digits)}
-                  </text>
-                </g>
-              ))}
-              <path
-                data-session-path
-                d={path(values)}
-                fill="none"
-                stroke="var(--primary)"
-                strokeWidth="3"
-              />
-              {rolling && (
-                <path
-                  data-rolling-path
-                  d={path(rollingValues)}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeDasharray="6 4"
-                  strokeWidth="2"
-                />
-              )}
-              {points.map(
-                (p, i) =>
-                  values[i] !== null && (
-                    <g key={p.sessionId}>
-                      <circle
-                        cx={x(i)}
-                        cy={y(values[i]!)}
-                        r={
-                          p.sessionId === sessionId
-                            ? 8
-                            : p.sessionId === comparison?.previous?.sessionId
-                              ? 6
-                              : 4
-                        }
-                        fill={p.sessionId === sessionId ? "var(--primary)" : "var(--card)"}
-                        stroke="var(--primary)"
-                        strokeWidth={p.sessionId === comparison?.previous?.sessionId ? 3 : 2}
-                        onPointerEnter={() => setInspected(p.sessionId)}
-                        onClick={() => setInspected(p.sessionId)}
-                      >
-                        <title>{`${p.date}: ${formatTrendValue(values[i], metricKey)}`}</title>
-                      </circle>
-                      {(i === 0 || i === points.length - 1) && (
-                        <text
-                          x={x(i)}
-                          y="246"
-                          textAnchor="middle"
-                          fill="currentColor"
-                          fontSize="12"
-                        >
-                          {p.date.split(",")[0]}
-                        </text>
+            <div className="overflow-hidden rounded-xl border border-border bg-background">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold">
+                    {metric.label} over {points.length} sessions
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    One point per session · {metric.unit || "ratio"}
+                  </p>
+                </div>
+                {focused && (
+                  <div className="text-right">
+                    <p className="text-sm font-semibold tabular-nums text-primary">
+                      {formatTrendValue(
+                        metricReading(focused, metricKey, evidence).value,
+                        metricKey,
                       )}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{focused.date.split(",")[0]}</p>
+                  </div>
+                )}
+              </div>
+              <div ref={chartRef} className="h-72 w-full min-w-0 sm:h-80" data-session-chart>
+                <svg
+                  viewBox={`0 0 ${chartSize.width} ${chartSize.height}`}
+                  className="block h-full w-full"
+                  role="img"
+                  aria-label={`${club.label} ${metric.label} session graph, ${metric.unit || "ratio"}; use the inspection buttons for exact values`}
+                >
+                  <defs>
+                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.12" />
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.01" />
+                    </linearGradient>
+                  </defs>
+                  {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
+                    <g key={ratio}>
+                      <line
+                        x1={left}
+                        x2={right}
+                        y1={y(min + ratio * (max - min))}
+                        y2={y(min + ratio * (max - min))}
+                        stroke="var(--border)"
+                        strokeDasharray={ratio === 0 ? undefined : "3 5"}
+                      />
+                      <text
+                        x={left - 12}
+                        y={y(min + ratio * (max - min)) + 4}
+                        textAnchor="end"
+                        fill="var(--muted-foreground)"
+                        fontSize="11"
+                        className="tabular-nums"
+                      >
+                        {(min + ratio * (max - min)).toFixed(metric.digits)}
+                      </text>
                     </g>
-                  ),
-              )}
-            </svg>
+                  ))}
+                  <path d={areaPath} fill={`url(#${gradientId})`} />
+                  {focusedIndex >= 0 && values[focusedIndex] !== null && (
+                    <line
+                      x1={x(focusedIndex)}
+                      x2={x(focusedIndex)}
+                      y1={top}
+                      y2={bottom}
+                      stroke="var(--primary)"
+                      strokeOpacity="0.2"
+                      strokeDasharray="4 4"
+                    />
+                  )}
+                  <path
+                    data-session-path
+                    d={path(values)}
+                    fill="none"
+                    stroke="var(--primary)"
+                    strokeWidth="2.5"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                  {rolling && (
+                    <path
+                      data-rolling-path
+                      d={path(rollingValues)}
+                      fill="none"
+                      stroke="var(--muted-foreground)"
+                      strokeDasharray="6 4"
+                      strokeWidth="2"
+                    />
+                  )}
+                  {points.map(
+                    (p, i) =>
+                      values[i] !== null && (
+                        <g key={p.sessionId}>
+                          {p.sessionId === focused?.sessionId && (
+                            <circle
+                              cx={x(i)}
+                              cy={y(values[i]!)}
+                              r="12"
+                              fill="var(--primary)"
+                              fillOpacity="0.09"
+                            />
+                          )}
+                          <circle
+                            cx={x(i)}
+                            cy={y(values[i]!)}
+                            r={
+                              p.sessionId === sessionId
+                                ? 5
+                                : p.sessionId === comparison?.previous?.sessionId
+                                  ? 5
+                                  : 3.5
+                            }
+                            fill={p.sessionId === sessionId ? "var(--primary)" : "var(--card)"}
+                            stroke="var(--primary)"
+                            strokeWidth={p.sessionId === comparison?.previous?.sessionId ? 2.5 : 2}
+                            className="cursor-pointer"
+                            onPointerEnter={() => setInspected(p.sessionId)}
+                            onClick={() => setInspected(p.sessionId)}
+                          >
+                            <title>{`${p.date}: ${formatTrendValue(values[i], metricKey)}`}</title>
+                          </circle>
+                          <circle
+                            cx={x(i)}
+                            cy={y(values[i]!)}
+                            r="16"
+                            fill="transparent"
+                            className="cursor-pointer"
+                            onPointerEnter={() => setInspected(p.sessionId)}
+                            onClick={() => setInspected(p.sessionId)}
+                            aria-hidden="true"
+                          />
+                        </g>
+                      ),
+                  )}
+                  {points.map((p, i) => {
+                    const every = Math.max(
+                      1,
+                      Math.ceil((points.length - 1) / (chartSize.width < 600 ? 2 : 5)),
+                    );
+                    if (i !== points.length - 1 && i % every !== 0) return null;
+                    if (i !== points.length - 1 && i !== 0 && points.length - 1 - i < every / 2)
+                      return null;
+                    return (
+                      <text
+                        key={p.sessionId}
+                        x={x(i)}
+                        y={chartSize.height - 14}
+                        textAnchor={
+                          points.length === 1
+                            ? "middle"
+                            : i === 0
+                              ? "start"
+                              : i === points.length - 1
+                                ? "end"
+                                : "middle"
+                        }
+                        fill="var(--muted-foreground)"
+                        fontSize="11"
+                      >
+                        {new Date(p.timestamp).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          timeZone: "Europe/London",
+                        })}
+                      </text>
+                    );
+                  })}
+                </svg>
+              </div>
+            </div>
           ) : (
             <p className="py-5 text-sm">
               No {metric.label.toLowerCase()} readings in these sessions. Try another metric.
