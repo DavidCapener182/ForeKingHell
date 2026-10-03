@@ -88,6 +88,15 @@ test("shared progress: instant controls, scope, preferences, gaps and responsive
       await expect(panel.locator("[data-progress-cards]")).toContainText("10.0 yd");
       await panel.getByRole("button", { name: "Last 20", exact: true }).click();
       await expect(panel.getByLabel("Inspect session points").getByRole("button")).toHaveCount(20);
+      const plottedPoints = panel.locator("[data-session-point]");
+      for (const index of [2, 10, 18]) {
+        const plottedPoint = plottedPoints.nth(index);
+        const date = (await plottedPoint.locator("title").textContent())!.split(": ")[0];
+        await plottedPoint.scrollIntoViewIfNeeded();
+        const bounds = (await plottedPoint.boundingBox())!;
+        await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+        await expect(panel.locator("[data-inspected-session]")).toContainText(date);
+      }
       await panel.getByRole("checkbox", { name: "3-session rolling average" }).check();
       await expect(panel.locator("[data-rolling-path]")).toHaveCount(1);
       await panel.getByLabel("Comparison upload", { exact: true }).selectOption("upload-21");

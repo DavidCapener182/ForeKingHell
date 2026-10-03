@@ -166,6 +166,8 @@ export function TodayClubTrends({
   const bottom = chartSize.height - 40;
   const x = (i: number) =>
     points.length === 1 ? (left + right) / 2 : left + (i * (right - left)) / (points.length - 1);
+  const hitRadius =
+    points.length <= 1 ? 16 : Math.min(16, (right - left) / (points.length - 1) / 2);
   const y = (v: number) => bottom - ((v - min) / (max - min)) * (bottom - top);
   const path = (numbers: (number | null)[]) =>
     numbers
@@ -610,6 +612,7 @@ export function TodayClubTrends({
                             />
                           )}
                           <circle
+                            data-session-point={p.sessionId}
                             cx={x(i)}
                             cy={y(values[i]!)}
                             r={
@@ -631,7 +634,7 @@ export function TodayClubTrends({
                           <circle
                             cx={x(i)}
                             cy={y(values[i]!)}
-                            r="16"
+                            r={hitRadius}
                             fill="transparent"
                             className="cursor-pointer"
                             onPointerEnter={() => setInspected(p.sessionId)}
