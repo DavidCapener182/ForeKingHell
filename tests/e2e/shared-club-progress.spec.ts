@@ -49,7 +49,7 @@ test("shared progress: instant controls, scope, preferences, gaps and responsive
     });
     await expect(page.locator("[data-club-progress]")).toBeVisible();
   };
-  for (const width of [320, 390, 1440]) {
+  for (const width of [320, 390, 1440, 1920]) {
     for (const theme of ["clubhouse", "dark"]) {
       await page.setViewportSize({ width, height: 900 });
       await mount("https://club-progress.fixture/today?cpMetric=carryYd");
@@ -59,6 +59,25 @@ test("shared progress: instant controls, scope, preferences, gaps and responsive
       await expect(panel.locator("[data-progress-cards]")).toContainText(
         "Previous reading unavailable",
       );
+      const svg = panel.getByRole("img", { name: /session graph/ });
+      await expect
+        .poll(() =>
+          svg.evaluate((element) => {
+            const matrix = (element as SVGSVGElement).getScreenCTM()!;
+            return Math.abs(matrix.a - matrix.d);
+          }),
+        )
+        .toBeLessThan(0.01);
+      const chart = panel.locator("[data-session-chart]");
+      await expect
+        .poll(() =>
+          svg.evaluate((element) => {
+            const svg = element as SVGSVGElement;
+            return Math.abs(svg.viewBox.baseVal.width - svg.getBoundingClientRect().width);
+          }),
+        )
+        .toBeLessThan(1);
+      expect((await chart.boundingBox())!.height).toBeGreaterThanOrEqual(288);
       const graph = panel.locator("[data-session-path]");
       expect((await graph.getAttribute("d"))!.match(/M /g)?.length).toBe(2);
       const requests: string[] = [];
@@ -69,6 +88,15 @@ test("shared progress: instant controls, scope, preferences, gaps and responsive
       await expect(panel.locator("[data-progress-cards]")).toContainText("10.0 yd");
       await panel.getByRole("button", { name: "Last 20", exact: true }).click();
       await expect(panel.getByLabel("Inspect session points").getByRole("button")).toHaveCount(20);
+      const plottedPoints = panel.locator("[data-session-point]");
+      for (const index of [2, 3, 2, 10, 11, 10, 18]) {
+        const plottedPoint = plottedPoints.nth(index);
+        const date = (await plottedPoint.locator("title").textContent())!.split(": ")[0];
+        await plottedPoint.scrollIntoViewIfNeeded();
+        const bounds = (await plottedPoint.boundingBox())!;
+        await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+        await expect(panel.locator("[data-inspected-session]")).toContainText(date);
+      }
       await panel.getByRole("checkbox", { name: "3-session rolling average" }).check();
       await expect(panel.locator("[data-rolling-path]")).toHaveCount(1);
       await panel.getByLabel("Comparison upload", { exact: true }).selectOption("upload-21");
