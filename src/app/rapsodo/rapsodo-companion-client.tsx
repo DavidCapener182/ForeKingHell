@@ -49,6 +49,7 @@ import type { RapsodoSessionListItem, RapsodoSessionPreview } from "@/lib/rapsod
 import { companionRapsodoInbox } from "@/lib/rapsodo/companion-workflow";
 
 type ConnectionStatus = {
+  beta?: boolean;
   connected: boolean;
   expiresAt: string | null;
   profile: Record<string, unknown> | null;
@@ -83,6 +84,7 @@ export function RapsodoCompanionClient({
   practicePlanId: string | null;
 }) {
   const [status, setStatus] = useState(initialStatus);
+  const [beta, setBeta] = useState(initialStatus.beta === true);
   const [sessions, setSessions] = useState<RapsodoSessionListItem[]>([]);
   const [preview, setPreview] = useState<RapsodoSessionPreview | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -138,12 +140,17 @@ export function RapsodoCompanionClient({
     const password = String(formData.get("password") ?? "");
     setMessage(null);
     startTransition(async () => {
-      const result = await loginRapsodoAction({ email, password });
+      const result = await loginRapsodoAction({ email, password, beta });
       if (!result.ok) {
         setMessage(result.message);
         return;
       }
-      setStatus({ connected: true, expiresAt: null, profile: result.data.profile });
+      setStatus({
+        connected: true,
+        beta: result.data.beta,
+        expiresAt: null,
+        profile: result.data.profile,
+      });
     });
   }
 
@@ -208,6 +215,20 @@ export function RapsodoCompanionClient({
             }}
             className="grid gap-3"
           >
+            <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={beta}
+                onChange={(event) => setBeta(event.target.checked)}
+                disabled={pending}
+              />
+              Use beta R-Cloud
+            </label>
+            <p className="text-xs text-muted-foreground">
+              {beta
+                ? "Connect to beta-rcloud.rapsodo.com with your usual Rapsodo email and password."
+                : "Use the usual R-Cloud workflow."}
+            </p>
             <div className="grid gap-1.5">
               <Label htmlFor="rapsodo-email">Email</Label>
               <Input
@@ -284,7 +305,7 @@ export function RapsodoCompanionClient({
         <Card size="sm" data-rapsodo-connection-card>
           <CardHeader>
             <div>
-              <CardTitle>R-Cloud connected</CardTitle>
+              <CardTitle>{status.beta ? "Beta R-Cloud connected" : "R-Cloud connected"}</CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">Recent unimported sessions</p>
             </div>
             <CardAction>

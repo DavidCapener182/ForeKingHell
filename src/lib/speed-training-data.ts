@@ -1079,7 +1079,7 @@ async function getRapsodoSpeedInbox(): Promise<RapsodoSpeedInbox> {
   }
 
   try {
-    const client = new RapsodoCloudClient();
+    const client = new RapsodoCloudClient({ beta: stored.beta });
     const sessions = await client.listSpeedSessions(stored.token, { take: 8 });
     const detailResults = await Promise.allSettled(
       sessions

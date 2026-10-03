@@ -1,3 +1,4 @@
+import { betaShots, betaSessionCsv, converted } from "./beta-format";
 import { buildClubKey, formatClubType, normalizeClubType } from "@/lib/rapsodo/parser";
 
 export type RapsodoProviderKind = "practice" | "simulation";
@@ -62,6 +63,7 @@ export type RapsodoLoginResult = {
 };
 
 export type RapsodoCloudClientOptions = {
+  beta?: boolean;
   apiBaseUrl?: string;
   fetchFn?: typeof fetch;
 };
@@ -93,14 +95,17 @@ const SIMULATION_SESSION_LISTS = [
 ] as const;
 
 export class RapsodoCloudClient {
+  private readonly beta: boolean;
   private readonly apiBaseUrl: string;
   private readonly fetchFn: typeof fetch;
 
   constructor(options: RapsodoCloudClientOptions = {}) {
+    this.beta = options.beta === true;
     this.apiBaseUrl = (
       options.apiBaseUrl ??
-      process.env.RAPSODO_API_BASE_URL ??
-      DEFAULT_API_BASE_URL
+      (this.beta
+        ? "https://beta.mlm.rapsodo.com"
+        : (process.env.RAPSODO_API_BASE_URL ?? DEFAULT_API_BASE_URL))
     ).replace(/\/$/, "");
     this.fetchFn = options.fetchFn ?? fetch;
   }
@@ -119,7 +124,7 @@ export class RapsodoCloudClient {
     }
 
     const profile = recordValue(payload, "data") ?? recordValue(payload, "profile");
-    const switchedToken = await this.switchTokenIfAvailable(token, profile);
+    const switchedToken = this.beta ? null : await this.switchTokenIfAvailable(token, profile);
 
     return {
       token: switchedToken ?? token,
@@ -131,6 +136,33 @@ export class RapsodoCloudClient {
     token: string,
     options: { take?: number; startDate?: string | null; endDate?: string | null } = {},
   ): Promise<RapsodoCloudSession[]> {
+    if (this.beta) {
+      const rows = await this.listBetaActivities(token, options);
+      const modes: Record<string, string> = {
+        PRACTICE: "practice",
+        COMBINE: "combines",
+        COURSE: "courses",
+        RANGE: "range",
+        TARGET_RANGE: "target",
+        CTP: "ctp",
+        STUDIOS_RANGE: "range",
+      };
+      return rows
+        .filter((row) => !["SPEED", "DRY_SWING"].includes(betaSessionType(row.sessionType)))
+        .map((row) =>
+          normalizeSession(
+            row,
+            ["COURSE", "RANGE", "TARGET_RANGE", "CTP", "STUDIOS_RANGE"].includes(
+              betaSessionType(row.sessionType),
+            )
+              ? "simulation"
+              : "practice",
+            modes[betaSessionType(row.sessionType)] ?? "practice",
+          ),
+        )
+        .filter(isRapsodoCloudSession)
+        .slice(0, options.take ?? DEFAULT_TAKE);
+    }
     const results = await Promise.allSettled([
       ...PRACTICE_SESSION_LISTS.map((list) => this.listPracticeSessions(token, list, options)),
       ...SIMULATION_SESSION_LISTS.map((list) => this.listSimulationSessions(token, list, options)),
@@ -175,6 +207,13 @@ export class RapsodoCloudClient {
     token: string,
     session: Pick<RapsodoCloudSession, "providerKind" | "providerSessionId">,
   ): Promise<string> {
+    if (this.beta) {
+      const [detail, clubs] = await Promise.all([
+        this.betaDetail(token, session.providerSessionId),
+        this.requestJson<unknown>("club/v2", { method: "GET" }, token),
+      ]);
+      return betaSessionCsv(detail, firstArray(clubs, ["clubs"]).filter(isRecord));
+    }
     const path =
       session.providerKind === "simulation"
         ? `simulation/${encodeURIComponent(session.providerSessionId)}/details/export`
@@ -187,6 +226,14 @@ export class RapsodoCloudClient {
     token: string,
     options: { take?: number; startDate?: string | null; endDate?: string | null } = {},
   ): Promise<RapsodoSpeedSession[]> {
+    if (this.beta) {
+      const rows = await this.listBetaActivities(token, options);
+      return rows
+        .filter((row) => ["SPEED", "DRY_SWING"].includes(betaSessionType(row.sessionType)))
+        .map((row) => normalizeSpeedSession({ ...row, swingCount: row.shotCount }))
+        .filter(isRapsodoSpeedSession)
+        .slice(0, options.take ?? DEFAULT_TAKE);
+    }
     const params = sessionListParams({
       skip: 0,
       take: options.take ?? DEFAULT_TAKE,
@@ -209,6 +256,20 @@ export class RapsodoCloudClient {
     providerSessionId: string,
     take = 500,
   ): Promise<RapsodoSpeedSwing[]> {
+    if (this.beta) {
+      const detail = await this.betaDetail(token, providerSessionId);
+      return betaShots(detail)
+        .map((shot, index) => ({
+          rapsodoSwingId: stringValue(shot, ["id", "_id"]),
+          swingNumber: index + 1,
+          clubSpeedMph: converted(shot.clubSpeed, 0.44704),
+          raw: shot,
+        }))
+        .filter(
+          (swing): swing is RapsodoSpeedSwing =>
+            swing.clubSpeedMph !== null && swing.clubSpeedMph > 0,
+        );
+    }
     const payload = await this.requestJson<unknown>(
       `drySwing/${encodeURIComponent(providerSessionId)}/details?skip=0&take=${take}`,
       { method: "GET" },
@@ -219,6 +280,13 @@ export class RapsodoCloudClient {
   }
 
   async exportSpeedSessionCsv(token: string, providerSessionId: string): Promise<string> {
+    if (this.beta) {
+      const swings = await this.listSpeedSessionSwings(token, providerSessionId);
+      return (
+        "Swing Number,Club Speed (mph)\n" +
+        swings.map((swing) => `${swing.swingNumber},${swing.clubSpeedMph}`).join("\n")
+      );
+    }
     return this.requestText(
       `drySwing/${encodeURIComponent(providerSessionId)}/details/export`,
       { method: "GET" },
@@ -227,7 +295,11 @@ export class RapsodoCloudClient {
   }
 
   async listBagClubs(token: string): Promise<RapsodoBagClub[]> {
-    const payload = await this.requestJson<unknown>("bag/v2/default", { method: "GET" }, token);
+    const payload = await this.requestJson<unknown>(
+      this.beta ? "club/v2" : "bag/v2/default",
+      { method: "GET" },
+      token,
+    );
     const rows = firstArray(payload, ["clubs", "data", "items", "rows"]);
 
     return rows.map(normalizeBagClub).filter(isRapsodoBagClub);
@@ -238,6 +310,16 @@ export class RapsodoCloudClient {
     session: Pick<RapsodoCloudSession, "providerKind" | "providerSessionId">,
     take = 500,
   ): Promise<RapsodoShotRef[]> {
+    if (this.beta) {
+      return betaShots(await this.betaDetail(token, session.providerSessionId))
+        .map((shot, index) => ({
+          rapsodoShotId: stringValue(shot, ["id", "_id"]) ?? "",
+          shotNumber: index + 1,
+          sequenceIndex: index,
+          raw: shot,
+        }))
+        .filter((shot) => Boolean(shot.rapsodoShotId));
+    }
     const path =
       session.providerKind === "simulation"
         ? `simulation/${encodeURIComponent(session.providerSessionId)}/details?skip=0&take=${take}`
@@ -249,7 +331,8 @@ export class RapsodoCloudClient {
 
   async updateShotClubs(
     token: string,
-    session: Pick<RapsodoCloudSession, "providerKind">,
+    session: Pick<RapsodoCloudSession, "providerKind"> &
+      Partial<Pick<RapsodoCloudSession, "providerSessionId">>,
     updates: RapsodoShotClubUpdate[],
   ): Promise<number> {
     const updatesByClubId = groupBy(updates, (update) => update.rapsodoClubId);
@@ -262,6 +345,24 @@ export class RapsodoCloudClient {
         continue;
       }
 
+      if (this.beta) {
+        if (!session.providerSessionId)
+          throw new RapsodoCloudError("Choose a beta session before updating clubs.");
+        await this.requestJson(
+          "shot/change/club",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              sessionId: session.providerSessionId,
+              shotIds,
+              newClubId: Number(rapsodoClubId),
+            }),
+          },
+          token,
+        );
+        updatedCount += shotIds.length;
+        continue;
+      }
       if (session.providerKind === "simulation") {
         await this.requestJson<unknown>(
           "simulation/shot/club",
@@ -299,6 +400,35 @@ export class RapsodoCloudClient {
     }
 
     return updatedCount;
+  }
+
+  private betaDetail(token: string, id: string) {
+    return this.requestJson<unknown>(
+      `session/v2/activities/${encodeURIComponent(id)}`,
+      { method: "GET" },
+      token,
+    );
+  }
+
+  private async listBetaActivities(
+    token: string,
+    options: { take?: number; startDate?: string | null; endDate?: string | null },
+  ) {
+    const params = new URLSearchParams();
+    if (options.startDate) params.set("startDate", options.startDate);
+    if (options.endDate) params.set("endDate", options.endDate);
+    const payload = await this.requestJson<unknown>(
+      `session/v2/activities?${params}`,
+      { method: "GET" },
+      token,
+    );
+    if (!isRecord(payload) || !Array.isArray(payload.data))
+      throw new RapsodoCloudError("Beta R-Cloud returned an unexpected session list.");
+    return payload.data
+      .filter(isRecord)
+      .sort((a, b) =>
+        String(b.date ?? b.startDate ?? "").localeCompare(String(a.date ?? a.startDate ?? "")),
+      );
   }
 
   private async listPracticeSessions(
@@ -403,7 +533,9 @@ export class RapsodoCloudClient {
         accept: "application/json, text/csv, */*",
         "content-type": "application/json",
         os: "web",
-        ...(token ? { authorization: token } : {}),
+        ...(token
+          ? { authorization: this.beta && !/^\S+\s+\S+/.test(token) ? `Bearer ${token}` : token }
+          : {}),
         ...init.headers,
       },
       cache: "no-store",
@@ -852,4 +984,11 @@ function safeJson(text: string) {
   } catch {
     return null;
   }
+}
+
+function betaSessionType(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "_");
 }

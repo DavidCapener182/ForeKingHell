@@ -52,6 +52,7 @@ function refreshRapsodoAfterCommit() {
 
 export async function getRapsodoConnectionStatusAction(): Promise<
   ActionResult<{
+    beta?: boolean;
     connected: boolean;
     expiresAt: string | null;
     profile: Record<string, unknown> | null;
@@ -69,6 +70,7 @@ export async function getRapsodoConnectionStatusAction(): Promise<
   return {
     ok: true,
     data: {
+      beta: stored?.beta === true,
       connected: Boolean(stored),
       expiresAt: stored ? new Date(stored.expiresAt).toISOString() : null,
       profile: stored?.profile ?? null,
@@ -79,7 +81,10 @@ export async function getRapsodoConnectionStatusAction(): Promise<
 export async function loginRapsodoAction(input: {
   email: string;
   password: string;
-}): Promise<ActionResult<{ connected: boolean; profile: Record<string, unknown> | null }>> {
+  beta?: boolean;
+}): Promise<
+  ActionResult<{ connected: boolean; beta?: boolean; profile: Record<string, unknown> | null }>
+> {
   const email = input.email.trim();
   const password = input.password;
 
@@ -88,14 +93,17 @@ export async function loginRapsodoAction(input: {
   }
 
   try {
-    const result = await new RapsodoCloudClient().login(email, password);
-    await setStoredRapsodoToken(result.token, result.profile);
+    await requireCurrentUserId();
+    const beta = input.beta === true;
+    const result = await new RapsodoCloudClient({ beta }).login(email, password);
+    await setStoredRapsodoToken(result.token, result.profile, beta);
     refreshRapsodoAfterCommit();
 
     return {
       ok: true,
       data: {
         connected: true,
+        beta,
         profile: result.profile,
       },
     };
@@ -132,11 +140,14 @@ export async function listRapsodoSessionsAction(
   }
 
   try {
-    const remoteSessions = await new RapsodoCloudClient().listSessions(stored.token, {
-      take: Math.min(Math.max(input.take ?? 50, 1), 100),
-      startDate: dateOnly(input.startDate),
-      endDate: dateOnly(input.endDate),
-    });
+    const remoteSessions = await new RapsodoCloudClient({ beta: stored.beta }).listSessions(
+      stored.token,
+      {
+        take: Math.min(Math.max(input.take ?? 50, 1), 100),
+        startDate: dateOnly(input.startDate),
+        endDate: dateOnly(input.endDate),
+      },
+    );
     const rows = await upsertRapsodoSyncSessions(remoteSessions);
 
     return { ok: true, data: rows };
@@ -174,7 +185,7 @@ export async function previewRapsodoSessionAction(
 
   try {
     const userId = await requireCurrentUserId();
-    const client = new RapsodoCloudClient();
+    const client = new RapsodoCloudClient({ beta: stored.beta });
     const rawCsvText = await client.exportSessionCsv(stored.token, session);
     const parsed = parseRapsodoCsv(rawCsvText, { fallbackDistanceUnit: "yards" });
 
@@ -308,7 +319,7 @@ export async function syncRapsodoShotClubsAction(input: {
   }
 
   try {
-    const updated = await new RapsodoCloudClient().updateShotClubs(
+    const updated = await new RapsodoCloudClient({ beta: stored.beta }).updateShotClubs(
       stored.token,
       input.session,
       validUpdates,

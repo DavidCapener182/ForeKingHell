@@ -60,7 +60,7 @@ jobs:
         run: npx drizzle-kit check
 
       - name: High-severity dependency audit
-        run: npm audit --audit-level=high
+        run: node scripts/dependency-audit.mjs
 
       - name: Build
         run: npm run build
