@@ -196,6 +196,29 @@ describe.skipIf(!enabled)("Pro feature database foundation", () => {
     const [activated] =
       await db!`select count(*)::int total from fkh_usage_events where user_id=${userId} and event_type='pro_trial_activated'`;
     expect(activated.total).toBe(1);
+    const converted = {
+      id: `evt_${randomUUID()}`,
+      created: now + 1,
+      type: "customer.subscription.updated",
+      data: {
+        object: {
+          id: `sub_${userId}`,
+          status: "active",
+          current_period_start: now + 604800,
+          current_period_end: now + 3196800,
+          trial_start: now,
+          trial_end: now + 604800,
+          metadata: { user_id: userId, plan_key: "pro", trial: "pro_7d" },
+        },
+      },
+    };
+    await handleStripeWebhookEvent(converted, store, {});
+    expect(await getActivePlanKeyForUser(userId)).toBe("pro");
+    expect((await getProTrialEligibility(userId)).endsAt).toBe(
+      new Date((now + 604800) * 1000).toISOString(),
+    );
+    // Conversion keeps the paid period active without extending the historical trial window.
+    await db!`delete from fkh_stripe_webhook_events where event_id=${converted.id}`;
     const expired = {
       id: `evt_${randomUUID()}`,
       created: now + 2,
@@ -215,7 +238,7 @@ describe.skipIf(!enabled)("Pro feature database foundation", () => {
     expect((await getProTrialEligibility(userId)).eligible).toBe(false);
     const [expiredCount] =
       await db!`select count(*)::int total from fkh_usage_events where user_id=${userId} and event_type='pro_trial_expired'`;
-    expect(expiredCount.total).toBe(1);
+    expect(expiredCount.total).toBe(0);
     await db!`delete from fkh_stripe_webhook_events where event_id in (${event.id},${expired.id})`;
   });
 
@@ -339,7 +362,24 @@ describe.skipIf(!enabled)("Pro feature database foundation", () => {
     } finally {
       await db!.unsafe(`drop trigger if exists ${trigger} on fkh_entitlements`);
       await db!.unsafe(`drop function if exists ${trigger}()`);
-      await db!`delete from fkh_stripe_webhook_events where event_id=${event.id}`;
     }
+    const store = createDrizzleBillingWebhookStore();
+    await handleStripeWebhookEvent(event, store, {});
+    expect(await getActivePlanKeyForUser(userId)).toBe("pro");
+    expect((await getProTrialEligibility(userId)).consumed).toBe(true);
+    const expired = {
+      ...event,
+      id: `evt_${randomUUID()}`,
+      created: now + 1,
+      type: "customer.subscription.deleted",
+      data: { object: { ...event.data.object, status: "canceled" } },
+    };
+    await handleStripeWebhookEvent(expired, store, {});
+    expect(await getActivePlanKeyForUser(userId)).toBe("free");
+    expect((await getProTrialEligibility(userId)).eligible).toBe(false);
+    const [expiry] =
+      await db!`select count(*)::int total from fkh_usage_events where user_id=${userId} and event_type='pro_trial_expired'`;
+    expect(expiry.total).toBe(1);
+    await db!`delete from fkh_stripe_webhook_events where event_id in (${event.id},${expired.id})`;
   });
 });
