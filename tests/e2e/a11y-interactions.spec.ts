@@ -1,6 +1,9 @@
+import { registerLocalPaidPersona } from "./local-paid-persona";
 import { expect, test } from "@playwright/test";
 
 import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
+
+const withFlightPathFixture = registerLocalPaidPersona();
 
 test.describe("accessible mobile interactions", () => {
   test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run mobile interaction checks.");
@@ -14,15 +17,15 @@ test.describe("accessible mobile interactions", () => {
   test("primary tabs expose current state, 44px targets and a visible keyboard focus ring", async ({
     page,
   }) => {
-    await openCompanionRoute(page, "/today", /Today/i);
+    await openCompanionRoute(page, "/today", /Home/i);
 
     const navigation = page.getByRole("navigation", { name: "Mobile primary" });
     const destinations = navigation.locator(".ios-tab-item");
-    await expect(destinations).toHaveCount(5);
+    await expect(destinations).toHaveCount(4);
     await expect
       .poll(() => destinations.allTextContents())
-      .toEqual(["Today", "Practice", "Strategy", "Review", "Bag"]);
-    await expect(navigation.getByRole("link", { name: "Today" })).toHaveAttribute(
+      .toEqual(["Home", "Bag", "Play", "Activity"]);
+    await expect(navigation.getByRole("link", { name: "Home" })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -55,7 +58,7 @@ test.describe("accessible mobile interactions", () => {
 
   test("reduced motion removes navigation and segmented-control transitions", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await openCompanionRoute(page, "/sessions", /Sessions/i);
+    await openCompanionRoute(page, "/sessions", /Activity/i);
 
     const transitionDurations = await page.evaluate(() => {
       const elements = [
@@ -75,7 +78,7 @@ test.describe("accessible mobile interactions", () => {
   }) => {
     // At 200% browser zoom a 1280px display exposes roughly a 640 CSS-pixel layout viewport.
     await page.setViewportSize({ width: 640, height: 720 });
-    await openCompanionRoute(page, "/today", /Today/i);
+    await openCompanionRoute(page, "/today", /Home/i);
 
     await expect(page.getByRole("main")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Mobile primary" })).toBeVisible();
@@ -90,16 +93,20 @@ test.describe("accessible mobile interactions", () => {
   test("flight paths expose a labelled visual and plain-language non-chart summary", async ({
     page,
   }) => {
-    await page.goto(`/surface/workbench?next=${encodeURIComponent("/analyse/session-impact")}`);
-    await expectPageReady(page, /Session impact/i);
+    await withFlightPathFixture(async (sessionId) => {
+      await page.goto(
+        `/surface/workbench?next=${encodeURIComponent(`/analyse/session-impact${sessionId ? `?sessionId=${sessionId}` : ""}`)}`,
+      );
+      await expectPageReady(page, /Session impact/i);
 
-    const chart = page.getByRole("img", { name: /Top-down summary of .* shot paths/i });
-    await expect(chart).toBeVisible();
-    await expect(chart).toHaveAttribute("aria-describedby", "flight-path-summary");
-    await expect(page.locator("[data-flight-path-summary]")).toContainText(/included paths/i);
-    await expect(page.locator("[data-flight-path-summary]")).toContainText(
-      /left|right|centred on the target line/i,
-    );
+      const chart = page.getByRole("img", { name: /Top-down summary of .* shot paths/i });
+      await expect(chart).toBeVisible();
+      await expect(chart).toHaveAttribute("aria-describedby", "flight-path-summary");
+      await expect(page.locator("[data-flight-path-summary]")).toContainText(/included paths/i);
+      await expect(page.locator("[data-flight-path-summary]")).toContainText(
+        /left|right|centred on the target line/i,
+      );
+    });
   });
 });
 

@@ -16,7 +16,8 @@ export function offlineImportRetentionDays(): OfflineImportRetentionDays {
     return 0;
   }
 
-  const configured = Number(window.localStorage.getItem(OFFLINE_IMPORT_RETENTION_KEY));
+  const savedRetention = window.localStorage.getItem(OFFLINE_IMPORT_RETENTION_KEY);
+  const configured = savedRetention === null ? Number.NaN : Number(savedRetention);
   if (offlineImportRetentionOptions.includes(configured as OfflineImportRetentionDays)) {
     return configured as OfflineImportRetentionDays;
   }
