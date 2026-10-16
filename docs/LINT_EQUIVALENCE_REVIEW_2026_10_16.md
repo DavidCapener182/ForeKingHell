@@ -1,5 +1,7 @@
 # Bounded lint-equivalence investigation
 
+> Historical checkpoint: the later approved compatibility adapter and schema readiness guards supersede the audit/release blockers below. See `LINT_COMPATIBILITY_RELEASE_2026_10_16.md`. Original investigation results remain recorded.
+
 Base: feature checkpoint `48c1c619`. No rule, threshold, advisory exception, file pattern, permission or secret was changed.
 
 ## Exact inventories

@@ -16,13 +16,15 @@ These are launch constraints, not hidden failures.
 - OpenAI coach and scorecard routes require `OPENAI_API_KEY`; rules-based fallbacks should remain understandable when the key is absent.
 - Stripe billing should not be shown to testers unless price IDs and webhook verification are configured in the target environment.
 - Course rating/slope and scorecard proof can still be incomplete for manual or imported rounds; Data Health should call this out.
-- As of 16 October 2026, `npm audit --audit-level=high` fails on five high findings in
-  `eslint-config-next -> @next/eslint-plugin-next -> fast-glob -> micromatch -> braces`.
-  The latest checked braces release is 3.0.3; the latest checked Next ESLint plugin (16.4.2)
-  still depends on fast-glob. The expired 10 October exception remains expired. Do not
-  suppress this chain, remove Next lint rules, or claim a clean audit. Eleven moderate
-  transitive findings also remain. Production publication is blocked until a supported
-  remediation clears the high-severity gate.
+- As of 16 October 2026, the approved, narrowly scoped Next ESLint directory adapter
+  removes the vulnerable fast-glob/micromatch/braces chain while preserving the recorded
+  lint behavior. The unchanged high-severity audit gate passes: 11 moderate, zero high,
+  zero critical. The adapter requires maintenance when the pinned Next caller changes;
+  see `LINT_COMPATIBILITY_RELEASE_2026_10_16.md`. No advisory waiver was renewed.
+- Production migration 0062 remains unapplied. Schema readiness guards keep ordinary
+  billing/imports available while hiding trial offers and disabling round-plan persistence
+  until both new tables exist. Activating these capabilities needs a separately approved
+  migration and real preview/payment acceptance.
 - The live rollback-only RLS matrix verifies owner, coach, viewer, editor, friend, stranger, blocked,
   group-moderator, administrator and anonymous boundaries. It does not replace deployed-preview
   browser verification or explicit user scoping for privileged application-server queries.

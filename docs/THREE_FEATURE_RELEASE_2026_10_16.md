@@ -13,7 +13,7 @@ Local implementation on `feat/pro-trial-round-plan`, based on the separate CI re
 
 `0062_pro_trial_and_round_plan.sql` adds server-managed trial reservations and round-plan history. Both tables force RLS, revoke direct PUBLIC/anon/authenticated access, grant the server role access, cascade account deletion, and participate in the governance manifest. Export redacts provider IDs and Checkout URLs. APIs authenticate, gate the plan and resolve course visibility for the current owner; clients cannot submit another user or forged hole evidence.
 
-Migration 0062 has been applied only to the disposable local database. **Do not deploy this code before the migration is applied to the intended environment through the approved migration process.** Billing/import/plan loaders query the new tables. A future production migration requires separate authorization; none was performed here. No Stripe API transaction was performed: all payment test calls were mocked. No secrets, permissions or account settings changed.
+Migration 0062 has been applied only to the disposable local database. The approved follow-up adds schema readiness guards: with either new table absent, trial offers are hidden, trial checkout reports unavailable, and saved round plans return 503 with persistence disabled in the UI. Ordinary billing/imports continue. This supports a code-first rollout; activating trials and persistence still requires the separately approved migration and operational acceptance. A future production migration requires separate authorization; none was performed here. No Stripe API transaction was performed: all payment test calls were mocked. No secrets, permissions or account settings changed.
 
 ## Validation and limits
 
@@ -30,7 +30,7 @@ Final local results:
 | Migration consistency                     | Passed                                                                                    |
 | Production build and all route budgets    | Passed                                                                                    |
 | Eight-shard inventory                     | 5,760 unique cases; zero missing/duplicated/unexpected; all 15 projects                   |
-| Dependency audit                          | **Blocked**: 11 moderate, five high, zero critical                                        |
+| Dependency audit                          | **Passed**: 11 moderate, zero high, zero critical                                         |
 
 Supporting logs are saved beside the isolated checkout in the task directory (`features-*.log`). Unit, real PostgreSQL, browser, formatting, lint, type, migration and build evidence is reported in the task's final checkpoint. The browser acceptance suite exercises Chromium, Firefox and mobile WebKit. The database tests cover real first imports, duplicates at quota, a last-slot race, checkout concurrency/failure/expiry, atomic webhook rollback, one-shot consumption, owner isolation, append history, expiry gates and denied client-table access. Nightly runs these database tests once on shard 1 before its browser coverage.
 
@@ -40,6 +40,6 @@ The complete 15-project browser matrix has not been run locally. Eight shards pr
 
 ## Release blocker and recovery
 
-The unchanged dependency audit still fails: 11 moderate, five high, zero critical. The high chain is Next ESLint → fast-glob → micromatch → braces. Current maintained releases retain it. `CI_REPAIR_2026_10_16.md` records the upgrade/parity investigation and alternatives. No waiver or threshold reduction was made. Therefore conditional main-push authorization is not satisfied; no push, merge or deployment was attempted.
+The approved compatibility implementation clears the unchanged high-severity audit gate without changing ESLint rules, permissions or security thresholds. See `LINT_COMPATIBILITY_RELEASE_2026_10_16.md` for fixture, installed-package identity and full inventory evidence. David authorized the tested patch followed by a normal main push. Exact-commit remote CI and the existing automatic deployment must be inspected after pushing; local results alone do not establish remote success.
 
-Preferred recovery: obtain a maintained patched upstream release, update the minimal chain and rerun audit/lint/units/build. Alternatively commission a reviewed lint-tooling migration with rule parity and regression evidence. Then verify current main, reconcile changes in isolation, obtain the required migration rollout authorization, run preview/payment test-mode checks, and push only when all gates pass. Never force push. To inspect just the CI repair, use branch `fix/ci-dependency-audit`; to inspect all feature work, use the feature branch. The original user checkout need not be reset or stashed.
+The CI-only repair remains on `fix/ci-dependency-audit`; all work is on the feature branch. The original user checkout need not be reset or stashed. Production migration and live Stripe acceptance remain separately authorized operations. Never force push.

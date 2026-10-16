@@ -1,4 +1,5 @@
 import "server-only";
+import { proFeatureStorageReady } from "./pro-feature-readiness";
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
@@ -16,6 +17,16 @@ export async function getProTrialEligibility(
   activePlanKey?: PlanKey,
   executor: BillingTrialExecutor = getDb(),
 ) {
+  if (!(await proFeatureStorageReady(executor)))
+    return {
+      eligible: false,
+      consumed: false,
+      reason: "unavailable" as const,
+      endsAt: null,
+      startedAt: null,
+      configured: false,
+      storageReady: false,
+    };
   const plan = activePlanKey ?? (await readActivePlan(userId, executor));
   const [trial] = await executor
     .select()
@@ -40,6 +51,7 @@ export async function getProTrialEligibility(
   });
   return {
     ...state,
+    storageReady: true,
     endsAt: trial?.proTrialEndsAt?.toISOString() ?? null,
     startedAt: trial?.proTrialStartedAt?.toISOString() ?? null,
     configured: Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRO_MONTHLY_PRICE_ID),
@@ -77,6 +89,7 @@ export async function markTrialEligibleAfterFirstImport(
   userId: string,
   executor: BillingTrialExecutor = getDb(),
 ) {
+  if (!(await proFeatureStorageReady(executor))) return false;
   const [imports] = await executor
     .select({ total: sql<number>`count(*)::int` })
     .from(importFiles)
@@ -93,6 +106,7 @@ export async function markTrialConsumed(
   input: { userId: string; subscriptionId: string; startedAt: Date | null; endsAt: Date | null },
   executor?: BillingTrialExecutor,
 ): Promise<boolean> {
+  if (!(await proFeatureStorageReady(executor ?? getDb()))) return false;
   if (!executor) return getDb().transaction((tx) => markTrialConsumed(input, tx));
   await executor.insert(billingTrials).values({ userId: input.userId }).onConflictDoNothing();
   const [previous] = await executor
@@ -127,6 +141,8 @@ export async function markTrialConsumed(
  * An uncertain attempt is never replaced automatically; a matching expired Checkout event may clear it.
  */
 export async function reserveProTrialCheckout(userId: string) {
+  if (!(await proFeatureStorageReady()))
+    throw new Error("Trial checkout is temporarily unavailable.");
   return getDb().transaction(async (tx) => {
     const [row] = await tx
       .select()

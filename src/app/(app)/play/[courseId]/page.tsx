@@ -41,6 +41,7 @@ export default async function CourseTwinPage({
       <CourseTwinRoundPlan
         manifest={manifest}
         pro={planHasFeature(plan, "course_twin_round_plan")}
+        persistenceAvailable={trial.storageReady}
         trialEligible={trial.eligible && trial.configured}
       />
     );

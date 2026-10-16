@@ -20,10 +20,12 @@ export function CourseTwinRoundPlan({
   manifest,
   pro,
   trialEligible,
+  persistenceAvailable,
 }: {
   manifest: CourseTwinManifest;
   pro: boolean;
   trialEligible: boolean;
+  persistenceAvailable: boolean;
 }) {
   const [canPlan, setCanPlan] = useState(pro);
   const [holeNumber, setHole] = useState(1);
@@ -44,7 +46,7 @@ export function CourseTwinRoundPlan({
     ).catch(() => {});
   }, [manifest.course.id, holeNumber]);
   useEffect(() => {
-    if (!canPlan) return;
+    if (!canPlan || !persistenceAvailable) return;
     const controller = new AbortController();
     void fetch(endpoint, { cache: "no-store", signal: controller.signal })
       .then(async (r) => {
@@ -59,7 +61,7 @@ export function CourseTwinRoundPlan({
         if (!controller.signal.aborted) setMessage(e.message ?? "Saved plan unavailable.");
       });
     return () => controller.abort();
-  }, [canPlan, endpoint]);
+  }, [canPlan, endpoint, persistenceAvailable]);
   async function save() {
     setPending(true);
     setMessage("");
@@ -139,7 +141,7 @@ export function CourseTwinRoundPlan({
         <Link href="/bag">Bag confidence</Link>
         {canPlan ? (
           <>
-            <Button onClick={save} disabled={pending}>
+            <Button onClick={save} disabled={pending || !persistenceAvailable}>
               {pending ? "Saving…" : "Save plan"}
             </Button>
             <Button variant="outline" onClick={exportPlan} disabled={!saved}>
@@ -148,6 +150,11 @@ export function CourseTwinRoundPlan({
           </>
         ) : null}
       </div>
+      {canPlan && !persistenceAvailable ? (
+        <p role="status">
+          Saving round plans is temporarily unavailable. You can still use your measured plan.
+        </p>
+      ) : null}
       {message ? <p role="status">{message}</p> : null}
       {saved ? (
         <p className="text-sm text-muted-foreground">

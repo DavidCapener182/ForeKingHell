@@ -1,5 +1,7 @@
 # Independent acceptance-boundary review
 
+> Historical checkpoint: the later approved compatibility adapter and schema readiness guards supersede the audit/release blockers below. See `LINT_COMPATIBILITY_RELEASE_2026_10_16.md`. Original investigation results remain recorded.
+
 Reviewed checkpoint `48c1c619` against the original three-feature specification. No production database, Stripe account mutation, deployment or remote push was performed. All new provider responses in tests are mocked.
 
 ## Material findings corrected

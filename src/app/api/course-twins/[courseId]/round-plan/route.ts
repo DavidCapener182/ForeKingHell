@@ -1,3 +1,4 @@
+import { proFeatureStorageReady } from "@/lib/pro-feature-readiness";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { courseTwinRoundPlans } from "@/db/schema";
@@ -39,6 +40,11 @@ async function authorize(context: Context) {
 export async function GET(_request: Request, context: Context) {
   const auth = await authorize(context);
   if (auth.response) return auth.response;
+  if (!(await proFeatureStorageReady()))
+    return Response.json(
+      { error: "Saved round plans are temporarily unavailable." },
+      { status: 503, headers },
+    );
   const [plan] = await getDb()
     .select()
     .from(courseTwinRoundPlans)
@@ -67,6 +73,11 @@ export async function POST(request: Request, context: Context) {
     return Response.json(
       { error: "Import trusted carry and side readings before planning." },
       { status: 422, headers },
+    );
+  if (!(await proFeatureStorageReady()))
+    return Response.json(
+      { error: "Saving round plans is temporarily unavailable." },
+      { status: 503, headers },
     );
   const manifest = auth.manifest!;
   const holes = assembleRoundPlan(manifest, bag, body.intent);
