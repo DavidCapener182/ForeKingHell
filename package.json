@@ -109,9 +109,15 @@
     "prettier": "^3.8.3",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.1",
+    "fast-glob": "file:./tools/eslint-fast-glob-compat/forekinghell-eslint-fast-glob-compat-1.0.2.tgz",
+    "brace-expansion": "5.0.12",
+    "picomatch": "4.0.7"
   },
   "overrides": {
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "@next/eslint-plugin-next@16.3.8": {
+      "fast-glob": "$fast-glob"
+    }
   }
 }
