@@ -28,3 +28,11 @@ Production migration 0062 was not run. Server schema readiness checks require bo
 The existing linked Vercel project is `lm-world-tour`; inspection showed the normal Next build and no repository build-time migration hook. A main push may trigger its existing deployment. Inspect its exact commit after push; do not create a separate deployment, change settings or migrate production.
 
 Recovery should use a normal corrective/revert commit without rewriting main. Reverting the adapter also restores the known high audit failure; do not bypass the gate to hide it. Restoring previous feature behavior must account for any separately approved future migration or real trial records. Preserve the existing migration history and payment records.
+
+## PR secret-scan correction
+
+PR101 initially reported 128 generic-api-key matches, all in the four generated lint inventories. Each value is a SHA-256 of the recorded ESLint profile, assigned to a path containing words such as auth/access; none is a credential. The scanner's attempted PR comments also hit read-only permissions, but those warnings were not the underlying detection cause. No comment permission was granted.
+
+The exact original commit/file/rule/line fingerprints are recorded in `.gitleaksignore`. No path, rule, future commit or credential class is excluded. `scripts/verification/verify-lint-scan-fingerprints.mjs` checks the complete 128-entry set against the original committed lines and independently recomputes every referenced profile hash; the existing security job runs this verification before its unchanged scanner. Altering an entry beyond those original assignments fails verification.
+
+The exact CI scanner (Gitleaks8.24.3, official archive checksum verified) reproduced128 findings on the original seven-commit range without the fingerprints and zero with them. An isolated synthetic control still detected both a fake credential and a new assignment in the same evidence path, proving these historical fingerprints do not exempt future commits. Scanner rules, scan range, failure exit code, artifacts and permissions are unchanged.
