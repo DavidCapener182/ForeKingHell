@@ -184,6 +184,14 @@ export function CourseTwinCatalogue({ twins }: { twins: CourseTwinCatalogueItem[
                     <Cuboid className="size-4" aria-hidden /> Open Course Twin
                   </Link>
                 </Button>
+                <Button asChild variant="outline">
+                  <Link href={`/play/${twin.courseId}?mode=plan`} prefetch={false}>
+                    Plan this round
+                  </Link>
+                </Button>
+                <p className="w-full text-sm text-muted-foreground">
+                  Club suggestions from your measured bag. Pro feature.
+                </p>
                 <details className="w-full text-sm">
                   <summary className="min-h-11 cursor-pointer content-center font-medium">
                     Course details and 2D fallback

@@ -66,6 +66,7 @@ export const billingPlans: BillingPlan[] = [
     audience: "Launch-monitor power users",
     description: "AI coaching, Data Chat, course strategy and player comparison.",
     features: [
+      "Course Twin round plan for all 18 holes",
       "Everything in Plus",
       "AI coach and Ask Coach chat",
       "Data Chat from your golf history",

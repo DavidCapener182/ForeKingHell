@@ -421,11 +421,9 @@ class FakeBillingWebhookStore implements BillingWebhookStore {
     input: Parameters<BillingWebhookStore["applySubscriptionState"]>[0],
   ) {
     const previous = this.subscriptionEvents.get(input.stripeSubscriptionId);
-    const isNewer =
-      !previous ||
-      previous.eventCreatedAt < input.eventCreatedAt ||
-      (previous.eventCreatedAt.getTime() === input.eventCreatedAt.getTime() &&
-        previous.eventId < input.eventId);
+    // Same-second canonical reconciliation belongs to the real-store integration tests.
+    // This handler fake only accepts strictly newer snapshots; IDs are not clocks.
+    const isNewer = !previous || previous.eventCreatedAt < input.eventCreatedAt;
 
     if (!isNewer) {
       return false;
@@ -475,3 +473,88 @@ class FakeBillingWebhookStore implements BillingWebhookStore {
     );
   }
 }
+
+describe("Pro trial webhook boundaries", () => {
+  const now = Math.floor(Date.now() / 1000);
+  function trialEvent(overrides: Record<string, unknown> = {}): StripeWebhookEvent {
+    return {
+      id: `evt_${randomUUID()}`,
+      created: now,
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_trial",
+          client_reference_id: "trial_user",
+          subscription: { id: "sub_trial", trial_start: now, trial_end: now + 604800 },
+          payment_status: "no_payment_required",
+          metadata: { plan_key: "pro", trial: "pro_7d" },
+          ...overrides,
+        },
+      },
+    };
+  }
+  it("grants bounded Pro immediately for no-payment-required trial Checkout and ignores replay", async () => {
+    const store = new FakeBillingWebhookStore();
+    const event = trialEvent();
+    await handleStripeWebhookEvent(event, store, {});
+    expect(store.subscriptions.get("sub_trial")).toMatchObject({
+      status: "trialing",
+      planKey: "pro",
+      currentPeriodEnd: new Date((now + 604800) * 1000),
+    });
+    expect(store.entitlements.get("trial_user")?.length).toBeGreaterThan(0);
+    expect(await handleStripeWebhookEvent(event, store, {})).toMatchObject({
+      reason: "duplicate_event",
+    });
+  });
+  it("recognises an expanded trialing subscription when Checkout metadata omits the trial flag", async () => {
+    const store = new FakeBillingWebhookStore();
+    await handleStripeWebhookEvent(
+      trialEvent({
+        metadata: { plan_key: "pro" },
+        subscription: {
+          id: "sub_trial",
+          status: "trialing",
+          trial_start: now,
+          trial_end: now + 604800,
+        },
+      }),
+      store,
+      {},
+    );
+    expect(store.subscriptions.get("sub_trial")?.status).toBe("trialing");
+    expect(store.entitlements.get("trial_user")?.length).toBeGreaterThan(0);
+  });
+  it("does not grant a trial for no-payment-required checkout without trusted trial metadata", async () => {
+    const store = new FakeBillingWebhookStore();
+    await handleStripeWebhookEvent(trialEvent({ metadata: { plan_key: "pro" } }), store, {});
+    expect(store.entitlements.get("trial_user") ?? []).toHaveLength(0);
+    expect(store.subscriptions.get("sub_trial")?.status).toBe("checkout_completed");
+  });
+  it("expires trialing entitlements and rejects stale reactivation", async () => {
+    const store = new FakeBillingWebhookStore();
+    await handleStripeWebhookEvent(trialEvent(), store, {});
+    await handleStripeWebhookEvent(
+      {
+        id: "evt_expired",
+        created: now + 10,
+        type: "customer.subscription.updated",
+        data: {
+          object: {
+            id: "sub_trial",
+            status: "trialing",
+            trial_start: now - 604800,
+            trial_end: now - 1,
+            metadata: { user_id: "trial_user", plan_key: "pro", trial: "pro_7d" },
+          },
+        },
+      },
+      store,
+      {},
+    );
+    expect(store.entitlements.get("trial_user") ?? []).toHaveLength(0);
+    expect(await handleStripeWebhookEvent(trialEvent(), store, {})).toMatchObject({
+      reason: "stale_event_ignored",
+    });
+  });
+});

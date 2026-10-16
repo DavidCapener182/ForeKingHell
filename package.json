@@ -82,7 +82,7 @@
     "react-stately": "3.50.0",
     "recharts": "^3.10.0",
     "server-only": "^0.0.1",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "sonner": "^2.0.8",
     "tailwind-merge": "^3.6.0",
     "three": "^0.185.1",
@@ -107,12 +107,17 @@
     "lighthouse": "^13.5.0",
     "postject": "^1.0.0-alpha.6",
     "prettier": "^3.8.3",
-    "shadcn": "^4.13.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.1",
+    "fast-glob": "file:./tools/eslint-fast-glob-compat/forekinghell-eslint-fast-glob-compat-1.0.2.tgz",
+    "brace-expansion": "5.0.12",
+    "picomatch": "4.0.7"
   },
   "overrides": {
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.5",
+    "@next/eslint-plugin-next@16.3.8": {
+      "fast-glob": "$fast-glob"
+    }
   }
 }

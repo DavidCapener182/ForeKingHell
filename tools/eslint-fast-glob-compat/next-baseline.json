@@ -1,0 +1,281 @@
+[
+  {
+    "configuration": 0,
+    "href": "/about",
+    "messages": [
+      {
+        "ruleId": "@next/next/no-html-link-for-pages",
+        "severity": 2,
+        "message": "Do not use an `<a>` element to navigate to `/about/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+        "line": 1,
+        "column": 39
+      }
+    ]
+  },
+  {
+    "configuration": 0,
+    "href": "/admin",
+    "messages": []
+  },
+  {
+    "configuration": 0,
+    "href": "/contact",
+    "messages": []
+  },
+  {
+    "configuration": 0,
+    "href": "/outside",
+    "messages": []
+  },
+  {
+    "configuration": 0,
+    "href": "https://example.invalid/about",
+    "messages": []
+  },
+  {
+    "configuration": 1,
+    "href": "/about",
+    "messages": [
+      {
+        "ruleId": "@next/next/no-html-link-for-pages",
+        "severity": 2,
+        "message": "Do not use an `<a>` element to navigate to `/about/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+        "line": 1,
+        "column": 39
+      }
+    ]
+  },
+  {
+    "configuration": 1,
+    "href": "/admin",
+    "messages": [
+      {
+        "ruleId": "@next/next/no-html-link-for-pages",
+        "severity": 2,
+        "message": "Do not use an `<a>` element to navigate to `/admin/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+        "line": 1,
+        "column": 39
+      }
+    ]
+  },
+  {
+    "configuration": 1,
+    "href": "/contact",
+    "messages": []
+  },
+  {
+    "configuration": 1,
+    "href": "/outside",
+    "messages": []
+  },
+  {
+    "configuration": 1,
+    "href": "https://example.invalid/about",
+    "messages": []
+  },
+  {
+    "configuration": 2,
+    "href": "/about",
+    "messages": [
+      {
+        "ruleId": "@next/next/no-html-link-for-pages",
+        "severity": 2,
+        "message": "Do not use an `<a>` element to navigate to `/about/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+        "line": 1,
+        "column": 39
+      }
+    ]
+  },
+  {
+    "configuration": 2,
+    "href": "/admin",
+    "messages": [
+      {
+        "ruleId": "@next/next/no-html-link-for-pages",
+        "severity": 2,
+        "message": "Do not use an `<a>` element to navigate to `/admin/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+        "line": 1,
+        "column": 39
+      }
+    ]
+  },
+  {
+    "configuration": 2,
+    "href": "/contact",
+    "messages": []
+  },
+  {
+    "configuration": 2,
+    "href": "/outside",
+    "messages": []
+  },
+  {
+    "configuration": 2,
+    "href": "https://example.invalid/about",
+    "messages": []
+  },
+  {
+    "configuration": 3,
+    "href": "/about",
+    "messages": [
+      {
+        "ruleId": "@next/next/no-html-link-for-pages",
+        "severity": 2,
+        "message": "Do not use an `<a>` element to navigate to `/about/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+        "line": 1,
+        "column": 39
+      }
+    ]
+  },
+  {
+    "configuration": 3,
+    "href": "/admin",
+    "messages": [
+      {
+        "ruleId": "@next/next/no-html-link-for-pages",
+        "severity": 2,
+        "message": "Do not use an `<a>` element to navigate to `/admin/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+        "line": 1,
+        "column": 39
+      }
+    ]
+  },
+  {
+    "configuration": 3,
+    "href": "/contact",
+    "messages": []
+  },
+  {
+    "configuration": 3,
+    "href": "/outside",
+    "messages": []
+  },
+  {
+    "configuration": 3,
+    "href": "https://example.invalid/about",
+    "messages": []
+  },
+  {
+    "configuration": 4,
+    "href": "/about",
+    "messages": [
+      {
+        "ruleId": "@next/next/no-html-link-for-pages",
+        "severity": 2,
+        "message": "Do not use an `<a>` element to navigate to `/about/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+        "line": 1,
+        "column": 39
+      }
+    ]
+  },
+  {
+    "configuration": 4,
+    "href": "/admin",
+    "messages": [
+      {
+        "ruleId": "@next/next/no-html-link-for-pages",
+        "severity": 2,
+        "message": "Do not use an `<a>` element to navigate to `/admin/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+        "line": 1,
+        "column": 39
+      }
+    ]
+  },
+  {
+    "configuration": 4,
+    "href": "/contact",
+    "messages": []
+  },
+  {
+    "configuration": 4,
+    "href": "/outside",
+    "messages": []
+  },
+  {
+    "configuration": 4,
+    "href": "https://example.invalid/about",
+    "messages": []
+  },
+  {
+    "configuration": 5,
+    "href": "/about",
+    "messages": [
+      {
+        "ruleId": "@next/next/no-html-link-for-pages",
+        "severity": 2,
+        "message": "Do not use an `<a>` element to navigate to `/about/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+        "line": 1,
+        "column": 39
+      }
+    ]
+  },
+  {
+    "configuration": 5,
+    "href": "/admin",
+    "messages": [
+      {
+        "ruleId": "@next/next/no-html-link-for-pages",
+        "severity": 2,
+        "message": "Do not use an `<a>` element to navigate to `/admin/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+        "line": 1,
+        "column": 39
+      }
+    ]
+  },
+  {
+    "configuration": 5,
+    "href": "/contact",
+    "messages": []
+  },
+  {
+    "configuration": 5,
+    "href": "/outside",
+    "messages": []
+  },
+  {
+    "configuration": 5,
+    "href": "https://example.invalid/about",
+    "messages": []
+  },
+  {
+    "configuration": 6,
+    "href": "/about",
+    "messages": [
+      {
+        "ruleId": "@next/next/no-html-link-for-pages",
+        "severity": 2,
+        "message": "Do not use an `<a>` element to navigate to `/about/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+        "line": 1,
+        "column": 39
+      }
+    ]
+  },
+  {
+    "configuration": 6,
+    "href": "/admin",
+    "messages": [
+      {
+        "ruleId": "@next/next/no-html-link-for-pages",
+        "severity": 2,
+        "message": "Do not use an `<a>` element to navigate to `/admin/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages",
+        "line": 1,
+        "column": 39
+      }
+    ]
+  },
+  {
+    "configuration": 6,
+    "href": "/contact",
+    "messages": []
+  },
+  {
+    "configuration": 6,
+    "href": "/outside",
+    "messages": []
+  },
+  {
+    "configuration": 6,
+    "href": "https://example.invalid/about",
+    "messages": []
+  }
+]

@@ -1,3 +1,4 @@
+import { ProTrialCard } from "@/app/billing/pro-trial-card";
 import { AlertTriangle, Info, ShieldCheck } from "lucide-react";
 
 import { FullPlanCheckout } from "@/app/billing/billing-checkout";
@@ -79,6 +80,13 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         </Alert>
       ) : null}
       <CurrentPlanCard data={data} planName={activePlanName} />
+      {data.latestSubscription?.status === "trialing" && data.proTrial.endsAt ? (
+        <p role="status">
+          Your Pro trial ends {dateFormatter.format(new Date(data.proTrial.endsAt))}. £12.99/month
+          after the trial. Cancel in Manage billing.
+        </p>
+      ) : null}
+      {data.proTrial.eligible && data.proTrial.configured ? <ProTrialCard /> : null}
       {!data.stripeConfigured ? (
         <p role="status" className="rounded-xl border p-4 text-sm">
           Checkout and plan management are currently unavailable. Your saved plan and access remain

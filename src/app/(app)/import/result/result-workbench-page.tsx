@@ -1,3 +1,4 @@
+import { ImportAllowanceSummary } from "@/app/import/import-allowance-panel";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ImportResultRecovery, ImportPracticeReview } from "@/app/import/import-result-sections";
@@ -57,6 +58,7 @@ export default async function ImportResultWorkbenchPage({ searchParams }: Import
 
   return (
     <PageShell>
+      <ImportAllowanceSummary />
       <div className="grid min-w-0 gap-5">
         <UntitledPageHeader
           title="Import saved"

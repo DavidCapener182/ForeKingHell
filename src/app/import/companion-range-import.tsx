@@ -4,6 +4,11 @@ import { useClientReady } from "@/hooks/use-client-ready";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ChevronDown, FileUp } from "lucide-react";
 
+import {
+  useImportAllowance,
+  ImportAllowancePanel,
+  ImportLimitNotice,
+} from "./import-allowance-panel";
 import { saveRapsodoImportAction } from "@/app/import/actions";
 import { useImportFiles } from "@/app/import/use-import-files";
 import { OperationStatus } from "@/components/app/operation-status";
@@ -64,6 +69,10 @@ type SaveProgress = "idle" | "checking" | "saving" | "building" | "queued" | "er
 const AUTOMATIC_COLUMN_MAPPING = {};
 
 export function CompanionRangeImport({ practicePlanId }: { practicePlanId: string | null }) {
+  const allowance = useImportAllowance();
+  const [limitDetails, setLimitDetails] = useState<
+    import("@/lib/imports/import-usage").ImportLimitDetails | null
+  >(null);
   const ready = useClientReady();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [distanceUnit, setDistanceUnit] = useState<"yards" | "meters">("yards");
@@ -161,7 +170,14 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
   }
 
   function save() {
-    if (!file || !mappingsComplete || pending || progress === "queued") return;
+    if (
+      ((Boolean(limitDetails) || allowance.state?.allowed === false) && !duplicate.duplicate) ||
+      !file ||
+      !mappingsComplete ||
+      pending ||
+      progress === "queued"
+    )
+      return;
     setProgress("checking");
     setMessage(null);
     const shotOverrides: RapsodoShotOverride[] = unknownGroups.flatMap((group) =>
@@ -209,6 +225,14 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
         message: error instanceof Error ? error.message : "The import could not be saved.",
       }));
       if (!result.ok) {
+        if (
+          "code" in result &&
+          result.code === "IMPORT_LIMIT_REACHED" &&
+          "limit" in result &&
+          result.limit
+        )
+          setLimitDetails(result.limit);
+        await allowance.refresh();
         setProgress("error");
         setMessage(result.message);
         return;
@@ -243,6 +267,11 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
   if (!file) {
     return (
       <Card data-companion-csv-import>
+        {limitDetails ? (
+          <ImportLimitNotice details={limitDetails} />
+        ) : (
+          <ImportAllowancePanel state={allowance.state} error={allowance.error} />
+        )}
         <CardHeader>
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
@@ -260,7 +289,7 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
             ref={fileInputRef}
             id="companion-csv-file"
             type="file"
-            disabled={!ready}
+            disabled={!ready || Boolean(limitDetails) || allowance.state?.allowed === false}
             className="sr-only"
             accept=".csv,text/csv,application/csv,application/vnd.ms-excel,text/plain"
             onChange={(event) => {
@@ -272,7 +301,7 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
             type="button"
             className="min-h-12 rounded-xl text-base"
             onClick={() => fileInputRef.current?.click()}
-            disabled={!ready}
+            disabled={!ready || Boolean(limitDetails) || allowance.state?.allowed === false}
           >
             <FileUp className="size-5" aria-hidden />
             Choose CSV from Files
@@ -502,6 +531,8 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
               className="min-h-12 flex-1 rounded-xl text-base"
               onClick={save}
               disabled={
+                ((Boolean(limitDetails) || allowance.state?.allowed === false) &&
+                  !duplicate.duplicate) ||
                 !mappingsComplete ||
                 pending ||
                 !duplicate.checked ||

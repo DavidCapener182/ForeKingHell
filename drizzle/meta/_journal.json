@@ -435,6 +435,13 @@
       "when": 1789152302061,
       "tag": "0061_round_load_weighting",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1792111447998,
+      "tag": "0062_pro_trial_and_round_plan",
+      "breakpoints": true
     }
   ]
 }

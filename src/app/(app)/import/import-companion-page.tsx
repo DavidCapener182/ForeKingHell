@@ -1,3 +1,4 @@
+import { ImportAllowanceSummary } from "@/app/import/import-allowance-panel";
 import { getImportFileHistory } from "@/lib/import-file-history";
 import type { ImportHistoryParams } from "@/lib/import-history-query";
 import { ImportFileLibrary } from "@/app/import/import-file-library";
@@ -63,6 +64,7 @@ export default async function ImportCompanionPage({
   const planQuery = validPlan ? `?practicePlanId=${encodeURIComponent(validPlan.id)}` : "";
   return (
     <PageShell>
+      <ImportAllowanceSummary />
       <MobileAppShell className="gap-4" data-import-companion-home>
         <UntitledPageHeader
           title="Import"
