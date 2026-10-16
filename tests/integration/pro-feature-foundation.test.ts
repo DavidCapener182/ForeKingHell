@@ -45,6 +45,7 @@ describe.skipIf(!enabled)("Pro feature database foundation", () => {
     await db!`insert into fkh_users(id,email,name) values(${userId},'pro-features@example.invalid','Synthetic feature actor')`;
   });
   afterEach(async () => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
     await db!`delete from fkh_users where id=${userId}`;
@@ -381,5 +382,221 @@ describe.skipIf(!enabled)("Pro feature database foundation", () => {
       await db!`select count(*)::int total from fkh_usage_events where user_id=${userId} and event_type='pro_trial_expired'`;
     expect(expiry.total).toBe(1);
     await db!`delete from fkh_stripe_webhook_events where event_id in (${event.id},${expired.id})`;
+  });
+  it("rechecks a downgraded plan after waiting for the import user lock", async () => {
+    await db!`insert into fkh_subscriptions(user_id,plan_key,status) values(${userId},'pro','active')`;
+    await db!`insert into fkh_usage_events(user_id,event_type,quantity) values(${userId},'subscription_import',5)`;
+    let release!: () => void;
+    let locked!: () => void;
+    const ready = new Promise<void>((r) => {
+      locked = r;
+    });
+    const hold = new Promise<void>((r) => {
+      release = r;
+    });
+    const locker = db!.begin(async (sql) => {
+      await sql`select id from fkh_users where id=${userId} for update`;
+      locked();
+      await hold;
+      await sql`update fkh_subscriptions set status='canceled' where user_id=${userId}`;
+    });
+    await ready;
+    const rawCsvText =
+      "Shot Number,Club,Carry Distance,Total Distance,Ball Speed\n1,7 Iron,151,161,110\n2,7 Iron,152,162,111";
+    const saving = saveRapsodoImport({
+      rawCsvText,
+      fileName: "downgrade-race.csv",
+      fileSizeBytes: rawCsvText.length,
+      source: "rapsodo",
+      sessionType: "range",
+      sessionDate: new Date().toISOString().slice(0, 10),
+      distanceUnit: "yards",
+    });
+    try {
+      let blocked = false;
+      for (let i = 0; i < 200; i++) {
+        const [row] =
+          await db!`select count(*)::int total from pg_stat_activity where datname=current_database() and wait_event_type='Lock' and query like 'insert into "fkh_users"%'`;
+        if (row.total > 0) {
+          blocked = true;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      expect(blocked).toBe(true);
+    } finally {
+      release();
+      await locker;
+    }
+    expect(await saving).toMatchObject({ ok: false, code: "IMPORT_LIMIT_REACHED" });
+    expect((await getMonthlyImportUsage(userId)).used).toBe(5);
+  });
+  it("reconciles conflicting same-second subscription events instead of sorting opaque event IDs", async () => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_synthetic");
+    const now = Math.floor(Date.now() / 1000);
+    const subscriptionId = `sub_${userId}`;
+    const event = (id: string, status: string) => ({
+      id,
+      created: now,
+      type: "customer.subscription.updated",
+      data: {
+        object: {
+          id: subscriptionId,
+          status,
+          current_period_end: now + 86400,
+          trial_start: now,
+          trial_end: now + 604800,
+          metadata: { user_id: userId, plan_key: "pro", trial: "pro_7d" },
+        },
+      },
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({
+          id: subscriptionId,
+          status: "canceled",
+          created: now - 100,
+          metadata: { user_id: userId, plan_key: "pro", trial: "pro_7d" },
+          trial_start: now,
+          trial_end: now + 604800,
+        }),
+      ),
+    );
+    const store = createDrizzleBillingWebhookStore();
+    const canceled = event(`evt_a_${userId}`, "canceled"),
+      stale = event(`evt_z_${userId}`, "trialing");
+    const converted = event(`evt_0_active_${userId}`, "active");
+    const failed = { ...event(`evt_retry_${userId}`, "canceled"), created: now + 1 };
+    try {
+      await handleStripeWebhookEvent(canceled, store, {});
+      await handleStripeWebhookEvent(stale, store, {});
+      expect(await getActivePlanKeyForUser(userId)).toBe("free");
+      expect(fetch).toHaveBeenCalledOnce();
+      vi.mocked(fetch).mockResolvedValueOnce(
+        Response.json({
+          id: subscriptionId,
+          status: "active",
+          created: now - 100,
+          current_period_start: now,
+          current_period_end: now + 2592000,
+          trial_start: now,
+          trial_end: now + 604800,
+          metadata: { user_id: userId, plan_key: "pro", trial: "pro_7d" },
+        }),
+      );
+      await handleStripeWebhookEvent(converted, store, {});
+      expect(await getActivePlanKeyForUser(userId)).toBe("pro");
+      vi.mocked(fetch).mockResolvedValueOnce(Response.json({}, { status: 503 }));
+      await expect(handleStripeWebhookEvent(failed, store, {})).rejects.toThrow(
+        /reconciliation failed/,
+      );
+      expect(await getActivePlanKeyForUser(userId)).toBe("pro");
+      await handleStripeWebhookEvent(failed, store, {});
+      expect(await getActivePlanKeyForUser(userId)).toBe("free");
+      vi.mocked(fetch).mockResolvedValueOnce(
+        Response.json({
+          id: subscriptionId,
+          status: "active",
+          created: now - 100,
+          current_period_end: now + 2592000,
+          metadata: { user_id: userId, plan_key: "pro" },
+          latest_invoice: { id: "in_unpaid", status: "open", paid: false },
+        }),
+      );
+      await store.applySubscriptionState({
+        userId,
+        billingCustomerId: null,
+        stripeSubscriptionId: subscriptionId,
+        planKey: "pro",
+        status: "past_due",
+        currentPeriodStart: null,
+        currentPeriodEnd: null,
+        cancelAtPeriodEnd: false,
+        metadataJson: { stripeEvent: "invoice.payment_failed", invoiceId: "in_unpaid" },
+        active: false,
+        source: "plan",
+        eventId: `evt_invoice_${userId}`,
+        eventCreatedAt: new Date((now + 2) * 1000),
+      });
+      expect(await getActivePlanKeyForUser(userId)).toBe("free");
+    } finally {
+      await db!`delete from fkh_stripe_webhook_events where event_id in (${canceled.id},${stale.id},${converted.id},${failed.id})`;
+    }
+  });
+  it("does not revoke a newer subscription's entitlements when an older subscription event arrives late", async () => {
+    const store = createDrizzleBillingWebhookStore();
+    const now = new Date();
+    const base = {
+      userId,
+      billingCustomerId: null,
+      planKey: "pro" as const,
+      status: "active",
+      currentPeriodStart: now,
+      currentPeriodEnd: new Date(Date.now() + 86400000),
+      cancelAtPeriodEnd: false,
+      active: true,
+      source: "plan",
+      eventCreatedAt: now,
+    };
+    await store.applySubscriptionState({
+      ...base,
+      stripeSubscriptionId: `old_${userId}`,
+      eventId: "evt_old",
+      metadataJson: { stripeEvent: "customer.subscription.updated" },
+    });
+    await db!`update fkh_subscriptions set created_at=now()-interval '1 year' where stripe_subscription_id=${`old_${userId}`}`;
+    await store.applySubscriptionState({
+      ...base,
+      stripeSubscriptionId: `new_${userId}`,
+      eventId: "evt_new",
+      metadataJson: { stripeEvent: "customer.subscription.updated" },
+    });
+    await store.applySubscriptionState({
+      ...base,
+      stripeSubscriptionId: `old_${userId}`,
+      eventId: "evt_old_late",
+      eventCreatedAt: new Date(now.getTime() + 1000),
+      status: "canceled",
+      active: false,
+      metadataJson: { stripeEvent: "customer.subscription.deleted" },
+    });
+    await store.applySubscriptionState({
+      ...base,
+      stripeSubscriptionId: `old_first_seen_late_${userId}`,
+      eventId: "evt_first_seen_late",
+      eventCreatedAt: new Date(now.getTime() + 2000),
+      status: "canceled",
+      active: false,
+      metadataJson: {
+        stripeEvent: "customer.subscription.deleted",
+        subscriptionCreated: Math.floor(now.getTime() / 1000) - 86400,
+      },
+    });
+    expect(await getActivePlanKeyForUser(userId)).toBe("pro");
+    const [row] =
+      await db!`select count(*)::int total from fkh_entitlements where user_id=${userId} and source='plan'`;
+    expect(row.total).toBeGreaterThan(0);
+  });
+  it("charges the same UTC month that was checked, independent of transaction-start defaults", async () => {
+    const actual = new Date();
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(
+      new Date(Date.UTC(actual.getUTCFullYear(), actual.getUTCMonth() + 1, 1, 0, 0, 1)),
+    );
+    const rawCsvText =
+      "Shot Number,Club,Carry Distance,Total Distance,Ball Speed\n1,7 Iron,151,161,110\n2,7 Iron,152,162,111";
+    expect(
+      await saveRapsodoImport({
+        rawCsvText,
+        fileName: "utc-charge.csv",
+        fileSizeBytes: rawCsvText.length,
+        source: "rapsodo",
+        sessionType: "range",
+        sessionDate: actual.toISOString().slice(0, 10),
+        distanceUnit: "yards",
+      }),
+    ).toMatchObject({ ok: true });
+    expect((await getMonthlyImportUsage(userId)).used).toBe(1);
   });
 });

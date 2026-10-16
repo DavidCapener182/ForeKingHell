@@ -421,11 +421,9 @@ class FakeBillingWebhookStore implements BillingWebhookStore {
     input: Parameters<BillingWebhookStore["applySubscriptionState"]>[0],
   ) {
     const previous = this.subscriptionEvents.get(input.stripeSubscriptionId);
-    const isNewer =
-      !previous ||
-      previous.eventCreatedAt < input.eventCreatedAt ||
-      (previous.eventCreatedAt.getTime() === input.eventCreatedAt.getTime() &&
-        previous.eventId < input.eventId);
+    // Same-second canonical reconciliation belongs to the real-store integration tests.
+    // This handler fake only accepts strictly newer snapshots; IDs are not clocks.
+    const isNewer = !previous || previous.eventCreatedAt < input.eventCreatedAt;
 
     if (!isNewer) {
       return false;

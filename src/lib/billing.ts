@@ -124,7 +124,15 @@ function withDefaultAiPlanLimits(rows: Array<typeof planLimits.$inferSelect>) {
 }
 
 export async function getActivePlanKeyForUser(userId: string): Promise<PlanKey> {
-  const [latestSubscription] = await getDb()
+  return getActivePlanKeyForExecutor(userId, getDb());
+}
+
+/** Read inside the transaction holding the account lock; never open another pool connection. */
+export async function getActivePlanKeyForExecutor(
+  userId: string,
+  executor: Pick<ReturnType<typeof getDb>, "select">,
+): Promise<PlanKey> {
+  const [latestSubscription] = await executor
     .select({
       planKey: subscriptions.planKey,
       status: subscriptions.status,
@@ -134,7 +142,7 @@ export async function getActivePlanKeyForUser(userId: string): Promise<PlanKey> 
     .where(eq(subscriptions.userId, userId))
     .orderBy(desc(subscriptions.createdAt))
     .limit(1);
-  const entitlementRows = await getDb()
+  const entitlementRows = await executor
     .select()
     .from(entitlements)
     .where(eq(entitlements.userId, userId));

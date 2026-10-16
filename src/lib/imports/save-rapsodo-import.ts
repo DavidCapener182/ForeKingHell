@@ -1,6 +1,6 @@
 import { readMonthlyImportUsage, type ImportLimitDetails } from "@/lib/imports/import-usage";
 import { getProTrialEligibility, markTrialEligibleAfterFirstImport } from "@/lib/billing-pro-trial";
-import { getActivePlanKeyForUser } from "@/lib/billing";
+import { getActivePlanKeyForUser, getActivePlanKeyForExecutor } from "@/lib/billing";
 import { planHasFeature } from "@/lib/plan-access";
 import { createHash } from "node:crypto";
 
@@ -630,7 +630,6 @@ async function persistImport(
 ) {
   const db = getDb();
   const userId = input.userId;
-  const plan = await getActivePlanKeyForUser(userId);
   const preferredUnits = "yards";
   const now = new Date();
   const sessionDate = parseSessionDate(input.sessionDate);
@@ -722,12 +721,17 @@ async function persistImport(
 
     // Updating the user's row above serialises all imports for this account.
     // Charge only new imports; duplicate retries return before this quota check.
-    const allowance = await readMonthlyImportUsage(userId, plan, tx, now);
+    const plan = await getActivePlanKeyForExecutor(userId, tx);
+    if (["square", "trackman"].includes(input.source) && !planHasFeature(plan, "premium_imports"))
+      throw new ImportValidationError("Square and TrackMan imports require Pro or higher.");
+    const chargeAt = new Date();
+    const allowance = await readMonthlyImportUsage(userId, plan, tx, chargeAt);
     if (allowance.legacyUsageToMigrate > 0)
       await tx.insert(usageEvents).values({
         userId,
         eventType: "subscription_import",
         quantity: allowance.legacyUsageToMigrate,
+        createdAt: chargeAt,
         metadataJson: { migratedMonthlyUsage: true },
       });
     if (!allowance.allowed) {
@@ -746,7 +750,9 @@ async function persistImport(
         },
       );
     }
-    await tx.insert(usageEvents).values({ userId, eventType: "subscription_import", quantity: 1 });
+    await tx
+      .insert(usageEvents)
+      .values({ userId, eventType: "subscription_import", quantity: 1, createdAt: chargeAt });
 
     const [session] = await tx
       .insert(sessions)
@@ -775,6 +781,7 @@ async function persistImport(
       .values({
         userId,
         sessionId: session.id,
+        createdAt: chargeAt,
         source: input.source,
         parseVersion: `${input.source}-v1`,
         playContext,

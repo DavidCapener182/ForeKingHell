@@ -2,7 +2,7 @@ import { planEntitlements } from "@/lib/plan-entitlements";
 import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { and, eq, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, lt, or, sql } from "drizzle-orm";
 
 import {
   billingCustomers,
@@ -10,6 +10,7 @@ import {
   stripeWebhookEvents,
   subscriptions,
   usageEvents,
+  users,
 } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { markTrialConsumed } from "@/lib/billing-pro-trial";
@@ -366,15 +367,42 @@ export function createDrizzleBillingWebhookStore(): BillingWebhookStore {
     async applySubscriptionState(input) {
       return getDb().transaction(async (tx) => {
         const now = new Date();
+        // Serialise every subscription for this account, not only this provider ID.
+        await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.id, input.userId))
+          .for("update");
         const [previous] = await tx
-          .select({ status: subscriptions.status })
+          .select()
           .from(subscriptions)
           .where(eq(subscriptions.stripeSubscriptionId, input.stripeSubscriptionId))
           .for("update");
+        if (previous?.lastStripeEventCreatedAt) {
+          const delta =
+            input.eventCreatedAt.getTime() - previous.lastStripeEventCreatedAt.getTime();
+          if (delta < 0 || previous.lastStripeEventId === input.eventId) return false;
+          const previousType = previous.metadataJson.stripeEvent;
+          // Checkout is an introductory snapshot; never replace a subscription/invoice state with it.
+          if (
+            input.metadataJson.stripeEvent === "checkout.session.completed" &&
+            previousType !== "checkout.session.completed"
+          )
+            return false;
+          if (delta === 0 || previous.metadataJson.canonicalSnapshot === true) {
+            // Stripe timestamps have one-second resolution and event IDs are opaque.
+            // Resolve ambiguity from the current provider resource; failure retries the event.
+            input = await reconcileSubscriptionSnapshot(input);
+          }
+        }
         const [applied] = await tx
           .insert(subscriptions)
           .values({
             userId: input.userId,
+            createdAt:
+              dateFromUnixSeconds(numberFrom(input.metadataJson.subscriptionCreated)) ??
+              previous?.createdAt ??
+              now,
             billingCustomerId: input.billingCustomerId,
             stripeSubscriptionId: input.stripeSubscriptionId,
             planKey: input.planKey,
@@ -391,6 +419,10 @@ export function createDrizzleBillingWebhookStore(): BillingWebhookStore {
             target: subscriptions.stripeSubscriptionId,
             set: {
               userId: input.userId,
+              createdAt:
+                dateFromUnixSeconds(numberFrom(input.metadataJson.subscriptionCreated)) ??
+                previous?.createdAt ??
+                now,
               billingCustomerId: input.billingCustomerId,
               planKey: input.planKey,
               status: input.status,
@@ -402,14 +434,6 @@ export function createDrizzleBillingWebhookStore(): BillingWebhookStore {
               metadataJson: input.metadataJson,
               updatedAt: now,
             },
-            setWhere: sql`
-              ${subscriptions.lastStripeEventCreatedAt} IS NULL
-              OR ${subscriptions.lastStripeEventCreatedAt} < ${input.eventCreatedAt.toISOString()}::timestamptz
-              OR (
-                ${subscriptions.lastStripeEventCreatedAt} = ${input.eventCreatedAt.toISOString()}::timestamptz
-                AND COALESCE(${subscriptions.lastStripeEventId}, '') < ${input.eventId}
-              )
-            `,
           })
           .returning({ id: subscriptions.id });
 
@@ -461,6 +485,13 @@ export function createDrizzleBillingWebhookStore(): BillingWebhookStore {
               metadataJson: { endsAt: input.currentPeriodEnd?.toISOString() },
             });
         }
+        const [latest] = await tx
+          .select({ stripeSubscriptionId: subscriptions.stripeSubscriptionId })
+          .from(subscriptions)
+          .where(eq(subscriptions.userId, input.userId))
+          .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id))
+          .limit(1);
+        if (latest?.stripeSubscriptionId !== input.stripeSubscriptionId) return true;
         await tx
           .delete(entitlements)
           .where(and(eq(entitlements.userId, input.userId), eq(entitlements.source, input.source)));
@@ -520,6 +551,67 @@ export function entitlementRowsForPlan(
   }));
 }
 
+/** Canonical reads resolve same-second conflicts without guessing chronological order from IDs. */
+async function reconcileSubscriptionSnapshot(
+  input: SubscriptionStateInput,
+): Promise<SubscriptionStateInput> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error("Stripe subscription reconciliation is not configured");
+  const response = await fetch(
+    `https://api.stripe.com/v1/subscriptions/${encodeURIComponent(input.stripeSubscriptionId)}?expand[]=latest_invoice`,
+    { headers: { authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(8000) },
+  );
+  const object: unknown = await response.json();
+  if (
+    !response.ok ||
+    !isRecord(object) ||
+    object.id !== input.stripeSubscriptionId ||
+    typeof object.status !== "string"
+  )
+    throw new Error("Stripe subscription reconciliation failed");
+  const metadata = objectMetadata(object);
+  if (metadata.user_id && metadata.user_id !== input.userId)
+    throw new Error("Stripe subscription owner mismatch");
+  const latestInvoice = isRecord(object.latest_invoice) ? object.latest_invoice : null;
+  const confirmedPaid = latestInvoice?.status === "paid" || latestInvoice?.paid === true;
+  // Preserve immediate revocation on payment failure unless current payment is confirmed.
+  const status =
+    input.metadataJson.stripeEvent === "invoice.payment_failed" && !confirmedPaid
+      ? "past_due"
+      : object.status;
+  const item =
+    isRecord(object.items) && Array.isArray(object.items.data) && isRecord(object.items.data[0])
+      ? object.items.data[0]
+      : {};
+  const start = dateFromUnixSeconds(
+    numberFrom(status === "trialing" ? object.trial_start : object.current_period_start) ??
+      numberFrom(item.current_period_start),
+  );
+  const end = dateFromUnixSeconds(
+    numberFrom(status === "trialing" ? object.trial_end : object.current_period_end) ??
+      numberFrom(item.current_period_end),
+  );
+  const active = activeSubscriptionStatuses.has(status);
+  if (active && !end) throw new Error("Stripe subscription period is unavailable");
+  return {
+    ...input,
+    planKey: resolvePlanKey(metadata, firstPriceId(object), process.env),
+    status,
+    currentPeriodStart: start,
+    currentPeriodEnd: end,
+    cancelAtPeriodEnd: object.cancel_at_period_end === true,
+    active: active && (status !== "trialing" || end!.getTime() > Date.now()),
+    metadataJson: {
+      stripeEvent: "subscription.reconciled",
+      canonicalSnapshot: true,
+      subscriptionCreated: numberFrom(object.created),
+      metadata,
+      trialStart: numberFrom(object.trial_start),
+      trialEnd: numberFrom(object.trial_end),
+    },
+  };
+}
+
 function handleCheckoutSessionCompleted(
   object: StripeObject,
   store: BillingWebhookStore,
@@ -573,6 +665,7 @@ function handleCheckoutSessionCompleted(
     active: paid || (trial && trialEnd.getTime() > Date.now()),
     metadataJson: {
       stripeEvent: type,
+      subscriptionCreated: numberFrom(expanded.created) ?? numberFrom(object.created),
       checkoutSessionId: stringFrom(object.id),
       checkoutStatus: stringFrom(object.status),
       paymentStatus: stringFrom(object.payment_status),
@@ -631,6 +724,7 @@ async function handleSubscriptionUpdated(
     metadataJson: {
       stripeEvent: type,
       metadata,
+      subscriptionCreated: numberFrom(object.created),
       priceId: firstPriceId(object),
       trialStart: numberFrom(object.trial_start),
       trialEnd: numberFrom(object.trial_end),

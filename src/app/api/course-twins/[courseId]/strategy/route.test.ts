@@ -52,10 +52,23 @@ describe("Course Twin strategy evidence routing", () => {
     for (const plan of ["free", "plus"]) {
       mocks.plan.mockResolvedValue(plan);
       expect((await request("holeNumber=1")).status).toBe(200);
-      expect((await request("holeNumber=2")).status).toBe(403);
+      for (let hole = 2; hole <= 18; hole++)
+        expect((await request(`holeNumber=${hole}`)).status).toBe(403);
       expect((await request("holeNumber=18&preview=1")).status).toBe(403);
     }
     expect((await request("preview=yes")).status).toBe(400);
+  });
+  it("allows every mapped hole for Pro, Coach and Full, and validates numeric bounds", async () => {
+    mocks.manifest.mockResolvedValue({
+      holes: Array.from({ length: 18 }, (_, i) => ({ holeNumber: i + 1 })),
+    });
+    for (const plan of ["pro", "coach", "full"]) {
+      mocks.plan.mockResolvedValue(plan);
+      for (let hole = 1; hole <= 18; hole++)
+        expect((await request(`holeNumber=${hole}`)).status).toBe(200);
+    }
+    for (const hole of ["0", "19", "1.5", "NaN"])
+      expect((await request(`holeNumber=${hole}`)).status).toBe(400);
   });
   it("does not silently substitute stock evidence when mobile dispersion is insufficient", async () => {
     mocks.mobile.mockResolvedValue([]);
