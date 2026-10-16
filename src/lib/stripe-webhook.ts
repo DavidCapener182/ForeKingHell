@@ -4,8 +4,15 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { and, eq, lt, or, sql } from "drizzle-orm";
 
-import { billingCustomers, entitlements, stripeWebhookEvents, subscriptions } from "@/db/schema";
+import {
+  billingCustomers,
+  entitlements,
+  stripeWebhookEvents,
+  subscriptions,
+  usageEvents,
+} from "@/db/schema";
 import { getDb } from "@/db/client";
+import { markTrialConsumed } from "@/lib/billing-pro-trial";
 import type { PlanKey } from "@/lib/billing";
 
 export type StripeWebhookEvent = {
@@ -359,6 +366,11 @@ export function createDrizzleBillingWebhookStore(): BillingWebhookStore {
     async applySubscriptionState(input) {
       return getDb().transaction(async (tx) => {
         const now = new Date();
+        const [previous] = await tx
+          .select({ status: subscriptions.status })
+          .from(subscriptions)
+          .where(eq(subscriptions.stripeSubscriptionId, input.stripeSubscriptionId))
+          .for("update");
         const [applied] = await tx
           .insert(subscriptions)
           .values({
@@ -392,9 +404,9 @@ export function createDrizzleBillingWebhookStore(): BillingWebhookStore {
             },
             setWhere: sql`
               ${subscriptions.lastStripeEventCreatedAt} IS NULL
-              OR ${subscriptions.lastStripeEventCreatedAt} < ${input.eventCreatedAt}
+              OR ${subscriptions.lastStripeEventCreatedAt} < ${input.eventCreatedAt.toISOString()}::timestamptz
               OR (
-                ${subscriptions.lastStripeEventCreatedAt} = ${input.eventCreatedAt}
+                ${subscriptions.lastStripeEventCreatedAt} = ${input.eventCreatedAt.toISOString()}::timestamptz
                 AND COALESCE(${subscriptions.lastStripeEventId}, '') < ${input.eventId}
               )
             `,
@@ -405,6 +417,50 @@ export function createDrizzleBillingWebhookStore(): BillingWebhookStore {
           return false;
         }
 
+        if (
+          previous?.status === "trialing" &&
+          input.status !== "trialing" &&
+          input.status !== "active"
+        ) {
+          await tx.insert(usageEvents).values({
+            userId: input.userId,
+            eventType: "pro_trial_expired",
+            quantity: 1,
+            sourceId: input.eventId,
+          });
+        }
+        const trialMetadata = isRecord(input.metadataJson.metadata)
+          ? input.metadataJson.metadata
+          : {};
+        if (
+          input.planKey === "pro" &&
+          (input.status === "trialing" ||
+            (typeof input.metadataJson.trialStart === "number" &&
+              input.metadataJson.trialStart > 0) ||
+            (trialMetadata.trial === "pro_7d" && typeof input.metadataJson.trialEnd === "number"))
+        ) {
+          const newlyConsumed = await markTrialConsumed(
+            {
+              userId: input.userId,
+              subscriptionId: input.stripeSubscriptionId,
+              startedAt:
+                dateFromUnixSeconds(numberFrom(input.metadataJson.trialStart)) ??
+                input.currentPeriodStart,
+              endsAt:
+                dateFromUnixSeconds(numberFrom(input.metadataJson.trialEnd)) ??
+                input.currentPeriodEnd,
+            },
+            tx,
+          );
+          if (newlyConsumed && input.status === "trialing")
+            await tx.insert(usageEvents).values({
+              userId: input.userId,
+              eventType: "pro_trial_activated",
+              quantity: 1,
+              sourceId: input.eventId,
+              metadataJson: { endsAt: input.currentPeriodEnd?.toISOString() },
+            });
+        }
         await tx
           .delete(entitlements)
           .where(and(eq(entitlements.userId, input.userId), eq(entitlements.source, input.source)));
@@ -471,12 +527,22 @@ function handleCheckoutSessionCompleted(
   type: string,
   context: WebhookContext,
 ): Promise<StripeWebhookResult> {
-  const metadata = objectMetadata(object);
+  const expanded = isRecord(object.subscription) ? object.subscription : {};
+  const metadata = { ...objectMetadata(expanded), ...objectMetadata(object) };
   const userId = stringFrom(metadata.user_id) ?? stringFrom(object.client_reference_id);
   const customerId = stripeId(object.customer);
   const planKey = resolvePlanKey(metadata, firstPriceId(object), env);
   const subscriptionId = stripeId(object.subscription);
   const paid = object.payment_status === "paid";
+  const trial =
+    planKey === "pro" &&
+    (metadata.trial === "pro_7d" || expanded.status === "trialing") &&
+    object.payment_status === "no_payment_required";
+  const trialStart =
+    dateFromUnixSeconds(numberFrom(expanded.trial_start)) ?? context.eventCreatedAt;
+  const trialEnd =
+    dateFromUnixSeconds(numberFrom(expanded.trial_end)) ??
+    new Date(trialStart.getTime() + 7 * 86400000);
 
   if (!userId) {
     return Promise.resolve({ handled: false, type, planKey, reason: "missing_user_id" });
@@ -500,11 +566,11 @@ function handleCheckoutSessionCompleted(
     email: stringFrom(object.customer_email),
     subscriptionId,
     planKey,
-    status: paid ? "active" : "checkout_completed",
-    currentPeriodStart: null,
-    currentPeriodEnd: null,
+    status: trial ? "trialing" : paid ? "active" : "checkout_completed",
+    currentPeriodStart: trial ? trialStart : null,
+    currentPeriodEnd: trial ? trialEnd : null,
     cancelAtPeriodEnd: false,
-    active: paid,
+    active: paid || (trial && trialEnd.getTime() > Date.now()),
     metadataJson: {
       stripeEvent: type,
       checkoutSessionId: stringFrom(object.id),
@@ -531,6 +597,9 @@ async function handleSubscriptionUpdated(
   const planKey = resolvePlanKey(metadata, firstPriceId(object), env);
   const status = stringFrom(object.status) ?? "unknown";
   const subscriptionId = stripeId(object.id);
+  const trialEnd =
+    dateFromUnixSeconds(numberFrom(object.trial_end)) ??
+    new Date(context.eventCreatedAt.getTime() + 7 * 86400000);
 
   if (!userId || !subscriptionId) {
     return {
@@ -550,14 +619,21 @@ async function handleSubscriptionUpdated(
     subscriptionId,
     planKey,
     status,
-    currentPeriodStart: dateFromUnixSeconds(numberFrom(object.current_period_start)),
-    currentPeriodEnd: dateFromUnixSeconds(numberFrom(object.current_period_end)),
+    currentPeriodStart: dateFromUnixSeconds(
+      numberFrom(status === "trialing" ? object.trial_start : object.current_period_start),
+    ),
+    currentPeriodEnd:
+      status === "trialing" ? trialEnd : dateFromUnixSeconds(numberFrom(object.current_period_end)),
     cancelAtPeriodEnd: object.cancel_at_period_end === true,
-    active: activeSubscriptionStatuses.has(status),
+    active:
+      activeSubscriptionStatuses.has(status) &&
+      (status !== "trialing" || trialEnd.getTime() > Date.now()),
     metadataJson: {
       stripeEvent: type,
       metadata,
       priceId: firstPriceId(object),
+      trialStart: numberFrom(object.trial_start),
+      trialEnd: numberFrom(object.trial_end),
     },
     ...context,
   });

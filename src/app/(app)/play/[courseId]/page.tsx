@@ -1,3 +1,7 @@
+import { getActivePlanKeyForUser } from "@/lib/billing";
+import { getProTrialEligibility } from "@/lib/billing-pro-trial";
+import { planHasFeature } from "@/lib/plan-access";
+import { CourseTwinRoundPlan } from "@/app/play/[courseId]/course-twin-round-plan";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -30,6 +34,17 @@ export default async function CourseTwinPage({
   ]);
   const manifest = await getCourseTwinManifest({ userId, courseId });
   if (!manifest) notFound();
+  if (query.mode === "plan") {
+    const plan = await getActivePlanKeyForUser(userId);
+    const trial = await getProTrialEligibility(userId, plan);
+    return (
+      <CourseTwinRoundPlan
+        manifest={manifest}
+        pro={planHasFeature(plan, "course_twin_round_plan")}
+        trialEligible={trial.eligible && trial.configured}
+      />
+    );
+  }
   const replay = await getCourseTwinReplay({
     userId,
     courseId,

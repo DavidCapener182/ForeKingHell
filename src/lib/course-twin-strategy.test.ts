@@ -1,3 +1,4 @@
+import { assembleRoundPlan } from "./course-twin-round-plan";
 import { describe, expect, it } from "vitest";
 import { planHoleFromTee } from "./course-twin-plan-tees";
 import { createCourseTwinSurfaceClassifier } from "./course-twin-surface";
@@ -260,4 +261,24 @@ it("nudges initial, reset and explicit aim exactly two degrees without doubling 
       });
     }
   }
+});
+
+it("assembles exactly eighteen deterministic rows without fabricating missing holes or intent options", () => {
+  const normal = assembleRoundPlan(manifest, bag, "normal");
+  expect(normal).toHaveLength(18);
+  expect(normal[0].status).toBe("ready");
+  expect(normal.slice(1).every((h) => h.status === "unavailable" && h.carryMedianYd === null)).toBe(
+    true,
+  );
+  expect(assembleRoundPlan(manifest, bag, "normal")).toEqual(normal);
+  expect(assembleRoundPlan(manifest, [bag[0]], "aggressive")[0]).toMatchObject({
+    status: "unavailable",
+    clubId: null,
+  });
+  expect(assembleRoundPlan(manifest, [], "normal").every((h) => h.status === "unavailable")).toBe(
+    true,
+  );
+  expect(normal[0].carryMedianYd).toBe(
+    buildCourseTwinStrategy({ manifest, bag, holeNumber: 1 }).recommended?.carryMedianYd,
+  );
 });

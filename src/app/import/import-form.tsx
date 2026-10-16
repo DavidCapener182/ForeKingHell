@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  useImportAllowance,
+  ImportAllowancePanel,
+  ImportLimitNotice,
+} from "./import-allowance-panel";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -119,6 +124,10 @@ export function ImportForm({
   practicePlanId?: string | null;
 }) {
   const router = useRouter();
+  const allowance = useImportAllowance();
+  const [limitDetails, setLimitDetails] = useState<
+    import("@/lib/imports/import-usage").ImportLimitDetails | null
+  >(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scorecardImageInputRef = useRef<HTMLInputElement>(null);
   const sampleLoadedRef = useRef(false);
@@ -389,6 +398,8 @@ export function ImportForm({
     ),
   );
   const canSave =
+    !limitDetails &&
+    allowance.state?.allowed !== false &&
     !startWithSampleData &&
     !isParsing &&
     !readProgress &&
@@ -666,6 +677,8 @@ export function ImportForm({
             if (id) removeImportFile(id);
           }
         }
+        if (result.code === "IMPORT_LIMIT_REACHED" && result.limit) setLimitDetails(result.limit);
+        await allowance.refresh();
         setSaveState({ status: "error", message: result.message, fileResults: result.fileResults });
       }
     });
@@ -733,6 +746,11 @@ export function ImportForm({
 
   return (
     <section className="min-w-0" data-import-ready={isHydrated ? "true" : "false"}>
+      {limitDetails ? (
+        <ImportLimitNotice details={limitDetails} />
+      ) : (
+        <ImportAllowancePanel state={allowance.state} error={allowance.error} />
+      )}
       <div className="mx-auto flex w-full max-w-none flex-col gap-6">
         <ImportStepper
           isCourseUpload={isCourseUpload}
@@ -944,7 +962,9 @@ export function ImportForm({
           <div className="grid gap-5 xl:grid-cols-2">
             <div id="import-files" className="grid min-w-0 scroll-mt-28 content-start gap-5">
               <UploadDropzone
-                disabled={!isHydrated}
+                disabled={
+                  !isHydrated || Boolean(limitDetails) || allowance.state?.allowed === false
+                }
                 fileInputRef={fileInputRef}
                 isDragging={isDragging}
                 readProgress={readProgress}

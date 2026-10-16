@@ -394,7 +394,7 @@ html[data-theme="clubhouse"]
 
 html[data-theme="clubhouse"]
   :where([data-slot="sidebar-header"], [data-slot="sidebar-footer"])
-  .text-muted-foreground {
+  .text-muted-foreground:not([data-slot="avatar-fallback"]) {
   color: #d7d2c3 !important;
 }
 

@@ -1,11 +1,12 @@
-import { monthlyImportAllowance } from "@/lib/imports/import-allowance";
+import { readMonthlyImportUsage, type ImportLimitDetails } from "@/lib/imports/import-usage";
+import { getProTrialEligibility, markTrialEligibleAfterFirstImport } from "@/lib/billing-pro-trial";
 import { getActivePlanKeyForUser } from "@/lib/billing";
 import { planHasFeature } from "@/lib/plan-access";
 import { createHash } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { and, count, desc, eq, gte, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
 import {
   clubs,
@@ -175,6 +176,8 @@ export type SaveRapsodoImportResult =
   | {
       ok: false;
       message: string;
+      code?: "IMPORT_LIMIT_REACHED";
+      limit?: ImportLimitDetails;
       retryable?: boolean;
     };
 
@@ -193,6 +196,8 @@ export type SaveRapsodoImportFileResult = {
   | {
       status: "failed";
       message: string;
+      code?: "IMPORT_LIMIT_REACHED";
+      limit?: ImportLimitDetails;
       retryable?: boolean;
       sessionId?: never;
       shotCount?: never;
@@ -227,6 +232,8 @@ export type SaveRapsodoImportBatchResult =
   | {
       ok: false;
       message: string;
+      code?: "IMPORT_LIMIT_REACHED";
+      limit?: ImportLimitDetails;
       retryable?: boolean;
       fileResults?: SaveRapsodoImportFileResult[];
       savedSessionId?: string | null;
@@ -256,8 +263,15 @@ const IMPORT_TELEMETRY_FIELDS = new Set([
   "fieldIssueCount",
 ]);
 
-class ImportValidationError extends Error {
+export class ImportValidationError extends Error {
   override readonly name = "ImportValidationError";
+  constructor(
+    message: string,
+    readonly code?: "IMPORT_LIMIT_REACHED",
+    readonly limit?: ImportLimitDetails,
+  ) {
+    super(message);
+  }
 }
 
 export async function saveRapsodoImport(
@@ -413,6 +427,9 @@ export async function saveLaunchMonitorImport(
     return {
       ok: false,
       retryable: !(error instanceof ImportValidationError),
+      ...(error instanceof ImportValidationError && error.code
+        ? { code: error.code, limit: error.limit }
+        : {}),
       message:
         error instanceof ImportValidationError
           ? error.message
@@ -537,11 +554,13 @@ export async function saveRapsodoImportBatch(
         fileName: input.fileName,
         status: "failed",
         message: result.message,
+        ...(result.code ? { code: result.code, limit: result.limit } : {}),
         ...(result.retryable ? { retryable: true } : {}),
       };
       return {
         ok: false,
         message: `${input.fileName}: ${result.message}`,
+        ...(result.code ? { code: result.code, limit: result.limit } : {}),
         ...(result.retryable ? { retryable: true } : {}),
         fileResults,
         savedSessionId,
@@ -703,43 +722,28 @@ async function persistImport(
 
     // Updating the user's row above serialises all imports for this account.
     // Charge only new imports; duplicate retries return before this quota check.
-    const { start: monthStart, end: monthEnd } = monthlyImportAllowance(plan, 0, now);
-    const [usage] = await tx
-      .select({ total: sql<number>`coalesce(sum(${usageEvents.quantity}), 0)::int` })
-      .from(usageEvents)
-      .where(
-        and(
-          eq(usageEvents.userId, userId),
-          eq(usageEvents.eventType, "subscription_import"),
-          gte(usageEvents.createdAt, monthStart),
-          lt(usageEvents.createdAt, monthEnd),
-        ),
-      );
-    let used = usage?.total ?? 0;
-    if (used === 0) {
-      const [legacy] = await tx
-        .select({ total: count() })
-        .from(importFiles)
-        .where(
-          and(
-            eq(importFiles.userId, userId),
-            ne(importFiles.status, "duplicate"),
-            gte(importFiles.createdAt, monthStart),
-            lt(importFiles.createdAt, monthEnd),
-          ),
-        );
-      used = legacy?.total ?? 0;
-      if (used > 0)
-        await tx.insert(usageEvents).values({
-          userId,
-          eventType: "subscription_import",
-          quantity: used,
-          metadataJson: { migratedMonthlyUsage: true },
-        });
-    }
-    if (!monthlyImportAllowance(plan, used, now).allowed) {
+    const allowance = await readMonthlyImportUsage(userId, plan, tx, now);
+    if (allowance.legacyUsageToMigrate > 0)
+      await tx.insert(usageEvents).values({
+        userId,
+        eventType: "subscription_import",
+        quantity: allowance.legacyUsageToMigrate,
+        metadataJson: { migratedMonthlyUsage: true },
+      });
+    if (!allowance.allowed) {
+      const trial = await getProTrialEligibility(userId, plan, tx);
       throw new ImportValidationError(
         "Your 5 monthly imports are used. Upgrade to Plus for unlimited imports, or wait until next month (UTC).",
+        "IMPORT_LIMIT_REACHED",
+        {
+          used: allowance.used,
+          limit: allowance.limit!,
+          resetsAt: allowance.resetsAt,
+          upgrade: {
+            plus: "/billing?required=plus&feature=unlimited_imports",
+            trialEligible: trial.eligible && trial.configured,
+          },
+        },
       );
     }
     await tx.insert(usageEvents).values({ userId, eventType: "subscription_import", quantity: 1 });
@@ -1122,6 +1126,8 @@ async function persistImport(
         });
       }
     }
+
+    await markTrialEligibleAfterFirstImport(userId, tx);
 
     return {
       sessionId: session.id,

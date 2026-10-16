@@ -13,6 +13,12 @@ import {
 } from "@/db/schema";
 import { getDb } from "@/db/client";
 import { billingPlans, type BillingInterval, type PlanKey } from "@/lib/billing-plan-catalog";
+import {
+  getProTrialEligibility,
+  reserveProTrialCheckout,
+  rememberProTrialCheckout,
+  clearExpiredProTrialCheckout,
+} from "@/lib/billing-pro-trial";
 import { requireCurrentUserId } from "@/lib/current-user";
 
 export { billingIntervals, billingPlans } from "@/lib/billing-plan-catalog";
@@ -68,6 +74,7 @@ export async function getBillingPageData() {
     billingCustomer,
     plans: billingPlans,
     activePlanKey,
+    proTrial: await getProTrialEligibility(userId, activePlanKey),
     latestSubscription,
     subscriptionHistory,
     entitlements: entitlementRows,
@@ -121,6 +128,7 @@ export async function getActivePlanKeyForUser(userId: string): Promise<PlanKey> 
     .select({
       planKey: subscriptions.planKey,
       status: subscriptions.status,
+      currentPeriodEnd: subscriptions.currentPeriodEnd,
     })
     .from(subscriptions)
     .where(eq(subscriptions.userId, userId))
@@ -146,6 +154,8 @@ export async function createCheckoutSession(input: {
   planKey: PlanKey;
   interval: BillingInterval;
   origin: string;
+  trialDays?: 7;
+  trialReason?: "post_first_import" | "manual";
 }) {
   const userId = await requireCurrentUserId();
   const plan = billingPlans.find((candidate) => candidate.key === input.planKey);
@@ -171,6 +181,32 @@ export async function createCheckoutSession(input: {
     };
   }
 
+  let trial: Awaited<ReturnType<typeof reserveProTrialCheckout>> | null = null;
+  if (input.trialDays !== undefined) {
+    if (input.trialDays !== 7 || input.planKey !== "pro" || input.interval !== "monthly")
+      return { url: "/billing", error: "The seven-day trial is available only on monthly Pro." };
+    try {
+      trial = await reserveProTrialCheckout(userId);
+      if (trial.url && trial.sessionId) {
+        const existingResponse = await fetch(
+          `https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(trial.sessionId)}`,
+          { headers: { authorization: `Bearer ${apiKey}` } },
+        );
+        const existing = await existingResponse.json();
+        if (!existingResponse.ok) throw new Error("Could not confirm previous checkout.");
+        if (existing.status === "open") return { url: trial.url, error: null };
+        if (existing.status !== "expired") throw new Error("Checkout confirmation pending.");
+        await clearExpiredProTrialCheckout(userId, trial.requestId, trial.sessionId);
+        trial = await reserveProTrialCheckout(userId);
+        if (trial.url) return { url: trial.url, error: null };
+      }
+    } catch {
+      return {
+        url: "/billing",
+        error: "A trial is unavailable or a previous checkout is awaiting confirmation.",
+      };
+    }
+  }
   const customer = await ensureBillingCustomer(userId);
   const params = new URLSearchParams();
   params.set("mode", "subscription");
@@ -178,7 +214,7 @@ export async function createCheckoutSession(input: {
   params.set("line_items[0][quantity]", "1");
   params.set(
     "success_url",
-    `${input.origin}/billing?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+    `${input.origin}/billing?checkout=success${input.trialDays ? "&trial=1" : ""}&session_id={CHECKOUT_SESSION_ID}`,
   );
   params.set("cancel_url", `${input.origin}/billing?checkout=cancelled`);
   params.set("client_reference_id", userId);
@@ -186,6 +222,16 @@ export async function createCheckoutSession(input: {
   params.set("metadata[plan_key]", plan.key);
   params.set("subscription_data[metadata][user_id]", userId);
   params.set("subscription_data[metadata][plan_key]", plan.key);
+
+  if (trial) {
+    params.set("payment_method_collection", "always");
+    params.set("subscription_data[trial_period_days]", "7");
+    for (const prefix of ["metadata", "subscription_data[metadata]"]) {
+      params.set(`${prefix}[trial]`, "pro_7d");
+      params.set(`${prefix}[trial_reason]`, input.trialReason ?? "manual");
+      params.set(`${prefix}[trial_request_id]`, trial.requestId);
+    }
+  }
 
   if (customer?.stripeCustomerId) {
     params.set("customer", customer.stripeCustomerId);
@@ -196,6 +242,7 @@ export async function createCheckoutSession(input: {
   const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
     method: "POST",
     headers: {
+      ...(trial ? { "Idempotency-Key": `pro-trial-${userId}-${trial.requestId}` } : {}),
       authorization: `Bearer ${apiKey}`,
       "content-type": "application/x-www-form-urlencoded",
     },
@@ -210,6 +257,11 @@ export async function createCheckoutSession(input: {
     };
   }
 
+  if (trial) {
+    if (typeof payload.id !== "string")
+      return { url: "/billing", error: "Stripe did not confirm the checkout session." };
+    await rememberProTrialCheckout(userId, trial.requestId, payload.id, payload.url);
+  }
   return { url: payload.url, error: null };
 }
 
@@ -312,7 +364,10 @@ function parsePlanKey(value: string | null | undefined): PlanKey {
 }
 
 export function resolveActivePlanKey(
-  latestSubscription: Pick<typeof subscriptions.$inferSelect, "planKey" | "status"> | null,
+  latestSubscription:
+    | (Pick<typeof subscriptions.$inferSelect, "planKey" | "status"> &
+        Partial<Pick<typeof subscriptions.$inferSelect, "currentPeriodEnd">>)
+    | null,
   entitlementRows: Array<
     Pick<typeof entitlements.$inferSelect, "entitlementKey" | "valueJson" | "expiresAt">
   >,
@@ -331,8 +386,13 @@ export function resolveActivePlanKey(
     return "full";
   }
 
+  const trialExpired =
+    latestSubscription?.status === "trialing" &&
+    latestSubscription.currentPeriodEnd != null &&
+    latestSubscription.currentPeriodEnd.getTime() <= now;
   return parsePlanKey(
-    latestSubscription?.status === "active" || latestSubscription?.status === "trialing"
+    !trialExpired &&
+      (latestSubscription?.status === "active" || latestSubscription?.status === "trialing")
       ? latestSubscription.planKey
       : "free",
   );

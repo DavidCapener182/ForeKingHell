@@ -68,6 +68,11 @@ jobs:
           await sql.end();
           NODE
       - run: npm run db:migrate
+      - name: Trial and round-plan database acceptance
+        if: matrix.shard == 1
+        env:
+          RUN_PRO_FEATURE_DB_TESTS: "1"
+        run: npx vitest run tests/integration/pro-feature-foundation.test.ts tests/integration/pro-round-plan-access.test.ts
       - run: npx playwright install --with-deps chromium firefox webkit
       - name: Browser coverage
         timeout-minutes: 38
