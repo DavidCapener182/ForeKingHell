@@ -120,7 +120,7 @@ test("populated Bag keeps phone content reachable without clipping on both app s
   await page.route("https://bag-mobile.fixture/**", (route) =>
     route.fulfill({
       contentType: "text/html",
-      body: '<!doctype html><html lang="en" data-theme="clubhouse"><head><title>Synthetic populated Bag regression</title></head><body style="margin:0;font-family:system-ui"><div id="root"></div></body></html>',
+      body: '<!doctype html><html lang="en" data-theme="clubhouse"><head><title>Synthetic populated Bag regression</title></head><body style="margin:0"><div id="root"></div></body></html>',
     }),
   );
   mkdirSync("output/bag-mobile-overflow", { recursive: true });
@@ -176,11 +176,19 @@ test("populated Bag keeps phone content reachable without clipping on both app s
       (await page.viewportSize())!.width + 1,
     );
   };
-  for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440])
+  // A second phone font exercises different platform glyph/min-content widths.
+  for (const { width, font } of [
+    { width: 320, font: "Arial, sans-serif" },
+    ...[320, 375, 390, 430, 768, 1024, 1280, 1440].map((width) => ({ width, font: "system-ui" })),
+  ])
     for (const surface of ["workbench", "companion"]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(`https://bag-mobile.fixture/bag?surface=${surface}`);
       await page.addStyleTag({ content: css.css });
+      await page.addStyleTag({ content: `body { font-family: ${font}; }` });
+      expect(await page.evaluate(() => getComputedStyle(document.body).fontFamily)).toContain(
+        font === "system-ui" ? "system-ui" : "Arial",
+      );
       for (const file of bundle.outputFiles.filter((f) => f.path.endsWith(".css")))
         await page.addStyleTag({ content: file.text });
       await page.addScriptTag({
