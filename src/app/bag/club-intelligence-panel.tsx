@@ -84,7 +84,7 @@ export function ClubIntelligencePanel({
   }
 
   return (
-    <DataPanel id="club-intelligence" className="scroll-mt-28">
+    <DataPanel id="club-intelligence" className="min-w-0 scroll-mt-28">
       <SectionHeader
         title="Club browser"
         description="Choose the club from your bag. Its measured flight, miss and latest change open in the detail panel on the right."
@@ -92,8 +92,8 @@ export function ClubIntelligencePanel({
           <StatusPill tone={selectedClub.health.tone}>{selectedClub.health.label}</StatusPill>
         }
       />
-      <CardContent className="grid gap-4 p-4 sm:p-5">
-        <div className="max-w-sm" data-club-intelligence-combobox>
+      <CardContent className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 p-4 sm:p-5">
+        <div className="min-w-0 w-full max-w-sm" data-club-intelligence-combobox>
           <EntityCombobox
             value={selectedClub.id}
             onValueChange={(value) => {
@@ -114,9 +114,9 @@ export function ClubIntelligencePanel({
           />
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
-          <div className="grid gap-3">
-            <div className="rounded-lg border border-border bg-muted/30 p-3">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-[minmax(280px,0.72fr)_minmax(0,1.28fr)]">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
+            <div className="min-w-0 rounded-lg border border-border bg-muted/30 p-3">
               <ClubArtwork
                 clubType={selectedClub.type}
                 brand={selectedClub.brand}
@@ -126,12 +126,12 @@ export function ClubIntelligencePanel({
                 sizes="(min-width: 1280px) 320px, 90vw"
                 priority
               />
-              <div className="mt-3 flex items-start justify-between gap-3">
+              <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm text-muted-foreground">
+                  <p className="break-words text-sm text-muted-foreground [overflow-wrap:anywhere]">
                     {selectedClub.brandModel}
                   </p>
-                  <h3 className="mt-1 text-3xl font-semibold tracking-normal">
+                  <h3 className="mt-1 break-words text-3xl font-semibold tracking-normal [overflow-wrap:anywhere]">
                     {selectedClub.label}
                   </h3>
                 </div>
@@ -166,21 +166,31 @@ export function ClubIntelligencePanel({
             </div>
           </div>
 
-          <div className="grid content-start gap-3">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-3">
             <ResponsiveDetailPanel
               open={detailOpen}
               onOpenChange={setDetailOpen}
               inlineAtUltrawide
-              title={`${selectedClub.label} intelligence`}
-              description={`${selectedClub.brandModel} · measured performance and current setup confidence.`}
+              title={
+                <span className="[overflow-wrap:anywhere]">{selectedClub.label} intelligence</span>
+              }
+              description={
+                <span className="[overflow-wrap:anywhere]">
+                  {selectedClub.brandModel} · measured performance and current setup confidence.
+                </span>
+              }
               trigger={
-                <Button type="button" className="w-fit" data-selected-club-detail-trigger>
+                <Button
+                  type="button"
+                  className="h-auto min-h-11 w-fit max-w-full whitespace-normal"
+                  data-selected-club-detail-trigger
+                >
                   Review {selectedClub.label}
                   <ChevronRight className="size-4" />
                 </Button>
               }
               className="shadow-sm"
-              contentClassName="grid gap-3"
+              contentClassName="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3"
             >
               <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border md:grid-cols-4">
                 <ClubDetailMetric label="Trusted carry" value={selectedClub.primaryCarryLabel} />
@@ -193,8 +203,11 @@ export function ClubIntelligencePanel({
                 <ClubDetailMetric label="Confidence" value={`${selectedClub.trustScore}%`} />
               </div>
 
-              <section className="grid gap-3" aria-label="Selected club shot pattern">
-                <div className="flex items-center justify-between gap-3">
+              <section
+                className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3"
+                aria-label="Selected club shot pattern"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold">Shot pattern</p>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -258,7 +271,7 @@ export function ClubIntelligencePanel({
 
 function ClubDetailMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-h-24 bg-card p-3">
+    <div className="min-h-24 min-w-0 bg-card p-3 [overflow-wrap:anywhere]">
       <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
         {label}
       </p>
@@ -279,12 +292,17 @@ function ClubIntelligenceMetric({
   tone: Tone;
 }) {
   return (
-    <div className={cn("rounded-lg border px-3 py-2", metricToneClass(tone))}>
+    <div
+      className={cn(
+        "min-w-0 rounded-lg border px-3 py-2 [overflow-wrap:anywhere]",
+        metricToneClass(tone),
+      )}
+    >
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em]">{label}</p>
       <p className="mt-1 text-lg font-semibold leading-6 tracking-normal text-foreground">
         {value}
       </p>
-      {detail ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{detail}</p> : null}
+      {detail ? <p className="mt-0.5 text-xs text-muted-foreground">{detail}</p> : null}
     </div>
   );
 }
@@ -303,7 +321,7 @@ function ClubDispersionChart({ club }: { club: ClubIntelligenceItem }) {
   const chartTitle = `${club.label} dispersion`;
 
   return (
-    <div className="mt-3 grid gap-3">
+    <div className="mt-3 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
       <svg
         viewBox="0 0 360 160"
         className="h-44 w-full rounded-lg border border-border bg-card"

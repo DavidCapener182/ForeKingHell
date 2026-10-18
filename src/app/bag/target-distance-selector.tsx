@@ -314,7 +314,7 @@ function SummaryMetric({
   tone?: PlanTone;
 }) {
   return (
-    <div className="min-w-0 border-border px-4 first:pl-0 last:pr-0 sm:border-l sm:first:border-l-0">
+    <div className="min-w-0 border-border px-0 first:pl-0 last:pr-0 sm:border-l sm:px-4 sm:first:border-l-0">
       <p className="text-sm font-medium text-muted-foreground">{label}</p>
       <p className={`mt-1 text-base font-semibold ${planMetricSoftToneClasses[tone]}`}>{value}</p>
     </div>
@@ -378,14 +378,14 @@ export function TargetDistanceSelector({
   return (
     <section
       data-target-distance-selector
-      className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-sm"
+      className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-sm"
     >
-      <div className="flex flex-wrap items-center justify-between gap-4 px-6 pb-5 pt-6">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4 px-4 pb-5 pt-6 sm:px-6">
+        <div className="flex min-w-0 flex-wrap items-center gap-4">
           <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary ring-1 ring-border">
             <Target className="size-6" />
           </div>
-          <div>
+          <div className="min-w-0 flex-1 basis-48">
             <h2 className="text-2xl font-semibold tracking-normal text-foreground">
               Target distance selector
             </h2>
@@ -394,8 +394,8 @@ export function TargetDistanceSelector({
         </div>
       </div>
 
-      <div className="grid gap-6 px-6 pb-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.6fr)] lg:items-stretch xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.8fr)]">
-        <div className="relative min-h-[340px] overflow-hidden rounded-2xl border border-border bg-muted shadow-sm">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 px-4 pb-6 sm:px-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.6fr)] lg:items-stretch xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.8fr)]">
+        <div className="relative min-h-[340px] min-w-0 overflow-hidden rounded-2xl border border-border bg-muted shadow-sm">
           <Image
             src={TARGET_DISTANCE_IMAGE_SRC}
             alt=""
@@ -406,19 +406,19 @@ export function TargetDistanceSelector({
           />
           <div className="absolute inset-0 bg-gradient-to-b from-card/95 via-card/75 to-card/0" />
           <div className="absolute inset-x-0 top-0 h-[390px] bg-card/70 [mask-image:linear-gradient(to_bottom,black_0%,black_64%,transparent_100%)]" />
-          <div className="relative z-10 flex min-h-[340px] flex-col p-4">
+          <div className="relative z-10 flex min-h-[340px] min-w-0 flex-col p-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                 Hole / target
               </p>
-              <p className="mt-2 text-6xl font-semibold tracking-normal text-foreground">
+              <p className="mt-2 flex flex-wrap items-baseline gap-x-2 text-6xl font-semibold tracking-normal text-foreground">
                 {display(targetYd)}
-                <span className="ml-2 text-3xl text-muted-foreground">{unit}</span>
+                <span className="text-3xl text-muted-foreground">{unit}</span>
               </p>
             </div>
 
             <div
-              className="mt-7 grid w-full grid-cols-3 gap-3 sm:grid-cols-5"
+              className="mt-7 grid w-full grid-cols-[repeat(auto-fit,minmax(min(100%,5rem),1fr))] gap-3"
               aria-label="Target distance presets"
             >
               {TARGET_PRESETS.map((distance) => (
@@ -436,7 +436,7 @@ export function TargetDistanceSelector({
               ))}
             </div>
 
-            <Field className="mt-8 max-w-sm">
+            <Field className="mt-8 min-w-0 w-full max-w-sm">
               <FieldLabel htmlFor="target-distance-yards">Target distance ({unit})</FieldLabel>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <Button
@@ -503,8 +503,8 @@ export function TargetDistanceSelector({
           </div>
         </div>
 
-        <div className="flex min-h-[340px] flex-col gap-5">
-          <div className="flex flex-1 flex-col rounded-2xl border border-border bg-muted/20 p-7">
+        <div className="flex min-h-[340px] min-w-0 flex-col gap-5">
+          <div className="flex min-w-0 flex-1 flex-col break-words rounded-2xl border border-border bg-muted/20 p-4 sm:p-7">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-lg font-semibold text-primary">
@@ -523,7 +523,7 @@ export function TargetDistanceSelector({
               </Badge>
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-3 rounded-xl border border-border bg-card px-5 py-4 shadow-sm sm:grid-cols-4">
+            <div className="mt-6 grid grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-3 rounded-xl border border-border bg-card px-3 py-4 shadow-sm sm:px-5">
               <SummaryMetric
                 label="Planned total"
                 value={plan ? `${formatMetric(plan.expectedYd)} yd` : "--"}
@@ -553,18 +553,16 @@ export function TargetDistanceSelector({
                         prefetch={false}
                         className="min-w-0 flex-1 rounded-xl border border-border bg-card p-4 text-sm shadow-sm transition hover:border-primary/40 hover:shadow-md"
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="flex min-w-0 flex-1 basis-28 items-center gap-3">
                             <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                               {index + 1}
                             </span>
-                            <p className="truncate text-lg font-semibold text-foreground">
+                            <p className="min-w-0 text-lg font-semibold text-foreground">
                               <span className="block text-xs font-medium text-muted-foreground">
                                 {getShotLabel(shot.row, index, plan.shots.length)}
                               </span>
-                              <span className="block truncate">
-                                {formatClubType(shot.row.clubType)}
-                              </span>
+                              <span className="block">{formatClubType(shot.row.clubType)}</span>
                             </p>
                           </div>
                           <Badge variant="outline" className="shrink-0 bg-card px-3 py-1">
@@ -599,7 +597,7 @@ export function TargetDistanceSelector({
                   </p>
                   <div className="h-px flex-1 bg-border" />
                 </div>
-                <div className="mt-5 grid gap-4 sm:grid-cols-3">
+                <div className="mt-5 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 sm:grid-cols-3">
                   {alternatives.map((alternative) => {
                     const finalShot = alternative.shots[alternative.shots.length - 1];
                     const alternativeTone = getPlanTone(alternative);
@@ -609,12 +607,12 @@ export function TargetDistanceSelector({
                         key={alternative.routeKey}
                         href={`/bag/${finalShot.row.id}`}
                         prefetch={false}
-                        className="rounded-xl border border-border bg-card p-5 text-sm shadow-sm transition hover:border-primary/40 hover:shadow-md"
+                        className="min-w-0 rounded-xl border border-border bg-card p-5 text-sm shadow-sm transition hover:border-primary/40 hover:shadow-md"
                       >
                         <p className="truncate text-xl font-semibold text-foreground">
                           {formatRouteTitle(alternative)}
                         </p>
-                        <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,4rem),1fr))] gap-3">
                           <div>
                             <p className="text-xs font-medium uppercase tracking-[0.1em] text-muted-foreground">
                               Total
@@ -654,9 +652,9 @@ export function TargetDistanceSelector({
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-5 py-4 shadow-sm">
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <Lightbulb className="size-5 text-primary" />
-              <p>
+            <div className="flex min-w-0 items-center gap-3 text-sm text-muted-foreground">
+              <Lightbulb className="size-5 shrink-0 text-primary" />
+              <p className="min-w-0 [overflow-wrap:anywhere]">
                 <span className="font-semibold text-foreground">Tip:</span> Wind, elevation and lie
                 can affect distances. Review your conditions before committing.
               </p>

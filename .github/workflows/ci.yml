@@ -201,7 +201,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Core companion suite
-        run: npx playwright test tests/e2e/ci-core.spec.ts --project=chromium
+        run: npx playwright test tests/e2e/ci-core.spec.ts tests/e2e/bag-mobile-overflow.spec.ts --project=chromium
 
       - name: Upload Playwright diagnostics
         if: failure()
