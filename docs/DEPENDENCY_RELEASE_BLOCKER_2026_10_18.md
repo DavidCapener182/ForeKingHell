@@ -1,10 +1,18 @@
-# Existing dependency release blocker — 18 October 2026
+# Dependency release repair — 18 October 2026
 
-## Exact gate and baseline
+## Current status
 
-The repository release gate `node scripts/dependency-audit.mjs` exits **1**. It does not permit high/critical findings outside its narrowly scoped exception. The existing braces exception expired on 10 October 2026 and has not been extended.
+David approved the dedicated dependency repair on 18 October 2026. The repaired graph passes the unchanged gate with **0 high and 0 critical findings**; npm still reports 11 moderate findings. No exception, scanner policy or CI threshold was relaxed. The baseline diagnosis and approval plan below are retained as historical context.
 
-This was independently reproduced using untouched `package.json` and `package-lock.json` extracted from remote main `bb43ba147ef5ff53334692f1ad375ff7c9d624f5`, with `npm audit --package-lock-only --json`. No dependencies were installed for that baseline audit. The working lockfile and main lockfile have identical Git blob identity `5bc6cb85e58d0636a84d51b58f875a117c0beab3`. This upgrade changes neither package files nor audit policy/workflows.
+The bounded repair removes the unused shadcn development CLI, preserves its MIT-licensed Tailwind CSS locally, patches sharp to 0.35.5 and source-map-js to 1.2.2, and replaces only pinned Next ESLint's directory-glob dependency with the reviewed local adapter. Its source/archive identity and upstream caller are checked. All 234 original directory fixtures and 35 original Next diagnostics remain unchanged; additional missing-parent normalization and hidden-symlink regressions preserve lint coverage. Independent review identified those two edge cases and both were corrected. Excessive glob nesting/expansion fails explicitly rather than silently dropping roots.
+
+The pre/post lint profiles and diagnostic probes match byte-for-byte for every previously tracked file. The added tooling and tests use the existing profiles; no original file lost rules or lint coverage. Preserved shadcn CSS has identical canonical parser output to the original package stylesheet after formatting. Focused image decoding and scorecard tests pass. The secret scanner finds no candidate or feature secrets, and detects a deliberately invalid synthetic positive control. No PR101 product or migration work was merged.
+
+## Historical gate and baseline
+
+Before remediation, the repository release gate `node scripts/dependency-audit.mjs` exited **1**. It does not permit high/critical findings outside its narrowly scoped exception. The existing braces exception expired on 10 October 2026 and has not been extended.
+
+This was independently reproduced using untouched `package.json` and `package-lock.json` extracted from remote main `bb43ba147ef5ff53334692f1ad375ff7c9d624f5`, with `npm audit --package-lock-only --json`. No dependencies were installed for that baseline audit. At baseline, the working lockfile and main lockfile had identical Git blob identity `5bc6cb85e58d0636a84d51b58f875a117c0beab3`. The initial feature checkpoint changed neither package files nor audit policy/workflows; the separately approved repair changes package files only.
 
 The clean-main report contains **27 findings: 15 moderate, 11 high, 1 critical**. These are advisory/dependency findings, not proof that every package is reachable in the deployed application.
 
