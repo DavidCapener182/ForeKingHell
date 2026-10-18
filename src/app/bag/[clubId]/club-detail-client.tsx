@@ -158,8 +158,13 @@ export function ClubDetailClient({
     contexts.find((g) => g.id === query.get("evidenceContext")) ??
     contexts.find((g) => g.context.intent === "full") ??
     contexts[0];
-  const scopedIntelligence =
-    intelligence && evidenceContext ? { ...intelligence, groups: [evidenceContext] } : intelligence;
+  const scopedIntelligence = useMemo(
+    () =>
+      intelligence && evidenceContext
+        ? { ...intelligence, groups: [evidenceContext] }
+        : intelligence,
+    [intelligence, evidenceContext],
+  );
   const contextShotIds = useMemo(
     () => (evidenceContext ? new Set(evidenceContext.observationIds) : null),
     [evidenceContext],
