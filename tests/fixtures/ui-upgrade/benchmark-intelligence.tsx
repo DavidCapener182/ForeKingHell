@@ -80,6 +80,9 @@ const rows = buildClubBenchmarkRows([
       clubSpeedMph: {
         validCount: 18,
         selectedCount: 30,
+        measuredCount: 12,
+        estimatedCount: 6,
+        excludedNumericCount: 12,
         shotIds: selected.slice(0, 18),
         method: "Synthetic measured values on carry-selected shots",
       },
@@ -95,6 +98,15 @@ const rows = buildClubBenchmarkRows([
     eligibleCount: 12,
     savedShotCount: 12,
     metrics: { carryYd: 155 },
+    metricEvidence: {
+      maxHeightYd: {
+        validCount: 0,
+        selectedCount: 12,
+        excludedNumericCount: 12,
+        shotIds: [],
+        method: "Synthetic stored height with unresolved source units",
+      },
+    },
   },
 ]);
 const labels = { "fixture-driver": "Driver", "fixture-iron": "7 iron" };

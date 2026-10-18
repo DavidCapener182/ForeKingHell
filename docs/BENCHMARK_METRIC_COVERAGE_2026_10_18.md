@@ -1,0 +1,9 @@
+# Benchmark metric coverage correction
+
+The benchmark references were present, but personal club-speed readings were incorrectly excluded. The performance adapter treated every non-empty historical Rapsodo estimation flag as unknown, including the established measured (`0`) and estimated (`1`) codes. It now reuses the existing provider-specific mapping. Explicit unknown, invalid, unavailable or malformed provenance remains excluded; a legacy flag cannot override it. Ball speed is never substituted for club speed.
+
+Height coverage is distinct. A stored `apexFt` number alone does not establish the original source unit. Unitless legacy Apex readings remain ineligible. Explicit peak-height labels are recognised across supported unit spellings and must numerically agree with the canonical stored feet value before comparison. Equivalent explicit units and legacy TrackMan aliases are supported; impact height, conflicting values and unresolved provenance are rejected. Historical JSON-encoded source objects are decoded in memory without rewriting stored rows.
+
+The existing carry-selected cohort remains unchanged. Per-metric evidence now discloses measured/estimated counts and stored numeric readings excluded from comparison. Missing personal readings are distinguished from ineligible stored readings and from independently available reference bands. All metrics respect explicit invalid, unavailable and unknown provenance.
+
+Regression tests cover recognised and unrecognised flags, explicit provenance precedence, malformed metadata, encoded source records, source-unit verification, TrackMan aliases, no double conversion and unchanged selected shot IDs. Browser checks exercise disclosures on mobile and desktop, alongside the populated Bag responsiveness matrix. The diagnosis used owner-scoped read-only aggregate queries; no reimport, database mutation or session deletion was required.

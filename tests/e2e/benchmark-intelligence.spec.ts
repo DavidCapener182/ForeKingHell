@@ -71,7 +71,7 @@ test("synthetic benchmark intelligence: modes, honest cohorts, keyboard and resp
     console.error("Fixture browser error:", error.message);
   });
   mkdirSync("output/benchmark-intelligence", { recursive: true });
-  for (const width of [390, 768, 1440, 1920]) {
+  for (const width of [320, 390, 768, 1440, 1920]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto("https://benchmark-intelligence.fixture/bag");
     await page.addStyleTag({ content: css.css });
@@ -95,6 +95,43 @@ test("synthetic benchmark intelligence: modes, honest cohorts, keyboard and resp
     await expect(page.locator("main")).toContainText("Advanced");
     await page.getByRole("tab", { name: "Club speed", exact: true }).click();
     await expect(page.locator("main")).toContainText("18 valid / 30 selected");
+    await expect(page.locator("main")).toContainText("12 measured · 6 estimated");
+    await expect(page.locator("main")).toContainText(
+      "Stored readings excluded: metric provenance does not support comparison.",
+    );
+    await page.getByRole("tab", { name: "Height", exact: true }).click();
+    await expect(page.locator("main")).toContainText("Needs comparable height");
+    await expect(page.locator("main")).toContainText(
+      "Stored height excluded: units or provenance do not support comparison.",
+    );
+    await expect(page.locator("main")).toContainText("12 numeric readings excluded");
+    if (width < 640) {
+      const height = page.getByRole("region", { name: "Max height by club", exact: true });
+      await height.getByRole("button", { name: "Next slide", exact: true }).click();
+      const card = height.locator('[data-slot="carousel-item"]').last();
+      await expect(card).toContainText("Stored height excluded");
+      await expect
+        .poll(async () => {
+          const frame = await height.locator('[data-slot="carousel-content"]').boundingBox();
+          const bounds = await card.locator(":scope > *").first().boundingBox();
+          return (
+            !!frame &&
+            !!bounds &&
+            bounds.x >= frame.x - 1 &&
+            bounds.x + bounds.width <= frame.x + frame.width + 1
+          );
+        })
+        .toBe(true);
+      expect(
+        await card
+          .locator("p,[data-slot=badge]")
+          .evaluateAll((elements) =>
+            elements
+              .filter((element) => element.scrollWidth > element.clientWidth + 1)
+              .map((element) => element.textContent),
+          ),
+      ).toEqual([]);
+    }
 
     await view.getByRole("button", { name: "Benchmarks", exact: true }).focus();
     await page.keyboard.press("Tab");

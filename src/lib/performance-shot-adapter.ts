@@ -1,4 +1,6 @@
 import type { PerformanceShot, MetricStatus } from "@/lib/performance-intelligence";
+import { clubSpeedMeasurementTrust } from "@/lib/club-speed-evidence";
+import { normaliseSourceRawJson } from "@/lib/source-raw-json";
 import { directionIsUsable, type SessionDataConfidence } from "@/lib/session-data-confidence";
 
 export type PerformanceSourceRow = {
@@ -19,7 +21,7 @@ export type PerformanceSourceRow = {
   qualityTag: string | null;
   reviewStatus: string;
   clubDataEstType: string | null;
-  sourceRawJson: Record<string, string>;
+  sourceRawJson: Record<string, string> | string;
   dataConfidence: SessionDataConfidence;
 };
 export type PerformanceEquipmentPeriod = {
@@ -35,7 +37,7 @@ export function performanceSourceContext(
   row: PerformanceSourceRow,
   equipment: PerformanceEquipmentPeriod[] = [],
 ): PerformanceShot {
-  const raw = row.sourceRawJson;
+  const raw = normaliseSourceRawJson(row.sourceRawJson);
   const field = (...keys: string[]) => {
     for (const key of keys) {
       const value = raw[key]?.trim();
@@ -74,11 +76,15 @@ export function performanceSourceContext(
   const metricStatus: Partial<
     Record<"carryYd" | "ballSpeedMph" | "clubSpeedMph" | "sideCarryYd", MetricStatus>
   > = {};
+  const metrics = ["carryYd", "ballSpeedMph", "clubSpeedMph", "sideCarryYd"] as const;
+  const unresolvedProvenance = () => {
+    for (const metric of metrics) metricStatus[metric] = "unknown";
+  };
   try {
     const metadata: unknown = raw.__lmwtMetricProvenance
       ? JSON.parse(raw.__lmwtMetricProvenance)
       : null;
-    if (metadata && typeof metadata === "object") {
+    if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
       const statuses = new Set<MetricStatus>([
         "measured",
         "estimated",
@@ -88,7 +94,8 @@ export function performanceSourceContext(
         "unavailable",
         "invalid",
       ]);
-      for (const metric of ["carryYd", "ballSpeedMph", "clubSpeedMph", "sideCarryYd"] as const) {
+      for (const metric of metrics) {
+        if (!Object.hasOwn(metadata, metric)) continue;
         const reading: unknown = (metadata as Record<string, unknown>)[metric];
         if (
           reading &&
@@ -97,13 +104,20 @@ export function performanceSourceContext(
           statuses.has(reading.status as MetricStatus)
         )
           metricStatus[metric] = reading.status as MetricStatus;
+        else metricStatus[metric] = "unknown";
       }
-    }
+    } else if (Object.hasOwn(raw, "__lmwtMetricProvenance")) unresolvedProvenance();
   } catch {
-    /* Historical/malformed metadata does not invent measurement certainty. */
+    // An unreadable explicit record cannot be replaced with weaker legacy certainty.
+    unresolvedProvenance();
   }
-  // Estimation codes without a verified adapter mapping must never become measured evidence.
-  if (row.clubDataEstType && !metricStatus.clubSpeedMph) metricStatus.clubSpeedMph = "unknown";
+  // Older Rapsodo imports predate per-metric JSON but retain the manufacturer's
+  // club-data flag. Reuse the same documented mapping as the CSV adapter; never
+  // replace an explicit metric status or apply Rapsodo codes to another provider.
+  if (row.clubDataEstType && !metricStatus.clubSpeedMph) {
+    metricStatus.clubSpeedMph =
+      row.source === "rapsodo" ? clubSpeedMeasurementTrust(row.clubDataEstType) : "unknown";
+  }
   return {
     id: row.id,
     clubId: row.clubId,
