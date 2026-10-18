@@ -272,3 +272,26 @@ it("does not prescribe a lateral gain from one reading beside many carry shots",
   expect(recommendation.successCriterion).not.toContain("27.0");
   expect(recommendation.limitations.join(" ")).toContain("Directional evidence is sparse");
 });
+
+it("excludes explicitly unknown measurements while retaining independent metrics and legacy evidence", () => {
+  const unknownCarry = shot("unknown-carry", {
+    carryYd: 999,
+    metricStatus: { carryYd: "unknown", ballSpeedMph: "measured" },
+  });
+  const unknownSpeed = shot("unknown-speed", {
+    carryYd: 200,
+    clubSpeedMph: 999,
+    metricStatus: { carryYd: "measured", clubSpeedMph: "unknown" },
+  });
+  const legacy = shot("legacy", { carryYd: 180 });
+  expect(performanceMetricValue(unknownCarry, "carryYd")).toBeNull();
+  expect(performanceMetricValue(unknownCarry, "ballSpeedMph")).toBe(130);
+  expect(performanceMetricValue(unknownSpeed, "clubSpeedMph")).toBeNull();
+  expect(performanceMetricValue(legacy, "carryYd")).toBe(180);
+  const group = analyze([unknownCarry, unknownSpeed, legacy]);
+  expect(group.potential.shotIds).toEqual(["unknown-speed", "legacy"]);
+  expect(group.potential.meanYd).toBe(190);
+  expect(group.current.stockCarryYd).toBe(190);
+  expect(group.current.metricCounts.clubSpeedMph).toBe(2);
+  expect(unknownCarry.carryYd).toBe(999);
+});

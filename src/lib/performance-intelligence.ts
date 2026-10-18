@@ -169,7 +169,9 @@ export function performanceObservationExclusionReason(
 }
 export function performanceMetricValue(shot: PerformanceShot, metric: PerformanceMetric) {
   const status = shot.metricStatus?.[metric];
-  if (status === "invalid" || status === "unavailable") return null;
+  // Explicitly unresolved units/flags cannot support a numerical claim.
+  // Missing legacy provenance remains usable as weak, disclosed evidence.
+  if (status === "invalid" || status === "unavailable" || status === "unknown") return null;
   if (metric === "sideCarryYd" && shot.directionUsable === false) return null;
   const value = shot[metric];
   return finite(value) && (metric === "sideCarryYd" || value > 0) ? value : null;

@@ -1,3 +1,5 @@
+import { benchmarkMilestones, benchmarkSessionHistory } from "@/lib/benchmark-milestones";
+import { loadBagBenchmarkMode } from "@/app/bag/bag-benchmark-mode";
 import { BagClubViews, BagVisualLayers } from "@/app/bag/bag-visual-controls";
 import { StockSampleReview } from "@/app/bag/stock-sample-review";
 import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
@@ -95,6 +97,8 @@ import {
   type WedgeMatrixShot,
 } from "@/lib/bag-intelligence";
 import {
+  CLUB_BENCHMARK_CARRY_SAMPLE_SIZE,
+  buildClubBenchmarkRows,
   type ClubBenchmarkMetricKey,
   type ClubBenchmarkMetricValues,
   type ClubBenchmarkPeerComparison,
@@ -261,6 +265,7 @@ function parseBagWorkspaceTab(value: string | string[] | undefined): BagWorkspac
 
 const STICKY_BAG_SUMMARY_TYPES = ["driver", "5w", "7i", "pw", "sw"] as const;
 const EVOLUTION_SHOTS_PER_CLUB = 1200;
+const BENCHMARK_CARRY_CANDIDATE_SIZE = CLUB_BENCHMARK_CARRY_SAMPLE_SIZE * 2;
 
 const bagShotSelect = {
   sessionCreatedAt: sessions.createdAt,
@@ -319,7 +324,7 @@ async function BagWorkbenchPage({
   );
   const peerBenchmarksLoaded = shouldLoadPeerBenchmarks(resolvedSearchParams.peers);
   const [
-    loadedBag,
+    benchmarkMode,
     profile,
     featureData,
     speedSummary,
@@ -327,9 +332,26 @@ async function BagWorkbenchPage({
     quickBagClubs,
     accountId,
     preferences,
-    performanceEvidence,
   ] = await Promise.all([
-    getBag(),
+    loadBagBenchmarkMode({
+      enabled: benchmarkIntelligenceEnabled(),
+      loadBag: getBag,
+      loadEvidence: getPerformanceEvidenceData,
+      applyEvidence: (legacyBag, evidence) =>
+        legacyBag.map((club) => ({
+          ...club,
+          stock: comparableBagStock(
+            club.id,
+            evidence.intelligence,
+            evidence.observations,
+            club.personalBest.carryYd,
+          ),
+          stockTrend: null,
+        })),
+      buildLegacyRows: buildBenchmarkRows,
+      buildEvidenceRows: (bag, evidence) =>
+        buildEvidenceBenchmarkRows(bag, evidence.intelligence, evidence.observations),
+    }),
     ensureCurrentSocialProfile(),
     getFeatureIdeasData(),
     getBagSpeedSummary(),
@@ -337,18 +359,8 @@ async function BagWorkbenchPage({
     getMobileQuickBag(),
     requireCurrentUserId(),
     getCurrentUserPreferences(),
-    getPerformanceEvidenceData(),
   ]);
-  const bag = loadedBag.map((club) => ({
-    ...club,
-    stock: comparableBagStock(
-      club.id,
-      performanceEvidence.intelligence,
-      performanceEvidence.observations,
-      club.personalBest.carryYd,
-    ),
-    stockTrend: null,
-  }));
+  const { bag, benchmarkRows, intelligence } = benchmarkMode;
   const gappingRows = buildGappingRows(bag, {
     handicapBand: profile.handicapBand,
   });
@@ -361,11 +373,6 @@ async function BagWorkbenchPage({
   const shotPatternOverlays = buildShotPatternOverlaySummaries(bag);
   const confidenceHeatMaps = buildConfidenceHeatMaps(bag);
   const targetDistanceRows = buildTargetDistanceRows(bag, gappingRows);
-  const benchmarkRows = buildEvidenceBenchmarkRows(
-    bag,
-    performanceEvidence.intelligence,
-    performanceEvidence.observations,
-  );
   const peerBenchmarkSummary =
     benchmarkRows.length > 0 && peerBenchmarksLoaded
       ? await getPeerBenchmarkSummary(benchmarkRows)
@@ -579,11 +586,7 @@ async function BagWorkbenchPage({
                         {benchmarkRows.length > 0 ? (
                           <BenchmarkReferencePanel
                             rows={benchmarkRows}
-                            intelligence={
-                              benchmarkIntelligenceEnabled()
-                                ? performanceEvidence.intelligence
-                                : undefined
-                            }
+                            intelligence={intelligence}
                             clubLabels={Object.fromEntries(
                               bag.map((club) => [club.id, formatClubType(club.type)]),
                             )}
@@ -2666,6 +2669,82 @@ function gapWindowInput(row: GappingRow) {
 
 function formatGap(value: number | null) {
   return value === null ? "--" : `${numberFormatter.format(value)} yd`;
+}
+
+function buildBenchmarkRows(bag: BagClub[]): ClubBenchmarkRow[] {
+  return buildClubBenchmarkRows(
+    bag.map((club) => {
+      const { filteredShots: benchmarkCandidates } = selectStockYardageShots(
+        club.evolutionShots,
+        EVOLUTION_SHOTS_PER_CLUB,
+        {
+          clubType: club.type,
+          averageSampleSize: BENCHMARK_CARRY_CANDIDATE_SIZE,
+        },
+      );
+      const benchmarkShots = benchmarkCandidates.slice(0, CLUB_BENCHMARK_CARRY_SAMPLE_SIZE);
+      const sampleCarryYards = benchmarkShots.map((shot) => shot.carryYd).filter(isFiniteMetric);
+      const carryYd = averageBenchmarkMetric(benchmarkShots, (shot) => shot.carryYd);
+
+      return {
+        clubId: club.id,
+        clubType: club.type,
+        brandModel: club.brandModel,
+        carryYd,
+        bestSampleFloorYd:
+          sampleCarryYards.length === 0 ? null : roundOneNumber(Math.min(...sampleCarryYards)),
+        sampleSize: benchmarkShots.length,
+        reviewedShotCount: club.evolutionShots.length,
+        savedShotCount: club.rawShotCount,
+        sampleCarryYards,
+        confidenceScore: club.stock.confidenceScore,
+        milestones: benchmarkMilestones(
+          club.type,
+          benchmarkSessionHistory(club.evolutionShots).flatMap(
+            ({ sessionId, date, sequence, shots: historicalShots }) => {
+              const { filteredShots } = selectStockYardageShots(
+                historicalShots,
+                EVOLUTION_SHOTS_PER_CLUB,
+                { clubType: club.type, averageSampleSize: BENCHMARK_CARRY_CANDIDATE_SIZE },
+              );
+              const sample = filteredShots.slice(0, CLUB_BENCHMARK_CARRY_SAMPLE_SIZE);
+              const average = averageBenchmarkMetric(sample, (shot) => shot.carryYd);
+              return average === null
+                ? []
+                : [
+                    {
+                      sessionId,
+                      date,
+                      sequence,
+                      carryYd: average,
+                      sampleSize: sample.length,
+                    },
+                  ];
+            },
+          ),
+        ),
+        metrics: buildBenchmarkMetricValues(benchmarkShots, carryYd),
+      };
+    }),
+  );
+}
+
+function buildBenchmarkMetricValues(
+  benchmarkShots: BagClub["evolutionShots"],
+  carryYd: number | null,
+): ClubBenchmarkMetricValues {
+  return {
+    carryYd,
+    clubSpeedMph: averageBenchmarkMetric(benchmarkShots, (shot) => shot.clubSpeedMph),
+    ballSpeedMph: averageBenchmarkMetric(benchmarkShots, (shot) => shot.ballSpeedMph),
+    smashFactor: averageBenchmarkMetric(benchmarkShots, (shot) => shot.smashFactor, 2),
+    maxHeightYd: averageBenchmarkMetric(
+      benchmarkShots,
+      (shot) => (shot.apexFt === null || shot.apexFt === undefined ? null : shot.apexFt / 3),
+      1,
+    ),
+    landAngleDeg: averageBenchmarkMetric(benchmarkShots, (shot) => shot.descentAngleDeg),
+  };
 }
 
 async function getPeerBenchmarkSummary(

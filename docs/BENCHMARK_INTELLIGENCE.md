@@ -24,7 +24,7 @@ The existing `practice-planner.ts` continues to generate, save and match plans; 
 
 This additive release does not require a database migration and performs no session import or historical data rewrite. Original source records, user exclusions, imported sessions and earned achievements are preserved. Existing saved plans remain readable; a legacy plan without frozen baseline evidence is explicitly limited.
 
-The interface can be disabled using `BENCHMARK_INTELLIGENCE_ENABLED=0` on the server. This hides the new panels while retaining existing benchmarks and stored evidence. Reverting the release commit restores the previous application without deleting user data. New saved JSON fields are additive.
+The evidence interface can be disabled using `BENCHMARK_INTELLIGENCE_ENABLED=0` on the server. This skips the Bag performance-evidence query and replacements, retaining the existing Bag stock, trend, gapping inputs and legacy benchmark rows; selected-club evidence panels are also hidden. Stored evidence is retained. Explicitly unknown metric provenance is excluded from numerical claims, while absent legacy provenance remains disclosed as weak evidence. Reverting the release commit restores the previous application without deleting user data. New saved JSON fields are additive.
 
 ## Reference interpretation
 

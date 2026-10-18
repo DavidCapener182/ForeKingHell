@@ -358,7 +358,7 @@ describe("bag desktop workbench source", () => {
       join(process.cwd(), "src/lib/benchmark-evidence.ts"),
       "utf8",
     );
-    expect(source).toContain("getPerformanceEvidenceData()");
+    expect(source).toContain("loadEvidence: getPerformanceEvidenceData");
     expect(source).toContain("buildEvidenceBenchmarkRows(");
     expect(benchmarkBuilder).toContain("group?.potential.shotIds");
     expect(benchmarkBuilder).toContain("selectedShotIds: selected.map((s) => s.id)");

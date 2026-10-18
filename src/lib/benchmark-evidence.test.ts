@@ -65,3 +65,18 @@ describe("live Bag evidence assembly (synthetic fixtures)", () => {
     expect(benchmarkObservationMetric({ ...shot(0), carryYd: null }, "clubSpeedMph")).toBe(90);
   });
 });
+
+it("cannot turn explicitly unknown carry or speed provenance into a benchmark claim", () => {
+  const rows: BenchmarkObservation[] = [
+    { ...shot(0), carryYd: 999, metricStatus: { carryYd: "unknown" } },
+    { ...shot(1), carryYd: 200, clubSpeedMph: 999, metricStatus: { clubSpeedMph: "unknown" } },
+    { ...shot(2), carryYd: 180, clubSpeedMph: 90 },
+  ];
+  const intelligence = buildPerformanceIntelligence(rows, { asOf });
+  const [result] = buildEvidenceBenchmarkRows([club], intelligence, rows);
+  expect(result!.selectedShotIds).toEqual([rows[1]!.id, rows[2]!.id]);
+  expect(result!.carryYd).toBe(190);
+  expect(result!.metrics!.clubSpeedMph).toBe(90);
+  expect(result!.metricEvidence!.clubSpeedMph!.validCount).toBe(1);
+  expect(result!.metricEvidence!.clubSpeedMph!.selectedCount).toBe(2);
+});
