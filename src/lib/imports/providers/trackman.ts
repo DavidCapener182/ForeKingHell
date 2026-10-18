@@ -1,3 +1,5 @@
+import { normalizeMetricReading, type MetricUnit } from "@/lib/metric-provenance";
+import { normalizeHeader, numberFromCell, parseDelimitedRows } from "@/lib/imports/providers/types";
 import type {
   LaunchMonitorProvider,
   NormalizedMetric,
@@ -48,11 +50,50 @@ export const trackmanProvider: LaunchMonitorProvider = {
     });
   },
   async parse(input: ProviderInput) {
-    return parseGenericLaunchMonitorCsv(input, {
+    const aliases = { ...metricAliases };
+    const headers =
+      parseDelimitedRows(input.text).find((row) =>
+        row.some((cell) => /^(?:height|apex|max ?height)\b/i.test(cell.trim())),
+      ) ?? [];
+    const apexHeaders = headers.filter((header) =>
+      /^(?:height|apex|max ?height)\b/i.test(header.trim()),
+    );
+    for (const header of apexHeaders) aliases[normalizeHeader(header)] = "apex_feet";
+    const session = parseGenericLaunchMonitorCsv(input, {
       providerKind: "trackman",
       headerHints: ["club", "carry", "ballspeed", "launchangle", "spinrate"],
-      metricAliases,
+      metricAliases: aliases,
     });
+    for (const shot of session.shots) {
+      const header = apexHeaders[0];
+      if (!header) continue;
+      const unit: MetricUnit = /\b(ft|feet|foot)\b/i.test(header)
+        ? "ft"
+        : /\b(yd|yds|yard|yards)\b/i.test(header)
+          ? "yd"
+          : /\b(m|meter|meters|metres)\b/i.test(header)
+            ? "m"
+            : "unknown";
+      const apex = normalizeMetricReading({
+        metric: "apexYd",
+        value: numberFromCell(shot.raw[header]),
+        unit,
+        status: "measured",
+        source: "trackman-csv",
+        adapterVersion: "trackman-csv-v2",
+        observationId: `row:${shot.rowNumber}`,
+      });
+      shot.raw.__lmwtMetricProvenance = JSON.stringify({ apexYd: apex });
+      if (apex.value === null) {
+        delete shot.metrics.apex_feet;
+        const warning = `Row ${shot.rowNumber}: Apex unit is unknown or invalid; raw height is retained and comparisons are unavailable.`;
+        shot.warnings.push(warning);
+        session.warnings.push(warning);
+      } else {
+        shot.metrics.apex_feet = apex.value * 3;
+      }
+    }
+    return session;
   },
   mapClub(rawClub: string | null) {
     return rawClub?.trim().toLowerCase().replace(/\s+/g, "-") || "unknown";

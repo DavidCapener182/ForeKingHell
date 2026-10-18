@@ -1,3 +1,4 @@
+import { BENCHMARK_REFERENCE_VERSION, BENCHMARK_CALCULATION_VERSION } from "./benchmark-registry";
 import { compareClubCarryToBenchmark, type ClubBenchmarkRow } from "./club-benchmarks";
 
 export type BenchmarkMilestone = {
@@ -9,6 +10,9 @@ export type BenchmarkMilestone = {
   carryYd: number;
   sampleSize: number;
   sequence?: number;
+  referenceVersion?: string;
+  calculationVersion?: string;
+  confirmed?: boolean;
 };
 
 /** Reconstruct promotions from saved evidence; the first snapshot is a baseline. */
@@ -39,6 +43,9 @@ export function benchmarkMilestones(
       milestones.push({
         ...snapshot,
         id: `${snapshot.sessionId}:${comparison.levelKey}`,
+        referenceVersion: BENCHMARK_REFERENCE_VERSION,
+        calculationVersion: BENCHMARK_CALCULATION_VERSION,
+        confirmed: snapshot.sampleSize >= 30,
         from: previousLabel,
         to: comparison.levelLabel,
       });

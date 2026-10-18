@@ -1,5 +1,6 @@
 "use client";
 
+import { quickBagMissLabel } from "./quick-bag-miss-label";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { yardsToDisplay, distanceUnitLabel, type DistanceUnitPreference } from "@/lib/units";
@@ -56,11 +57,15 @@ export function QuickBagClubDrawer({
               />
             </div>
 
-            <LateralDispersionGraphic club={club} />
+            <LateralDispersionGraphic club={club} units={preferredUnits} />
 
             <dl className="grid gap-0 overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
               <EvidenceRow label="Measured range" value={rangeLabel(club, preferredUnits)} />
-              <EvidenceRow label="Common miss" value={missLabel(club)} divided />
+              <EvidenceRow
+                label="Common miss"
+                value={quickBagMissLabel(club, preferredUnits)}
+                divided
+              />
               <EvidenceRow
                 label="Sample"
                 value={
@@ -124,7 +129,13 @@ function EvidenceRow({
   );
 }
 
-function LateralDispersionGraphic({ club }: { club: QuickBagClub }) {
+function LateralDispersionGraphic({
+  club,
+  units,
+}: {
+  club: QuickBagClub;
+  units: DistanceUnitPreference;
+}) {
   const low = club.lateralLowYd;
   const high = club.lateralHighYd;
   const median = club.medianLateralYd;
@@ -136,7 +147,7 @@ function LateralDispersionGraphic({ club }: { club: QuickBagClub }) {
     <figure
       className="rounded-2xl bg-muted/55 p-4"
       role="img"
-      aria-label={`${club.label} lateral dispersion. ${missLabel(club)}.`}
+      aria-label={`${club.label} lateral dispersion. ${quickBagMissLabel(club, units)}.`}
     >
       <div className="flex items-baseline justify-between gap-3">
         <figcaption className="font-semibold">Lateral dispersion</figcaption>
@@ -169,7 +180,7 @@ function LateralDispersionGraphic({ club }: { club: QuickBagClub }) {
           Right
         </span>
       </div>
-      <p className="mt-2 text-sm font-medium">{missLabel(club)}</p>
+      <p className="mt-2 text-sm font-medium">{quickBagMissLabel(club, units)}</p>
     </figure>
   );
 }
@@ -184,12 +195,6 @@ function rangeLabel(club: QuickBagClub, units: DistanceUnitPreference) {
   return club.lowYd === null || club.highYd === null
     ? "Not measured"
     : `${Math.round(yardsToDisplay(Math.min(club.lowYd, club.highYd), units))}–${Math.round(yardsToDisplay(Math.max(club.lowYd, club.highYd), units))} ${distanceUnitLabel(units)}`;
-}
-
-function missLabel(club: QuickBagClub) {
-  if (club.typicalMiss) return club.typicalMiss;
-  if (club.widerSide) return `Wider ${club.widerSide}`;
-  return "Not established";
 }
 
 function formatEvidenceDate(value: string | null) {

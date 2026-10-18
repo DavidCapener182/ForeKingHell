@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { trackmanProvider } from "@/lib/imports/providers/trackman";
 
 import { detectLaunchMonitorProvider, launchMonitorProviders } from "@/lib/imports/providers";
 
@@ -40,6 +41,23 @@ describe("launch monitor provider adapters", () => {
       ball_speed_mph: 118.7,
       launch_angle_deg: 17.2,
     });
+  });
+
+  it.each([
+    ["Height (ft)", 90],
+    ["Height (yd)", 270],
+    ["Height (m)", 295.2755905511811],
+    ["Height", undefined],
+  ])("requires explicit TrackMan height units: %s", async (header, expectedFeet) => {
+    const result = await trackmanProvider.parse({
+      fileName: "trackman.csv",
+      text: `Club,Carry,Ball Speed,${header}\nDriver,220,135,90`,
+    });
+    if (expectedFeet === undefined) {
+      expect(result.shots[0].metrics.apex_feet).toBeUndefined();
+      expect(result.warnings.join(" ")).toContain("unit is unknown");
+    } else expect(result.shots[0].metrics.apex_feet).toBeCloseTo(expectedFeet, 6);
+    expect(result.shots[0].raw[header]).toBe("90");
   });
 
   it("detects and normalises a TrackMan-style file", async () => {

@@ -52,7 +52,12 @@ export function PeopleDirectory({
   const mobile = (
     <div className="grid gap-4">
       {groups.map((group) => (
-        <section key={group.label} className="grid gap-2" aria-labelledby={group.mobileHeadingId}>
+        <section
+          key={group.label}
+          className="grid gap-2"
+          aria-labelledby={group.showLabel ? group.mobileHeadingId : undefined}
+          aria-label={group.showLabel ? undefined : group.label}
+        >
           {group.showLabel ? (
             <h3
               id={group.mobileHeadingId}
@@ -66,7 +71,7 @@ export function PeopleDirectory({
           ))}
         </section>
       ))}
-      {rows.length === 0 ? <DirectoryEmptyState activeTab={activeTab} /> : null}
+      {rows.length === 0 ? <DirectoryEmptyState activeTab={activeTab} query={query} /> : null}
     </div>
   );
 
@@ -110,6 +115,14 @@ export function PeopleDirectory({
         </span>
       </div>
 
+      {activeTab === "discover" &&
+      query &&
+      !rows.some((row) => row.section === "results") &&
+      rows.length > 0 ? (
+        <p role="status" className="rounded-lg border p-3 text-sm text-muted-foreground">
+          No golfers match “{query}”. Recommended golfers are listed separately below.
+        </p>
+      ) : null}
       <div className={boardStyles.desktop}>
         <DataTableFrame
           mainTable
@@ -158,7 +171,7 @@ export function PeopleDirectory({
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="p-4">
-                    <DirectoryEmptyState activeTab={activeTab} />
+                    <DirectoryEmptyState activeTab={activeTab} query={query} />
                   </TableCell>
                 </TableRow>
               )}
@@ -269,14 +282,24 @@ function PeopleActionMenuForRow({
   );
 }
 
-function DirectoryEmptyState({ activeTab }: { activeTab: FriendsTab }) {
+function DirectoryEmptyState({ activeTab, query }: { activeTab: FriendsTab; query: string }) {
   return (
     <AppEmptyState
       icon={<Users className="size-5" />}
-      title={`No ${directoryTitle(activeTab, "").toLowerCase()} yet`}
-      description={emptyDescription(activeTab)}
+      title={
+        query ? "No matching golfers" : `No ${directoryTitle(activeTab, "").toLowerCase()} yet`
+      }
+      description={
+        query
+          ? "Try another name or clear the search to restore this view."
+          : emptyDescription(activeTab)
+      }
       primaryAction={
-        activeTab === "discover" ? (
+        query ? (
+          <Button asChild size="sm" variant="outline">
+            <Link href={`/friends?tab=${activeTab}`}>Clear search</Link>
+          </Button>
+        ) : activeTab === "discover" ? (
           <Button asChild size="sm" variant="outline">
             <Link href="#find-friends">Search golfers</Link>
           </Button>

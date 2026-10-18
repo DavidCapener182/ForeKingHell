@@ -318,7 +318,7 @@ export function DataChatPanel({
   return (
     <div
       className={cn(
-        "grid min-h-[42rem] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-2xl border bg-card shadow-[0_18px_60px_-42px_hsl(var(--foreground)/0.35)]",
+        "grid min-h-[min(32rem,calc(100dvh-7rem))] min-w-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-2xl border bg-card shadow-[0_18px_60px_-42px_hsl(var(--foreground)/0.35)]",
         embedded ? "h-[min(72dvh,58rem)]" : "h-[calc(100dvh-7rem-env(safe-area-inset-bottom))]",
       )}
       data-data-chat-ready={isReady ? "true" : "false"}
@@ -394,7 +394,7 @@ export function DataChatPanel({
                   data-initial-data-chat-prompt
                   role="status"
                 >
-                  <span className="truncate">
+                  <span className="min-w-0 break-words">
                     <span className="font-medium">Prompt ready:</span> {loadedQuestion}
                   </span>
                   <Button

@@ -3,8 +3,8 @@ import { GolfRouteLoading } from "@/components/golf-loading";
 export default function SocialIntelligenceLoading() {
   return (
     <GolfRouteLoading
-      title="Loading safety console"
-      subtitle="Preparing reports, suspicious activity, privacy checks, and digest cards."
+      title="Loading recaps and safety"
+      subtitle="Preparing saved recaps, your submitted reports and visible moderation records."
       variant="socialSafety"
     />
   );

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { type ComponentProps, type ReactNode } from "react";
 import { LabEvidenceList } from "@/app/simulator-lab/lab-evidence";
 import { UrlTabs } from "@/components/untitled-ui/url-tabs";
+import { TransferShotReading } from "@/app/speed/transfer-shot-reading";
 import { MobileSpeedTransfer } from "@/app/speed/mobile-speed-transfer";
 import { SpeedForm } from "@/app/speed/speed-form";
 import { ArrowLeft, Gauge, Save, Trash2 } from "lucide-react";
@@ -148,12 +149,19 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
         />
 
         {saved ? (
-          <div className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-4 py-3 text-sm font-medium text-[var(--status-success-foreground)]">
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-4 py-3 text-sm font-medium text-[var(--status-success-foreground)]"
+          >
             {speedSessionSavedMessage(saved)}
           </div>
         ) : null}
         {error ? (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive"
+          >
             {error}
           </div>
         ) : null}
@@ -508,26 +516,14 @@ function SpeedTransferTestPanel({ data }: { data: SpeedSessionDetailPageData }) 
                 : `Provisional ±30 yd Driver corridor until 10 historical side-carry readings are available.`}
             </p>
             <ol className="grid gap-1.5" aria-label="Linked five-shot transfer evidence">
-              {data.transferTest.shots.map((shot, index) => {
-                const inside =
-                  shot.sideCarryYd !== null &&
-                  shot.sideCarryYd >= data.transferTest!.corridor.minSideCarryYd &&
-                  shot.sideCarryYd <= data.transferTest!.corridor.maxSideCarryYd;
-
-                return (
-                  <li
-                    key={shot.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm"
-                  >
-                    <span className="font-medium text-foreground">
-                      Shot {shot.shotNumber ?? index + 1} · {formatSpeed(shot.clubSpeedMph)}
-                    </span>
-                    <span className={inside ? "text-primary" : "text-muted-foreground"}>
-                      {formatSideCarry(shot.sideCarryYd)} · {inside ? "Inside" : "Outside"}
-                    </span>
-                  </li>
-                );
-              })}
+              {data.transferTest.shots.map((shot, index) => (
+                <TransferShotReading
+                  key={shot.id}
+                  shot={shot}
+                  position={index + 1}
+                  corridor={data.transferTest!.corridor}
+                />
+              ))}
             </ol>
           </>
         ) : (
@@ -768,10 +764,6 @@ function speedTrainingPhaseLabel(value: "warm_up" | "max_speed" | "transfer") {
 
 function formatCorridor(corridor: { minSideCarryYd: number; maxSideCarryYd: number }) {
   return `${formatSignedYards(corridor.minSideCarryYd)} to ${formatSignedYards(corridor.maxSideCarryYd)}`;
-}
-
-function formatSideCarry(value: number | null) {
-  return value === null ? "No side data" : formatSignedYards(value);
 }
 
 function formatSignedYards(value: number) {

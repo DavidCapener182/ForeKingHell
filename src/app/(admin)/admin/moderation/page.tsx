@@ -100,7 +100,7 @@ export default async function AdminModerationPage({
             {data.auditRows.map((row) => (
               <li key={row.id}>
                 <details className="rounded-xl border p-4">
-                  <summary className="min-h-11 cursor-pointer">
+                  <summary className="min-h-11 cursor-pointer break-words [overflow-wrap:anywhere]">
                     <span className="font-medium">{label(row.action)}</span>
                     <span className="mt-1 block text-xs">
                       {formatDateTime(row.createdAt)} ·{" "}

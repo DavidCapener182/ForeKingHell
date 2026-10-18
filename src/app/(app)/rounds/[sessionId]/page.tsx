@@ -1118,7 +1118,7 @@ function RoundReviewHeader({ round }: { round: RoundDetail }) {
             {round.session.roundStatus === "in_progress" ? "In progress" : "Complete"}
           </span>
         </div>
-        <h1 className="mt-3 truncate text-3xl font-semibold tracking-tight">
+        <h1 className="mt-3 break-words text-3xl font-semibold tracking-tight">
           {round.session.courseName ?? round.session.fileName ?? "Round review"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">

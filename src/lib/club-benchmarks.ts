@@ -1,4 +1,13 @@
 import { clubSortValue, formatClubType } from "@/lib/club-format";
+import {
+  BENCHMARK_REGISTRY,
+  benchmarkMetricUnit,
+  benchmarkMetricInterpretation,
+} from "@/lib/benchmark-registry";
+export {
+  BENCHMARK_REFERENCE_VERSION,
+  BENCHMARK_CALCULATION_VERSION,
+} from "@/lib/benchmark-registry";
 
 export type ClubBenchmarkLevelKey = "beginner" | "average" | "good" | "advanced" | "tour";
 
@@ -100,6 +109,19 @@ type BenchmarkRowInput = {
   reviewedShotCount?: number;
   savedShotCount?: number;
   metrics?: ClubBenchmarkMetricValues;
+  selectedShotIds?: string[];
+  eligibleCount?: number;
+  metricEvidence?: Partial<
+    Record<
+      ClubBenchmarkMetricKey,
+      {
+        validCount: number;
+        selectedCount: number;
+        shotIds: string[];
+        method: string;
+      }
+    >
+  >;
 };
 
 export type ClubBenchmarkRow = BenchmarkRowInput & {
@@ -268,6 +290,49 @@ export function getClubBenchmarkMetricLevels(
     ),
   }));
 }
+
+/** Legacy v1 retains every historical boundary; the internal ladder and Tour anchor
+ * are separate references, and must never be rendered as interchangeable values. */
+export function getClubBenchmarkDefinition(clubType: string, metricKey: ClubBenchmarkMetricKey) {
+  const distance = getClubDistanceBenchmark(clubType);
+  if (!distance) return null;
+  const precision = metricKey === "smashFactor" ? 2 : 1;
+  const bands =
+    metricKey === "carryYd"
+      ? distance.levels.map(({ key, label, yards }) => ({ key, label, value: yards }))
+      : getClubBenchmarkMetricLevels(clubType, metricKey, precision);
+  if (!bands) return null;
+  const reference = getClubBenchmarkTourReference(clubType);
+  const tourValue = reference?.pga?.[metricKey] ?? reference?.lpga?.[metricKey] ?? null;
+  return {
+    ...BENCHMARK_REGISTRY,
+    clubType: distance.clubType,
+    metric: metricKey,
+    unit: benchmarkMetricUnit(metricKey),
+    bands,
+    source:
+      metricKey === "carryYd"
+        ? "LMWT internal progression bands"
+        : "LMWT internal bands scaled from legacy Tour anchors",
+    population: "LMWT progression targets; not measured population percentiles or handicap bands",
+    sourceDate: null,
+    interpretation: benchmarkMetricInterpretation(metricKey),
+    tourReference: {
+      value: tourValue,
+      population:
+        reference?.pga?.[metricKey] !== undefined
+          ? "PGA Tour"
+          : reference?.lpga?.[metricKey] !== undefined
+            ? "LPGA Tour"
+            : null,
+      source: "Legacy application Tour reference; original publication and date unverified",
+      sourceDate: null,
+      verified: false,
+    },
+  };
+}
+
+export const getClubBenchmarkMetricInterpretation = benchmarkMetricInterpretation;
 
 export function getClubSpeedBenchmarkTarget(
   clubType: string,

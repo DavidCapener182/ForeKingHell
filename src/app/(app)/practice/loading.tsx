@@ -5,6 +5,7 @@ export default function PracticeLoading() {
   return (
     <PageShell>
       <div role="status" aria-live="polite" aria-busy="true" className="grid gap-4">
+        <span className="sr-only">Loading your practice plan and upload review.</span>
         <AppLoadingSkeleton variant="answer" />
         <AppLoadingSkeleton variant="table" rows={5} />
       </div>

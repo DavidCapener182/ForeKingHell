@@ -95,7 +95,13 @@ export default async function CourseStrategyPage({
               <AlertTitle>Course strategy needs more evidence</AlertTitle>
               <AlertDescription>
                 This course needs a tee set with mapped holes and trusted bag numbers before a hole
-                plan can be produced.
+                plan can be produced.{" "}
+                <Link
+                  href="/play"
+                  className="inline-flex min-h-11 items-center font-medium text-primary underline"
+                >
+                  Complete play setup
+                </Link>
               </AlertDescription>
             </Alert>
           )}

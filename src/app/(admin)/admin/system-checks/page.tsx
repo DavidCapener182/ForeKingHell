@@ -107,7 +107,9 @@ export default async function AdminSystemChecksPage({
                         ? "Probe failed"
                         : "Unavailable"}
                   </p>
-                  <p className="mt-2 text-sm">{String(check.detail)}</p>
+                  <p className="mt-2 break-words text-sm [overflow-wrap:anywhere]">
+                    {String(check.detail)}
+                  </p>
                   <p className="mt-2 text-xs">
                     Checked: {String(check.checkedAt)} ·{" "}
                     <span data-probe-latency className="whitespace-nowrap">

@@ -49,7 +49,9 @@ describe("buildProgressSummary", () => {
 
     expect(summary.totals.clubs).toBe(3);
     expect(summary.rankings.mostImproved?.clubType).toBe("driver");
-    expect(summary.rankings.mostTrusted?.clubType).toBe("driver");
+    // The full recent stock window includes the driver’s wider historical shift.
+    // The steadier 8i can be most trusted while Driver remains most improved.
+    expect(summary.rankings.mostTrusted?.clubType).toBe("8i");
     expect(summary.practicePlan[0]?.clubType).toBe("5w");
     expect(summary.rankings.currentForm?.clubType).toBe("driver");
     expect(summary.signals.some((signal) => signal.label.includes("Driver"))).toBe(true);

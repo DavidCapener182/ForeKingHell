@@ -49,7 +49,7 @@ describe("Quick Bag companion composition", () => {
     expect(source).toContain("{detailOpen ? (");
     expect(source).not.toContain('from "@/components/ui/drawer"');
     expect(drawer).toContain("<Drawer open={open}");
-    expect(drawer).toContain("<LateralDispersionGraphic club={club} />");
+    expect(drawer).toContain("<LateralDispersionGraphic club={club} units={preferredUnits} />");
     expect(drawer).toContain("Latest evidence");
     expect(drawer).toContain("env(safe-area-inset-bottom)");
   });

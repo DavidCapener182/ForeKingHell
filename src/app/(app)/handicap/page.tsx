@@ -914,7 +914,12 @@ function HandicapTrendChart({ rounds }: { rounds: Awaited<ReturnType<typeof getH
           ],
         }))}
       >
-        <div className="overflow-x-auto">
+        <div
+          role="region"
+          aria-label="Handicap trend chart"
+          tabIndex={0}
+          className="overflow-x-auto rounded-xl focus-aaa"
+        >
           <svg
             viewBox="0 0 880 300"
             role="img"

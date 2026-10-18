@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useActionState, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RoundCreationState } from "@/app/rounds/actions";
 import {
@@ -202,8 +204,17 @@ export function NewRoundForm({
       <div className="apple-panel p-6 text-center">
         <p className="font-semibold">No courses with tee sets yet</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          Create or seed a course first, then come back to add a real round.
+          Add a course and tee set, then check its hole pars and yardages before entering your
+          round.
         </p>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <Button asChild className="min-h-11">
+            <Link href="/courses/new">Add course</Link>
+          </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href="/courses">Review course library</Link>
+          </Button>
+        </div>
       </div>
     );
   }

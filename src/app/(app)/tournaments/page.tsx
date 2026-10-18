@@ -161,7 +161,7 @@ function TournamentEventTable({
               <TableCell colSpan={8} className="p-5">
                 <AppEmptyState
                   title={`No ${activeTab} tournaments`}
-                  description="There are no events in this part of the calendar right now."
+                  description="No events match this status, course and search in the loaded calendar. Clear filters above or try another event status."
                   primaryAction={
                     activeTab === "active" ? undefined : (
                       <Button asChild variant="outline">

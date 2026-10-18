@@ -4,6 +4,7 @@ import {
   analyseSpeedFatigue,
   analyseSpeedFatigueSwings,
   buildSpeedDevelopment,
+  buildBallSpeedScenario,
   type BuildSpeedDevelopmentInput,
   type SpeedDevelopmentDriverShotInput,
   type SpeedDevelopmentSessionInput,
@@ -25,6 +26,56 @@ describe("driver speed development", () => {
       stopRecommended: true,
       stopAfterSwingNumber: 6,
     });
+  });
+
+  it("shows ball-speed arithmetic with explicit efficiency assumptions and no carry projection", () => {
+    expect(buildBallSpeedScenario(95, 1.48)).toMatchObject({
+      clubSpeedMph: 95,
+      assumedSmash: 1.48,
+      ballSpeedMph: 140.6,
+      projectedCarryYd: null,
+    });
+    expect(buildBallSpeedScenario(95, null)).toBeNull();
+    expect(buildBallSpeedScenario(Number.NaN, 1.48)).toBeNull();
+  });
+
+  it("retains usable speed when carry is invalid without claiming a carry result", () => {
+    const summary = buildSpeedDevelopment(
+      input({
+        driverShots: driverSession("invalid-carry", "2026-08-18", {
+          carryYd: 0,
+          clubSpeedMph: 92,
+          ballSpeedMph: 135,
+        }),
+      }),
+    );
+    expect(summary.funnel.find((stage) => stage.key === "playing")?.valueMph).toBe(92);
+    expect(summary.metrics.find((metric) => metric.key === "ball_speed")?.current).toBe(
+      "135.0 mph",
+    );
+    expect(summary.project.currentBestCarryYd).toBeNull();
+    expect(summary.project.carrySampleSize).toBe(0);
+    expect(summary.readiness.score).toBeNull();
+  });
+
+  it("keeps explicit maximum-effort and no-ball shots separate from practice and course baselines", () => {
+    const summary = buildSpeedDevelopment(
+      input({
+        driverShots: [
+          ...driverSession("normal", "2026-08-18", {
+            swingIntent: "normal_ball",
+            clubSpeedMph: 90,
+          }),
+          ...driverSession("max", "2026-08-19", { swingIntent: "maximum_ball", clubSpeedMph: 110 }),
+          ...driverSession("dry", "2026-08-19", { swingIntent: "no_ball", clubSpeedMph: 115 }),
+        ],
+      }),
+    );
+    expect(summary.funnel.find((stage) => stage.key === "playing")?.valueMph).toBe(90);
+    expect(summary.funnel.find((stage) => stage.key === "course")?.valueMph).toBeNull();
+    expect(summary.evidenceCohorts.normalBallShotIds).toHaveLength(5);
+    expect(summary.evidenceCohorts.maximumBallShotIds).toHaveLength(5);
+    expect(summary.evidenceCohorts.noBallShotIds).toHaveLength(5);
   });
 
   it("unlocks ladder levels from the rolling three-session average, not one fast swing", () => {
@@ -431,7 +482,7 @@ describe("driver speed development", () => {
     });
   });
 
-  it("treats carry as the outcome and identifies ball-speed frequency when launch is sufficient", () => {
+  it("keeps carry as an observed outcome and requires measured retesting", () => {
     const shots = driverSession("latest", "2026-08-18", {
       clubSpeedMph: 92,
       ballSpeedMph: 132,
@@ -452,9 +503,11 @@ describe("driver speed development", () => {
       targetCarryYd: 220,
       currentBestCarryYd: 216.6,
       gapYd: 3.4,
-      limitingFactor: "Ball-speed frequency",
+      limitingFactor: "Measured retest",
     });
-    expect(summary.project.coachMessage).toContain("not missing 220 because of launch");
+    expect(summary.project.coachMessage).toContain("No validated carry projection");
+    expect(summary.ballSpeedScenario?.assumption).toContain("Assumes");
+    expect(summary.ballSpeedScenario?.projectedCarryYd).toBeNull();
     expect(summary.metrics.find((metric) => metric.key === "best_carry")?.detail).toContain(
       "Outcome measure",
     );
@@ -481,14 +534,14 @@ describe("driver speed development", () => {
     expect(missing.readiness.status).not.toBe("ready");
     expect(loaded.readiness).toMatchObject({
       status: "recover",
-      label: "RECOVER",
+      label: "CAUTION",
     });
     expect(loaded.plan.mode).toBe("technical");
     expect(loaded.plan.blocks.some((block) => block.target.includes("maximum"))).toBe(false);
     expect(loaded.readiness.nextRecommendedDateIso).toBeNull();
   });
 
-  it("uses numeric fatigue as a recovery gate and preserves real swing numbers", () => {
+  it("keeps numeric load descriptive without inventing universal readiness thresholds", () => {
     const fatigue = analyseSpeedFatigueSwings([
       { swingNumber: 28, clubSpeedMph: 100 },
       { swingNumber: 29, clubSpeedMph: 95 },
@@ -507,7 +560,8 @@ describe("driver speed development", () => {
     );
 
     expect(fatigue).toMatchObject({ stopRecommended: true, stopAfterSwingNumber: 30 });
-    expect(summary.readiness.status).toBe("recover");
+    expect(summary.readiness.status).toBe("build");
+    expect(summary.readiness.score).toBeNull();
   });
 
   it("ignores unknown context and implausible or excluded measurements", () => {

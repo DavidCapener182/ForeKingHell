@@ -1,3 +1,9 @@
+import { clubSpeedMeasurementTrust } from "@/lib/club-speed-evidence";
+import {
+  normalizeMetricReading,
+  type NormalizedMetricReading,
+  type MetricUnit,
+} from "@/lib/metric-provenance";
 import { resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
 import {
   quarantineIncompatibleTotalDistance,
@@ -65,6 +71,7 @@ export type ParsedRapsodoShot = {
   clubIdentityProvenance?: "source" | "mapped_source" | "inferred" | "unknown";
   warnings: string[];
   integrityIssues?: ShotMetricIntegrityIssue[];
+  metricProvenance?: Partial<Record<NormalizedMetricReading["metric"], NormalizedMetricReading>>;
 };
 
 export type ParsedRapsodoRawRow = {
@@ -91,6 +98,8 @@ export type ParseRapsodoCsvResult = {
 type ParserOptions = {
   fallbackDistanceUnit?: DistanceUnit;
   columnMapping?: RapsodoColumnMapping;
+  /** Explicit adapter metadata; carry units never imply apex units. */
+  apexUnit?: DistanceUnit | "feet";
 };
 
 const METERS_PER_YARD = 0.9144;
@@ -188,7 +197,6 @@ const FIELD_HINTS: Record<RapsodoColumnField, string[]> = {
 const DISTANCE_FIELDS = new Set<string>([
   ...FIELD_ALIASES.carryDistance,
   ...FIELD_ALIASES.totalDistance,
-  ...FIELD_ALIASES.apex,
   ...FIELD_ALIASES.sideCarry,
 ]);
 const RAPSODO_SESSION_TITLE_PATTERN =
@@ -255,7 +263,7 @@ export function parseRapsodoCsv(
     detectedDistanceUnit === "unknown"
       ? (options.fallbackDistanceUnit ?? "yards")
       : detectedDistanceUnit;
-  const apexUnit = detectApexUnit(headers, appliedDistanceUnit);
+  const apexUnit = detectApexUnit(headers, columnMapping) ?? options.apexUnit ?? "unknown";
 
   if (detectedDistanceUnit === "unknown" && !options.fallbackDistanceUnit) {
     warnings.push("Distance units were not detected from the CSV headers.");
@@ -270,6 +278,7 @@ export function parseRapsodoCsv(
       appliedDistanceUnit,
       apexUnit,
       columnMapping,
+      detectedDistanceUnit !== "unknown" || options.fallbackDistanceUnit !== undefined,
     ),
   );
   warnings.push(...shots.flatMap((shot) => shot.warnings));
@@ -447,8 +456,9 @@ function parseShotRow(
   rowNumber: number,
   sequenceNumber: number,
   distanceUnit: DistanceUnit,
-  apexUnit: "meters" | "yards" | "feet",
+  apexUnit: "meters" | "yards" | "feet" | "unknown",
   columnMapping: RapsodoColumnMapping,
+  distanceUnitKnown: boolean,
 ): ParsedRapsodoShot {
   const raw = toRawRow(headers, row);
   const clubTypeRaw = valueForField(raw, "clubType", columnMapping);
@@ -457,8 +467,9 @@ function parseShotRow(
   const clubModel = nullableText(valueForField(raw, "clubModel", columnMapping));
   const launchDirectionDeg = parseNumber(valueForField(raw, "launchDirection", columnMapping));
   const clubPathDeg = parseNumber(valueForField(raw, "clubPath", columnMapping));
+  const importedFaceAngleDeg = parseNumber(valueForField(raw, "faceAngle", columnMapping));
   const faceAngleDeg = resolveClubFaceAngleDeg({
-    faceAngleDeg: parseNumber(valueForField(raw, "faceAngle", columnMapping)),
+    faceAngleDeg: importedFaceAngleDeg,
     launchDirectionDeg,
     clubPathDeg,
   });
@@ -474,6 +485,12 @@ function parseShotRow(
     rowNumber,
   });
 
+  if (apexUnit === "unknown" && parseNumber(valueForField(raw, "apex", columnMapping)) !== null) {
+    warnings.push(
+      "Apex unit is unknown; the raw value is retained but apex comparisons are unavailable.",
+    );
+  }
+
   if (clubType === "unknown") {
     warnings.push("Club type was missing or could not be normalised.");
   }
@@ -482,8 +499,70 @@ function parseShotRow(
     warnings.push(totalDistance.warning);
   }
 
+  const distanceMetricUnit: MetricUnit = distanceUnit === "meters" ? "m" : "yd";
+  const provenanceSpecs = [
+    ["carryYd", "carryDistance", distanceMetricUnit],
+    ["totalYd", "totalDistance", distanceMetricUnit],
+    [
+      "apexYd",
+      "apex",
+      apexUnit === "unknown"
+        ? "unknown"
+        : apexUnit === "feet"
+          ? "ft"
+          : apexUnit === "meters"
+            ? "m"
+            : "yd",
+    ],
+    ["ballSpeedMph", "ballSpeed", "mph"],
+    ["clubSpeedMph", "clubSpeed", "mph"],
+    ["smashFactor", "smashFactor", "ratio"],
+    ["spinRate", "spinRate", "rpm"],
+    ["spinAxisDeg", "spinAxis", "deg"],
+    ["attackAngleDeg", "attackAngle", "deg"],
+    ["pathDeg", "clubPath", "deg"],
+    ["launchAngleDeg", "launchAngle", "deg"],
+    ["landAngleDeg", "descentAngle", "deg"],
+  ] as const;
+  const clubFlag = nullableText(valueForField(raw, "clubDataEstType", columnMapping));
+  const clubTrust = clubSpeedMeasurementTrust(clubFlag);
+  const metricProvenance: NonNullable<ParsedRapsodoShot["metricProvenance"]> = {};
+  for (const [metric, field, unit] of provenanceSpecs) {
+    const isClubMetric =
+      metric === "clubSpeedMph" || metric === "attackAngleDeg" || metric === "pathDeg";
+    metricProvenance[metric] = normalizeMetricReading({
+      metric,
+      value: parseNumber(valueForField(raw, field, columnMapping)),
+      unit,
+      status:
+        metric === "totalYd" && totalDistance.issue
+          ? "invalid"
+          : isClubMetric
+            ? clubTrust
+            : ["carryYd", "totalYd"].includes(metric) && !distanceUnitKnown
+              ? "unknown"
+              : "measured",
+      source: "rapsodo-csv",
+      adapterVersion: "rapsodo-csv-v2",
+      observationId: `row:${rowNumber}`,
+      ...(isClubMetric
+        ? { manufacturerFlag: clubFlag, flagRecognized: clubTrust !== "unknown" }
+        : {}),
+    });
+  }
+  metricProvenance.faceAngleDeg = normalizeMetricReading({
+    metric: "faceAngleDeg",
+    value: faceAngleDeg,
+    unit: "deg",
+    status: importedFaceAngleDeg !== null ? "measured" : "derived",
+    source: "rapsodo-csv",
+    adapterVersion: "rapsodo-csv-v2",
+    observationId: `row:${rowNumber}`,
+  });
+
   return {
     rowNumber,
+    metricProvenance,
     shotNumber: parseInteger(valueForField(raw, "shotNumber", columnMapping)) ?? sequenceNumber,
     clubTypeRaw: nullableText(clubTypeRaw),
     clubType,
@@ -510,7 +589,7 @@ function parseShotRow(
     shotCategory: "full",
     qualityTag: null,
     clubDataEstType: nullableText(valueForField(raw, "clubDataEstType", columnMapping)),
-    sourceRawJson: raw,
+    sourceRawJson: { ...raw, __lmwtMetricProvenance: JSON.stringify(metricProvenance) },
     warnings,
     integrityIssues: totalDistance.issue ? [totalDistance.issue] : [],
   };
@@ -998,12 +1077,9 @@ function detectDistanceUnit(headers: string[]): DetectedDistanceUnit {
 
 function detectApexUnit(
   headers: string[],
-  fallbackDistanceUnit: DistanceUnit,
-): "meters" | "yards" | "feet" {
-  const apexHeader = headers.find((header) => {
-    const normalized = normalizeHeader(header);
-    return FIELD_ALIASES.apex.some((alias) => normalized === alias || normalized.startsWith(alias));
-  });
+  columnMapping: RapsodoColumnMapping,
+): DistanceUnit | "feet" | null {
+  const apexHeader = headers.find((header) => headerMatchesField(header, "apex", columnMapping));
 
   if (apexHeader) {
     const lowerHeader = apexHeader.toLowerCase();
@@ -1021,7 +1097,7 @@ function detectApexUnit(
     }
   }
 
-  return fallbackDistanceUnit === "yards" ? "feet" : "meters";
+  return null;
 }
 
 function parseDistanceYd(value: string | null, unit: DistanceUnit) {
@@ -1034,7 +1110,8 @@ function parseDistanceYd(value: string | null, unit: DistanceUnit) {
   return roundTo(unit === "meters" ? number * YARDS_PER_METER : number, 3);
 }
 
-function parseApexFt(value: string | null, unit: DistanceUnit | "feet") {
+function parseApexFt(value: string | null, unit: DistanceUnit | "feet" | "unknown") {
+  if (unit === "unknown") return null;
   const number = parseNumber(value);
 
   if (number === null) {

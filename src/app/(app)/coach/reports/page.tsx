@@ -169,7 +169,7 @@ export default async function CoachReportsPage({
         ) : null}
 
         {params.recovered === "1" ? (
-          <Alert>
+          <Alert role="status">
             <ShieldCheck className="size-4" aria-hidden />
             <AlertTitle>
               The earlier attempt saved your report. No duplicate was created.
@@ -182,7 +182,7 @@ export default async function CoachReportsPage({
         ) : null}
 
         {sharedUrl ? (
-          <Card className="premium-card border-primary/30 bg-primary/5">
+          <Card role="status" className="premium-card border-primary/30 bg-primary/5">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Link2 className="size-5 text-primary" aria-hidden />
@@ -200,7 +200,7 @@ export default async function CoachReportsPage({
               </div>
               <Button asChild className="premium-action min-h-11 rounded-xl">
                 <Link href={sharedUrl} target="_blank" rel="noreferrer">
-                  Open report
+                  Open report<span className="sr-only"> in a new tab</span>
                   <ExternalLink className="size-4" aria-hidden />
                 </Link>
               </Button>

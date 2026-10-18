@@ -2,6 +2,7 @@ import { markNotificationsRead, readNotificationState } from "@/lib/notification
 import { NextResponse } from "next/server";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 
+import { practiceReviewNotification } from "@/lib/practice-notification";
 import { getDb } from "@/db/client";
 import {
   challengeInvites,
@@ -11,6 +12,10 @@ import {
   userAchievements,
   userProfiles,
   weeklyRecaps,
+  practicePlans,
+  practicePlanMatches,
+  practiceResults,
+  sessions,
 } from "@/db/schema";
 import { achievementUnlockHref } from "@/lib/alert-links";
 import { getAchievement } from "@/lib/achievements/registry";
@@ -59,6 +64,7 @@ export async function GET() {
       duplicateImportRows,
       latestAchievementRows,
       latestWeeklyReviewRows,
+      practiceMatchRows,
     ] = await Promise.all([
       preferences.social
         ? db
@@ -150,9 +156,67 @@ export async function GET() {
             .orderBy(desc(weeklyRecaps.createdAt))
             .limit(1)
         : Promise.resolve([]),
+      preferences.dataQuality
+        ? db
+            .select({
+              planId: practicePlans.id,
+              sessionId: practicePlanMatches.sessionId,
+              title: practicePlans.title,
+              status: practicePlans.status,
+              accepted: practicePlanMatches.accepted,
+              resultId: practiceResults.id,
+              resultSessionId: practiceResults.sourceSessionId,
+              comparison: practiceResults.comparisonJson,
+              createdAt: practicePlanMatches.createdAt,
+            })
+            .from(practicePlanMatches)
+            .innerJoin(
+              practicePlans,
+              and(
+                eq(practicePlans.id, practicePlanMatches.practicePlanId),
+                eq(practicePlans.userId, user.id),
+              ),
+            )
+            .innerJoin(
+              sessions,
+              and(eq(sessions.id, practicePlanMatches.sessionId), eq(sessions.userId, user.id)),
+            )
+            .leftJoin(
+              practiceResults,
+              and(
+                eq(practiceResults.practicePlanId, practicePlans.id),
+                eq(practiceResults.userId, user.id),
+              ),
+            )
+            .where(eq(practicePlanMatches.userId, user.id))
+            .orderBy(desc(practicePlanMatches.createdAt))
+            .limit(5)
+        : Promise.resolve([]),
     ]);
 
     const items: DesktopNotificationItem[] = [
+      ...practiceMatchRows.flatMap((row) => {
+        const comparisonSession =
+          row.comparison &&
+          typeof row.comparison === "object" &&
+          "importedSession" in row.comparison
+            ? row.comparison.importedSession
+            : null;
+        const sourceIds =
+          comparisonSession &&
+          typeof comparisonSession === "object" &&
+          "sourceSessionIds" in comparisonSession &&
+          Array.isArray(comparisonSession.sourceSessionIds)
+            ? comparisonSession.sourceSessionIds
+            : [];
+        const item = practiceReviewNotification({
+          ...row,
+          analysed:
+            row.resultId !== null &&
+            (row.resultSessionId === row.sessionId || sourceIds.includes(row.sessionId)),
+        });
+        return item ? [item] : [];
+      }),
       ...friendRows.map((row) => ({
         id: `friend-${row.id}`,
         title: `${row.displayName} sent a friend request`,

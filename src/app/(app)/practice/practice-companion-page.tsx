@@ -97,7 +97,12 @@ export default async function PracticeCompanionPage({
           measuredResult={selectedPlan?.result ?? null}
         />
       </section>
-      <DriverDevelopmentPanel variant="practice" />
+      <details className="rounded-xl border p-4">
+        <summary className="flex min-h-11 cursor-pointer items-center font-medium focus-visible:outline-2 focus-visible:outline-ring">
+          Driver development and supporting evidence
+        </summary>
+        <DriverDevelopmentPanel variant="practice" />
+      </details>
     </PageShell>
   );
 }

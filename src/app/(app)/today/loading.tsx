@@ -6,6 +6,7 @@ export default function TodayLoading() {
   return (
     <PageShell>
       <div role="status" aria-live="polite" aria-busy="true" className="grid gap-3">
+        <span className="sr-only">Loading Today and your latest practice evidence.</span>
         <Card
           size="sm"
           className="gap-3 py-3"

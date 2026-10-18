@@ -115,7 +115,13 @@ export default async function CourseRecordsForCoursePage({
             {data.previousRounds.length === 0 ? (
               <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
                 No saved rounds for this course yet. Import or log a round first, then come back
-                here to submit it.
+                here to submit it.{" "}
+                <Link
+                  href={`/rounds/new?courseId=${data.course.id}`}
+                  className="inline-flex min-h-11 items-center font-medium text-primary underline"
+                >
+                  Log a round for this course
+                </Link>
               </p>
             ) : null}
           </div>

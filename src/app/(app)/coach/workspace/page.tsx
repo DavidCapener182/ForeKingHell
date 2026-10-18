@@ -114,7 +114,7 @@ export default async function CoachWorkspacePage({
         ) : null}
 
         {params?.saved === "1" ? (
-          <Alert>
+          <Alert role="status">
             <CheckCircle2 className="size-4" aria-hidden />
             <AlertTitle>
               Coach interaction saved with its visibility and evidence reference.

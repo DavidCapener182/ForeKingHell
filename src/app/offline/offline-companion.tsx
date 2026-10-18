@@ -599,6 +599,16 @@ export function OfflineCompanion() {
             type="search"
           />
         </label>
+        {resourceQuery ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="mt-2 min-h-11 justify-self-start"
+            onClick={() => setResourceQuery("")}
+          >
+            Clear resource search
+          </Button>
+        ) : null}
         <div className="mt-4 grid gap-3">
           {[
             ...rounds.map((item) => ({

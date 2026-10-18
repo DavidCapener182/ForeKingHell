@@ -8,7 +8,7 @@ export function WelcomeJourney({ journey }: { journey: ActivationJourney }) {
   const count = journey.steps.filter((step) => step.complete).length;
   return (
     <PageShell>
-      <div className="grid min-w-0 gap-5 pb-28">
+      <div className="grid min-w-0 gap-5 pb-28 lg:pb-6">
         <PageHeader
           title={
             journey.available
@@ -99,8 +99,11 @@ export function WelcomeJourney({ journey }: { journey: ActivationJourney }) {
         )}
         <footer className="grid gap-3 rounded-xl border border-dashed p-4">
           <p className="text-sm">
-            Setup is optional. Skipping does not delete data or disable golf features. Resume at
-            /welcome?resume=1.
+            Setup is optional. Skipping does not delete data or disable golf features.{" "}
+            <Link href="/welcome?resume=1" className="font-medium text-primary underline">
+              Resume setup at any time
+            </Link>
+            .
           </p>
           <WelcomeSkip />
         </footer>

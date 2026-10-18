@@ -54,17 +54,28 @@ export function MeasuredPracticeResultCard({
             {outcome.label}
           </CardTitle>
           <p className="mt-1 text-sm font-medium leading-5">{outcome.detail}</p>
-          <p className="mt-1 text-sm leading-5 text-muted-foreground">{result.verdict}</p>
+          {outcome.status !== "awaiting_evidence" ? (
+            <p className="mt-1 text-sm leading-5 text-muted-foreground">{result.verdict}</p>
+          ) : null}
         </div>
         <CardAction>
-          <Badge variant="secondary">{result.practiceScore}/100</Badge>
+          <Badge variant="secondary">
+            {outcome.status === "awaiting_evidence"
+              ? "Inconclusive"
+              : `${result.practiceScore}/100`}
+          </Badge>
         </CardAction>
       </CardHeader>
       <CardContent className="grid gap-3">
-        <Progress
-          value={result.practiceScore}
-          aria-label={`Practice result: ${outcome.label}. Score ${result.practiceScore} out of 100`}
-        />
+        {outcome.status !== "awaiting_evidence" ? (
+          <Progress
+            value={result.practiceScore}
+            aria-label={`Practice target attainment: ${outcome.label}. Score ${result.practiceScore} out of 100`}
+          />
+        ) : null}
+        {comparison?.outcomeReason ? (
+          <p className="text-sm leading-6 text-muted-foreground">{comparison.outcomeReason}</p>
+        ) : null}
         <IOSGroupedList label="Measured practice result" className="bg-card">
           <IOSListRow
             label="Measured shots"
@@ -80,22 +91,49 @@ export function MeasuredPracticeResultCard({
               }`}
             />
           ) : null}
+          {comparison?.clubEvidence?.map((club) => (
+            <IOSListRow
+              key={`club-${club.clubType}`}
+              label={`${club.clubType.toUpperCase()} club evidence`}
+              value={`${club.shotCount} attempts`}
+              detail={`Club-level comparison; block allocation may be unresolved. ${club.offlineAverageYd === null ? "Lateral measurement unavailable." : `Mean absolute lateral error ${club.offlineAverageYd.toFixed(1)} yd.`}`}
+            />
+          ))}
           {comparison?.decisions
             .filter((decision) => scoredBlockIds.has(decision.blockId))
             .map((decision) => (
               <IOSListRow
                 key={decision.blockId}
                 label={decision.title}
-                value={`${decision.actualBalls}/${decision.plannedBalls ?? "timed"}`}
+                value={
+                  decision.actual.includes("allocation unresolved")
+                    ? "Unallocated"
+                    : `${decision.actualBalls}/${decision.plannedBalls ?? "timed"}`
+                }
                 detail={decision.actual}
                 status={
                   <IOSInlineStatus
-                    label={practiceDecisionResultLabel(decision)}
+                    label={
+                      decision.actual.includes("allocation unresolved")
+                        ? "Allocation unresolved"
+                        : practiceDecisionResultLabel(decision)
+                    }
                     tone={practiceDecisionResultTone(decision)}
                   />
                 }
               />
             ))}
+          {comparison?.outcome ? (
+            <IOSListRow
+              label="Performance outcome"
+              value={
+                comparison.outcome === "improved"
+                  ? "Improved in this practice — early signal"
+                  : comparison.outcome.replace(/_/g, " ")
+              }
+              detail="Separate from session matching and block coverage. Retest later to check retention."
+            />
+          ) : null}
           <IOSListRow label="Next action" detail={result.nextAction} />
         </IOSGroupedList>
         {comparison ? (

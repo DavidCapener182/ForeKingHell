@@ -44,11 +44,13 @@ export function SharedCoachReportView({
         </nav>
         <header className="rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary">
                 Frozen coach evidence
               </p>
-              <h1 className="mt-3 font-display text-3xl font-semibold sm:text-4xl">{title}</h1>
+              <h1 className="mt-3 break-words font-display text-3xl font-semibold [overflow-wrap:anywhere] sm:text-4xl">
+                {title}
+              </h1>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
                 {report.disclosure.statement}
               </p>

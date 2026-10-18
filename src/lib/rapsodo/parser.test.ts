@@ -75,7 +75,58 @@ describe("parseRapsodoCsv", () => {
     expect(result.shots[0].carryYd).toBe(183.8);
     expect(result.shots[0].totalYd).toBe(195.8);
     expect(result.shots[0].sideCarryYd).toBe(64.3);
-    expect(result.shots[0].apexFt).toBe(73.2);
+    expect(result.shots[0].apexFt).toBeNull();
+    expect(result.shots[0].sourceRawJson.Apex).toBe("73.2");
+  });
+
+  it("requires an explicit apex unit and preserves negative angles and zero spin axis", () => {
+    const csv =
+      "Club Type,Carry Distance (yd),Ball Speed,Apex,Attack Angle,Club Path,Spin Axis,Club Data Est Type\nDriver,0,135,30,-1,-1,0,unrecognised";
+    const unknown = parseRapsodoCsv(csv).shots[0];
+    expect(unknown.apexFt).toBeNull();
+    expect(unknown.ballSpeedMph).toBe(135);
+    expect(unknown.attackAngleDeg).toBe(-1);
+    expect(unknown.clubPathDeg).toBe(-1);
+    expect(unknown.spinAxis).toBe(0);
+    expect(unknown.metricProvenance?.carryYd?.status).toBe("invalid");
+    expect(unknown.metricProvenance?.ballSpeedMph?.status).toBe("measured");
+    expect(unknown.metricProvenance?.pathDeg?.status).toBe("unknown");
+    expect(unknown.metricProvenance?.apexYd?.reasonCodes).toContain("unresolved-unit");
+    expect(JSON.parse(unknown.sourceRawJson.__lmwtMetricProvenance).spinAxisDeg.value).toBe(0);
+    expect(parseRapsodoCsv(csv, { apexUnit: "yards" }).shots[0].apexFt).toBe(90);
+    expect(parseRapsodoCsv(csv, { apexUnit: "feet" }).shots[0].apexFt).toBe(30);
+  });
+
+  it("does not use apex units to reinterpret carry units", () => {
+    const shot = parseRapsodoCsv("Club Type,Carry Distance (m),Apex (yd)\nDriver,200,30").shots[0];
+    expect(shot.carryYd).toBeCloseTo(218.723, 3);
+    expect(shot.apexFt).toBe(90);
+    expect(shot.metricProvenance?.apexYd?.value).toBe(30);
+  });
+
+  it("distinguishes explicit estimated data from undocumented flags", () => {
+    const shot = parseRapsodoCsv(
+      "Club Type,Carry Distance (yd),Club Speed,Club Data Est Type\nDriver,200,90,1",
+    ).shots[0];
+    expect(shot.metricProvenance?.clubSpeedMph?.status).toBe("estimated");
+    expect(shot.metricProvenance?.clubSpeedMph?.manufacturerFlag).toBe("1");
+  });
+
+  it("marks computed face angle as derived while retaining imported smash", () => {
+    const shot = parseRapsodoCsv(
+      "Club Type,Carry Distance (yd),Launch Direction,Club Path,Smash Factor\nDriver,200,1,2,1.48",
+    ).shots[0];
+    expect(shot.metricProvenance?.faceAngleDeg?.status).toBe("derived");
+    expect(shot.smashFactor).toBe(1.48);
+    expect(shot.sourceRawJson["Smash Factor"]).toBe("1.48");
+  });
+
+  it("preserves distinct rows with identical rounded metrics and reset shot numbers", () => {
+    const result = parseRapsodoCsv(
+      "Shot Number,Club Type,Carry Distance (yd),Ball Speed\n1,Driver,200,130\n1,Driver,200,130",
+    );
+    expect(result.shotCount).toBe(2);
+    expect(result.shots.map((shot) => shot.rowNumber)).toEqual([2, 3]);
   });
 
   it("keeps yards as yards and converts apex yards to feet", () => {
@@ -397,7 +448,7 @@ describe("Rapsodo parser edge cases", () => {
 });
 
 describe("Rapsodo import shot overrides", () => {
-  it("marks impossible wedge telemetry as bad data during import prep", () => {
+  it("flags unusual wedge telemetry for review without confirming bad data", () => {
     const parsed = parseRapsodoCsv(
       [
         "Shot Number,Club Type,Carry Distance (yd),Total Distance (yd),Ball Speed,Launch Angle",
@@ -409,8 +460,10 @@ describe("Rapsodo import shot overrides", () => {
 
     expect(prepared[0]).toMatchObject({
       clubType: "pw",
-      qualityTag: "bad_data",
+      qualityTag: null,
     });
+    expect(prepared[0].warnings.join(" ")).toContain("No measurement was automatically excluded");
+    expect(prepared[0].ballSpeedMph).toBe(124.7);
   });
 
   it("applies confirmed clubs by CSV row number while preserving the raw Rapsodo row", () => {
@@ -426,6 +479,7 @@ describe("Rapsodo import shot overrides", () => {
       {
         rowNumber: parsed.shots[0].rowNumber,
         clubType: "7 Iron",
+        clubSelectionOrigin: "user",
         clubBrand: "Mizuno",
         clubModel: "JPX 923",
         qualityTag: "mishit",
@@ -461,6 +515,7 @@ describe("Rapsodo import shot overrides", () => {
         {
           rowNumber: parsed.shots[2].rowNumber,
           clubType: "9 Iron",
+          clubSelectionOrigin: "user",
         },
       ],
       [parsed.shots[1].rowNumber],
@@ -470,7 +525,7 @@ describe("Rapsodo import shot overrides", () => {
     expect(prepared[1]).toMatchObject({ clubType: "9i" });
   });
 
-  it("keeps an untouched distance recommendation inferred instead of trusting it as a mapping", () => {
+  it("preserves an unknown source club until a distance recommendation is explicitly confirmed", () => {
     const parsed = parseRapsodoCsv(
       ["Shot Number,Club Type,Carry Distance (yd),Total Distance (yd)", "1,Other,42,46"].join("\n"),
     );
@@ -503,12 +558,36 @@ describe("Rapsodo import shot overrides", () => {
     );
 
     expect(prepared[0]).toMatchObject({
-      clubType: "7i",
-      clubIdentityProvenance: "inferred",
+      clubType: "other",
+      clubIdentityProvenance: "unknown",
     });
     expect(prepared[0].sourceRawJson["Club Type"]).toBe("Other");
     expect(triaged.shots[0]).toMatchObject({ classification: "stock_quality" });
     expect(triaged.shots[0].shot.qualityTag).toBeNull();
+  });
+
+  it("preserves explicit invalid tags and genuine short/long wedge attempts", () => {
+    const parsed = parseRapsodoCsv(
+      "Shot Number,Club Type,Carry Distance (yd),Ball Speed\n1,SW,20,35\n2,SW,175,115",
+    );
+    const prepared = applyRapsodoShotOverridesForImport(parsed.shots, [
+      { rowNumber: 2, clubType: "SW", clubSelectionOrigin: "user", qualityTag: "bad_data" },
+    ]);
+    expect(prepared[0].qualityTag).toBe("bad_data");
+    expect(prepared[1].qualityTag).toBeNull();
+    expect(prepared[1].carryYd).toBe(175);
+    expect(prepared[1].sourceRawJson["Carry Distance (yd)"]).toBe("175");
+    expect(prepared[1].warnings.join(" ")).toContain("review");
+  });
+
+  it("does not silently apply a suggestion to a known club", () => {
+    const shot = parseRapsodoCsv("Club Type,Carry Distance (yd)\nDriver,25").shots[0];
+    expect(
+      applyRapsodoShotOverridesForImport(
+        [shot],
+        [{ rowNumber: shot.rowNumber, clubType: "SW", clubSelectionOrigin: "recommendation" }],
+      )[0].clubType,
+    ).toBe("driver");
   });
 
   it("treats an explicit user club correction as a trusted mapping", () => {

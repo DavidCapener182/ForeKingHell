@@ -55,7 +55,7 @@ describe("calculateClubAnalytics", () => {
       shots: [...baselineShots, ...currentShots],
     });
 
-    expect(analytics.sample.stockShots).toBe(20);
+    expect(analytics.sample.stockShots).toBe(40);
     expect(analytics.distance.safeCarryYd).toBeLessThan(analytics.distance.aggressiveCarryYd ?? 0);
     expect(analytics.accuracy.primaryMiss).toBe("Left");
     expect(analytics.launch.launchWindowScore).toBe(100);
@@ -71,6 +71,7 @@ describe("calculateClubAnalytics", () => {
       shots: [
         shot({
           id: "touch-1",
+          shotCategory: "chip",
           clubType: "sw",
           carryYd: 20,
           sideCarryYd: 1,
@@ -79,6 +80,7 @@ describe("calculateClubAnalytics", () => {
         }),
         shot({
           id: "touch-2",
+          shotCategory: "pitch",
           clubType: "sw",
           carryYd: 35,
           sideCarryYd: -2,

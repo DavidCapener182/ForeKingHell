@@ -15,6 +15,7 @@ const shots: ModelTestShot[] = Array.from({ length: 40 }, (_, i) => ({
   spinAxis: i < 20 ? 5 : 40,
   shotAt: new Date(Date.UTC(2026, 8, 1, 12, 0, -i)),
   reviewStatus: "included" as const,
+  shotCategory: "full",
   sessionType: "range",
 }));
 function model(input: ModelTestShot[] = shots) {

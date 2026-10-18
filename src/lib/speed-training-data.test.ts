@@ -8,7 +8,12 @@ import {
 
 describe("trusted speed personal best evidence", () => {
   it("keeps estimated, unknown, and duplicate rows out of measured current-speed inputs", () => {
-    const duplicateSource = { shot: "1", speed: "91" };
+    const duplicateSource = {
+      shot: "1",
+      speed: "91",
+      __lmwtCanonicalSwingId: "swing-1",
+      __lmwtCanonicalDuplicateConfirmed: "true",
+    };
     const rows = [
       reading("measured", "one", 91, "0", duplicateSource),
       reading("duplicate", "two", 91, "0", duplicateSource),
@@ -17,14 +22,13 @@ describe("trusted speed personal best evidence", () => {
       reading("unknown", "four", 97.9, "8", { shot: "3", speed: "97.9" }),
     ];
 
-    expect(selectIndependentMeasuredSpeedReadings(rows).map((row) => row.id)).toEqual([
-      "measured",
-      "direct-null",
-    ]);
+    expect(selectIndependentMeasuredSpeedReadings(rows).map((row) => row.id)).toEqual(["measured"]);
   });
 
   it("does not treat duplicate imports of one physical 97.9 mph reading as repetition", () => {
     const duplicatedSource = {
+      __lmwtCanonicalSwingId: "swing-41",
+      __lmwtCanonicalDuplicateConfirmed: "true",
       Date: "2026-05-01",
       "Shot Number": "41",
       "Club Speed": "97.9",
@@ -60,6 +64,8 @@ describe("trusted speed personal best evidence", () => {
 
   it("keeps an unknown type-8 97.9 mph peak unverified even when it was imported twice", () => {
     const duplicatedSource = {
+      __lmwtCanonicalSwingId: "swing-41",
+      __lmwtCanonicalDuplicateConfirmed: "true",
       Date: "2026-05-01",
       "Shot Number": "41",
       "Club Data Est Type": "8",
@@ -86,6 +92,17 @@ describe("trusted speed personal best evidence", () => {
       independentEvidenceCount: 1,
       duplicateImportCount: 1,
     });
+  });
+
+  it("does not merge separate swings with identical rounded source rows or reset numbers", () => {
+    const raw = { "Shot Number": "1", "Club Speed": "95", "Ball Speed": "135" };
+    const summary = summarizeTrustedSpeedPb([
+      reading("one", "session-one", 95, "0", raw),
+      reading("two", "session-two", 95, "0", raw),
+    ]);
+    expect(summary.independentReadingCount).toBe(2);
+    expect(summary.ignoredDuplicateCount).toBe(0);
+    expect(summary.trustedEvidenceCount).toBe(2);
   });
 
   it("does not promote the live 95.7 spike when its nearby row is estimated", () => {

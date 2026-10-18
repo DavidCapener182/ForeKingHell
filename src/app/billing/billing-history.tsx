@@ -28,16 +28,22 @@ export function BillingHistory({ rows }: { rows: Entry[] }) {
         Latest {rows.length} recorded subscription periods, up to 24. These records do not contain
         invoice amounts or currencies. Use Manage plan for available provider invoices and receipts.
       </p>
-      <Button
-        variant="outline"
-        className="justify-self-start"
-        disabled={!ready}
-        onClick={() => setAscending(!ascending)}
-      >
-        Recorded date: {ascending ? "oldest first" : "newest first"}
-      </Button>
+      {rows.length > 1 ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="justify-self-start"
+          disabled={!ready}
+          onClick={() => setAscending(!ascending)}
+        >
+          Recorded date: {ascending ? "oldest first" : "newest first"}
+        </Button>
+      ) : null}
       {!rows.length ? (
-        <p className="rounded-xl border p-4">No subscription history is recorded.</p>
+        <p role="status" className="rounded-xl border p-4 text-sm leading-6">
+          No subscription history is recorded. Your current saved plan is shown above; this empty
+          list does not confirm a payment or cancellation.
+        </p>
       ) : (
         <>
           <div className={styles.desktop}>

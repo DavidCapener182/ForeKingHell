@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ClubSuggestionConfirmation,
+  isReviewedClubSelection,
+} from "./club-suggestion-confirmation";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useClientReady } from "@/hooks/use-client-ready";
@@ -413,7 +417,17 @@ export function RapsodoSyncClient({
   const everyShotHasClub =
     preview?.shots.every((shot) => {
       const choice = choicesByKey.get(selectedClubByRow[shot.rowNumber]);
-      return choice && choice.clubType !== "unknown" && choice.clubType !== "other";
+      return (
+        choice &&
+        choice.clubType !== "unknown" &&
+        choice.clubType !== "other" &&
+        isReviewedClubSelection({
+          selectedClubKey: selectedClubByRow[shot.rowNumber],
+          reportedClubKey: shot.reportedChoice?.clubKey,
+          origin: clubSelectionOriginByRow[shot.rowNumber],
+          trustedSuggestion: shot.suggestion.confidence === "trusted",
+        })
+      );
     }) ?? false;
   const clubMappingLabel =
     clubSelectionMode === "recommendations"
@@ -688,6 +702,11 @@ export function RapsodoSyncClient({
     setClubSelectionMode(mode);
     setSelectedClubByRow(selectionByMode(preview, mode));
     setClubSelectionOriginByRow(selectionOriginsByMode(preview, mode));
+  }
+
+  function confirmSelectedClub(rowNumber: number) {
+    setClubSelectionMode("custom");
+    setClubSelectionOriginByRow((current) => ({ ...current, [rowNumber]: "user" }));
   }
 
   function savePreview() {
@@ -1422,6 +1441,12 @@ export function RapsodoSyncClient({
                     Remote session {preview.session.providerSessionId} · {preview.shotCount} shots ·{" "}
                     {preview.distanceUnit}
                   </p>
+                  {!everyShotHasClub ? (
+                    <p role="status" className="text-sm text-muted-foreground">
+                      Open the shot readings below to choose and confirm each suggested club before
+                      saving.
+                    </p>
+                  ) : null}
                   <Button onClick={savePreview} disabled={!canSave}>
                     {saveButtonLabel}
                   </Button>
@@ -1541,7 +1566,8 @@ export function RapsodoSyncClient({
                     <div className="grid gap-3" aria-label="Complete preview readings">
                       <p className="text-xs text-muted-foreground">
                         Readings below use yards, mph and degrees. Original export distance unit:{" "}
-                        {preview.distanceUnit}. Club matches remain editable before saving.
+                        {preview.distanceUnit}. Suggested clubs require your confirmation; source
+                        club assignments are retained until you confirm a change.
                       </p>
                       {preview.shots.map((shot) => (
                         <details key={shot.rowNumber} className="rounded-lg border p-3">
@@ -1593,6 +1619,18 @@ export function RapsodoSyncClient({
                               ))}
                             </select>
                           </label>
+                          {shot.suggestion.confidence !== "trusted" ? (
+                            <ClubSuggestionConfirmation
+                              shotLabel={`shot ${shot.shotNumber ?? shot.rowNumber}`}
+                              clubLabel={
+                                choicesByKey.get(selectedClubByRow[shot.rowNumber])?.clubLabel ??
+                                shot.suggestion.choice.clubLabel
+                              }
+                              confirmed={clubSelectionOriginByRow[shot.rowNumber] === "user"}
+                              disabled={isPending || !selectedClubByRow[shot.rowNumber]}
+                              onConfirm={() => confirmSelectedClub(shot.rowNumber)}
+                            />
+                          ) : null}
                         </details>
                       ))}
                     </div>
@@ -1678,7 +1716,9 @@ export function RapsodoSyncClient({
                                     >
                                       {shot.suggestion.confidenceScore}%
                                     </Badge>
-                                    <span className="truncate">{shot.suggestion.reason}</span>
+                                    <span className="whitespace-normal">
+                                      {shot.suggestion.reason}
+                                    </span>
                                   </div>
                                 </TableCell>
                               </TableRow>

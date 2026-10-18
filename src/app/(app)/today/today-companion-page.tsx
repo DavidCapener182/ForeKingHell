@@ -53,11 +53,19 @@ export default async function TodayCompanionPage({
         <MobileAppShell>
           <MobileTopBar title="Today" />
           <Alert>
-            <AlertTitle>Connect your golf data</AlertTitle>
+            <AlertTitle>Today is temporarily unavailable</AlertTitle>
             <AlertDescription>
-              A database connection is required before Today can build a recommendation.
+              Your saved evidence could not be loaded. Try again shortly.
             </AlertDescription>
           </Alert>
+          <div className="flex flex-wrap gap-3">
+            <Button asChild variant="outline">
+              <Link href="/today">Try Today again</Link>
+            </Button>
+            <Button asChild variant="ghost">
+              <Link href="/offline">Open saved golf</Link>
+            </Button>
+          </div>
         </MobileAppShell>
         <TodayHydrationBoundary />
       </PageShell>

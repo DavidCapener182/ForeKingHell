@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { AppEmptyState } from "@/components/app/app-empty-state";
 import { useActionState, useState } from "react";
 import type { RoundCreationState } from "@/app/rounds/actions";
 import { useFormStatus } from "react-dom";
@@ -32,6 +33,26 @@ export function MobileStartRound({
     course?.teeSets.find((tee) => tee.id === teeSetId)?.id ?? course?.teeSets[0]?.id ?? "",
   );
   const tee = course?.teeSets.find((tee) => tee.id === selectedTee);
+  if (!courses.length)
+    return (
+      <div className="grid min-w-0 gap-4">
+        <MobileLargeTitle title="Start round" />
+        <AppEmptyState
+          title="Set up your course first"
+          description="A round needs a saved course and tee set. Add a course, then check its hole pars and yardages before starting."
+          primaryAction={
+            <Button asChild className="min-h-11">
+              <Link href="/courses/new">Add course</Link>
+            </Button>
+          }
+          secondaryAction={
+            <Button asChild variant="outline" className="min-h-11">
+              <Link href="/courses">Review course library</Link>
+            </Button>
+          }
+        />
+      </div>
+    );
   return (
     <div className="grid min-w-0 gap-6" data-mobile-start-round>
       <MobileLargeTitle title="Start round" detail="Choose your tee. Score as you play." />
@@ -120,9 +141,18 @@ export function MobileStartRound({
             <MobileMetric value={tee.yards ?? "—"} unit="yd" label="course" />
           </div>
         ) : (
-          <p className="text-muted-foreground">
-            Choose a course with mapped hole pars and yardages before starting.
-          </p>
+          <div className="grid gap-2">
+            <p className="text-sm text-muted-foreground">
+              {tee
+                ? "This tee has no saved holes yet. Review its pars and yardages before starting."
+                : "Choose a tee with saved hole pars and yardages before starting."}
+            </p>
+            {course ? (
+              <Button asChild variant="outline" className="min-h-11 w-fit">
+                <Link href={`/courses/${course.id}/holes`}>Review course and tee setup</Link>
+              </Button>
+            ) : null}
+          </div>
         )}
         <div hidden>
           {tee?.holes.map((hole, index) => (

@@ -50,6 +50,7 @@ export type SpeedDevelopmentDriverShotInput = {
   sideCarryYd: number | null;
   qualityTag?: string | null;
   clubDataEstType?: string | null;
+  swingIntent?: "normal_ball" | "maximum_ball" | "no_ball" | "unknown";
 };
 
 export type SpeedDevelopmentTrainingLoadInput = {
@@ -94,7 +95,8 @@ export type SpeedDevelopmentMetric = {
 };
 
 export type SpeedDevelopmentReadiness = {
-  score: number;
+  /** No validated recovery model is available. Retained as null for compatibility. */
+  score: null;
   status: "ready" | "build" | "recover";
   label: string;
   tone: "green" | "sky" | "amber";
@@ -127,6 +129,19 @@ export type SpeedDevelopmentSummary = {
       status: "on_track" | "needs_work" | "unmeasured";
     }>;
   };
+  evidenceCohorts: {
+    normalBallShotIds: string[];
+    maximumBallShotIds: string[];
+    noBallShotIds: string[];
+    unknownIntentShotIds: string[];
+  };
+  ballSpeedScenario: {
+    clubSpeedMph: number;
+    assumedSmash: number;
+    ballSpeedMph: number;
+    assumption: string;
+    projectedCarryYd: null;
+  } | null;
   readiness: SpeedDevelopmentReadiness;
   funnel: SpeedDevelopmentFunnelStage[];
   chaos: {
@@ -231,10 +246,12 @@ export function buildSpeedDevelopment(input: BuildSpeedDevelopmentInput): SpeedD
     .filter((shot) => validDate(shot.shotAtIso))
     .map(sanitizeDriverEvidence);
   const cleanTransferDriverShots = (input.transferDriverShots ?? input.driverShots)
+    .filter((shot) => shot.swingIntent !== "no_ball")
     .filter(isUsableDriverEvidence)
     .filter((shot) => validDate(shot.shotAtIso))
     .map(sanitizeDriverEvidence);
   const shots = [...cleanDriverShots]
+    .filter((shot) => shot.swingIntent !== "maximum_ball" && shot.swingIntent !== "no_ball")
     .filter(
       (shot) => isMeasuredClubData(shot.clubDataEstType) && validMetric(shot.clubSpeedMph, 40, 150),
     )
@@ -291,6 +308,7 @@ export function buildSpeedDevelopment(input: BuildSpeedDevelopmentInput): SpeedD
   const smashSamples = playingShots.filter((shot) => isNumber(shot.smashFactor)).length;
   const launchSamples = playingShots.filter((shot) => isNumber(shot.launchAngleDeg)).length;
   const measuredCarries = cleanDriverShots
+    .filter((shot) => shot.swingIntent !== "no_ball")
     .map((shot) => shot.carryYd)
     .filter((value): value is number => validMetric(value, 50, 400));
   const bestMeasuredCarry = max(measuredCarries);
@@ -365,6 +383,21 @@ export function buildSpeedDevelopment(input: BuildSpeedDevelopmentInput): SpeedD
     generatedAtIso,
     project,
     readiness,
+    evidenceCohorts: {
+      normalBallShotIds: cleanDriverShots
+        .filter((shot) => shot.swingIntent === "normal_ball")
+        .flatMap((shot) => (shot.id ? [shot.id] : [])),
+      maximumBallShotIds: cleanDriverShots
+        .filter((shot) => shot.swingIntent === "maximum_ball")
+        .flatMap((shot) => (shot.id ? [shot.id] : [])),
+      noBallShotIds: cleanDriverShots
+        .filter((shot) => shot.swingIntent === "no_ball")
+        .flatMap((shot) => (shot.id ? [shot.id] : [])),
+      unknownIntentShotIds: cleanDriverShots
+        .filter((shot) => !shot.swingIntent || shot.swingIntent === "unknown")
+        .flatMap((shot) => (shot.id ? [shot.id] : [])),
+    },
+    ballSpeedScenario: buildBallSpeedScenario(targetSpeedMph, currentSmash),
     funnel,
     chaos,
     plan,
@@ -534,8 +567,7 @@ function buildHeadlineMetrics(input: {
   launchSamples: number;
   carrySamples: number;
 }): SpeedDevelopmentMetric[] {
-  const launchOnTrack = input.launchDeg !== null && input.launchDeg >= 12 && input.launchDeg <= 16;
-  const nextBallSpeed = input.targetSpeedMph * 1.45;
+  const nextBallSpeed = input.smash === null ? null : input.targetSpeedMph * input.smash;
 
   return [
     {
@@ -551,26 +583,27 @@ function buildHeadlineMetrics(input: {
       key: "ball_speed",
       label: "Ball speed",
       current: formatMph(input.ballSpeedMph),
-      nextTarget: `${formatMph(nextBallSpeed)}+`,
-      longTerm: `${formatMph(input.longTermSpeedMph * 1.47)}+`,
-      status: metricStatus(input.ballSpeedMph, nextBallSpeed),
-      detail: `${input.ballSpeedSamples} measured in the same Driver window`,
+      nextTarget:
+        nextBallSpeed === null ? "Need paired evidence" : `${formatMph(nextBallSpeed)} scenario`,
+      longTerm: "Measured retest",
+      status: "unmeasured",
+      detail: `${input.ballSpeedSamples} measured in the same Driver window; scenario assumes the observed smash is retained`,
     },
     {
       key: "smash",
       label: "Smash",
       current: formatDecimal(input.smash, 2),
-      nextTarget: "1.45+",
-      longTerm: "1.47+",
-      status: metricStatus(input.smash, 1.45),
-      detail: `${input.smashSamples} measured · ball speed divided by club speed`,
+      nextTarget: "Retest paired readings",
+      longTerm: "Flight and control context",
+      status: "unmeasured",
+      detail: `${input.smashSamples} reported ratios; equipment and measurement context required`,
     },
     {
       key: "best_carry",
       label: "Best carry",
       current: formatYards(input.bestCarryYd),
       nextTarget: formatYards(input.targetCarryYd),
-      longTerm: formatYards(input.targetCarryYd + 10),
+      longTerm: "Measured retest",
       status: metricStatus(input.bestCarryYd, input.targetCarryYd),
       detail: `${input.carrySamples} clean measured · Outcome measure, not the swing-by-swing target`,
     },
@@ -578,10 +611,10 @@ function buildHeadlineMetrics(input: {
       key: "launch",
       label: "Launch",
       current: input.launchDeg === null ? "Not measured" : `${roundOne(input.launchDeg)}°`,
-      nextTarget: launchOnTrack ? "Maintain" : "12–16°",
-      longTerm: "Maintain",
-      status: input.launchDeg === null ? "unmeasured" : launchOnTrack ? "on_track" : "needs_work",
-      detail: `${input.launchSamples} measured · practical Driver launch window`,
+      nextTarget: "Review same-shot flight",
+      longTerm: "Assess intended shot",
+      status: "unmeasured",
+      detail: `${input.launchSamples} measured; launch alone cannot determine carry suitability`,
     },
   ];
 }
@@ -686,7 +719,6 @@ function buildSpeedReadiness(input: {
   chaos: SpeedDevelopmentSummary["chaos"];
   fatigue: SpeedFatigueAnalysis | null;
 }): SpeedDevelopmentReadiness {
-  let score = 50;
   const reasons: SpeedDevelopmentReadiness["reasons"] = [];
   const hoursSinceSpeed = input.latestSession
     ? Math.max(0, (input.now.getTime() - Date.parse(input.latestSession.sessionDateIso)) / HOUR_MS)
@@ -694,63 +726,56 @@ function buildSpeedReadiness(input: {
   const highLoad =
     input.trainingLoad?.statusKey === "load_high" ||
     input.trainingLoad?.trendKey === "acute_load_spike" ||
-    input.trainingLoad?.trendKey === "overloaded" ||
-    (input.trainingLoad?.fatigue ?? 0) >= 120;
+    input.trainingLoad?.trendKey === "overloaded";
 
   if (!input.trainingLoad || input.trainingLoad.fatigue === null) {
     reasons.push({
       label: "Recent load",
-      detail: "Not enough Training Load evidence to score this signal.",
+      detail: "Training Load context is unavailable; recovery cannot be inferred.",
       state: "missing",
     });
   } else if (highLoad) {
-    score -= 25;
     reasons.push({
       label: "Recent load",
-      detail: "Training Load is elevated, so maximum-speed volume should wait.",
+      detail:
+        "Training Load is flagged elevated. Consider a lighter session and your reported fatigue or discomfort.",
       state: "caution",
     });
   } else {
-    score += 10;
     reasons.push({
       label: "Recent load",
-      detail: "Recent golf load is manageable for a short, sharp session.",
+      detail: "No elevated load flag was reported. This does not establish physical readiness.",
       state: "positive",
     });
   }
 
   if (hoursSinceSpeed === null) {
-    score += 5;
     reasons.push({
-      label: "Speed recovery",
+      label: "Session spacing",
       detail: "No previous speed session is stored; start with a conservative baseline.",
       state: "missing",
     });
   } else if (hoursSinceSpeed >= 48) {
-    score += 15;
     reasons.push({
-      label: "Speed recovery",
+      label: "Session spacing",
       detail: `${Math.floor(hoursSinceSpeed)} hours since the last speed session.`,
       state: "positive",
     });
   } else {
-    score -= 20;
     reasons.push({
-      label: "Speed recovery",
-      detail: `Only ${Math.floor(hoursSinceSpeed)} hours since the last speed session; wait for the 48-hour recovery mark.`,
+      label: "Session spacing",
+      detail: `Only ${Math.floor(hoursSinceSpeed)} hours since the last speed session; the plan uses a conservative 48-hour spacing preference, not a validated recovery threshold.`,
       state: "caution",
     });
   }
 
   if (input.chaos.status === "successful") {
-    score += 10;
     reasons.push({
       label: "Driver control",
       detail: "The latest speed gain transferred without a material control penalty.",
       state: "positive",
     });
   } else if (input.chaos.status === "not_transferred") {
-    score -= 15;
     reasons.push({
       label: "Driver control",
       detail: "The latest gain widened dispersion; transfer work comes before more speed.",
@@ -763,7 +788,6 @@ function buildSpeedReadiness(input: {
       state: "missing",
     });
   } else {
-    score += 5;
     reasons.push({
       label: "Driver control",
       detail: "Recent driver control has not shown a material speed-related deterioration.",
@@ -778,14 +802,12 @@ function buildSpeedReadiness(input: {
       state: "missing",
     });
   } else if (input.fatigue.stopRecommended) {
-    score -= 15;
     reasons.push({
       label: "Speed fatigue",
       detail: `The last block crossed the 4% stop line by swing ${input.fatigue.stopAfterSwingNumber}.`,
       state: "caution",
     });
   } else {
-    score += 10;
     reasons.push({
       label: "Speed fatigue",
       detail: "The last measured block did not trigger the two-swing fatigue stop rule.",
@@ -793,20 +815,15 @@ function buildSpeedReadiness(input: {
     });
   }
 
-  if (input.sessionCount >= 3) {
-    score += 5;
-  }
-
-  score = clamp(Math.round(score), 0, 100);
   const recoveryBlocked = hoursSinceSpeed !== null && hoursSinceSpeed < 48;
   const fatigueBlocked = input.fatigue?.stopRecommended === true;
   const loadEvidenceMissing = !input.trainingLoad || input.trainingLoad.fatigue === null;
   const criticalEvidenceMissing =
     input.chaos.status === "need_evidence" || !input.fatigue || loadEvidenceMissing;
   const status: SpeedDevelopmentReadiness["status"] =
-    highLoad || recoveryBlocked || fatigueBlocked || score < 50
+    highLoad || recoveryBlocked || fatigueBlocked
       ? "recover"
-      : score >= 70 && !criticalEvidenceMissing
+      : !criticalEvidenceMissing && input.chaos.status !== "not_transferred"
         ? "ready"
         : "build";
   const nextRecommendedDate =
@@ -817,7 +834,7 @@ function buildSpeedReadiness(input: {
         : input.now;
   const recommendation =
     status === "recover"
-      ? "Technical Driver only — no maximum-speed work today."
+      ? "Consider technical Driver work. Check fatigue and discomfort before any maximum-speed work."
       : input.chaos.status === "not_transferred"
         ? "Transfer session — keep the speed, rebuild playable dispersion."
         : status === "ready"
@@ -825,9 +842,9 @@ function buildSpeedReadiness(input: {
           : "Build the baseline with one controlled speed block and transfer shots.";
 
   return {
-    score,
+    score: null,
     status,
-    label: status === "ready" ? "READY" : status === "recover" ? "RECOVER" : "BUILD",
+    label: status === "ready" ? "EVIDENCE AVAILABLE" : status === "recover" ? "CAUTION" : "BUILD",
     tone: status === "ready" ? "green" : status === "build" ? "sky" : "amber",
     recommendation,
     nextRecommendedDateIso: nextRecommendedDate?.toISOString() ?? null,
@@ -1016,61 +1033,54 @@ function buildCarryProject(input: {
   carrySource: string;
   carrySampleSize: number;
 }): SpeedDevelopmentSummary["project"] {
-  const targetBallSpeed = input.targetSpeedMph * 1.45;
-  const launchOnTrack = input.launchDeg !== null && input.launchDeg >= 12 && input.launchDeg <= 16;
-  const controlOnTrack = input.offlineYd !== null && input.offlineYd <= PLAYABLE_OFFLINE_YD;
+  const scenario = buildBallSpeedScenario(input.targetSpeedMph, input.smash);
   const ingredients: SpeedDevelopmentSummary["project"]["ingredients"] = [
     {
       key: "speed",
-      label: "Playing speed",
+      label: "Practice club speed",
       current: formatMph(input.playingMph),
       target: formatMph(input.targetSpeedMph),
       status: metricStatus(input.playingMph, input.targetSpeedMph),
     },
     {
       key: "ball_speed",
-      label: "Ball speed",
+      label: "Ball-speed scenario",
       current: formatMph(input.ballSpeedMph),
-      target: `${formatMph(targetBallSpeed)}+`,
-      status: metricStatus(input.ballSpeedMph, targetBallSpeed),
+      target: scenario ? `${formatMph(scenario.ballSpeedMph)} assumed` : "Need paired evidence",
+      status: "unmeasured",
     },
     {
       key: "smash",
-      label: "Smash",
+      label: "Reported smash",
       current: formatDecimal(input.smash, 2),
-      target: "1.45+",
-      status: metricStatus(input.smash, 1.45),
+      target: "Retest with same equipment",
+      status: "unmeasured",
     },
     {
       key: "launch",
       label: "Launch",
       current: input.launchDeg === null ? "Not measured" : `${roundOne(input.launchDeg)}°`,
-      target: "12–16°",
-      status: input.launchDeg === null ? "unmeasured" : launchOnTrack ? "on_track" : "needs_work",
+      target: "Review same-shot flight",
+      status: "unmeasured",
     },
     {
       key: "control",
-      label: "Control",
-      current: input.offlineYd === null ? "Not measured" : `${roundOne(input.offlineYd)} yd`,
-      target: `≤${PLAYABLE_OFFLINE_YD} yd average`,
-      status: input.offlineYd === null ? "unmeasured" : controlOnTrack ? "on_track" : "needs_work",
+      label: "Mean absolute lateral miss",
+      current: formatYards(input.offlineYd),
+      target: `≤${PLAYABLE_OFFLINE_YD} yd mean absolute miss (practice target)`,
+      status:
+        input.offlineYd === null
+          ? "unmeasured"
+          : input.offlineYd <= PLAYABLE_OFFLINE_YD
+            ? "on_track"
+            : "needs_work",
     },
   ];
-  const limiting = chooseLimitingIngredient({
-    playingMph: input.playingMph,
-    targetSpeedMph: input.targetSpeedMph,
-    ballSpeedMph: input.ballSpeedMph,
-    targetBallSpeed,
-    smash: input.smash,
-    launchDeg: input.launchDeg,
-    offlineYd: input.offlineYd,
-    launchOnTrack,
-    controlOnTrack,
-  });
-  const coachMessage =
-    limiting.key === "ball_speed" && launchOnTrack
-      ? `You’re not missing ${input.targetCarryYd} because of launch. The biggest remaining opportunity is producing ${Math.round(targetBallSpeed)}+ mph ball speed more often.`
-      : limiting.message;
+  const missingEvidence =
+    input.playingMph === null || input.ballSpeedMph === null || input.offlineYd === null;
+  const coachMessage = missingEvidence
+    ? "Import comparable Driver shots with paired speed and lateral evidence before choosing the next practice objective."
+    : "Retest five normal-ball Driver shots with the same equipment and target. Compare measured speed and absolute lateral miss; carry must be measured again. No validated carry projection is available.";
   const gapYd =
     input.currentBestCarryYd === null
       ? null
@@ -1087,7 +1097,7 @@ function buildCarryProject(input: {
       input.currentBestCarryYd === null
         ? 0
         : clamp(Math.round((input.currentBestCarryYd / input.targetCarryYd) * 100), 0, 100),
-    limitingFactor: limiting.label,
+    limitingFactor: missingEvidence ? "Need Driver evidence" : "Measured retest",
     coachMessage,
     ingredients,
   };
@@ -1316,78 +1326,20 @@ function buildExplicitTransferWindow(
   };
 }
 
-function chooseLimitingIngredient(input: {
-  playingMph: number | null;
-  targetSpeedMph: number;
-  ballSpeedMph: number | null;
-  targetBallSpeed: number;
-  smash: number | null;
-  launchDeg: number | null;
-  offlineYd: number | null;
-  launchOnTrack: boolean;
-  controlOnTrack: boolean;
-}) {
-  const candidates = [
-    input.playingMph === null || input.playingMph >= input.targetSpeedMph
-      ? null
-      : {
-          key: "speed",
-          label: "Playing speed",
-          score: Math.max(0, input.targetSpeedMph - input.playingMph) / 8,
-          message: `Build repeatable playing speed toward ${roundOne(input.targetSpeedMph)} mph before moving the carry goal.`,
-        },
-    input.ballSpeedMph === null || input.ballSpeedMph >= input.targetBallSpeed
-      ? null
-      : {
-          key: "ball_speed",
-          label: "Ball-speed frequency",
-          score: Math.max(0, input.targetBallSpeed - input.ballSpeedMph) / 12,
-          message: `Produce ${Math.round(input.targetBallSpeed)}+ mph ball speed more often without widening dispersion.`,
-        },
-    input.smash === null || input.smash >= 1.45
-      ? null
-      : {
-          key: "smash",
-          label: "Strike efficiency",
-          score: Math.max(0, 1.45 - input.smash) * 8,
-          message: "Improve strike efficiency before asking for more maximum club speed.",
-        },
-    input.launchDeg === null || input.launchOnTrack
-      ? null
-      : {
-          key: "launch",
-          label: "Launch window",
-          score: input.launchOnTrack ? 0 : 0.7,
-          message: "Move launch into the 12–16° window so the available speed becomes carry.",
-        },
-    input.offlineYd === null || input.controlOnTrack
-      ? null
-      : {
-          key: "control",
-          label: "Playable control",
-          score: input.controlOnTrack ? 0 : 0.8,
-          message: "Keep the new speed inside the playable window before chasing the next level.",
-        },
-  ].filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null);
-
-  if (candidates.length === 0) {
-    const missingEvidence =
-      input.playingMph === null ||
-      input.ballSpeedMph === null ||
-      input.smash === null ||
-      input.launchDeg === null ||
-      input.offlineYd === null;
-
-    return {
-      key: missingEvidence ? "evidence" : "validation",
-      label: missingEvidence ? "Need Driver evidence" : "Carry validation",
-      message: missingEvidence
-        ? "Import measured Driver shots with club speed, ball speed, carry, launch and lateral result to identify the next ingredient."
-        : "The measured ingredients are on track. Confirm the gain with repeatable carry and playable dispersion.",
-    };
-  }
-
-  return [...candidates].sort((left, right) => right.score - left.score)[0]!;
+/** Arithmetic only: retaining the observed efficiency is an assumption, not a carry model. */
+export function buildBallSpeedScenario(
+  clubSpeedMph: number,
+  assumedSmash: number | null,
+): SpeedDevelopmentSummary["ballSpeedScenario"] {
+  if (!validMetric(clubSpeedMph, 40, 150) || !validMetric(assumedSmash, 0.8, 1.6)) return null;
+  return {
+    clubSpeedMph,
+    assumedSmash,
+    ballSpeedMph: roundOne(clubSpeedMph * assumedSmash),
+    assumption:
+      "Assumes the observed smash is retained at the target club speed. This is arithmetic, not a prediction of carry or a guarantee of future speed.",
+    projectedCarryYd: null,
+  };
 }
 
 function resolveNextSpeedTarget(currentMph: number | null, savedTargetMph: number | null) {

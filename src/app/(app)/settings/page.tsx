@@ -1034,7 +1034,7 @@ function ReadonlyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid gap-2 text-sm">
       <span className="font-medium">{label}</span>
-      <div className="flex h-10 items-center rounded-lg border bg-muted/45 px-3 text-muted-foreground">
+      <div className="flex min-h-10 min-w-0 items-center break-all rounded-lg border bg-muted/45 px-3 py-2 text-muted-foreground">
         {value}
       </div>
     </div>

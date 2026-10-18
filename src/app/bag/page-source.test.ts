@@ -354,16 +354,15 @@ describe("bag desktop workbench source", () => {
   });
 
   it("builds distance benchmarks from a transparent best-30 average", () => {
-    const benchmarkBuilder =
-      source.match(
-        /function buildBenchmarkRows[\s\S]*?async function getPeerBenchmarkSummary/,
-      )?.[0] ?? "";
-
-    expect(benchmarkBuilder).toContain("CLUB_BENCHMARK_CARRY_SAMPLE_SIZE");
-    expect(benchmarkBuilder).toContain("averageSampleSize: BENCHMARK_CARRY_CANDIDATE_SIZE");
-    expect(benchmarkBuilder).toContain(
-      "benchmarkCandidates.slice(0, CLUB_BENCHMARK_CARRY_SAMPLE_SIZE)",
+    const benchmarkBuilder = readFileSync(
+      join(process.cwd(), "src/lib/benchmark-evidence.ts"),
+      "utf8",
     );
+    expect(source).toContain("getPerformanceEvidenceData()");
+    expect(source).toContain("buildEvidenceBenchmarkRows(");
+    expect(benchmarkBuilder).toContain("group?.potential.shotIds");
+    expect(benchmarkBuilder).toContain("selectedShotIds: selected.map((s) => s.id)");
+    expect(benchmarkBuilder).toContain("validCount: valid.length");
     expect(benchmarkBuilder).toContain("sampleCarryYards");
     expect(benchmarkBuilder).toContain("savedShotCount: club.rawShotCount");
     expect(benchmarkBuilder).not.toContain("carryYd: club.stock.bestStockCarryYd");

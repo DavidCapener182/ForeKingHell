@@ -47,9 +47,9 @@ describe("bag intelligence", () => {
         shots: [
           shot("2026-01-01", 100, "full"),
           shot("2026-01-02", 101, "full"),
-          shot("2026-01-03", 86, "pitch"),
-          shot("2026-01-04", 84, "pitch"),
-          shot("2026-01-05", 85, "pitch"),
+          shot("2026-01-03", 86, "3/4"),
+          shot("2026-01-04", 84, "three-quarter"),
+          shot("2026-01-05", 85, "three quarter"),
         ],
       }),
     ]);
@@ -70,15 +70,15 @@ describe("bag intelligence", () => {
     });
   });
 
-  it("does not double-count low pitch shots as both 3/4 and half wedges", () => {
+  it("requires explicit half-swing intent independently from three-quarter shots", () => {
     const matrix = buildWedgeMatrix([
       club("pw", 120, {
         shots: [
           shot("2026-01-01", 120, "full"),
           shot("2026-01-02", 121, "full"),
-          shot("2026-01-03", 72, "pitch"),
-          shot("2026-01-04", 73, "pitch"),
-          shot("2026-01-05", 74, "pitch"),
+          shot("2026-01-03", 72, "half"),
+          shot("2026-01-04", 73, "1/2"),
+          shot("2026-01-05", 74, "half"),
         ],
       }),
     ]);
@@ -277,3 +277,46 @@ function pathShot(
     launchDirectionDeg,
   };
 }
+
+describe("wedge swing-length evidence", () => {
+  it.each(["pitch", "chip", "full", "unknown"])(
+    "does not turn %s distances into measured half or three-quarter intent",
+    (category) => {
+      const matrix = buildWedgeMatrix([
+        club("gw", 100, {
+          shots: [
+            shot("2026-01-01", 85, category),
+            shot("2026-01-02", 84, category),
+            shot("2026-01-03", 86, category),
+            shot("2026-01-04", 65, category),
+            shot("2026-01-05", 66, category),
+            shot("2026-01-06", 64, category),
+          ],
+        }),
+      ]);
+      const wedge = matrix.find((row) => row.clubType === "gw")!;
+      expect(wedge.rows.find((row) => row.key === "threeQuarter")).toMatchObject({
+        status: "target",
+        sampleSize: 0,
+        carryYd: 85,
+        detail: "Calibration target.",
+      });
+      expect(wedge.rows.find((row) => row.key === "half")).toMatchObject({
+        status: "target",
+        sampleSize: 0,
+        carryYd: 70,
+        detail: "Calibration target.",
+      });
+    },
+  );
+  it("leaves explicit sparse swing-length evidence provisional instead of measured", () => {
+    const wedge = buildWedgeMatrix([
+      club("gw", 100, { shots: [shot("2026-01-01", 82, "3/4"), shot("2026-01-02", 83, "3/4")] }),
+    ]).find((row) => row.clubType === "gw")!;
+    expect(wedge.rows.find((row) => row.key === "threeQuarter")).toMatchObject({
+      status: "target",
+      sampleSize: 2,
+      detail: "Early partial data.",
+    });
+  });
+});

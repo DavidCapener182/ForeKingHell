@@ -472,6 +472,10 @@ describe("Rapsodo achievement evaluation", () => {
     expect(ids).not.toContain("club_driver_benchmark_advanced");
     expect(ids).not.toContain("club_driver_benchmark_tour");
     expect(firstGood?.metadata).toMatchObject({
+      referenceVersion: "lmwt-legacy-v1",
+      calculationVersion: "legacy-stock-median-v1",
+      equipmentId: "driver-club",
+      evidenceRecordedAt: "2026-05-01T12:00:00.000Z",
       benchmarkLevel: "Good",
       actualLevel: "Good",
       clubName: "Driver",
@@ -483,6 +487,8 @@ describe("Rapsodo achievement evaluation", () => {
       carryYd: 250,
     });
     expect(goodBag?.metadata).toMatchObject({
+      referenceVersion: "lmwt-legacy-v1",
+      calculationVersion: "legacy-stock-median-v1",
       benchmarkLevel: "Good",
       benchmarkClubCount: 5,
       benchmarkAverageLevel: 2,

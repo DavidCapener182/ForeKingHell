@@ -1,5 +1,12 @@
 "use client";
 
-import { SegmentErrorState } from "@/components/segment-error-state";
+import { OnCourseRecovery } from "@/app/courses/on-course-recovery";
 
-export default SegmentErrorState;
+export default function Error({
+  retry,
+}: {
+  error: Error & { digest?: string };
+  retry: () => void;
+}) {
+  return <OnCourseRecovery area="rounds" retry={retry} />;
+}

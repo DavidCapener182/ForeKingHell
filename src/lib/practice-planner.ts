@@ -18,6 +18,7 @@ import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { getDb } from "@/db/client";
 import {
+  clubEquipmentHistory,
   practiceBlockResults,
   practiceBlocks,
   practicePlanMatches,
@@ -49,9 +50,11 @@ import { getTodayPracticeData, type ClubDayComparison } from "@/lib/today-sessio
 import { getTrainingOverTimeData } from "@/lib/training/trainingData";
 import type { TrainingStatusKey } from "@/lib/training/trainingStatus";
 import { normalizeClubType } from "@/lib/rapsodo/parser";
+import { performanceObservationExclusionReason } from "@/lib/performance-intelligence";
+import { performanceSourceContext } from "@/lib/performance-shot-adapter";
 import { getAchievement } from "@/lib/achievements/registry";
 import { xpForAchievement } from "@/lib/achievements/xp";
-import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
+import type { ShotReviewStatus } from "@/lib/shot-review";
 
 export type PracticeSessionType =
   | "range"
@@ -247,7 +250,37 @@ export type PracticeActivityProgress = {
   note: string;
 };
 
+export const PRACTICE_EVALUATION_VERSION = "practice-evidence-v2";
+
+export type FrozenPracticeEvidence = {
+  version: typeof PRACTICE_EVALUATION_VERSION;
+  revision: string;
+  frozenAt: string;
+  baselineSessionId: string | null;
+  baselineShotIds: string[];
+  baselineSource: string | null;
+  baselinePlayContext: string | null;
+  baseline: Array<{
+    id: string;
+    clubType: string;
+    clubId: string | null;
+    comparisonContextKey: string | null;
+    carryYd: number | null;
+    offlineYd: number | null;
+  }>;
+  blocks: PracticeBlock[];
+  totalBalls: number | null;
+  timeMinutes: number;
+  evaluationRules: {
+    missing: "inconclusive";
+    repeatedClub: "unresolved_without_sequence";
+    minimumObservations: 10;
+    lateralChangeYd: 2;
+  };
+};
+
 export type PracticePlan = {
+  frozenEvidence?: FrozenPracticeEvidence | null;
   activityProgress?: PracticeActivityProgress | null;
   id?: string;
   status?: PracticePlanStatus;
@@ -293,6 +326,22 @@ export type PracticeResultInput = {
 };
 
 export type PracticeComparison = {
+  evaluationVersion?: string;
+  planRevision?: string;
+  sessionMatch?: "linked" | "possible" | "unconfirmed";
+  coverage?: "complete" | "partial" | "unresolved";
+  outcome?: "improved" | "unchanged" | "worse" | "mixed" | "inconclusive";
+  outcomeReason?: string;
+  baselineShotIds?: string[];
+  clubEvidence?: Array<{
+    clubType: string;
+    shotIds: string[];
+    shotCount: number;
+    carryAverageYd: number | null;
+    offlineAverageYd: number | null;
+    allocation: "club_level_only";
+  }>;
+
   sourceSessionId: string | null;
   scoringMode: PracticeBlockScoringMode;
   matchConfidence: number | null;
@@ -386,8 +435,8 @@ export type PracticeScore = {
   completionPercent: number;
   verdict: string;
   nextAction: string;
-  mainPriority: "improved" | "mixed" | "missed";
-  transfer: "strong" | "mixed" | "missed";
+  mainPriority: "improved" | "mixed" | "missed" | "inconclusive";
+  transfer: "strong" | "mixed" | "missed" | "inconclusive";
 };
 
 export type PracticePlanGeneration = {
@@ -405,6 +454,7 @@ export type PracticePlanGeneration = {
 };
 
 export type SavedPracticePlan = {
+  frozenEvidence?: FrozenPracticeEvidence | null;
   sourcePractice?: PracticePlannerContext["latestPractice"];
   activityProgress?: PracticeActivityProgress | null;
   id: string;
@@ -473,6 +523,10 @@ export type ImportedPracticeSessionSummary = {
 };
 
 export type ImportedPracticeShotRow = {
+  clubId?: string | null;
+  comparisonContextKey?: string | null;
+  sessionType?: string | null;
+  practiceBlockId?: string | null;
   launchAngleDeg?: number | null;
   smashFactor?: number | null;
   id: string;
@@ -1016,7 +1070,17 @@ export function comparePlanWithShotSummaries(
     const clubSummaries = summaries.filter((summary) =>
       blockClubs.has(normalizeClubType(summary.clubType)),
     );
-    const actualBalls = clubSummaries.reduce((total, summary) => total + summary.shotCount, 0);
+    const ambiguous = clubSummaries.some(
+      (summary) =>
+        plan.blocks.filter(
+          (item) =>
+            isLaunchMonitorScoredBlock(item) &&
+            uniqueClubs(item.clubs).includes(normalizeClubType(summary.clubType)),
+        ).length > 1,
+    );
+    const actualBalls = ambiguous
+      ? 0
+      : clubSummaries.reduce((total, summary) => total + summary.shotCount, 0);
     const clubSummary = aggregateBlockShotSummary(block, clubSummaries);
     const matchedPlannedVolume =
       block.ballCount === null ? actualBalls > 0 : actualBalls >= block.ballCount;
@@ -1024,8 +1088,14 @@ export function comparePlanWithShotSummaries(
       actualBalls > 0
         ? `${actualBalls}/${block.ballCount ?? actualBalls} matching shots - ${formatRate(clubSummary?.playableRate ?? null)} playable - ${formatYards(clubSummary?.offlineAverageYd ?? null)} offline`
         : "No matching imported shots";
-    const decision = blockDecision(block, clubSummary);
-    const result = decisionToBlockResult(decision, actualBalls, matchedPlannedVolume);
+    const decision =
+      ambiguous || clubSummary?.playableRate == null
+        ? ("keep_priority" as const)
+        : blockDecision(block, clubSummary);
+    const result =
+      ambiguous || clubSummary?.playableRate == null
+        ? "insufficient_data"
+        : decisionToBlockResult(decision, actualBalls, matchedPlannedVolume);
 
     return {
       blockId: block.id,
@@ -1063,11 +1133,21 @@ export function comparePlanWithShotRows(
     dateLabel: string;
     clubTypes: string[];
     shotRows: ImportedPracticeShotRow[];
+    sourceType?: string;
+    playContext?: string;
   },
   matchConfidence: number | null = null,
   options: { scoringMode?: PracticeBlockScoringMode } = {},
 ): PracticeComparison {
-  const cleanRows = session.shotRows.filter(isCleanImportedPracticeShotRow);
+  const baselineIds = new Set(plan.frozenEvidence?.baselineShotIds ?? []);
+  const cleanRows = [
+    ...new Map(
+      session.shotRows
+        .filter(isCleanImportedPracticeShotRow)
+        .filter((row) => !baselineIds.has(row.id))
+        .map((row) => [row.id, row] as const),
+    ).values(),
+  ];
   const cleanClubTypes = uniqueClubs(cleanRows.map((row) => row.clubType));
   const ordered =
     options.scoringMode === "aggregate" ? false : canUseOrderedBlockScoring(plan, cleanRows);
@@ -1075,7 +1155,7 @@ export function comparePlanWithShotRows(
     ? evaluateOrderedPracticeBlocks(plan, cleanRows)
     : evaluateAggregatePracticeBlocks(plan, cleanRows);
 
-  return buildPracticeComparison(
+  const comparison = buildPracticeComparison(
     plan,
     sourceSessionId,
     ordered ? "ordered" : "aggregate",
@@ -1088,6 +1168,72 @@ export function comparePlanWithShotRows(
     },
     decisions,
   );
+  comparison.clubEvidence = summarizeImportedPracticeShotRows(cleanRows).map((summary) => ({
+    clubType: summary.clubType,
+    shotIds: cleanRows.filter((row) => row.clubType === summary.clubType).map((row) => row.id),
+    shotCount: summary.shotCount,
+    carryAverageYd: summary.carryAverageYd,
+    offlineAverageYd: summary.offlineAverageYd,
+    allocation: "club_level_only" as const,
+  }));
+  comparison.baselineShotIds = [...baselineIds];
+  const frozen = plan.frozenEvidence;
+  if (
+    frozen &&
+    frozen.baselineSessionId !== sourceSessionId &&
+    frozen.baselineSource === session.sourceType &&
+    frozen.baselinePlayContext === session.playContext
+  ) {
+    const plannedClubs = new Set(
+      uniqueClubs(plan.blocks.filter(isLaunchMonitorScoredBlock).flatMap((item) => item.clubs)),
+    );
+    const changes = uniqueClubs(cleanRows.map((row) => row.clubType))
+      .filter((club) => plannedClubs.has(club))
+      .flatMap((clubType) => {
+        const before = frozen.baseline.filter(
+          (row) =>
+            row.clubType === clubType && row.clubId !== null && row.comparisonContextKey !== null,
+        );
+        const equipment = new Set(before.map((row) => row.clubId));
+        const contexts = new Set(before.map((row) => row.comparisonContextKey));
+        // An unknown/mixed intent, target or setup is never evidence of comparable improvement.
+        if (contexts.size !== 1) return [];
+        const after = cleanRows.filter(
+          (row) =>
+            row.clubType === clubType &&
+            row.clubId != null &&
+            equipment.has(row.clubId) &&
+            row.comparisonContextKey != null &&
+            contexts.has(row.comparisonContextKey),
+        );
+        const a = before.flatMap((row) =>
+          row.offlineYd !== null && Number.isFinite(row.offlineYd) ? [Math.abs(row.offlineYd)] : [],
+        );
+        const b = after.flatMap((row) =>
+          row.offlineYd !== null && Number.isFinite(row.offlineYd) ? [Math.abs(row.offlineYd)] : [],
+        );
+        if (
+          a.length < frozen.evaluationRules.minimumObservations ||
+          b.length < frozen.evaluationRules.minimumObservations
+        )
+          return [];
+        const median = (values: number[]) => {
+          const sorted = [...values].sort((x, y) => x - y);
+          const mid = Math.floor(sorted.length / 2);
+          return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+        };
+        return [median(b) - median(a)];
+      });
+    if (changes.length) {
+      const improved = changes.some((delta) => delta <= -frozen.evaluationRules.lateralChangeYd);
+      const worse = changes.some((delta) => delta >= frozen.evaluationRules.lateralChangeYd);
+      comparison.outcome =
+        improved && worse ? "mixed" : improved ? "improved" : worse ? "worse" : "unchanged";
+      comparison.outcomeReason =
+        "Early signal in this practice: median absolute lateral error versus the frozen baseline, same explicit intent/target/settings/ball/environment/normalisation/equipment with reviewed alignment, at least 10 readings in each club cohort; descriptive 2 yd change rule. Only fully recorded matching context is compared. This does not establish drill execution or a lasting training effect; retest retention.";
+    }
+  }
+  return comparison;
 }
 
 function buildPracticeComparison(
@@ -1116,17 +1262,28 @@ function buildPracticeComparison(
     .slice(0, 3)
     .map((item) => `${item.title}: ${item.summary}`);
   const needsWork = scoredDecisions
-    .filter(
-      (item) =>
-        item.result === "mixed" || item.result === "failed" || item.result === "insufficient_data",
-    )
+    .filter((item) => item.result === "mixed" || item.result === "failed")
     .slice(0, 3)
     .map((item) => `${item.title}: ${item.summary}`);
   const nextBlock = scoredDecisions.find((item) => item.result !== "passed");
   const plannedClubs = uniqueClubs(plan.blocks.flatMap((block) => block.clubs));
   const actualClubs = importedSession?.clubTypes ?? [];
 
+  const unresolved = scoredDecisions.some((item) => item.result === "insufficient_data");
+  const evidenced = scoredDecisions.filter((item) => item.result !== "insufficient_data");
   return {
+    evaluationVersion: plan.frozenEvidence?.version ?? PRACTICE_EVALUATION_VERSION,
+    planRevision: plan.frozenEvidence?.revision,
+    sessionMatch:
+      (importedSession?.matchConfidence ?? 0) >= 75
+        ? "linked"
+        : importedSession
+          ? "possible"
+          : "unconfirmed",
+    coverage: evidenced.length === 0 ? "unresolved" : unresolved ? "partial" : "complete",
+    outcome: "inconclusive",
+    outcomeReason:
+      "Block target attainment describes this practice. Lasting improvement requires a comparable frozen baseline and a later retention check.",
     sourceSessionId,
     scoringMode,
     matchConfidence: importedSession?.matchConfidence ?? null,
@@ -1146,13 +1303,16 @@ function buildPracticeComparison(
     },
     whatWorked,
     needsWork,
-    nextRecommendation: nextBlock
-      ? `Repeat ${nextBlock.title.toLowerCase()} before moving it down the roadmap.`
-      : "Move the next practice toward transfer scoring and maintenance.",
+    nextRecommendation:
+      nextBlock?.result === "insufficient_data"
+        ? "Keep the club-level comparison; record block sequence and the missing measurements on the next upload. Missing evidence is inconclusive."
+        : nextBlock
+          ? `Repeat ${nextBlock.title.toLowerCase()} before moving it down the roadmap.`
+          : "Move the next practice toward transfer scoring and maintenance.",
     summary:
       scoredDecisions.length === 0
         ? "No comparable plan blocks found."
-        : `${passed.length}/${scoredDecisions.length} blocks met, maintained or moved on using ${scoringMode} scoring.`,
+        : `${passed.length} block targets met; ${scoredDecisions.filter((item) => item.result === "insufficient_data").length} inconclusive. Club counts alone do not establish drill completion.`,
     decisions,
   };
 }
@@ -1170,23 +1330,39 @@ function canUseOrderedBlockScoring(plan: PracticePlan, rows: ImportedPracticeSho
     return false;
   }
 
-  return new Set(rows.map((row) => row.shotNumber)).size === rows.length;
+  if (new Set(rows.map((row) => row.shotNumber)).size !== rows.length) return false;
+  const ordered = [...rows].sort((a, b) => Number(a.shotNumber) - Number(b.shotNumber));
+  let cursor = 0;
+  for (const item of plan.blocks.filter(isLaunchMonitorScoredBlock)) {
+    const clubs = new Set(uniqueClubs(item.clubs));
+    const window = ordered.slice(cursor, cursor + (item.ballCount ?? 0));
+    if (window.length === 0 || window.some((row) => !clubs.has(row.clubType))) return false;
+    // Any repeated-club role needs explicit block evidence; counts alone do not identify it.
+    const repeated = [...clubs].some(
+      (club) =>
+        plan.blocks.filter(
+          (other) => isLaunchMonitorScoredBlock(other) && uniqueClubs(other.clubs).includes(club),
+        ).length > 1,
+    );
+    if (repeated && window.some((row) => row.practiceBlockId !== item.id)) return false;
+    cursor += item.ballCount ?? 0;
+  }
+  return true;
 }
 
 function isCleanImportedPracticeShotRow(row: ImportedPracticeShotRow) {
-  return isShotEvidenceEligible(row);
+  return performanceObservationExclusionReason(row) === null;
 }
 
 function shotEvidenceSqlPredicate() {
   return sql<boolean>`(
     ${shots.reviewStatus} = 'restored'
     or (
-      ${shots.reviewStatus} = 'included'
+      ${shots.reviewStatus} in ('included', 'suggested_exclusion')
       and lower(trim(coalesce(${shots.qualityTag}, ''))) not like 'exclude%'
       and lower(trim(coalesce(${shots.qualityTag}, ''))) not in (
         'exclude', 'excluded', 'delete', 'deleted', 'calibration', 'warm-up', 'warmup',
-        'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread',
-        'fat', 'mishit', 'thin', 'top'
+        'warm_up', 'bad-data', 'bad_data', 'invalid', 'launch-monitor-error', 'misread'
       )
       and lower(trim(coalesce(${shots.shotCategory}, ''))) not in (
         'warm-up', 'warmup', 'warm_up'
@@ -1207,6 +1383,8 @@ function evaluateOrderedPracticeBlocks(
   let cursor = 0;
 
   return plan.blocks.map((blockItem) => {
+    if (!isLaunchMonitorScoredBlock(blockItem))
+      return evaluatePracticeBlockFromShots(blockItem, [], "ordered");
     const plannedBalls =
       blockItem.ballCount ?? Math.max(1, Math.round(rows.length / plan.blocks.length));
     const blockRows = orderedRows.slice(cursor, cursor + plannedBalls);
@@ -1231,14 +1409,34 @@ function evaluateAggregatePracticeBlocks(
     (blockItem) => new Set(uniqueClubs(blockItem.clubs)),
   );
 
+  const used = new Set<string>();
   return plan.blocks.map((blockItem, index) => {
-    const blockRows = isLaunchMonitorScoredBlock(blockItem)
+    const candidates = isLaunchMonitorScoredBlock(blockItem)
       ? uniqueRows.filter(
           (row) => blockItem.clubs.length === 0 || normalizedBlockClubs[index]?.has(row.clubType),
         )
       : [];
-
-    return evaluatePracticeBlockFromShots(blockItem, blockRows, "aggregate");
+    const blockRows = candidates.filter((row) => {
+      if (used.has(row.id)) return false;
+      if (row.practiceBlockId) return row.practiceBlockId === blockItem.id;
+      // Club-only evidence belongs to a club summary if several disjoint blocks could claim it.
+      return (
+        plan.blocks.filter(
+          (other, otherIndex) =>
+            isLaunchMonitorScoredBlock(other) &&
+            (other.clubs.length === 0 || normalizedBlockClubs[otherIndex]?.has(row.clubType)),
+        ).length === 1
+      );
+    });
+    blockRows.forEach((row) => used.add(row.id));
+    const decision = evaluatePracticeBlockFromShots(blockItem, blockRows, "aggregate");
+    if (candidates.length > 0 && blockRows.length === 0) {
+      decision.summary =
+        "Club-level evidence only: block sequence or targets cannot be identified. Outcome is inconclusive.";
+      decision.actual = `${candidates.length} club observations; block allocation unresolved`;
+      decision.metrics = { ...decision.metrics, unallocatedClubObservations: candidates.length };
+    }
+    return decision;
   });
 }
 
@@ -1308,19 +1506,25 @@ function evaluatePracticeBlockFromShots(
         }
       })
     : false;
-  const result: PracticeBlockEvaluationResult = coachProgress
-    ? !coachProgress.completed
-      ? "insufficient_data"
-      : coachProgress.won
-        ? "passed"
-        : missingCoachMeasurement
-          ? "insufficient_data"
-          : "failed"
-    : ["coach_target", "sg_category_observations", "simulator_prescription_observations"].includes(
-          blockItem.scoringRules.metric,
-        )
-      ? "insufficient_data"
-      : evaluateBlockResult(blockItem, actualBalls, matchedPlannedVolume, metrics);
+  const incompatibleIntent =
+    !coachTarget && relevantRows.some((row) => row.shotCategory !== "full");
+  const result: PracticeBlockEvaluationResult = incompatibleIntent
+    ? "insufficient_data"
+    : coachProgress
+      ? !coachProgress.completed
+        ? "insufficient_data"
+        : coachProgress.won
+          ? "passed"
+          : missingCoachMeasurement
+            ? "insufficient_data"
+            : "failed"
+      : [
+            "coach_target",
+            "sg_category_observations",
+            "simulator_prescription_observations",
+          ].includes(blockItem.scoringRules.metric)
+        ? "insufficient_data"
+        : evaluateBlockResult(blockItem, actualBalls, matchedPlannedVolume, metrics);
   const decision = blockDecisionFromResult(blockItem, result);
   const confidence = blockEvaluationConfidence(scoringMode, actualBalls, plannedBalls);
   const passLabel = coachProgress
@@ -1344,7 +1548,9 @@ function evaluatePracticeBlockFromShots(
     scoringMode,
     linkedShotIds: relevantRows.map((row) => row.id),
     metrics,
-    summary: blockResultSummary(blockItem, result, actualBalls, scoringMode),
+    summary: incompatibleIntent
+      ? "Shot intent is unknown or differs from a full-swing target; keep these observations in their intended group. Block outcome is inconclusive."
+      : blockResultSummary(blockItem, result, actualBalls, scoringMode),
     decision,
   };
 }
@@ -1368,6 +1574,9 @@ function blockMetrics(blockItem: PracticeBlock, rows: ImportedPracticeShotRow[])
   return {
     plannedBalls: blockItem.ballCount,
     actualBalls,
+    offlineSamples: offlineRows.length,
+    launchSamples: launchRows.length,
+    carrySamples: carryRows.length,
     playableCount: playableRows.length,
     playableRate:
       actualBalls > 0 && offlineRows.length > 0
@@ -1432,10 +1641,18 @@ function evaluateBlockResult(
     return "insufficient_data";
   }
 
+  const metric = blockItem.scoringRules.metric;
+  if (!["corridor", "playable", "baseline"].includes(metric)) return "insufficient_data";
+  const requiredSamples = Math.ceil(plannedBalls * 0.65);
+  const observed =
+    metric === "corridor"
+      ? Math.max(metrics.launchSamples, metrics.offlineSamples)
+      : metrics.offlineSamples;
+  if (observed < requiredSamples || observed < actualBalls || metric === "carry_ladder")
+    return "insufficient_data";
   const target = blockItem.scoringRules.target;
   const maxBigMisses =
     blockItem.scoringRules.maxBigMisses ?? Math.max(1, Math.floor(plannedBalls * 0.18));
-  const metric = blockItem.scoringRules.metric;
   const metricPassed =
     metric === "corridor"
       ? metrics.corridorCount >= target && metrics.bigMisses <= maxBigMisses
@@ -1559,6 +1776,8 @@ export async function comparePracticePlanToImport(
     dateLabel: londonDateKey(sessionSummary.sessionDate),
     clubTypes: sessionSummary.clubTypes,
     shotRows: sessionSummary.shotRows,
+    sourceType: sessionSummary.sourceType,
+    playContext: sessionSummary.playContext,
   });
 }
 
@@ -1577,6 +1796,8 @@ export function evaluatePracticePlanAgainstImportedSession(
       dateLabel: londonDateKey(sessionSummary.sessionDate),
       clubTypes: sessionSummary.clubTypes,
       shotRows: sessionSummary.shotRows,
+      sourceType: sessionSummary.sourceType,
+      playContext: sessionSummary.playContext,
     },
     matchConfidence,
     options,
@@ -1681,10 +1902,12 @@ export function scoreCompletedPractice(
   const ballCompletion =
     plannedBalls > 0 ? Math.min(1, actualBalls / plannedBalls) : blockCompletion;
   const passedRate =
-    scoredBlockResults.length > 0
-      ? scoredBlockResults.filter((item) => item.passed || (item.score ?? 0) >= 70).length /
-        scoredBlockResults.length
+    scoredDecisions.length > 0
+      ? scoredDecisions.filter((item) => item.result === "passed").length / scoredDecisions.length
       : 0;
+  const inconclusive =
+    scoredDecisions.length === 0 ||
+    scoredDecisions.some((item) => item.result === "insufficient_data");
   const comparisonRate =
     scoredDecisions.length > 0
       ? scoredDecisions.filter(
@@ -1698,34 +1921,41 @@ export function scoreCompletedPractice(
     100,
   );
   const mainPriority =
-    scoredDecisions[0]?.decision === "maintain" || passedRate >= 0.75
+    comparison.outcome === "improved"
       ? "improved"
-      : score >= 55
-        ? "mixed"
-        : "missed";
+      : inconclusive
+        ? "inconclusive"
+        : score >= 55
+          ? "mixed"
+          : "missed";
   const transferBlock = plan.blocks.find(
     (blockItem) => blockItem.type === "random" || blockItem.type === "test",
   );
   const transferResult = transferBlock
     ? result.blockResults.find((item) => item.blockId === transferBlock.id)
     : null;
-  const transfer = transferResult?.passed
-    ? "strong"
-    : (transferResult?.score ?? 0) >= 50
-      ? "mixed"
-      : "missed";
+  const transfer =
+    transferResult?.result === "insufficient_data" || !transferResult
+      ? "inconclusive"
+      : transferResult?.passed
+        ? "strong"
+        : (transferResult?.score ?? 0) >= 50
+          ? "mixed"
+          : "missed";
 
   return {
     score,
     completionPercent,
-    verdict:
-      score >= 80
+    verdict: inconclusive
+      ? "Inconclusive — block evidence unavailable"
+      : score >= 80
         ? "Practice landed"
         : score >= 60
           ? "Useful, repeat the weak block"
           : "Incomplete signal",
-    nextAction:
-      mainPriority === "improved"
+    nextAction: inconclusive
+      ? "Review the club-level evidence and capture identifiable blocks on the next upload; missing evidence is not failure."
+      : mainPriority === "improved"
         ? "Maintain the main priority and move the next plan toward transfer scoring."
         : "Repeat the main priority once before changing the focus.",
     mainPriority,
@@ -1784,6 +2014,11 @@ export async function savePracticePlanForUser(
         .update(JSON.stringify({ plan, start: !!options.start, goalId: options.goalId ?? null }))
         .digest("hex")
     : null;
+  const baselineSessionId = plan.sourceContext.latestPractice.sessionId;
+  const baseline = baselineSessionId
+    ? await getImportedPracticeSessionSummary(userId, baselineSessionId)
+    : null;
+  const frozenEvidence = freezePracticeEvidence(plan, baseline, now.toISOString());
   const persist = async (
     db: Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0],
   ) => {
@@ -1801,7 +2036,7 @@ export async function savePracticePlanForUser(
           generation: plan.generation,
           ...(requestFingerprint ? { creationFingerprint: requestFingerprint } : {}),
         },
-        contextJson: plannerContextSnapshot(plan.sourceContext),
+        contextJson: { ...plannerContextSnapshot(plan.sourceContext), frozenEvidence },
         focusClubsJson: plan.focusClubs,
         title: plan.title,
         generatedSummary: plan.summary,
@@ -2677,6 +2912,7 @@ export async function getSavedPracticePlans(
       summary: plan.generatedSummary,
       generation: parsePlanGeneration(plan.facilityJson.generation),
       sourceSessionId: plan.sourceSessionId,
+      frozenEvidence: parseFrozenPracticeEvidence(plan.contextJson.frozenEvidence),
       sourcePractice: parsePracticeSourceSnapshot(plan.contextJson.latestPractice),
       activityProgress: parsePracticeActivityProgress(plan.contextJson.activityProgress),
       blocks,
@@ -2987,6 +3223,7 @@ async function getImportedPracticeSessionSummary(
       playContext: sessions.playContext,
       sessionDate: sessions.date,
       uploadedAt: sessions.createdAt,
+      dataConfidence: sessions.dataConfidenceJson,
       shotCount: sql<number>`count(${shots.id})::int`,
     })
     .from(sessions)
@@ -2999,6 +3236,7 @@ async function getImportedPracticeSessionSummary(
       sessions.playContext,
       sessions.date,
       sessions.createdAt,
+      sessions.dataConfidenceJson,
     )
     .limit(1);
 
@@ -3009,6 +3247,10 @@ async function getImportedPracticeSessionSummary(
   const shotRows = await getDb()
     .select({
       id: shots.id,
+      clubId: shots.clubId,
+      shotPlayContext: shots.playContext,
+      sourceRawJson: shots.sourceRawJson,
+      clubDataEstType: shots.clubDataEstType,
       clubType: shots.clubType,
       shotNumber: shots.shotNumber,
       shotAt: shots.shotAt,
@@ -3029,8 +3271,66 @@ async function getImportedPracticeSessionSummary(
     .from(shots)
     .where(and(eq(shots.sessionId, sourceSessionId), eq(shots.userId, userId)))
     .orderBy(shots.shotNumber, shots.shotAt);
+  const equipment = await getDb()
+    .select({
+      id: clubEquipmentHistory.id,
+      clubId: clubEquipmentHistory.clubId,
+      effectiveFrom: clubEquipmentHistory.effectiveFrom,
+      effectiveTo: clubEquipmentHistory.effectiveTo,
+      ballModelId: clubEquipmentHistory.ballModelId,
+    })
+    .from(clubEquipmentHistory)
+    .where(
+      and(
+        eq(clubEquipmentHistory.userId, userId),
+        inArray(clubEquipmentHistory.clubId, [...new Set(shotRows.map((row) => row.clubId))]),
+      ),
+    );
   const normalizedShotRows = shotRows.map((row) => ({
     id: row.id,
+    clubId: row.clubId,
+    sessionType: session.sessionType,
+    comparisonContextKey: (() => {
+      const context = performanceSourceContext(
+        {
+          ...row,
+          sessionId: session.id,
+          sessionDate: session.sessionDate,
+          sideCarryYd: row.offlineYd,
+          source: session.sourceType,
+          sessionType: session.sessionType,
+          playContext: session.playContext,
+          dataConfidence: session.dataConfidence,
+        },
+        equipment,
+      );
+      const raw = row.sourceRawJson;
+      const intent =
+        raw["Shot Intent"] || raw["ShotIntent"] || raw["shotIntent"] || raw.__lmwt_intentKey;
+      const target = raw["Target Window"] || raw["TargetWindow"] || raw.__lmwt_targetWindow;
+      if (
+        !intent ||
+        !target ||
+        !context.settingsKey ||
+        !context.ballType ||
+        !context.environment ||
+        !context.normalization ||
+        !context.equipmentId ||
+        session.dataConfidence.alignment !== "aligned"
+      )
+        return null;
+      return JSON.stringify({
+        clubId: row.clubId,
+        equipment: context.equipmentId,
+        source: session.sourceType,
+        intent,
+        target,
+        settings: context.settingsKey,
+        ball: context.ballType,
+        environment: context.environment,
+        normalization: context.normalization,
+      });
+    })(),
     clubType: normalizeClubType(row.clubType),
     shotNumber: row.shotNumber,
     shotAt: row.shotAt,
@@ -4262,6 +4562,11 @@ export function buildPracticeEvidenceRollup(
 
   const contributingSessions = [...sessionsById.values()]
     .filter((session) => isCompatiblePracticeEvidenceSession(plan, session))
+    .filter(
+      (session) =>
+        session.sourceType === representative.sourceType &&
+        session.playContext === representative.playContext,
+    )
     .sort(
       (left, right) =>
         left.sessionDate.getTime() - right.sessionDate.getTime() ||
@@ -4432,7 +4737,7 @@ function buildPracticeResultFromImport(
   return {
     completionStatus: ballCompletion >= 0.65 ? "complete" : "partial",
     actualBalls: session.shotCount,
-    actualMinutes: plan.estimatedTimeMinutes,
+    actualMinutes: null,
     sourceSessionId: session.id,
     notes: "Completed automatically from all eligible launch-monitor shots on the practice day.",
     blockResults: plan.blocks.map((blockItem) => {
@@ -4528,6 +4833,7 @@ export function savedPracticePlanToPracticePlan(
     id: saved.id,
     status: saved.status,
     activityProgress: saved.activityProgress,
+    frozenEvidence: saved.frozenEvidence ?? null,
     sessionType: saved.sessionType,
     title: saved.title,
     summary: saved.summary,
@@ -4541,7 +4847,12 @@ export function savedPracticePlanToPracticePlan(
       (saved.generation?.sgHandoff || saved.generation?.simulatorHandoff ? "Low" : "Medium"),
     trainingStatus: saved.status === "analysed" ? "Imported session matched" : "Saved plan",
     why: [saved.summary],
-    blocks: saved.blocks,
+    blocks: saved.frozenEvidence
+      ? saved.frozenEvidence.blocks.map((item) => ({
+          ...item,
+          dbId: saved.blocks.find((savedBlock) => savedBlock.id === item.id)?.dbId ?? "",
+        }))
+      : saved.blocks,
     postSessionRules: [],
     sourceContext: {
       ...context,
@@ -4686,6 +4997,39 @@ export function parsePracticeComparison(value: unknown): PracticeComparison | nu
       typeof value.sourceSessionId === "string" && value.sourceSessionId.trim()
         ? value.sourceSessionId
         : null,
+    evaluationVersion:
+      typeof value.evaluationVersion === "string" ? value.evaluationVersion : undefined,
+    planRevision: typeof value.planRevision === "string" ? value.planRevision : undefined,
+    sessionMatch:
+      value.sessionMatch === "linked" || value.sessionMatch === "possible"
+        ? value.sessionMatch
+        : "unconfirmed",
+    coverage:
+      value.coverage === "complete" || value.coverage === "partial" ? value.coverage : "unresolved",
+    outcome: ["improved", "unchanged", "worse", "mixed"].includes(String(value.outcome))
+      ? (value.outcome as "improved" | "unchanged" | "worse" | "mixed")
+      : "inconclusive",
+    outcomeReason:
+      typeof value.outcomeReason === "string"
+        ? value.outcomeReason
+        : "Historical review: frozen comparison evidence unavailable.",
+    baselineShotIds: parseStringArray(value.baselineShotIds),
+    clubEvidence: Array.isArray(value.clubEvidence)
+      ? value.clubEvidence.flatMap((item) =>
+          isRecord(item) && typeof item.clubType === "string"
+            ? [
+                {
+                  clubType: item.clubType,
+                  shotIds: parseStringArray(item.shotIds),
+                  shotCount: asNumber(item.shotCount) ?? 0,
+                  carryAverageYd: asNumber(item.carryAverageYd),
+                  offlineAverageYd: asNumber(item.offlineAverageYd),
+                  allocation: "club_level_only" as const,
+                },
+              ]
+            : [],
+        )
+      : [],
     scoringMode,
     matchConfidence: asNumber(value.matchConfidence),
     importedSession,
@@ -4798,6 +5142,104 @@ function parsePracticeSourceSnapshot(
   };
 }
 
+/** Freeze evidence when saving; outcome imports can never rewrite this baseline. */
+export function freezePracticeEvidence(
+  plan: PracticePlan,
+  session: ImportedPracticeSessionSummary | null,
+  frozenAt: string,
+): FrozenPracticeEvidence {
+  const generated = Date.parse(plan.sourceContext.generatedAt);
+  const saved = Date.parse(frozenAt);
+  const cutoff = Number.isFinite(generated) ? Math.min(generated, saved) : saved;
+  const baseline =
+    session && session.sessionDate.getTime() <= cutoff
+      ? session.shotRows
+          .filter(isCleanImportedPracticeShotRow)
+          .filter((row) => row.shotAt.getTime() <= cutoff)
+      : [];
+  const snapshot = {
+    version: PRACTICE_EVALUATION_VERSION as typeof PRACTICE_EVALUATION_VERSION,
+    frozenAt,
+    baselineSessionId: baseline.length ? (session?.id ?? null) : null,
+    baselineShotIds: baseline.map((row) => row.id),
+    baselineSource: session?.sourceType ?? null,
+    baselinePlayContext: session?.playContext ?? null,
+    baseline: baseline.map((row) => ({
+      id: row.id,
+      clubType: row.clubType,
+      clubId: row.clubId ?? null,
+      comparisonContextKey: row.comparisonContextKey ?? null,
+      carryYd: row.carryYd,
+      offlineYd: row.offlineYd,
+    })),
+    blocks: structuredClone(plan.blocks),
+    totalBalls: plan.totalBalls,
+    timeMinutes: plan.estimatedTimeMinutes,
+    evaluationRules: {
+      missing: "inconclusive" as const,
+      repeatedClub: "unresolved_without_sequence" as const,
+      minimumObservations: 10 as const,
+      lateralChangeYd: 2 as const,
+    },
+  };
+  return {
+    ...snapshot,
+    revision: createHash("sha256").update(JSON.stringify(snapshot)).digest("hex"),
+  };
+}
+
+export function parseFrozenPracticeEvidence(value: unknown): FrozenPracticeEvidence | null {
+  if (
+    !isRecord(value) ||
+    value.version !== PRACTICE_EVALUATION_VERSION ||
+    typeof value.revision !== "string" ||
+    typeof value.frozenAt !== "string" ||
+    !Number.isFinite(Date.parse(value.frozenAt)) ||
+    !Array.isArray(value.baseline) ||
+    !Array.isArray(value.blocks) ||
+    !isRecord(value.evaluationRules)
+  )
+    return null;
+  if (
+    !value.baseline.every(
+      (row) =>
+        isRecord(row) &&
+        typeof row.id === "string" &&
+        typeof row.clubType === "string" &&
+        (row.clubId === null || typeof row.clubId === "string") &&
+        (row.comparisonContextKey === null || typeof row.comparisonContextKey === "string") &&
+        [row.carryYd, row.offlineYd].every(
+          (number) => number === null || (typeof number === "number" && Number.isFinite(number)),
+        ),
+    )
+  )
+    return null;
+  if (
+    !value.blocks.every(
+      (item) =>
+        isRecord(item) &&
+        typeof item.id === "string" &&
+        Array.isArray(item.clubs) &&
+        isRecord(item.scoringRules),
+    )
+  )
+    return null;
+  if (
+    !Array.isArray(value.baselineShotIds) ||
+    !value.baselineShotIds.every((id) => typeof id === "string") ||
+    value.baselineShotIds.length !== value.baseline.length
+  )
+    return null;
+  if (
+    value.evaluationRules.missing !== "inconclusive" ||
+    value.evaluationRules.minimumObservations !== 10 ||
+    value.evaluationRules.lateralChangeYd !== 2 ||
+    value.evaluationRules.repeatedClub !== "unresolved_without_sequence"
+  )
+    return null;
+  return structuredClone(value) as FrozenPracticeEvidence;
+}
+
 function plannerContextSnapshot(context: PracticePlannerContext) {
   return {
     generatedAt: context.generatedAt,
@@ -4848,6 +5290,8 @@ export function practicePlannerAchievementCandidateIds(input: {
     input.planBlockCount,
   );
 
+  const measuredComplete =
+    input.comparison?.coverage === undefined || input.comparison.coverage === "complete";
   return [
     input.event === "created" && input.planCount >= 1 ? "practice_planner_first_plan" : null,
     input.event === "completed" && input.completedCount >= 1
@@ -4856,10 +5300,10 @@ export function practicePlannerAchievementCandidateIds(input: {
     input.event === "completed" && input.completedCount >= 5
       ? "practice_planner_five_completed"
       : null,
-    input.event === "completed" && (input.score?.score ?? 0) >= 80
+    input.event === "completed" && measuredComplete && (input.score?.score ?? 0) >= 80
       ? "practice_planner_target_beaten"
       : null,
-    input.event === "completed" && input.score?.mainPriority === "improved"
+    input.event === "completed" && measuredComplete && input.score?.mainPriority === "improved"
       ? "practice_planner_priority_fixed"
       : null,
     input.event === "completed" && stats.wonDrills >= 1 ? "practice_planner_drill_winner" : null,
@@ -4884,24 +5328,23 @@ function practicePlannerAchievementStats(
   const decisionsByBlockId = new Map(
     (comparison?.decisions ?? []).map((decision) => [decision.blockId, decision]),
   );
-  const blockIds = new Set([
-    ...blockResults.map((blockResult) => blockResult.blockId),
-    ...decisionsByBlockId.keys(),
-  ]);
+  const blockIds = comparison
+    ? new Set(decisionsByBlockId.keys())
+    : new Set(blockResults.map((item) => item.blockId));
   let wonDrills = 0;
   let scoredDrills = 0;
 
   for (const blockId of blockIds) {
     const blockResult = blockResults.find((item) => item.blockId === blockId);
     const decision = decisionsByBlockId.get(blockId);
-    const actualBalls = blockResult?.actualBalls ?? decision?.actualBalls ?? 0;
-    const result = blockResult?.result ?? decision?.result;
+    const actualBalls = comparison ? (decision?.actualBalls ?? 0) : (blockResult?.actualBalls ?? 0);
+    const result = comparison ? decision?.result : blockResult?.result;
 
     if (actualBalls > 0 || result === "passed" || result === "mixed" || result === "failed") {
       scoredDrills += 1;
     }
 
-    if (blockResult?.passed || result === "passed") {
+    if (result === "passed" || (!comparison && blockResult?.passed)) {
       wonDrills += 1;
     }
   }
@@ -4974,6 +5417,12 @@ async function awardPracticePlannerAchievements(
       source: "practice_planner",
       event,
       practiceScore: score?.score ?? null,
+      evaluationVersion: context.comparison?.evaluationVersion ?? PRACTICE_EVALUATION_VERSION,
+      planRevision: context.comparison?.planRevision ?? null,
+      baselineShotIds: context.comparison?.baselineShotIds ?? [],
+      evidenceShotIds: [
+        ...new Set(context.comparison?.decisions.flatMap((item) => item.linkedShotIds) ?? []),
+      ],
       wonDrills: stats.wonDrills,
       scoredDrills: stats.scoredDrills,
       planBlocks: stats.planBlocks,

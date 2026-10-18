@@ -239,7 +239,7 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
                   <DataPanel>
                     <SectionHeader
                       title="WITB gapping matrix"
-                      description="Recommended carry is plotted first; best stock and latest reliable stay visible for trust checks."
+                      description="Recommended carry is plotted first; recent stock and the latest reliable sample stay visible for evidence checks."
                       action={<Target className="size-5 text-primary" />}
                     />
                     <CardContent>

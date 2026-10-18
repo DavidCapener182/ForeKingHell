@@ -46,6 +46,16 @@ describe("desktop workbench notifications route source", () => {
     expect(source).toContain("achievementUnlockHref(row.achievementId)");
   });
 
+  it("binds practice evidence and each analysed upload to the authenticated owner", () => {
+    expect(source).toContain("eq(practicePlans.userId, user.id)");
+    expect(source).toContain("eq(practicePlanMatches.userId, user.id)");
+    expect(source).toContain("eq(practiceResults.userId, user.id)");
+    expect(source).toContain("eq(sessions.userId, user.id)");
+    expect(source).toContain("row.resultSessionId === row.sessionId");
+    expect(source).toContain("sourceIds.includes(row.sessionId)");
+    expect(source).toContain("practiceReviewNotification");
+  });
+
   it("keeps quiet public fallbacks and bounded notification payloads", () => {
     expect(source).toContain("if (!user)");
     expect(source).toContain("NextResponse.json({ items: [] })");

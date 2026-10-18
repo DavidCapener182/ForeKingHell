@@ -198,7 +198,10 @@ function GoalCard({ goal }: { goal: SeasonGoal }) {
           ]}
         />
         <div>
-          <Progress value={progress} aria-label={`${progress}% progress`} />
+          <Progress
+            value={progress}
+            aria-label={`${goal.title}: ${progress}% saved-value progress`}
+          />
           <p className="mt-2 text-xs text-muted-foreground">
             {movement > 0 ? "+" : ""}
             {movement} {goal.unit} from baseline · {confidence} · {goal.evidenceSource}

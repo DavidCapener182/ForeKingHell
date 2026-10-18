@@ -2,10 +2,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const source = readFileSync(
-  join(process.cwd(), "src/app/(app)/stats/training-over-time/page.tsx"),
-  "utf8",
-);
+const source =
+  readFileSync(join(process.cwd(), "src/app/(app)/stats/training-over-time/page.tsx"), "utf8") +
+  readFileSync(
+    join(process.cwd(), "src/app/stats/training-over-time/speed-readiness-panel.tsx"),
+    "utf8",
+  );
 
 describe("training load page source", () => {
   it("keeps Training Load as a focused desktop analytics workbench", () => {

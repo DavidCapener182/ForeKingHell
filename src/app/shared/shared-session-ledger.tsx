@@ -192,6 +192,12 @@ export function SharedSessionLedger({ rows, total }: { rows: Row[]; total: numbe
                   <span data-column="source" className="block text-xs font-normal">
                     {row.fileName ?? "Source file not recorded"}
                   </span>
+                  <span data-column="score" className="block text-xs font-normal">
+                    Scorecard total: {row.totalScore ?? "Incomplete / unavailable"}
+                  </span>
+                  <span data-column="holes" className="block text-xs font-normal">
+                    {row.holesPlayed} recorded holes
+                  </span>
                 </span>
                 <span className="ml-3 shrink-0">Details</span>
               </Button>
