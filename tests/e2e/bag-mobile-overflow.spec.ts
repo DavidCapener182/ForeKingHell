@@ -153,7 +153,11 @@ test("populated Bag keeps phone content reachable without clipping on both app s
         }
         return bounds.left < windowLeft - 1 ||
           bounds.right > windowRight + 1 ||
-          (element.tagName === "BUTTON" && element.scrollWidth > element.clientWidth + 1)
+          (element.tagName === "BUTTON" && element.scrollWidth > element.clientWidth + 1) ||
+          (element.tagName === "P" &&
+            element.closest("[data-target-distance-selector]") &&
+            (element.textContent?.trim().length ?? 0) > 8 &&
+            bounds.width < 48)
           ? [
               {
                 tag: element.tagName,
