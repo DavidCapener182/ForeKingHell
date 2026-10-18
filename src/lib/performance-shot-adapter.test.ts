@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { performanceSourceContext, type PerformanceSourceRow } from "./performance-shot-adapter";
+import { buildPerformanceIntelligence, performanceMetricValue } from "./performance-intelligence";
 const row: PerformanceSourceRow = {
   id: "synthetic-shot",
   clubId: "club",
@@ -54,7 +55,7 @@ describe("performance source adapter", () => {
       },
     });
     expect(output.metricStatus?.carryYd).toBe("measured");
-    expect(output.metricStatus?.clubSpeedMph).toBeUndefined();
+    expect(output.metricStatus?.clubSpeedMph).toBe("unknown");
     expect(
       performanceSourceContext({ ...row, clubDataEstType: "unmapped" }).metricStatus?.clubSpeedMph,
     ).toBe("unknown");
@@ -71,5 +72,126 @@ describe("performance source adapter", () => {
     expect(
       performanceSourceContext({ ...row, sourceRawJson: { swingIntent: "normal_ball" } }).intentKey,
     ).toBe("full");
+  });
+  it.each([
+    ["0", "measured"],
+    ["0.0", "measured"],
+    ["false", "measured"],
+    ["measured", "measured"],
+    ["1", "estimated"],
+    ["1.0", "estimated"],
+    ["true", "estimated"],
+    ["estimated", "estimated"],
+  ] as const)(
+    "recovers legacy Rapsodo flag %s as %s without losing recorded speed",
+    (flag, status) => {
+      const output = performanceSourceContext({ ...row, source: "rapsodo", clubDataEstType: flag });
+      expect(output.metricStatus?.clubSpeedMph).toBe(status);
+      expect(performanceMetricValue(output, "clubSpeedMph")).toBe(80);
+      expect(output.clubSpeedMph).toBe(row.clubSpeedMph);
+    },
+  );
+  it.each(["unknown", "unavailable", "invalid", "estimated"] as const)(
+    "preserves explicit %s provenance over a legacy measured flag",
+    (status) => {
+      const output = performanceSourceContext({
+        ...row,
+        source: "rapsodo",
+        clubDataEstType: "0",
+        sourceRawJson: {
+          __lmwtMetricProvenance: JSON.stringify({ clubSpeedMph: { status } }),
+        },
+      });
+      expect(output.metricStatus?.clubSpeedMph).toBe(status);
+      expect(performanceMetricValue(output, "clubSpeedMph")).toBe(
+        status === "estimated" ? 80 : null,
+      );
+    },
+  );
+  it("keeps unknown Rapsodo codes unresolved and does not use their mapping for other providers", () => {
+    for (const input of [
+      { source: "rapsodo", clubDataEstType: "106-unmapped" },
+      { source: "trackman", clubDataEstType: "0" },
+    ]) {
+      const output = performanceSourceContext({ ...row, ...input });
+      expect(output.metricStatus?.clubSpeedMph).toBe("unknown");
+      expect(performanceMetricValue(output, "clubSpeedMph")).toBeNull();
+      expect(output.clubSpeedMph).toBe(80);
+    }
+  });
+  it("does not invent measured provenance when a historical flag is absent", () => {
+    const output = performanceSourceContext({ ...row, source: "rapsodo", clubDataEstType: null });
+    expect(output.metricStatus?.clubSpeedMph).toBeUndefined();
+  });
+  it.each([
+    "broken",
+    "null",
+    "[]",
+    JSON.stringify({ clubSpeedMph: null }),
+    JSON.stringify({ clubSpeedMph: { status: "bogus" } }),
+  ])(
+    "does not bypass explicit malformed speed metadata with a legacy measured flag: %s",
+    (metadata) => {
+      const output = performanceSourceContext({
+        ...row,
+        source: "rapsodo",
+        clubDataEstType: "0",
+        sourceRawJson: { __lmwtMetricProvenance: metadata },
+      });
+      expect(output.metricStatus?.clubSpeedMph).toBe("unknown");
+      expect(performanceMetricValue(output, "clubSpeedMph")).toBeNull();
+    },
+  );
+  it("uses a legacy speed flag when valid partial metadata makes no speed claim", () => {
+    const output = performanceSourceContext({
+      ...row,
+      source: "rapsodo",
+      clubDataEstType: "0",
+      sourceRawJson: {
+        __lmwtMetricProvenance: JSON.stringify({ carryYd: { status: "measured" } }),
+      },
+    });
+    expect(output.metricStatus?.clubSpeedMph).toBe("measured");
+    expect(performanceMetricValue(output, "clubSpeedMph")).toBe(80);
+  });
+  it("honours explicit unresolved provenance inside an encoded historical source object", () => {
+    const output = performanceSourceContext({
+      ...row,
+      source: "rapsodo",
+      clubDataEstType: "0",
+      sourceRawJson: JSON.stringify({
+        __lmwtMetricProvenance: JSON.stringify({ clubSpeedMph: { status: "unknown" } }),
+      }),
+    });
+    expect(output.metricStatus?.clubSpeedMph).toBe("unknown");
+    expect(performanceMetricValue(output, "clubSpeedMph")).toBeNull();
+  });
+  it("decodes metric evidence without reclassifying historical context or deduplicating its cohort", () => {
+    const encoded = JSON.stringify({
+      "Firmware Version": "fixture-firmware",
+      "Ball Type": "fixture-ball",
+      Environment: "indoor",
+      __lmwtSwingIntent: "no_ball",
+      __lmwtCanonicalSwingId: "duplicate-fixture",
+      __lmwtCanonicalDuplicateConfirmed: "true",
+      __lmwtMetricProvenance: JSON.stringify({ clubSpeedMph: { status: "measured" } }),
+    });
+    const input = [row, { ...row, id: "second-shot", carryYd: 160 }];
+    const before = input.map((shot) => performanceSourceContext(shot));
+    const after = input.map((shot) =>
+      performanceSourceContext({ ...shot, sourceRawJson: encoded }),
+    );
+    expect(
+      buildPerformanceIntelligence(after).groups.map((group) => group.potential.shotIds),
+    ).toEqual(buildPerformanceIntelligence(before).groups.map((group) => group.potential.shotIds));
+    for (const shot of after) {
+      expect(shot.settingsKey).toBeNull();
+      expect(shot.ballType).toBeNull();
+      expect(shot.environment).toBeNull();
+      expect(shot.intentKey).toBeUndefined();
+      expect(shot.canonicalSwingId).toBeNull();
+      expect(shot.canonicalDuplicateConfirmed).toBe(false);
+      expect(shot.metricStatus?.clubSpeedMph).toBe("measured");
+    }
   });
 });

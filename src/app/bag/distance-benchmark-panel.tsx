@@ -371,6 +371,11 @@ export function DistanceBenchmarkPanel({
                   shot IDs; missing measurements reduce actual coverage.
                 </p>
                 <p>
+                  Reference bands remain available even when your own readings are missing or cannot
+                  yet be compared. Estimated readings and stored numeric readings with unresolved
+                  units or provenance are identified in the evidence details.
+                </p>
+                <p>
                   LMWT progression bands and legacy published Tour anchors are separate references.
                   Driver’s Tour band and Tour anchor intentionally differ in Legacy v1; no numeric
                   thresholds changed in this release. Source publication dates remain unverified.
@@ -852,7 +857,12 @@ function LevelMetricContent({
               />
               <DataPair label="Tour anchor" value={comparison.tourAnchorLabel} />
               <DataPair label="Band" value={metricReferenceText(comparison, metric)} />
-              <DataPair label="Evidence" value={metricCoverageText(comparison.row, metric.key)} />
+              <DataPair
+                label="Evidence"
+                value={metricCoverageText(comparison.row, metric.key)}
+                className="items-start [&>span]:overflow-visible [&>span]:whitespace-normal"
+              />
+              <MetricEvidenceDisclosure row={comparison.row} metric={metric.key} />
               <MetricLevelMeter comparison={comparison} metric={metric} />
             </MobileDataCard>
           ),
@@ -947,6 +957,7 @@ function LevelMetricContent({
                     <span className="block font-medium">
                       {metricCoverageText(comparison.row, metric.key)}
                     </span>
+                    <MetricEvidenceDisclosure row={comparison.row} metric={metric.key} />
                     <span className="block text-xs text-muted-foreground">
                       {benchmarkSavedEvidenceText(comparison.row)}
                     </span>
@@ -1232,7 +1243,7 @@ function MetricLevelBadge({
   return (
     <Badge
       variant="outline"
-      className={`h-auto min-w-24 justify-center px-2 py-1 ${benchmarkBadgeClass(comparison.levelKey)}`}
+      className={`h-auto min-w-0 max-w-full justify-center whitespace-normal px-2 py-1 text-center [overflow-wrap:anywhere] sm:min-w-24 ${benchmarkBadgeClass(comparison.levelKey)}`}
     >
       {metricBadgeLabel(comparison, metric)}
     </Badge>
@@ -1795,7 +1806,7 @@ function strongestMetricBenchmark(
 
 function metricNextText(comparison: MetricLevelComparison, metric: MetricDefinition) {
   if (comparison.actual === null) {
-    return `Needs ${metric.shortLabel.toLowerCase()} data`;
+    return metricMissingText(comparison.row, metric);
   }
 
   if (!comparison.nextLevel || comparison.gapToNext === null) {
@@ -1817,7 +1828,9 @@ function metricNextText(comparison: MetricLevelComparison, metric: MetricDefinit
 
 function metricBadgeLabel(comparison: MetricLevelComparison, metric: MetricDefinition) {
   if (comparison.actual === null) {
-    return "Needs data";
+    return (comparison.row.metricEvidence?.[metric.key]?.excludedNumericCount ?? 0) > 0
+      ? metricMissingText(comparison.row, metric)
+      : "Needs data";
   }
 
   if (metric.comparisonMode !== "closest" || !comparison.nextLevel) {
@@ -1916,7 +1929,44 @@ function isNumber(value: number | null | undefined): value is number {
 
 function metricCoverageText(row: ClubBenchmarkRow, metric: ClubBenchmarkMetricKey) {
   const evidence = row.metricEvidence?.[metric];
-  return evidence
-    ? `${evidence.validCount} valid / ${evidence.selectedCount} selected`
-    : `${row.sampleSize} selected · metric coverage unavailable`;
+  if (!evidence) {
+    return `${row.sampleSize} selected · metric coverage unavailable`;
+  }
+
+  const estimated = evidence.estimatedCount ?? 0;
+  const breakdown =
+    estimated > 0
+      ? ` · ${evidence.measuredCount === undefined ? "" : `${evidence.measuredCount} measured · `}${estimated} estimated`
+      : "";
+
+  return `${evidence.validCount} valid / ${evidence.selectedCount} selected${breakdown}`;
+}
+
+function metricMissingText(row: ClubBenchmarkRow, metric: MetricDefinition) {
+  return (row.metricEvidence?.[metric.key]?.excludedNumericCount ?? 0) > 0
+    ? `Needs comparable ${metric.shortLabel.toLowerCase()}`
+    : `Needs ${metric.shortLabel.toLowerCase()} data`;
+}
+
+function MetricEvidenceDisclosure({
+  row,
+  metric,
+}: {
+  row: ClubBenchmarkRow;
+  metric: ClubBenchmarkMetricKey;
+}) {
+  const excludedCount = row.metricEvidence?.[metric]?.excludedNumericCount ?? 0;
+  if (excludedCount === 0) {
+    return null;
+  }
+
+  return (
+    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+      {metric === "maxHeightYd"
+        ? "Stored height excluded: units or provenance do not support comparison."
+        : "Stored readings excluded: metric provenance does not support comparison."}{" "}
+      {excludedCount} numeric {excludedCount === 1 ? "reading" : "readings"} excluded from this
+      metric comparison.
+    </p>
+  );
 }

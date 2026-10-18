@@ -117,6 +117,9 @@ type BenchmarkRowInput = {
       {
         validCount: number;
         selectedCount: number;
+        measuredCount?: number;
+        estimatedCount?: number;
+        excludedNumericCount?: number;
         shotIds: string[];
         method: string;
       }
