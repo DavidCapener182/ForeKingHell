@@ -68,11 +68,12 @@ describe("distance benchmark panel source", () => {
     expect(source).toContain("peerBenchmarksLoaded && peerChase");
   });
 
-  it("explains the best-30 average and gives a real next-level shot plan", () => {
+  it("explains the best-30 average and explains the average-based next-level target", () => {
     expect(source).toContain("Best 30 avg");
     expect(source).toContain("longest clean full swings");
     expect(source).toContain("benchmarkAdvanceText");
-    expect(source).toContain("shots at");
+    expect(source).toContain("Individual shots need not all reach it");
+    expect(source).not.toContain('label: "Bag average"');
     expect(source).toContain("saved for this club");
     expect(source).not.toContain("Beat ${formatMetric(row.bestSampleFloorYd)} yd to lift set");
   });

@@ -47,7 +47,11 @@ describe("secondary analytics shot lifecycle boundaries", () => {
     expect(readSource("src/lib/mobile-club-evidence.ts")).toContain(
       "selectLatestReliableStockShots(ordered, ordered.length",
     );
-    expect(readSource("src/lib/stock-yardage.ts")).toContain("if (!isShotEvidenceEligible(shot))");
+    const stock = readSource("src/lib/stock-yardage.ts");
+    expect(stock).toContain("stockObservationExclusion(shot)");
+    expect(stock).toContain('["included", "restored"].includes(shot.reviewStatus)');
+    expect(stock).toContain('shot.reviewStatus !== "restored"');
+    expect(stock).toContain("isShotEvidenceEligible(shot)");
   });
 
   it("limits weekly personal-best windows to included or restored evidence", () => {

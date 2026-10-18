@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { BenchmarkUnlocks } from "./benchmark-unlocks";
+import { ClubPerformanceIntelligence } from "./club-performance-intelligence";
+import type { PerformanceIntelligence } from "@/lib/performance-intelligence";
+import { BENCHMARK_REGISTRY, benchmarkMetricInterpretation } from "@/lib/benchmark-registry";
 import { useEffect, useState, type ReactNode } from "react";
 import { BarChart3, Users } from "lucide-react";
 
@@ -130,7 +133,8 @@ const METRICS: MetricDefinition[] = [
     shortLabel: "Smash",
     unit: "",
     precision: 2,
-    description: "Strike efficiency estimated from the tour smash-factor anchor.",
+    description:
+      "Observed shot-level efficiency in the carry-selected sample; equipment and measurement context matter.",
     comparisonMode: "higher",
   },
   {
@@ -139,7 +143,8 @@ const METRICS: MetricDefinition[] = [
     shortLabel: "Height",
     unit: "yd",
     precision: 1,
-    description: "Peak height converted from imported apex feet into yards for TrackMan parity.",
+    description:
+      "Peak height from the same carry-selected shots; source units must be known before comparison.",
     comparisonMode: "higher",
   },
   {
@@ -148,7 +153,8 @@ const METRICS: MetricDefinition[] = [
     shortLabel: "Land",
     unit: "deg",
     precision: 1,
-    description: "Descent angle estimated from the tour landing-angle anchor.",
+    description:
+      "Observed descent in the carry-selected sample. Above reference does not necessarily mean a better flight.",
     comparisonMode: "higher",
   },
 ];
@@ -226,12 +232,19 @@ export function DistanceBenchmarkPanel({
   peerSummary,
   peerBenchmarksLoaded,
   loadPeerHref = "/bag?tab=evidence&peers=1#distance-benchmarks",
+  intelligence,
+  clubLabels,
+  clubTypes,
 }: {
   rows: ClubBenchmarkRow[];
   peerSummary: ClubBenchmarkPeerSummary;
   peerBenchmarksLoaded: boolean;
   loadPeerHref?: string;
+  intelligence?: PerformanceIntelligence;
+  clubLabels?: Record<string, string>;
+  clubTypes?: Record<string, string>;
 }) {
+  const [mode, setMode] = useState("benchmarks");
   const [activeMetric, setActiveMetric] = useState<string>("carryYd");
   const activeMetricIndex = Math.max(BENCHMARK_TAB_VALUES.indexOf(activeMetric), 0);
 
@@ -243,71 +256,136 @@ export function DistanceBenchmarkPanel({
         action={<BarChart3 className="size-5 text-primary" aria-hidden="true" />}
       />
       <CardContent className="space-y-4">
-        <BenchmarkUnlocks rows={rows} />
-        <BenchmarkOverview
-          rows={rows}
-          peerSummary={peerSummary}
-          peerBenchmarksLoaded={peerBenchmarksLoaded}
-        />
-        <Tabs value={activeMetric} onValueChange={setActiveMetric} className="gap-4">
+        {intelligence ? (
           <div
-            data-benchmark-metric-tabs
-            className="-mx-4 snap-x snap-proximity overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
+            className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1 sm:w-fit"
+            role="group"
+            aria-label="Benchmark view"
           >
-            <TabsList
-              className="relative isolate grid h-auto w-max gap-1 justify-start rounded-lg border bg-muted p-1 shadow-sm"
-              style={{
-                display: "grid",
-                gridTemplateColumns: `repeat(${BENCHMARK_TAB_VALUES.length}, ${BENCHMARK_TAB_WIDTH_REM}rem)`,
-              }}
-            >
-              <span
-                aria-hidden="true"
-                className="t-tabs-pill absolute inset-y-1 left-1 z-0 rounded-md bg-background shadow-sm ring-1 ring-foreground/5"
-                style={{
-                  width: `${BENCHMARK_TAB_WIDTH_REM}rem`,
-                  transform: `translateX(calc(${activeMetricIndex * 100}% + ${activeMetricIndex * 0.25}rem))`,
-                }}
-              />
-              {METRICS.map((metric) => (
-                <TabsTrigger
-                  key={metric.key}
-                  value={metric.key}
-                  className="relative z-10 min-h-11 shrink-0 flex-none snap-start min-w-max bg-transparent px-3 text-sm shadow-none sm:min-h-8"
-                  style={{ backgroundColor: "transparent", boxShadow: "none" }}
-                >
-                  {metric.shortLabel}
-                </TabsTrigger>
-              ))}
-              <TabsTrigger
-                value={PEER_TAB_VALUE}
-                className="relative z-10 min-h-11 shrink-0 flex-none snap-start min-w-max bg-transparent px-3 text-sm shadow-none sm:min-h-8"
-                style={{ backgroundColor: "transparent", boxShadow: "none" }}
+            {[
+              ["benchmarks", "Benchmarks"],
+              ["current", "Current form"],
+              ["coaching", "Coaching"],
+            ].map(([value, label]) => (
+              <Button
+                key={value}
+                type="button"
+                variant={mode === value ? "secondary" : "ghost"}
+                className="min-h-11 px-3"
+                aria-pressed={mode === value}
+                onClick={() => setMode(value!)}
               >
-                Peers
-              </TabsTrigger>
-            </TabsList>
+                {label}
+              </Button>
+            ))}
           </div>
-
-          <TabsContent value="carryYd" className="space-y-4">
-            <CarryBenchmarkContent rows={rows} />
-          </TabsContent>
-
-          {COMPARISON_METRICS.map((metric) => (
-            <TabsContent key={metric.key} value={metric.key} className="space-y-4">
-              <LevelMetricContent rows={rows} metric={metric} />
-            </TabsContent>
-          ))}
-
-          <TabsContent value={PEER_TAB_VALUE} className="space-y-4">
-            <PeerComparisonContent
+        ) : null}
+        {intelligence && mode !== "benchmarks" ? (
+          <ClubPerformanceIntelligence
+            intelligence={intelligence}
+            clubLabels={clubLabels}
+            clubTypes={clubTypes}
+            mode={mode === "coaching" ? "coaching" : "current"}
+          />
+        ) : (
+          <>
+            <p className="text-xs text-muted-foreground">
+              LMWT benchmark bands · {BENCHMARK_REGISTRY.version}. Selected potential is separate
+              from current typical performance. A metric band does not rate the whole golfer.
+            </p>
+            <BenchmarkUnlocks rows={rows} />
+            <BenchmarkOverview
               rows={rows}
               peerSummary={peerSummary}
               peerBenchmarksLoaded={peerBenchmarksLoaded}
-              loadPeerHref={loadPeerHref}
             />
-          </TabsContent>
-        </Tabs>
+            <Tabs value={activeMetric} onValueChange={setActiveMetric} className="gap-4">
+              <div
+                data-benchmark-metric-tabs
+                className="-mx-4 snap-x snap-proximity overflow-x-auto overscroll-x-contain px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
+              >
+                <TabsList
+                  className="relative isolate grid h-auto w-max gap-1 justify-start rounded-lg border bg-muted p-1 shadow-sm"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: `repeat(${BENCHMARK_TAB_VALUES.length}, ${BENCHMARK_TAB_WIDTH_REM}rem)`,
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    className="t-tabs-pill absolute inset-y-1 left-1 z-0 rounded-md bg-background shadow-sm ring-1 ring-foreground/5"
+                    style={{
+                      width: `${BENCHMARK_TAB_WIDTH_REM}rem`,
+                      transform: `translateX(calc(${activeMetricIndex * 100}% + ${activeMetricIndex * 0.25}rem))`,
+                    }}
+                  />
+                  {METRICS.map((metric) => (
+                    <TabsTrigger
+                      key={metric.key}
+                      value={metric.key}
+                      className="relative z-10 min-h-11 shrink-0 flex-none snap-start min-w-max bg-transparent px-3 text-sm shadow-none sm:min-h-8"
+                      style={{ backgroundColor: "transparent", boxShadow: "none" }}
+                    >
+                      {metric.shortLabel}
+                    </TabsTrigger>
+                  ))}
+                  <TabsTrigger
+                    value={PEER_TAB_VALUE}
+                    className="relative z-10 min-h-11 shrink-0 flex-none snap-start min-w-max bg-transparent px-3 text-sm shadow-none sm:min-h-8"
+                    style={{ backgroundColor: "transparent", boxShadow: "none" }}
+                  >
+                    Peers
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value="carryYd" className="space-y-4">
+                <CarryBenchmarkContent rows={rows} />
+              </TabsContent>
+
+              {COMPARISON_METRICS.map((metric) => (
+                <TabsContent key={metric.key} value={metric.key} className="space-y-4">
+                  <LevelMetricContent rows={rows} metric={metric} />
+                </TabsContent>
+              ))}
+
+              <TabsContent value={PEER_TAB_VALUE} className="space-y-4">
+                <PeerComparisonContent
+                  rows={rows}
+                  peerSummary={peerSummary}
+                  peerBenchmarksLoaded={peerBenchmarksLoaded}
+                  loadPeerHref={loadPeerHref}
+                />
+              </TabsContent>
+            </Tabs>
+            <details className="rounded-lg border p-3 text-sm">
+              <summary className="cursor-pointer font-medium">
+                Benchmark method and reference
+              </summary>
+              <div className="mt-2 grid gap-2 text-muted-foreground">
+                <p>
+                  {BENCHMARK_REGISTRY.aggregation}. {BENCHMARK_REGISTRY.selectionRule}.
+                </p>
+                <p>
+                  {BENCHMARK_REGISTRY.nextLevelSemantics}. Related tabs use the same carry-selected
+                  shot IDs; missing measurements reduce actual coverage.
+                </p>
+                <p>
+                  LMWT progression bands and legacy published Tour anchors are separate references.
+                  Driver’s Tour band and Tour anchor intentionally differ in Legacy v1; no numeric
+                  thresholds changed in this release. Source publication dates remain unverified.
+                </p>
+                <p>{BENCHMARK_REGISTRY.impactSummary}</p>
+                <p>
+                  {benchmarkMetricInterpretation(
+                    activeMetric === "peers" ? "carryYd" : (activeMetric as ClubBenchmarkMetricKey),
+                  )}
+                </p>
+                <p>Calculation: {BENCHMARK_REGISTRY.calculationVersion}.</p>
+              </div>
+            </details>
+          </>
+        )}
       </CardContent>
     </DataPanel>
   );
@@ -502,13 +580,6 @@ function BenchmarkOverview({
 
 function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
   const rowsWithData = rows.filter((row) => row.comparison.levelIndex !== null);
-  const averageLevel =
-    rowsWithData.length === 0
-      ? null
-      : Math.round(
-          rowsWithData.reduce((total, row) => total + (row.comparison.levelIndex ?? 0), 0) /
-            rowsWithData.length,
-        );
   const strongest =
     [...rowsWithData].sort(
       (left, right) =>
@@ -534,15 +605,10 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
         columnsClassName="md:grid-cols-3"
         items={[
           {
-            label: "Bag average",
-            value: averageLevel === null ? "--" : benchmarkLevelFromIndex(averageLevel),
-            detail:
-              rowsWithData.length === 0
-                ? "Need stock carry samples"
-                : `${rowsWithData.length} club${rowsWithData.length === 1 ? "" : "s"} compared`,
-            tone: benchmarkTone(
-              averageLevel === null ? "no-data" : benchmarkLevelKeyFromIndex(averageLevel),
-            ),
+            label: "Clubs with evidence",
+            value: rowsWithData.length.toString(),
+            detail: "Separate metric bands; no composite golfer level",
+            tone: "slate",
           },
           {
             label: "Strongest match",
@@ -723,6 +789,7 @@ function LevelMetricContent({
 
   return (
     <>
+      <p className="text-sm text-muted-foreground">{benchmarkMetricInterpretation(metric.key)}</p>
       <CompactReadoutGrid
         columnsClassName="md:grid-cols-3"
         items={[
@@ -783,7 +850,7 @@ function LevelMetricContent({
               />
               <DataPair label="Tour anchor" value={comparison.tourAnchorLabel} />
               <DataPair label="Band" value={metricReferenceText(comparison, metric)} />
-              <DataPair label="Evidence" value={benchmarkEvidenceText(comparison.row)} />
+              <DataPair label="Evidence" value={metricCoverageText(comparison.row, metric.key)} />
               <MetricLevelMeter comparison={comparison} metric={metric} />
             </MobileDataCard>
           ),
@@ -875,7 +942,9 @@ function LevelMetricContent({
                     {comparison.tourAnchorLabel}
                   </TableCell>
                   <TableCell data-column="sample" className="text-right">
-                    <span className="block font-medium">{comparison.row.sampleSize} used</span>
+                    <span className="block font-medium">
+                      {metricCoverageText(comparison.row, metric.key)}
+                    </span>
                     <span className="block text-xs text-muted-foreground">
                       {benchmarkSavedEvidenceText(comparison.row)}
                     </span>
@@ -1458,21 +1527,11 @@ function benchmarkAdvanceText(row: ClubBenchmarkRow) {
     return "No higher reference marker";
   }
 
-  if (row.nextLevelPlan === null) {
-    return "Add clean full swings to build the plan";
-  }
-
-  const targetText = `${formatMetric(row.nextLevelPlan.targetCarryYd)} yd+ → ${formatMetric(
-    row.nextLevelPlan.projectedAverageYd,
-  )} yd avg`;
-
-  return row.nextLevelPlan.shotsNeeded === 1
-    ? `1 shot at ${targetText}`
-    : `${row.nextLevelPlan.shotsNeeded} shots at ${targetText}`;
+  return `${formatMetric(row.comparison.nextLevel.yards)} yd selected-average threshold; ${formatMetric(row.comparison.yardsToNextLevel)} yd gap. Individual shots need not all reach it`;
 }
 
 function benchmarkEvidenceText(row: ClubBenchmarkRow) {
-  return `${row.sampleSize} used · ${benchmarkSavedEvidenceText(row)}`;
+  return `${row.sampleSize < 30 ? `Provisional best-${row.sampleSize}` : "Best-30"} · ${row.sampleSize} selected${row.eligibleCount === undefined ? "" : ` from ${row.eligibleCount} eligible`} · ${benchmarkSavedEvidenceText(row)}`;
 }
 
 function benchmarkSavedEvidenceText(row: ClubBenchmarkRow) {
@@ -1494,14 +1553,6 @@ function benchmarkReferenceText(row: ClubBenchmarkRow) {
   const last = row.comparison.benchmark.levels[row.comparison.benchmark.levels.length - 1];
 
   return `${first.yards}-${last.yards} yd ${row.comparison.benchmark.label}`;
-}
-
-function benchmarkLevelFromIndex(index: number) {
-  return ["Beginner", "Average", "Good", "Advanced", "Tour"][index] ?? "--";
-}
-
-function benchmarkLevelKeyFromIndex(index: number) {
-  return (["beginner", "average", "good", "advanced", "tour"] as const)[index] ?? "no-data";
 }
 
 function benchmarkTone(levelKey: ClubBenchmarkRow["comparison"]["levelKey"]) {
@@ -1541,24 +1592,28 @@ function benchmarkBadgeClass(levelKey: ClubBenchmarkRow["comparison"]["levelKey"
 }
 
 function strongestMetricMatch(comparisons: MetricLevelComparison[]) {
-  return [...comparisons].sort(
-    (left, right) =>
-      metricLevelSortValue(right) - metricLevelSortValue(left) ||
-      right.progressPercent - left.progressPercent,
-  )[0];
+  return (
+    [...comparisons].sort(
+      (left, right) =>
+        metricLevelSortValue(right) - metricLevelSortValue(left) ||
+        right.progressPercent - left.progressPercent,
+    )[0] ?? null
+  );
 }
 
 function closestNextMetricMatch(comparisons: MetricLevelComparison[]) {
-  return [...comparisons]
-    .filter(
-      (
-        comparison,
-      ): comparison is MetricLevelComparison & {
-        nextLevel: InferredClubBenchmarkMetricLevel;
-        gapToNext: number;
-      } => comparison.nextLevel !== null && comparison.gapToNext !== null,
-    )
-    .sort((left, right) => left.gapToNext - right.gapToNext)[0];
+  return (
+    [...comparisons]
+      .filter(
+        (
+          comparison,
+        ): comparison is MetricLevelComparison & {
+          nextLevel: InferredClubBenchmarkMetricLevel;
+          gapToNext: number;
+        } => comparison.nextLevel !== null && comparison.gapToNext !== null,
+      )
+      .sort((left, right) => left.gapToNext - right.gapToNext)[0] ?? null
+  );
 }
 
 function metricLevelSortValue(comparison: MetricLevelComparison) {
@@ -1855,4 +1910,11 @@ function clamp(value: number, min: number, max: number) {
 
 function isNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function metricCoverageText(row: ClubBenchmarkRow, metric: ClubBenchmarkMetricKey) {
+  const evidence = row.metricEvidence?.[metric];
+  return evidence
+    ? `${evidence.validCount} valid / ${evidence.selectedCount} selected`
+    : `${row.sampleSize} selected · metric coverage unavailable`;
 }

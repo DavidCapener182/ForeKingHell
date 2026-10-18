@@ -57,7 +57,13 @@ describe("coach player workspace shadcn composition", () => {
     expect(timeline).toContain("<AppEmptyState");
     expect(timeline).not.toContain("<article");
     expect(timeline).not.toContain("<StatusPill");
-    expect(source).not.toContain('role="status"');
+    expect(timeline).not.toContain('role="status"');
+    const successStart = source.indexOf('params?.saved === "1"');
+    const successEnd = source.indexOf("{params?.error", successStart);
+    const success = source.slice(successStart, successEnd);
+    expect(successStart).toBeGreaterThanOrEqual(0);
+    expect(success).toContain('<Alert role="status">');
+    expect(success).toContain("Coach interaction saved");
   });
 
   it("preserves player selection, evidence references and every interaction action", () => {

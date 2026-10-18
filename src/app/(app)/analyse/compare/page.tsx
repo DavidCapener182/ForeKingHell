@@ -1,3 +1,4 @@
+import { comparisonReadiness } from "@/app/analyse/compare/comparison-readiness";
 import { requirePlanUser } from "@/lib/require-plan-access";
 import Link from "next/link";
 import { ArrowLeft, Crosshair, Share2, Target, TriangleAlert } from "lucide-react";
@@ -149,10 +150,10 @@ async function SessionComparePage({ searchParams }: { searchParams: SearchParams
             id="comparison-verdict"
             className="mt-2 max-w-5xl text-xl font-semibold leading-snug tracking-tight sm:text-2xl"
           >
-            {comparisonVerdict(data)}
+            {comparisonVerdict(data, confidence?.confidence)}
           </h2>
           <p className="mt-1 max-w-4xl text-sm leading-6 text-muted-foreground">
-            {comparisonVerdictSummary(data, confidence?.caveat)}
+            {comparisonVerdictSummary(data, confidence?.caveat, confidence?.confidence)}
           </p>
         </div>
         <div className="sm:text-right">
@@ -234,7 +235,12 @@ async function SessionComparePage({ searchParams }: { searchParams: SearchParams
           ))}
         </div>
         <Card className="mt-3 hidden overflow-hidden py-0 shadow-sm lg:block">
-          <div className="overflow-x-auto">
+          <div
+            role="region"
+            aria-label="Comparison metric table"
+            tabIndex={0}
+            className="overflow-x-auto rounded-xl focus-aaa"
+          >
             <Table>
               <TableHeader>
                 <TableRow>
@@ -351,7 +357,11 @@ function filtersFromParams(params: Awaited<SearchParams>): CompareFilters {
   };
 }
 
-function comparisonVerdict(data: CompareData) {
+function comparisonVerdict(data: CompareData, confidence?: string) {
+  if (
+    comparisonReadiness(data.focus.stockShots, data.baseline.stockShots, confidence) === "limited"
+  )
+    return "Early signal: inspect the measured differences before choosing a practice change.";
   const subject =
     data.clubs.find((club) => club.id === data.filters.clubId)?.label ?? "Focus sample";
   const rightMissDelta =
@@ -441,8 +451,14 @@ function comparisonVerdictTone(
   data: CompareData,
   confidence?: ComparisonMetricProvenance["confidence"],
 ): Tone {
+  const readiness = comparisonReadiness(
+    data.focus.stockShots,
+    data.baseline.stockShots,
+    confidence,
+  );
+  if (readiness === "missing") return "slate";
+  if (readiness === "limited") return "amber";
   if (!hasMeaningfulChange(data)) return "slate";
-  if (confidence === "early" || confidence === "developing") return "amber";
   if (data.benefit.verdict === "Beneficial" || data.benefit.verdict === "Useful") return "green";
   if (data.benefit.verdict === "Mixed") return "amber";
   return "pink";
@@ -452,8 +468,14 @@ function comparisonVerdictLabel(
   data: CompareData,
   confidence?: ComparisonMetricProvenance["confidence"],
 ) {
+  const readiness = comparisonReadiness(
+    data.focus.stockShots,
+    data.baseline.stockShots,
+    confidence,
+  );
+  if (readiness === "missing") return "Not enough evidence";
+  if (readiness === "limited") return "Early signal";
   if (!hasMeaningfulChange(data)) return "No useful change";
-  if (confidence === "early" || confidence === "developing") return "Uncertain";
   if (data.benefit.verdict === "Beneficial" || data.benefit.verdict === "Useful") {
     return "Improvement";
   }
@@ -461,7 +483,16 @@ function comparisonVerdictLabel(
   return "Mixed";
 }
 
-function comparisonVerdictSummary(data: CompareData, caveat?: string) {
+function comparisonVerdictSummary(data: CompareData, caveat?: string, confidence?: string) {
+  const readiness = comparisonReadiness(
+    data.focus.stockShots,
+    data.baseline.stockShots,
+    confidence,
+  );
+  if (readiness === "missing")
+    return "Choose two samples with observed stock evidence. Missing measurements are not zero change.";
+  if (readiness === "limited")
+    return `These are descriptive differences between selected samples. More comparable evidence is needed before treating them as improvement.${caveat ? ` ${caveat}` : ""}`;
   const summary = hasMeaningfulChange(data)
     ? data.benefit.summary
     : "Measured deltas stay below the useful-change thresholds.";

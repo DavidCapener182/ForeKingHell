@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { isShotEvidenceEligible, type ShotReviewStatus } from "@/lib/shot-review";
+import { performanceObservationExclusionReason } from "@/lib/performance-intelligence";
 
 const root = process.cwd();
 
@@ -46,9 +47,23 @@ describe("strokes-gained lifecycle evidence", () => {
     expect(consumer).toMatch(
       /eq\(shots\.reviewStatus, "restored"\)|\$\{shots\.reviewStatus\} = 'restored'/,
     );
-    expect(consumer).toMatch(
-      /eq\(shots\.reviewStatus, "included"\)|\$\{shots\.reviewStatus\} = 'included'/,
-    );
+    if (path === "src/lib/practice-planner.ts") {
+      // Practice keeps unconfirmed suggestions and genuine poor attempts; confirmed errors/user exclusions remain out.
+      expect(consumer).toContain("${shots.reviewStatus} in ('included', 'suggested_exclusion')");
+      const predicate = consumer.slice(
+        consumer.indexOf("function shotEvidenceSqlPredicate()"),
+        consumer.indexOf("function evaluateOrderedPracticeBlocks"),
+      );
+      expect(predicate).not.toContain("'user_excluded'");
+      expect(predicate).not.toContain("'launch_monitor_error'");
+      for (const genuine of ["'fat'", "'mishit'", "'thin'", "'top'"])
+        expect(predicate).not.toContain(genuine);
+      expect(consumer).toContain("performanceObservationExclusionReason(row) === null");
+    } else {
+      expect(consumer).toMatch(
+        /eq\(shots\.reviewStatus, "included"\)|\$\{shots\.reviewStatus\} = 'included'/,
+      );
+    }
     expect(consumer).toContain("not like 'exclude%'");
     expect(consumer).toContain("'bad-data', 'bad_data'");
     expect(consumer).toContain("'warm-up', 'warmup', 'warm_up'");
@@ -87,6 +102,44 @@ describe("strokes-gained lifecycle evidence", () => {
     },
   ])("$label", ({ input, expected }) => {
     expect(isStrokesGainedEvidenceEligible(input)).toBe(expected);
+  });
+
+  it("practice retains genuine poor attempts while excluding explicit user and invalid states", () => {
+    for (const qualityTag of ["top", "thin", "fat", "mishit"]) {
+      expect(
+        performanceObservationExclusionReason({
+          reviewStatus: "included",
+          qualityTag,
+          shotCategory: "full",
+        }),
+      ).toBeNull();
+      expect(
+        performanceObservationExclusionReason({
+          reviewStatus: "suggested_exclusion",
+          qualityTag,
+          shotCategory: "full",
+        }),
+      ).toBeNull();
+      expect(
+        performanceObservationExclusionReason({
+          reviewStatus: "user_excluded",
+          qualityTag,
+          shotCategory: "full",
+        }),
+      ).not.toBeNull();
+    }
+    expect(
+      performanceObservationExclusionReason({ reviewStatus: "included", qualityTag: "bad_data" }),
+    ).not.toBeNull();
+    expect(
+      performanceObservationExclusionReason({
+        reviewStatus: "launch_monitor_error",
+        qualityTag: "top",
+      }),
+    ).not.toBeNull();
+    expect(
+      performanceObservationExclusionReason({ reviewStatus: "warm_up", qualityTag: "top" }),
+    ).not.toBeNull();
   });
 
   it("links imported course events back to the inserted shot lifecycle", () => {

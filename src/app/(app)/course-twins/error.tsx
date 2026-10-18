@@ -12,7 +12,7 @@ export default function CourseTwinsError({
     <section className="p-4 pb-40" role="alert">
       <AppErrorState
         title="Course Twins could not be loaded"
-        description="The catalogue is temporarily unavailable. Retry to check your available packages, or open your course records."
+        description="The catalogue is temporarily unavailable. Retry to check your available packages, or return to your course library."
         action={
           <div className="flex flex-wrap gap-2">
             <Button className="min-h-11" onClick={retry}>

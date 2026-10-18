@@ -4,7 +4,7 @@ export default function GroupsLoading() {
   return (
     <GolfRouteLoading
       title="Loading group workspace"
-      subtitle="Preparing group activity, members, challenge tools, and privacy-aware digests."
+      subtitle="Preparing accessible groups, invitations, activity and member controls."
       variant="groups"
     />
   );

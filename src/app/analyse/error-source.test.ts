@@ -14,7 +14,7 @@ describe("Analyse recoverable error boundaries", () => {
 
       expect(source).toContain("<AppErrorState");
       expect(source).toContain("<Button");
-      expect(source).toContain("onClick={reset}");
+      expect(source).toContain("onClick={retry}");
       expect(source).not.toContain("RouteErrorState");
     });
   }

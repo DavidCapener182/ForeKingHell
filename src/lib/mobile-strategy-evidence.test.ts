@@ -12,6 +12,7 @@ const shots: StockShot[] = Array.from({ length: 40 }, (_, i) => ({
   sideCarryYd: i % 2 ? -12 : 22,
   shotAt: new Date(Date.UTC(2026, 8, 1, 12, 0, -i)),
   reviewStatus: "included",
+  shotCategory: "full",
   sessionType: "range",
 }));
 describe("mobile strategy evidence", () => {

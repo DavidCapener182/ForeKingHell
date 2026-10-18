@@ -4,7 +4,7 @@ export default function FriendsLoading() {
   return (
     <GolfRouteLoading
       title="Loading friend manager"
-      subtitle="Preparing friend search, requests, invites, comparisons, and safety controls."
+      subtitle="Preparing golfer search, friend requests, invitations and connection controls."
       variant="friends"
     />
   );

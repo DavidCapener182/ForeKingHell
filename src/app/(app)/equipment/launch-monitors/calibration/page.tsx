@@ -277,7 +277,12 @@ export default async function CalibrationPage({
             title="Metric confidence"
             description="Raw medians of all saved shots for this club, including excluded shots for inspection. No device bias has been established."
           >
-            <div className="overflow-x-auto">
+            <div
+              role="region"
+              aria-label="Raw device metrics"
+              tabIndex={0}
+              className="overflow-x-auto rounded-xl focus-aaa"
+            >
               <table className="w-full min-w-[650px] text-left text-sm">
                 <caption className="sr-only">Raw device metrics and calibration confidence</caption>
                 <thead className="border-b border-border text-xs text-muted-foreground">

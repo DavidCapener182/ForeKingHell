@@ -61,7 +61,7 @@ describe("Progress URL and measured evidence", () => {
           totalYd: i < 6 ? 165 : null,
           sideCarryYd: 3,
           qualityTag: null,
-          shotCategory: null,
+          shotCategory: "full",
           sessionType: "range",
         }) as ClubAnalyticsShot,
     );
@@ -123,4 +123,22 @@ describe("Progress URL and measured evidence", () => {
     expect(result.decline?.club.clubId).toBe("worse");
     expect(result.comparedClubs).toBe(3);
   });
+});
+
+it("keeps unknown intent unresolved instead of calling it stock in comparisons", () => {
+  const rows = [
+    {
+      id: "unknown",
+      clubType: "sw",
+      sessionId: "session",
+      shotAt: "2026-09-01",
+      carryYd: 20,
+      totalYd: 25,
+      sideCarryYd: 1,
+      shotCategory: null,
+      qualityTag: null,
+      sessionType: "range",
+    } as ClubAnalyticsShot,
+  ];
+  expect(comparisonObservations(rows, "sw")).toEqual([]);
 });

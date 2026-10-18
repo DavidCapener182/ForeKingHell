@@ -5,6 +5,7 @@ export default function DataChatLoading() {
   return (
     <PageShell>
       <div role="status" aria-live="polite" aria-busy="true" className="grid gap-4">
+        <span className="sr-only">Loading Data Chat and saved answers.</span>
         <AppLoadingSkeleton variant="answer" />
         <AppLoadingSkeleton variant="list" rows={4} />
       </div>

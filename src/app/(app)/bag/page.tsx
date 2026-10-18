@@ -1,4 +1,5 @@
 import { benchmarkMilestones, benchmarkSessionHistory } from "@/lib/benchmark-milestones";
+import { loadBagBenchmarkMode } from "@/app/bag/bag-benchmark-mode";
 import { BagClubViews, BagVisualLayers } from "@/app/bag/bag-visual-controls";
 import { StockSampleReview } from "@/app/bag/stock-sample-review";
 import { DriverDevelopmentPanel } from "@/components/analysis/driver-development-panel";
@@ -142,6 +143,13 @@ import {
 } from "@/lib/stock-yardage";
 import type { TargetDistanceRow } from "@/app/bag/target-distance-selector";
 import type { ClubIntelligenceItem } from "@/app/bag/club-intelligence-panel";
+import {
+  benchmarkIntelligenceEnabled,
+  getPerformanceEvidenceData,
+} from "@/lib/performance-intelligence-data";
+import { buildEvidenceBenchmarkRows } from "@/lib/benchmark-evidence";
+import { comparableBagStock } from "@/lib/bag-performance-stock";
+import type { PerformanceIntelligence } from "@/lib/performance-intelligence";
 
 import styles from "./bag-page.module.css";
 
@@ -316,7 +324,7 @@ async function BagWorkbenchPage({
   );
   const peerBenchmarksLoaded = shouldLoadPeerBenchmarks(resolvedSearchParams.peers);
   const [
-    bag,
+    benchmarkMode,
     profile,
     featureData,
     speedSummary,
@@ -325,7 +333,25 @@ async function BagWorkbenchPage({
     accountId,
     preferences,
   ] = await Promise.all([
-    getBag(),
+    loadBagBenchmarkMode({
+      enabled: benchmarkIntelligenceEnabled(),
+      loadBag: getBag,
+      loadEvidence: getPerformanceEvidenceData,
+      applyEvidence: (legacyBag, evidence) =>
+        legacyBag.map((club) => ({
+          ...club,
+          stock: comparableBagStock(
+            club.id,
+            evidence.intelligence,
+            evidence.observations,
+            club.personalBest.carryYd,
+          ),
+          stockTrend: null,
+        })),
+      buildLegacyRows: buildBenchmarkRows,
+      buildEvidenceRows: (bag, evidence) =>
+        buildEvidenceBenchmarkRows(bag, evidence.intelligence, evidence.observations),
+    }),
     ensureCurrentSocialProfile(),
     getFeatureIdeasData(),
     getBagSpeedSummary(),
@@ -334,6 +360,7 @@ async function BagWorkbenchPage({
     requireCurrentUserId(),
     getCurrentUserPreferences(),
   ]);
+  const { bag, benchmarkRows, intelligence } = benchmarkMode;
   const gappingRows = buildGappingRows(bag, {
     handicapBand: profile.handicapBand,
   });
@@ -346,7 +373,6 @@ async function BagWorkbenchPage({
   const shotPatternOverlays = buildShotPatternOverlaySummaries(bag);
   const confidenceHeatMaps = buildConfidenceHeatMaps(bag);
   const targetDistanceRows = buildTargetDistanceRows(bag, gappingRows);
-  const benchmarkRows = buildBenchmarkRows(bag);
   const peerBenchmarkSummary =
     benchmarkRows.length > 0 && peerBenchmarksLoaded
       ? await getPeerBenchmarkSummary(benchmarkRows)
@@ -560,6 +586,11 @@ async function BagWorkbenchPage({
                         {benchmarkRows.length > 0 ? (
                           <BenchmarkReferencePanel
                             rows={benchmarkRows}
+                            intelligence={intelligence}
+                            clubLabels={Object.fromEntries(
+                              bag.map((club) => [club.id, formatClubType(club.type)]),
+                            )}
+                            clubTypes={Object.fromEntries(bag.map((club) => [club.id, club.type]))}
                             peerSummary={peerBenchmarkSummary}
                             peerBenchmarksLoaded={peerBenchmarksLoaded}
                           />
@@ -3310,15 +3341,24 @@ function BenchmarkReferencePanel({
   rows,
   peerSummary,
   peerBenchmarksLoaded,
+  intelligence,
+  clubLabels,
+  clubTypes,
 }: {
   rows: ClubBenchmarkRow[];
   peerSummary: ClubBenchmarkPeerSummary;
   peerBenchmarksLoaded: boolean;
+  intelligence?: PerformanceIntelligence;
+  clubLabels?: Record<string, string>;
+  clubTypes?: Record<string, string>;
 }) {
   return (
     <section id="distance-benchmarks" className="scroll-mt-28">
       <DistanceBenchmarkPanel
         rows={rows}
+        intelligence={intelligence}
+        clubLabels={clubLabels}
+        clubTypes={clubTypes}
         peerSummary={peerSummary}
         peerBenchmarksLoaded={peerBenchmarksLoaded}
       />

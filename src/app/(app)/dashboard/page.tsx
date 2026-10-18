@@ -224,7 +224,7 @@ export default async function DashboardPage() {
             </h2>
             <StatusPill tone={focus ? "green" : "slate"}>
               {currentPlan
-                ? currentPlan.status
+                ? currentPlan.status.replaceAll("_", " ")
                 : focus
                   ? `${focus.sampleSize} stock shots`
                   : "No practice priority yet"}
@@ -232,7 +232,7 @@ export default async function DashboardPage() {
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {currentPlan
-              ? `${currentPlan.timeMinutes} minutes · ${currentPlan.focusClubs.join(", ") || "Full bag"}. Continue the saved targets and record the result against this plan.`
+              ? `${currentPlan.timeMinutes} minutes · ${currentPlan.focusClubs.join(", ") || "Full bag"}. Follow the saved targets, then upload your shots to review the result against this plan.`
               : (focus?.reason ??
                 "Import a session, confirm the clubs and review its quality before choosing a measured target.")}
           </p>

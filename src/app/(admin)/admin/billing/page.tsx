@@ -125,7 +125,7 @@ export default async function AdminBillingPage({
             {data.auditRows.map((row) => (
               <li key={row.id}>
                 <details className="rounded-xl border p-4">
-                  <summary className="min-h-11 cursor-pointer">
+                  <summary className="min-h-11 cursor-pointer break-words [overflow-wrap:anywhere]">
                     <span className="font-medium">Lifetime Full granted</span>
                     <span className="mt-1 block text-xs">
                       {formatDateTime(row.createdAt)} ·{" "}

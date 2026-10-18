@@ -54,7 +54,11 @@ describe("practice planner desktop workflow", () => {
     expect(companionSource).toContain(
       ".filter((decision) => scoredBlockIds.has(decision.blockId))",
     );
-    expect(companionSource).toContain("value={`${decision.actualBalls}");
+    expect(companionSource).toContain('decision.actual.includes("allocation unresolved")');
+    expect(companionSource).toContain('"Unallocated"');
+    expect(companionSource).toContain(
+      '`${decision.actualBalls}/${decision.plannedBalls ?? "timed"}`',
+    );
     expect(companionSource).toContain("detail={decision.actual}");
     expect(companionSource).toContain("<IOSInlineStatus");
     expect(companionSource).toContain("Every eligible launch-monitor shot from the practice day");

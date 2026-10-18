@@ -1125,6 +1125,15 @@ async function getRapsodoSpeedInbox(): Promise<RapsodoSpeedInbox> {
   }
 }
 
+function explicitDriverSwingIntent(
+  raw: Record<string, string>,
+): "normal_ball" | "maximum_ball" | "no_ball" | "unknown" {
+  const value = raw.__lmwtSwingIntent ?? raw.swingIntent ?? raw.shotIntent;
+  return value === "normal_ball" || value === "maximum_ball" || value === "no_ball"
+    ? value
+    : "unknown";
+}
+
 function buildDriverSpeedDevelopmentSummary(input: {
   sessions: SpeedCentreSession[];
   swings: Array<{
@@ -1192,6 +1201,7 @@ function buildDriverSpeedDevelopmentSummary(input: {
       sideCarryYd: shot.sideCarryYd,
       qualityTag: shot.qualityTag,
       clubDataEstType: shot.clubDataEstType,
+      swingIntent: explicitDriverSwingIntent(shot.sourceRawJson),
     })),
     transferDriverShots: input.driverShots.map((shot) => ({
       id: shot.id,
@@ -1207,6 +1217,7 @@ function buildDriverSpeedDevelopmentSummary(input: {
       sideCarryYd: shot.sideCarryYd,
       qualityTag: shot.qualityTag,
       clubDataEstType: shot.clubDataEstType,
+      swingIntent: explicitDriverSwingIntent(shot.sourceRawJson),
     })),
     targetSpeedMph: input.targetSpeedMph,
     currentCarryYd: input.currentCarryYd,
@@ -2189,14 +2200,13 @@ function deduplicateSpeedReadings<T extends SpeedPbReading>(
 }
 
 function speedReadingFingerprint(reading: SpeedPbReading) {
-  const sourceEntries = Object.entries(reading.sourceRawJson ?? {})
-    .map(([key, value]) => [key.trim(), value.trim()] as const)
-    .filter(([key, value]) => key.length > 0 || value.length > 0)
-    .sort(([left], [right]) => left.localeCompare(right));
-
-  return sourceEntries.length > 0
-    ? `raw:${JSON.stringify(sourceEntries)}`
-    : `shot:${reading.shotAt.toISOString()}:${reading.id}`;
+  const raw = reading.sourceRawJson;
+  const canonicalSwingId =
+    typeof raw?.__lmwtCanonicalSwingId === "string" ? raw.__lmwtCanonicalSwingId.trim() : null;
+  // A source row or rounded metric match is not evidence of the same physical swing.
+  return raw?.__lmwtCanonicalDuplicateConfirmed === "true" && canonicalSwingId
+    ? `physical-swing:${canonicalSwingId}`
+    : `shot:${reading.id}`;
 }
 
 function corroboratingReadings(

@@ -18,7 +18,7 @@ export type ComparisonClub = {
   observations: ComparisonObservation[];
 };
 
-/** Same eligibility/stock role/outlier selection used by the existing analytics trend.
+/** Same explicit-intent recent-stock eligibility used by the existing analytics trend.
  * Total is measured total, never carry relabelled or an estimated rollout. */
 export function comparisonObservations(
   shots: ClubAnalyticsShot[],

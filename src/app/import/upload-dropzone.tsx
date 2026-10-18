@@ -49,7 +49,7 @@ export function UploadDropzone({
 }) {
   const reading = disabled || Boolean(readProgress);
   return (
-    <div className="grid min-w-0 gap-3" data-import-upload-table>
+    <div className="grid min-w-0 grid-cols-1 gap-3" data-import-upload-table>
       <input
         ref={fileInputRef}
         id="csv-file"
@@ -114,24 +114,28 @@ export function UploadDropzone({
         <div role="alert" key={error.id} className="rounded-xl border border-destructive/40 p-3">
           <p className="break-words text-sm font-semibold">{error.file.name}</p>
           <p className="mt-1 text-sm text-destructive">{error.message}</p>
-          <div className="mt-2 flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11"
-              disabled={reading}
-              onClick={() => void onRetry?.(error.file)}
-            >
-              Retry file
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="min-h-11"
-              onClick={() => onDismissError?.(error.id)}
-            >
-              Dismiss error
-            </Button>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {onRetry ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                disabled={reading}
+                onClick={() => void onRetry?.(error.file)}
+              >
+                Retry file
+              </Button>
+            ) : null}
+            {onDismissError ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="min-h-11"
+                onClick={() => onDismissError?.(error.id)}
+              >
+                Dismiss error
+              </Button>
+            ) : null}
           </div>
         </div>
       ))}
@@ -169,6 +173,7 @@ export function UploadDropzone({
                     type="button"
                     variant="ghost"
                     className="size-11 shrink-0"
+                    disabled={reading}
                     aria-label={`Remove ${file.fileName}`}
                     onClick={() => onRemoveFile(file.id)}
                   >

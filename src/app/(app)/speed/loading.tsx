@@ -3,8 +3,8 @@ import { GolfRouteLoading } from "@/components/golf-loading";
 export default function SpeedLoading() {
   return (
     <GolfRouteLoading
-      title="Calibrating speed centre"
-      subtitle="Separating no-ball training, with-ball speed, PB markers, and target bands."
+      title="Loading Speed Centre"
+      subtitle="Loading training sessions, with-ball readings and your saved speed goals."
       variant="speed"
     />
   );

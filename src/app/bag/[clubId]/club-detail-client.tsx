@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { ClubPerformanceIntelligence } from "@/app/bag/club-performance-intelligence";
+import type { PerformanceIntelligence } from "@/lib/performance-intelligence";
+import { comparableBagStock } from "@/lib/bag-performance-stock";
 import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/premium";
 import { UntitledSelect } from "@/components/untitled-ui/form-controls";
@@ -118,6 +121,7 @@ export function ClubDetailClient({
   companion = false,
   neighbours = [],
   correctionClubs = [],
+  intelligence,
 }: {
   club: {
     id: string;
@@ -127,6 +131,7 @@ export function ClubDetailClient({
     active?: boolean;
     shots: AnalysisShot[];
   };
+  intelligence?: PerformanceIntelligence;
   children?: ReactNode;
   companion?: boolean;
   neighbours?: ClubNeighbour[];
@@ -137,6 +142,59 @@ export function ClubDetailClient({
   const clubTypeLabel = formatClubType(club.type);
   const clubIdentityName = formatClubIdentityName(club.type);
   const query = useSearchParams();
+  const contexts = useMemo(
+    () =>
+      intelligence?.groups
+        .filter((g) => g.clubId === club.id)
+        .sort(
+          (a, b) =>
+            (b.current.endAt ?? b.potential.endAt ?? "").localeCompare(
+              a.current.endAt ?? a.potential.endAt ?? "",
+            ) || a.id.localeCompare(b.id),
+        ) ?? [],
+    [intelligence, club.id],
+  );
+  const evidenceContext =
+    contexts.find((g) => g.id === query.get("evidenceContext")) ??
+    contexts.find((g) => g.context.intent === "full") ??
+    contexts[0];
+  const scopedIntelligence = useMemo(
+    () =>
+      intelligence && evidenceContext
+        ? { ...intelligence, groups: [evidenceContext] }
+        : intelligence,
+    [intelligence, evidenceContext],
+  );
+  const contextShotIds = useMemo(
+    () => (evidenceContext ? new Set(evidenceContext.observationIds) : null),
+    [evidenceContext],
+  );
+  const contextControl =
+    contexts.length > 1 ? (
+      <label className="grid min-w-0 gap-1 text-sm font-medium">
+        Club evidence context
+        <select
+          className="min-h-11 min-w-0 w-full rounded-md border bg-background px-3"
+          value={evidenceContext?.id}
+          onChange={(event) => {
+            const url = new URL(window.location.href);
+            url.searchParams.set("evidenceContext", event.target.value);
+            window.history.pushState(null, "", `${url.pathname}${url.search}${url.hash}`);
+          }}
+        >
+          {contexts.map((context, index) => (
+            <option key={context.id} value={context.id}>
+              {context.context.source ?? "Unknown source"} · {context.context.intent} ·
+              configuration {index + 1}
+            </option>
+          ))}
+        </select>
+        <span className="text-xs text-muted-foreground">
+          History and playing numbers use this one source, setup and shot intent. Other recordings
+          remain available here.
+        </span>
+      </label>
+    ) : null;
   const requestedRange = query.get("range");
   const shotRange: ShotRange = RANGE_OPTIONS.some((option) => option.value === requestedRange)
     ? (requestedRange as ShotRange)
@@ -150,25 +208,31 @@ export function ClubDetailClient({
     RANGE_OPTIONS.find((option) => option.value === shotRange) ?? RANGE_OPTIONS[0];
   const orderedShots = useMemo(
     () =>
-      [...club.shots].sort((left, right) => {
-        const dateDifference = new Date(right.shotAt).getTime() - new Date(left.shotAt).getTime();
+      [...club.shots]
+        .filter((shot) => !contextShotIds || contextShotIds.has(shot.id))
+        .sort((left, right) => {
+          const dateDifference = new Date(right.shotAt).getTime() - new Date(left.shotAt).getTime();
 
-        if (dateDifference !== 0) {
-          return dateDifference;
-        }
+          if (dateDifference !== 0) {
+            return dateDifference;
+          }
 
-        return Number(right.shotNumber ?? 0) - Number(left.shotNumber ?? 0);
-      }),
-    [club.shots],
+          return Number(right.shotNumber ?? 0) - Number(left.shotNumber ?? 0);
+        }),
+    [club.shots, contextShotIds],
   );
   const selectedShots = useMemo(
     () => filterShotsForRange(orderedShots, shotRange, new Date()),
     [orderedShots, shotRange],
   );
-  const stock = useMemo(
-    () => calculateStockYardage(selectedShots, selectedShots.length, { clubType: club.type }),
-    [club.type, selectedShots],
-  );
+  const stock = useMemo(() => {
+    const history = calculateStockYardage(selectedShots, selectedShots.length, {
+      clubType: club.type,
+    });
+    return scopedIntelligence
+      ? comparableBagStock(club.id, scopedIntelligence, selectedShots, history.personalBestCarryYd)
+      : history;
+  }, [club.id, club.type, selectedShots, scopedIntelligence]);
   const touch = useMemo(
     () =>
       calculateShortGameTouchSummary(selectedShots, selectedShots.length, { clubType: club.type }),
@@ -222,6 +286,10 @@ export function ClubDetailClient({
             </Button>
           }
         />
+        {contextControl}
+        {scopedIntelligence ? (
+          <ClubPerformanceIntelligence intelligence={scopedIntelligence} clubType={club.type} />
+        ) : null}
         <RangeToggle value={shotRange} onChange={setShotRange} />
         <MobileMetric
           value={value(carry)}
@@ -315,7 +383,7 @@ export function ClubDetailClient({
               label={
                 monthChange.carryDeltaYd == null
                   ? "Building a comparison"
-                  : `${monthChange.carryDeltaYd > 0 ? "+" : ""}${Math.round(monthChange.carryDeltaYd)} yd best stock carry`
+                  : `${monthChange.carryDeltaYd > 0 ? "+" : ""}${Math.round(monthChange.carryDeltaYd)} yd stock carry`
               }
               detail={
                 monthChange.previousLabel
@@ -444,9 +512,9 @@ export function ClubDetailClient({
             detail: isShortGameTouch ? "Short-game control" : recommendedDetail,
           },
           {
-            label: "Best stock carry",
+            label: "Stock carry",
             value: formatWholeYards(stock.bestStockCarryYd),
-            detail: "Clean-sample median",
+            detail: "Recent full-shot median",
           },
           {
             label: "Personal best carry",
@@ -473,6 +541,13 @@ export function ClubDetailClient({
           Advanced analytics
         </Link>
       </div>
+
+      {contextControl}
+      {scopedIntelligence ? (
+        <div className="rounded-xl border bg-card p-4">
+          <ClubPerformanceIntelligence intelligence={scopedIntelligence} clubType={club.type} />
+        </div>
+      ) : null}
 
       {selectedShots.length > 0 ? (
         <ClubAnalysisTabs
@@ -613,7 +688,7 @@ function ClubIntelligence({
           />
           <IntelligenceMetric
             icon={Gauge}
-            label={isShortGameTouch ? "Full stock" : "Best Stock"}
+            label={isShortGameTouch ? "Full stock" : "Stock carry"}
             value={formatWholeYards(
               isShortGameTouch
                 ? isSandWedge
@@ -725,7 +800,7 @@ function ClubIntelligence({
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {isShortGameTouch
               ? shortGameStockNote(clubType)
-              : `${formatStockExclusionReasons(stock.stockExclusionReasons)}. Best Stock is the median of the selected top-20 clean stock sample, while Personal Best keeps the single longest clean full-role carry visible without making it the play number.`}
+              : `${formatStockExclusionReasons(stock.stockExclusionReasons)}. Stock carry is the median of recent eligible full shots, without distance-based trimming. Ordinary imperfect strikes stay in this sample. Explicit severe mishits stay visible in all-attempt consistency. The longest eligible full-shot carry is a performance ceiling, not a stock yardage.`}
           </p>
         </div>
       </CardContent>
@@ -1169,7 +1244,7 @@ function shortGameStockNote(clubType: string) {
     return "SW stock uses full-role shots from 75 yd and above. Pitch and chip windows stay in touch analysis.";
   }
 
-  return "Round chips and pitches stay in touch analysis, not best-stock yardage.";
+  return "Round chips and pitches stay in touch analysis, not stock yardage.";
 }
 
 function tonePanelClass(tone: MetricTone) {

@@ -76,7 +76,12 @@ async function ComparePage({ searchParams }: { searchParams: SearchParams }) {
         <PageHeader
           eyebrow={<StatusPill tone="amber">Configuration</StatusPill>}
           title="Compare clubs"
-          description="DATABASE_URL is required before club comparisons can be calculated."
+          description="Comparison evidence is temporarily unavailable. Return to your Bag or try again once the connection is restored."
+          actions={
+            <Button asChild variant="outline">
+              <Link href="/bag">Open Bag</Link>
+            </Button>
+          }
         />
       </PageShell>
     );

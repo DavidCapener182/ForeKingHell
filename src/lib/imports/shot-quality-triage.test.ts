@@ -205,7 +205,7 @@ describe("triageImportedShotQuality", () => {
   });
 
   it.each([6.6, 9.8, 16.4, 19.7, 20.8, 27.4, 33.9, 50.3])(
-    "treats a trusted-source SW shot at %s yards as partial, not a mishit",
+    "keeps intent unresolved for a trusted-source SW shot at %s yards",
     (carryYd) => {
       const result = triageImportedShotQuality(
         shot({
@@ -218,7 +218,8 @@ describe("triageImportedShotQuality", () => {
         }),
       );
 
-      expect(result.classification).toBe("partial_shot");
+      expect(result.classification).toBe("needs_review");
+      expect(result.evidence[0].code).toBe("short_game_intent_unknown");
       expect(result.fieldQuarantines).toEqual([]);
     },
   );

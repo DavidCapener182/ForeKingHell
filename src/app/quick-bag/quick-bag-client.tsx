@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { quickBagMissLabel } from "./quick-bag-miss-label";
+import Link from "next/link";
 import { yardsToDisplay, distanceUnitLabel, type DistanceUnitPreference } from "@/lib/units";
 import { ChevronRight, Search } from "lucide-react";
 import { useEffect, useMemo, useState, useRef } from "react";
@@ -97,6 +99,23 @@ export function QuickBagClient({
     setDetailOpen(true);
   };
 
+  if (clubs.length === 0)
+    return (
+      <AppEmptyState
+        title={<h2>Build your on-course reference</h2>}
+        description="Add clubs to your Bag and import measured full swings. Quick Bag will show observed carry ranges when there is enough evidence."
+        primaryAction={
+          <Button asChild>
+            <Link href="/bag">Open Bag</Link>
+          </Button>
+        }
+        secondaryAction={
+          <Button asChild variant="outline">
+            <Link href="/import">Import a session</Link>
+          </Button>
+        }
+      />
+    );
   return (
     <div
       className="grid gap-4"
@@ -160,7 +179,12 @@ export function QuickBagClient({
                 autoComplete="off"
                 placeholder="150"
                 aria-label="Target distance"
-                aria-describedby="quick-bag-target-help"
+                aria-invalid={Boolean(targetDistance.trim()) && !hasTarget}
+                aria-describedby={
+                  targetDistance.trim() && !hasTarget
+                    ? "quick-bag-target-help quick-bag-target-error"
+                    : "quick-bag-target-help"
+                }
                 className="h-[4.75rem] rounded-2xl border-primary/25 bg-card pl-5 pr-16 font-heading text-[2.75rem] font-bold tracking-[-0.04em] shadow-sm focus-visible:border-primary focus-visible:ring-primary/20"
               />
               <span className="pointer-events-none absolute inset-y-0 right-5 grid place-items-center text-base font-semibold text-muted-foreground">
@@ -209,7 +233,7 @@ export function QuickBagClient({
           </Button>
 
           {targetDistance && !hasTarget ? (
-            <p role="status" className="text-sm text-muted-foreground">
+            <p id="quick-bag-target-error" role="status" className="text-sm text-muted-foreground">
               Enter a target between {(40 * factor).toFixed(1)} and {(350 * factor).toFixed(1)}{" "}
               {unit}.
             </p>
@@ -390,7 +414,7 @@ function BestMatchCard({
             label="Confidence"
             value={club.sampleSize === 0 ? "Not measured" : `${club.confidence}%`}
           />
-          <ResultMetric label="Typical miss" value={missLabel(club)} />
+          <ResultMetric label="Typical miss" value={quickBagMissLabel(club, units)} />
         </div>
 
         {!targetInsideRange(club, target) || club.playNumberYd === null || club.sampleSize < 5 ? (
@@ -434,7 +458,7 @@ function CompactClubRow({
       <div className="min-w-0 flex-1">
         <p className="font-semibold">{club.label}</p>
         <p className="text-xs text-muted-foreground">
-          Carry {yardValue(club.trustedCarryYd, units)} · {missLabel(club)}
+          Carry {yardValue(club.trustedCarryYd, units)} · {quickBagMissLabel(club, units)}
         </p>
       </div>
       <div className="shrink-0 text-right">
@@ -504,12 +528,6 @@ function rangeLabel(club: QuickBagClub, units: DistanceUnitPreference) {
   return club.lowYd === null || club.highYd === null
     ? "Not measured"
     : `${Math.round(yardsToDisplay(Math.min(club.lowYd, club.highYd), units))}–${Math.round(yardsToDisplay(Math.max(club.lowYd, club.highYd), units))} ${distanceUnitLabel(units)}`;
-}
-
-function missLabel(club: QuickBagClub) {
-  if (club.typicalMiss) return club.typicalMiss;
-  if (club.widerSide) return `Wider ${club.widerSide}`;
-  return "Not established";
 }
 
 function confidenceLabel(club: QuickBagClub) {

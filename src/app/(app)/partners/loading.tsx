@@ -4,7 +4,7 @@ export default function PartnersLoading() {
   return (
     <GolfRouteLoading
       title="Loading partner operations"
-      subtitle="Preparing sponsor assets, campaigns, plan requirements, and operational actions."
+      subtitle="Preparing your sponsors, active offers, terms and destination controls."
       variant="partners"
     />
   );

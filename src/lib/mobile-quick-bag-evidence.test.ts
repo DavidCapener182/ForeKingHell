@@ -9,17 +9,18 @@ const shots = (): StockShot[] =>
     sideCarryYd: null,
     shotAt: new Date(Date.UTC(2026, 7, 22 - i)),
     reviewStatus: "included",
+    shotCategory: "full",
     sessionType: "range",
   }));
 describe("Quick Bag evidence", () => {
-  it("keeps measured carry distinct from the existing rounded course number and reports measured miss", () => {
+  it("keeps the observed median without upward course-number rounding and reports measured miss", () => {
     const measured = shots().map((shot) => ({ ...shot, sideCarryYd: -9 }));
     const data = mobileQuickBagClub(club, measured);
     expect(data.trustedCarryYd).toBe(151);
     expect(data.playNumberYd).toBe(
       calculateStockYardage(measured, measured.length, { clubType: "7i" }).coursePlayCarryYd,
     );
-    expect(data.playNumberYd).not.toBe(data.trustedCarryYd);
+    expect(data.playNumberYd).toBe(data.trustedCarryYd);
     expect(data.typicalMiss).toBe("9 yd left");
   });
   it("uses one trusted selection and never lets a newer excluded shot advance its date", () => {

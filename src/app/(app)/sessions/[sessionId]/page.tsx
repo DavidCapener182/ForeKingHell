@@ -218,7 +218,7 @@ export default async function PracticeSessionReviewPage({
             <CardHeader className="border-b px-4 py-4">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                     Main visual
                   </p>
                   <CardTitle className="mt-1 text-xl">Dispersion report</CardTitle>
@@ -765,9 +765,7 @@ function EvidenceFact({ label, value }: { label: string; value: string }) {
       <dt className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {label}
       </dt>
-      <dd className="mt-1 truncate font-medium" title={value}>
-        {value}
-      </dd>
+      <dd className="mt-1 break-words font-medium">{value}</dd>
     </div>
   );
 }

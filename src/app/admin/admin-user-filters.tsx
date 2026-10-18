@@ -93,7 +93,11 @@ export function AdminUserFilters({
         apply to this loaded scope.
       </p>
       <div className="flex flex-wrap gap-2 text-xs">
-        {q ? <span className="rounded-lg border p-2">Search: {q}</span> : null}
+        {q ? (
+          <span className="min-w-0 break-words rounded-lg border p-2 [overflow-wrap:anywhere]">
+            Search: {q}
+          </span>
+        ) : null}
         {Object.entries({ role, plan, status })
           .filter(([, value]) => value !== "all")
           .map(([key, value]) => (

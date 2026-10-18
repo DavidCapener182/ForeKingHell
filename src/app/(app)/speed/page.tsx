@@ -224,7 +224,11 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
           </Alert>
         ) : null}
         {speedSaved ? (
-          <div className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-4 py-3 text-sm font-medium text-[var(--status-success-foreground)]">
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-lg border border-[var(--status-success-border)] bg-[var(--status-success-surface)] px-4 py-3 text-sm font-medium text-[var(--status-success-foreground)]"
+          >
             {speedSavedMessage(speedSaved)}
           </div>
         ) : null}

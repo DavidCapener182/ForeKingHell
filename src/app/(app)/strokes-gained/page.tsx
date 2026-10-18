@@ -1886,7 +1886,11 @@ function QuickFilters({ filters }: { filters: SgHistoryFilters }) {
   ];
 
   return (
-    <div className="-mx-1 flex max-w-full gap-2 overflow-x-auto px-1 pb-1 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0">
+    <nav
+      aria-label="Strokes gained event shortcuts"
+      tabIndex={0}
+      className="-mx-1 flex max-w-full gap-2 overflow-x-auto px-1 pb-1 focus-aaa lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0"
+    >
       {shortcuts.map((shortcut) => (
         <Button
           key={shortcut.label}
@@ -1900,7 +1904,7 @@ function QuickFilters({ filters }: { filters: SgHistoryFilters }) {
           </Link>
         </Button>
       ))}
-    </div>
+    </nav>
   );
 }
 

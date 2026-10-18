@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { ClubSuggestionConfirmation } from "./club-suggestion-confirmation";
 import { LoaderCircle, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 
 import { importRapsodoSessionAction } from "@/app/rapsodo/actions";
@@ -57,13 +58,16 @@ export function RapsodoCompanionPreview({
   const [pending, startTransition] = useTransition();
   const excludedRows = useMemo(() => new Set(excludedShotRowNumbers), [excludedShotRowNumbers]);
   const uncertain = useMemo(
-    () => uncertainCompanionRapsodoShots(preview, excludedShotRowNumbers),
-    [excludedShotRowNumbers, preview],
+    () => [
+      ...uncertainCompanionRapsodoShots(preview, excludedShotRowNumbers),
+      ...preview.shots.filter(
+        (shot) => !excludedRows.has(shot.rowNumber) && shot.suggestion.confidence === "high",
+      ),
+    ],
+    [excludedShotRowNumbers, excludedRows, preview],
   );
   const includedShotCount = preview.shots.length - excludedRows.size;
-  const uncertainComplete = uncertain.every((shot) =>
-    Boolean(selectedByRow[shot.rowNumber] ?? shot.suggestion.choice.clubKey),
-  );
+  const uncertainComplete = uncertain.every((shot) => Boolean(selectedByRow[shot.rowNumber]));
 
   function savePreview() {
     if (!uncertainComplete || includedShotCount === 0 || pending) return;
@@ -165,7 +169,7 @@ export function RapsodoCompanionPreview({
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
                   Session preview
                 </p>
-                <h1 className="mt-1 truncate text-xl font-bold">{preview.session.title}</h1>
+                <h1 className="mt-1 break-words text-xl font-bold">{preview.session.title}</h1>
               </div>
               <Badge>
                 {includedShotCount} of {preview.shotCount} shots
@@ -200,8 +204,7 @@ export function RapsodoCompanionPreview({
             <CardContent className="grid gap-2">
               {preview.shots.map((shot) => {
                 const excluded = excludedRows.has(shot.rowNumber);
-                const needsConfirmation =
-                  shot.suggestion.confidence === "low" || shot.suggestion.confidence === "medium";
+                const needsConfirmation = shot.suggestion.confidence !== "trusted";
 
                 return (
                   <Item
@@ -255,6 +258,25 @@ export function RapsodoCompanionPreview({
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-muted-foreground">{shot.suggestion.reason}</p>
+                          <ClubSuggestionConfirmation
+                            shotLabel={`shot ${shot.shotNumber ?? shot.rowNumber}`}
+                            clubLabel={
+                              preview.clubChoices.find(
+                                (choice) =>
+                                  choice.clubKey ===
+                                  (selectedByRow[shot.rowNumber] ?? shot.suggestion.choice.clubKey),
+                              )?.clubLabel ?? shot.suggestion.choice.clubLabel
+                            }
+                            confirmed={Boolean(selectedByRow[shot.rowNumber])}
+                            disabled={pending}
+                            onConfirm={() =>
+                              setSelectedByRow((current) => ({
+                                ...current,
+                                [shot.rowNumber]:
+                                  current[shot.rowNumber] ?? shot.suggestion.choice.clubKey,
+                              }))
+                            }
+                          />
                         </Field>
                       ) : null}
                     </ItemContent>
@@ -263,7 +285,7 @@ export function RapsodoCompanionPreview({
                         type="button"
                         size="sm"
                         variant={excluded ? "outline" : "ghost"}
-                        className="min-h-10"
+                        className="min-h-11"
                         onClick={() =>
                           setExcludedShotRowNumbers((current) =>
                             excluded
@@ -286,7 +308,7 @@ export function RapsodoCompanionPreview({
           {uncertain.length === 0 && includedShotCount > 0 ? (
             <Alert>
               <ShieldCheck aria-hidden />
-              <AlertTitle>All included club matches are high confidence</AlertTitle>
+              <AlertTitle>Included clubs retain their source assignments</AlertTitle>
             </Alert>
           ) : null}
           {includedShotCount === 0 ? (
@@ -308,6 +330,12 @@ export function RapsodoCompanionPreview({
               <AlertTitle>R-Cloud import could not continue</AlertTitle>
               <AlertDescription>{message}</AlertDescription>
             </Alert>
+          ) : null}
+          {!uncertainComplete ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              Confirm the suggested clubs above before importing. Original source assignments stay
+              unchanged until you confirm a selection.
+            </p>
           ) : null}
           {loading === "import" ? (
             <OperationStatus

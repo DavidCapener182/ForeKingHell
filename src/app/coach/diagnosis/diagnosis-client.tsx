@@ -140,7 +140,7 @@ export function DiagnosisClient({ cards }: { cards: CoachClubCard[] }) {
           </select>
         </label>
       </div>
-      <p className="text-sm text-muted-foreground">
+      <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
         {filtered.length} of {cards.length} clubs. These are measured sample diagnostics, not proven
         swing causes. Early signals need more comparable shots.
       </p>
@@ -174,7 +174,20 @@ export function DiagnosisClient({ cards }: { cards: CoachClubCard[] }) {
           </Button>
         ))}
         {!filtered.length ? (
-          <p>No clubs match these filters. Clear the search or choose all confidence levels.</p>
+          <div className="grid justify-items-start gap-2 rounded-lg border border-dashed p-4">
+            <p>No clubs match these filters.</p>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              onClick={() => {
+                setSearch("");
+                setConfidence("all");
+              }}
+            >
+              Clear club filters
+            </Button>
+          </div>
         ) : null}
       </section>
       <Sheet open={open} onOpenChange={setOpen}>

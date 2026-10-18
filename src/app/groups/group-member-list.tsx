@@ -115,6 +115,12 @@ export function GroupMemberList({ members }: { members: GroupMemberRow[] }) {
                 </Link>
                 <p className="break-all text-sm text-muted-foreground">@{m.username}</p>
                 <Badge variant="secondary">{m.role}</Badge>
+                <p className="mt-2 text-sm tabular-nums">
+                  Weekly points: {m.points ?? "Not recorded"}
+                </p>
+                <p className="break-words text-xs text-muted-foreground">
+                  {m.summary ?? "No round this week"}
+                </p>
               </div>
               <Button
                 disabled={!ready}

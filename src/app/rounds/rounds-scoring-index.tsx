@@ -9,6 +9,7 @@ import { useMemo } from "react";
 import { ChevronRight, Search } from "lucide-react";
 
 import type { RoundsWorkspaceRound } from "@/app/rounds/rounds-workspace";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -92,7 +93,12 @@ export function RoundsScoringIndex({ rounds }: { rounds: RoundsWorkspaceRound[] 
           </label>
         </div>
 
-        <div className="hidden min-w-0 overflow-x-auto md:block">
+        <div
+          className="focus-aaa hidden min-w-0 overflow-x-auto md:block"
+          role="region"
+          aria-label="Round scoring history table"
+          tabIndex={0}
+        >
           <table className="w-full min-w-[920px] text-sm">
             <caption className="sr-only">
               Chronological rounds with date, course, tee, score, score to par, handicap impact and
@@ -194,8 +200,37 @@ export function RoundsScoringIndex({ rounds }: { rounds: RoundsWorkspaceRound[] 
         </div>
 
         {visibleRounds.length === 0 ? (
-          <div className="px-4 py-10 text-center text-sm text-muted-foreground">
-            No rounds match “{query.trim()}”.
+          <div className="grid justify-items-center gap-3 px-4 py-8 text-center text-sm">
+            <p className="font-medium">
+              {rounds.length ? "No rounds match these filters" : "No saved rounds yet"}
+            </p>
+            <p className="text-muted-foreground">
+              {rounds.length
+                ? "Clear the search and round type to return to your saved rounds."
+                : "Start a round or import a scorecard to build your scoring history."}
+            </p>
+            {rounds.length ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                onClick={() => {
+                  setQuery("");
+                  setRoundType("all");
+                }}
+              >
+                Show all saved rounds
+              </Button>
+            ) : (
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button asChild className="min-h-11">
+                  <Link href="/rounds/new">Start a round</Link>
+                </Button>
+                <Button asChild variant="outline" className="min-h-11">
+                  <Link href="/import">Import round evidence</Link>
+                </Button>
+              </div>
+            )}
           </div>
         ) : null}
       </section>

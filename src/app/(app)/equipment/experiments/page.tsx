@@ -129,9 +129,12 @@ async function EquipmentExperimentPage({
                 ["Saved interpretation", snapshot.summaryJson.verdict],
                 ["Saved summary", snapshot.summaryJson.summary],
               ].map(([label, value]) => (
-                <div key={String(label)} className="grid grid-cols-2 gap-2 text-sm">
+                <div
+                  key={String(label)}
+                  className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2 text-sm"
+                >
                   <dt>{String(label)}</dt>
-                  <dd>
+                  <dd className="min-w-0 break-words">
                     {typeof value === "string" || typeof value === "number"
                       ? String(value)
                       : "Not recorded"}

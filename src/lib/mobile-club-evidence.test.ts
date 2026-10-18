@@ -14,6 +14,7 @@ const sample = (): ClubEvidenceShot[] =>
     launchAngleDeg: 17,
     shotAt: new Date(Date.UTC(2026, 0, 12 - i)),
     reviewStatus: "included",
+    shotCategory: "full",
     sessionType: "range",
     sessionId: i < 6 ? "new" : "old",
     sessionTitle: i < 6 ? "Latest session" : "Previous session",
@@ -119,4 +120,15 @@ describe("mobile club evidence", () => {
     expect(mobileClubNeighbours(clubs, { id: "current", type: "7i", carry: null })).toEqual([]);
     expect(clubs[0].id).toBe("same");
   });
+});
+
+it("does not invent full-swing intent for otherwise populated historical evidence", () => {
+  const evidence = mobileClubEvidence(
+    sample().map((s) => ({ ...s, shotCategory: null })),
+    "7i",
+    false,
+  );
+  expect(evidence.sampleSize).toBe(0);
+  expect(evidence.carry).toBeNull();
+  expect(evidence.sessions).toEqual([]);
 });

@@ -17,6 +17,10 @@ import { getFeatureIdeasData } from "@/lib/feature-ideas";
 import { getMobileClubNeighbours } from "@/lib/mobile-club-neighbours-data";
 import { type AnalysisShot } from "@/app/bag/[clubId]/club-analysis-tabs";
 import { ClubDetailClient } from "@/app/bag/[clubId]/club-detail-client";
+import {
+  benchmarkIntelligenceEnabled,
+  getPerformanceIntelligenceData,
+} from "@/lib/performance-intelligence-data";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +43,9 @@ export default async function ClubDetailPage({ params }: PageProps) {
   if (!club) {
     notFound();
   }
+  const intelligence = benchmarkIntelligenceEnabled()
+    ? await getPerformanceIntelligenceData(clubId)
+    : undefined;
 
   return (
     <PageShell>
@@ -59,6 +66,7 @@ export default async function ClubDetailPage({ params }: PageProps) {
         </div>
 
         <ClubDetailClient
+          intelligence={intelligence}
           correctionClubs={club.correctionClubs}
           club={club}
           companion={surface === "companion"}

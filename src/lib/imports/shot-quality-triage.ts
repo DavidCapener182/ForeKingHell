@@ -64,6 +64,7 @@ export type ShotQualityEvidenceCode =
   | "impossible_speed_ratio"
   | "explicit_partial_category"
   | "short_game_partial_distance"
+  | "short_game_intent_unknown"
   | "carry_far_below_profile"
   | "ball_speed_far_below_profile"
   | "smash_far_below_profile";
@@ -130,7 +131,8 @@ export function triageImportedShotQuality(
 
   if (partialEvidence) {
     return {
-      classification: "partial_shot",
+      classification:
+        partialEvidence.code === "explicit_partial_category" ? "partial_shot" : "needs_review",
       evidence: [partialEvidence],
       fieldQuarantines: [],
       profileUsed: matchedProfile !== null,
@@ -326,12 +328,12 @@ function detectPartialShot(
   }
 
   return {
-    code: "short_game_partial_distance",
+    code: "short_game_intent_unknown",
     fields: ["carryYd"],
     explanation:
       profileMedian === null
-        ? `${formatNumber(shot.carryYd)} yd with a source-identified ${normalizedClubType(shot.club.type).toUpperCase()} is treated as short-game intent, not a mishit.`
-        : `${formatNumber(shot.carryYd)} yd is well below this short-game club's established ${formatNumber(profileMedian)} yd full-shot centre.`,
+        ? `${formatNumber(shot.carryYd)} yd with a source-identified ${normalizedClubType(shot.club.type).toUpperCase()} needs intent review: distance alone cannot establish a partial swing or a mishit.`
+        : `${formatNumber(shot.carryYd)} yd is below this club's established ${formatNumber(profileMedian)} yd centre. Confirm intent before classifying it as a partial swing or a mishit.`,
   };
 }
 

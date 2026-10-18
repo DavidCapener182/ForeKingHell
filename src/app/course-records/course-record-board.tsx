@@ -45,7 +45,8 @@ export function CourseRecordBoard({ courses }: { courses: CourseRecordBoardRow[]
   const ready = useClientReady();
   const params = useSearchParams();
   const query = params.get("recordQuery") ?? "";
-  const proof = params.get("recordLeader") ?? "all";
+  const requestedProof = params.get("recordLeader");
+  const proof = requestedProof === "verified" || requestedProof === "open" ? requestedProof : "all";
   const sort = params.get("recordSort") ?? "course";
   const setQuery = (value: string) => updateRecordViewQuery({ recordQuery: value });
   const setProof = (value: string) => updateRecordViewQuery({ recordLeader: value });
@@ -56,7 +57,7 @@ export function CourseRecordBoard({ courses }: { courses: CourseRecordBoardRow[]
         .filter(
           (course) =>
             (!query.trim() ||
-              `${course.name} ${course.country ?? ""} ${course.champion?.displayName ?? ""} ${course.champion?.recordType ?? ""}`
+              `${course.name} ${course.country ?? ""} ${course.champion?.displayName ?? ""} ${course.champion?.recordType ?? ""} ${course.champion?.categoryName ?? ""} ${course.champion?.periodLabel ?? ""}`
                 .toLowerCase()
                 .includes(query.trim().toLowerCase())) &&
             (proof === "all" || (proof === "verified" ? !!course.champion : !course.champion)),

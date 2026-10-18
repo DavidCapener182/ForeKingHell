@@ -164,29 +164,27 @@ export function summarizePracticeOutcome(
     (decision) => decision.result === "insufficient_data",
   ).length;
   const hasEvidence = decisions.some((decision) => decision.actualBalls > 0);
-  const status: PracticeOutcomeStatus = !hasEvidence
-    ? "awaiting_evidence"
-    : (practiceScore ?? 0) >= 80
-      ? "passed"
-      : "not_passed";
+  const status: PracticeOutcomeStatus =
+    failedBlocks + partialBlocks > 0
+      ? "not_passed"
+      : !hasEvidence || insufficientBlocks > 0 || passedBlocks < decisions.length
+        ? "awaiting_evidence"
+        : "passed";
   const blocksStillToPass = Math.max(0, decisions.length - passedBlocks);
+  void practiceScore; // Historical score is retained; missing evidence and target results determine the label.
 
   return {
     status,
     label:
-      status === "passed"
-        ? "Passed"
-        : status === "not_passed"
-          ? "Not passed yet"
-          : "Awaiting evidence",
+      status === "passed" ? "Passed" : status === "not_passed" ? "Not passed yet" : "Inconclusive",
     detail:
       status === "awaiting_evidence"
-        ? "Upload today’s launch-monitor shots to score this practice."
+        ? "Missing measurements or unresolved block allocation. Review club-level evidence; this is not a failed practice."
         : blocksStillToPass === 0
           ? decisions.length === 1
             ? "The scored block passed."
             : `All ${decisions.length} scored blocks passed.`
-          : `${passedBlocks} of ${decisions.length} scored blocks passed. ${blocksStillToPass} still ${blocksStillToPass === 1 ? "needs" : "need"} work.`,
+          : `${passedBlocks} of ${decisions.length} scored blocks passed. ${failedBlocks + partialBlocks} observed targets need work; ${insufficientBlocks} inconclusive.`,
     passedBlocks,
     failedBlocks,
     partialBlocks,

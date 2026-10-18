@@ -44,15 +44,22 @@ export function SocialTaskForm({
   return (
     <>
       <Button
-        disabled={!ready}
+        disabled={!ready || (task === "generate" && sourceCount === 0)}
         variant={task === "generate" ? "default" : "outline"}
         onClick={() => {
           setOpen(true);
           setSaved(false);
+          setReview(false);
+          setError(undefined);
         }}
       >
         {label}
       </Button>
+      {task === "generate" && sourceCount === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Add a round, practice result or post before generating an activity recap.
+        </p>
+      ) : null}
       {saved ? (
         <p role="status">
           {task === "generate"

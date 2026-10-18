@@ -94,6 +94,14 @@ describe("driver speed development source", () => {
     }
   });
 
+  it("shows assumptions and descriptive context without a fabricated readiness score", () => {
+    expect(source).not.toContain("summary.readiness.score");
+    expect(source).toContain("No validated recovery score");
+    expect(source).toContain("summary.ballSpeedScenario.assumption");
+    expect(source).toContain("Intent is unknown");
+    expect(source).toContain("maximum-effort intent");
+  });
+
   it("uses semantic theme tokens for ordinary workbench UI", () => {
     expect(source).toContain("bg-card");
     expect(source).toContain("bg-muted/30");

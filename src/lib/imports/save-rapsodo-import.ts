@@ -236,7 +236,6 @@ export type SaveRapsodoImportBatchResult =
       rawRowCount?: number;
     };
 
-const BAD_DATA_QUALITY_TAG = "bad_data";
 const WEDGE_CLUB_TYPES = new Set(["pw", "gw", "aw", "sw", "lw", "wedge"]);
 const SHORT_WEDGE_CLUB_TYPES = new Set(["sw", "lw", "wedge"]);
 const IMPORT_TELEMETRY_FIELDS = new Set([
@@ -1265,10 +1264,19 @@ export function applyImportedShotQualityTriage(
     const carryWasQuarantined = initialTriage.fieldQuarantines.some(
       (issue) => issue.field === "carryYd",
     );
-    const classification = carryWasQuarantined
-      ? "unusable_shot"
-      : resolvedImportedShotClassification(quarantinedShot, retriage.classification);
-    const shot = applyImportedShotClassification(quarantinedShot, classification);
+    const resolvedClassification = resolvedImportedShotClassification(
+      quarantinedShot,
+      retriage.classification,
+    );
+    const classification =
+      carryWasQuarantined && resolvedClassification !== "unusable_shot"
+        ? "needs_review"
+        : resolvedClassification;
+    // A carry-only defect must not turn valid speed readings into a confirmed invalid observation.
+    const shot =
+      carryWasQuarantined && !quarantinedShot.qualityTag
+        ? quarantinedShot
+        : applyImportedShotClassification(quarantinedShot, classification);
     const fieldIssueKeys = new Set([
       ...(originalShot.integrityIssues ?? []).map((issue) => issue.field),
       ...initialTriage.fieldQuarantines.map((issue) => issue.field),
@@ -1761,33 +1769,25 @@ function nullableOverrideText(value: string | null | undefined, maxLength: numbe
   return trimmed ? trimmed.slice(0, maxLength) : null;
 }
 
-function withInferredImportedQualityTag(shot: ParsedRapsodoShot) {
-  if (shot.qualityTag) {
-    return shot;
-  }
-
-  const qualityTag = inferImportedShotQualityTag(shot);
-  return qualityTag ? { ...shot, qualityTag } : shot;
-}
-
-function inferImportedShotQualityTag(shot: ParsedRapsodoShot) {
+function withImportContextWarnings(shot: ParsedRapsodoShot) {
   const clubType = normalizeClubType(shot.clubType);
-
-  if (
+  const unusualWedgeFlight =
     WEDGE_CLUB_TYPES.has(clubType) &&
     isFiniteNumber(shot.ballSpeedMph) &&
     shot.ballSpeedMph >= 115 &&
     isFiniteNumber(shot.launchAngleDeg) &&
-    shot.launchAngleDeg <= 15
-  ) {
-    return BAD_DATA_QUALITY_TAG;
-  }
-
-  if (SHORT_WEDGE_CLUB_TYPES.has(clubType) && isFiniteNumber(shot.carryYd) && shot.carryYd >= 170) {
-    return BAD_DATA_QUALITY_TAG;
-  }
-
-  return null;
+    shot.launchAngleDeg <= 15;
+  const unusualWedgeCarry =
+    SHORT_WEDGE_CLUB_TYPES.has(clubType) && isFiniteNumber(shot.carryYd) && shot.carryYd >= 170;
+  if (!unusualWedgeFlight && !unusualWedgeCarry) return shot;
+  // Plausibility review is contextual evidence, not confirmation that a genuine attempt is invalid.
+  return {
+    ...shot,
+    warnings: [
+      ...shot.warnings,
+      "Unusual wedge telemetry: review the club assignment and source readings. No measurement was automatically excluded.",
+    ],
+  };
 }
 
 function isFiniteNumber(value: number | null | undefined): value is number {
@@ -1803,7 +1803,7 @@ export function applyRapsodoShotOverridesForImport(
   const includedShots = shotsToImport.filter((shot) => !excludedRows.has(shot.rowNumber));
 
   if (!overrides || overrides.length === 0) {
-    return includedShots.map(withInferredImportedQualityTag);
+    return includedShots.map(withImportContextWarnings);
   }
 
   const overrideByRowNumber = new Map(overrides.map((override) => [override.rowNumber, override]));
@@ -1812,25 +1812,25 @@ export function applyRapsodoShotOverridesForImport(
     const override = overrideByRowNumber.get(shot.rowNumber);
 
     if (!override) {
-      return withInferredImportedQualityTag(shot);
+      return withImportContextWarnings(shot);
     }
 
-    const clubType = normalizeClubType(override.clubType);
-    const clubBrand = override.clubBrand ?? null;
-    const clubModel = override.clubModel ?? null;
+    const identityConfirmed = override.clubSelectionOrigin === "user";
+    const clubType = identityConfirmed ? normalizeClubType(override.clubType) : shot.clubType;
+    const clubBrand = identityConfirmed ? (override.clubBrand ?? null) : shot.clubBrand;
+    const clubModel = identityConfirmed ? (override.clubModel ?? null) : shot.clubModel;
 
-    return withInferredImportedQualityTag({
+    return withImportContextWarnings({
       ...shot,
       clubType,
       clubLabel: formatClubType(clubType),
       clubBrand,
       clubModel,
       clubKey: buildClubKey(clubType, clubBrand, clubModel),
-      clubIdentityProvenance: resolveClubIdentityProvenance(
-        shot,
-        clubType,
-        override.clubSelectionOrigin,
-      ),
+      clubIdentityProvenance: identityConfirmed
+        ? resolveClubIdentityProvenance(shot, clubType, "user")
+        : (shot.clubIdentityProvenance ??
+          (isTrackedClubType(shot.clubType) ? "source" : "unknown")),
       shotCategory: override.shotCategory ?? shot.shotCategory,
       qualityTag: override.qualityTag ?? shot.qualityTag,
     });

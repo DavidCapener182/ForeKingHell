@@ -75,7 +75,7 @@ describe("buildClubEvolutionRows", () => {
     expect(rows[0]?.points.map((point) => point.sampleSize)).toEqual([44, 200, 58]);
   });
 
-  it("uses median clean-stock carry and exposes clean sample counts", () => {
+  it("uses median explicit full-swing carry including genuine poor contact", () => {
     const rows = buildClubEvolutionRows(
       [
         club("7i", [
@@ -91,8 +91,8 @@ describe("buildClubEvolutionRows", () => {
     );
 
     expect(rows[0]?.points.map((point) => point.label)).toEqual(["May", "Jun"]);
-    expect(rows[0]?.points.map((point) => point.carryYd)).toEqual([150, 139]);
-    expect(rows[0]?.points.map((point) => point.sampleSize)).toEqual([2, 3]);
+    expect(rows[0]?.points.map((point) => point.carryYd)).toEqual([140, 139]);
+    expect(rows[0]?.points.map((point) => point.sampleSize)).toEqual([3, 3]);
   });
 
   it("measures monthly lateral control from the same clean-stock sample", () => {
@@ -109,8 +109,8 @@ describe("buildClubEvolutionRows", () => {
       { monthCount: 2 },
     );
 
-    expect(rows[0]?.points.map((point) => point.medianAbsoluteOfflineYd)).toEqual([15, 6]);
-    expect(rows[0]?.points.map((point) => point.directionalSampleSize)).toEqual([2, 2]);
+    expect(rows[0]?.points.map((point) => point.medianAbsoluteOfflineYd)).toEqual([15, 8]);
+    expect(rows[0]?.points.map((point) => point.directionalSampleSize)).toEqual([2, 3]);
   });
 
   it("treats shorter carry with enough tighter directional evidence as a trade-off", () => {

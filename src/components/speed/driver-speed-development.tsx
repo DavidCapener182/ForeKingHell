@@ -166,11 +166,12 @@ export function DriverSpeedDevelopment({ data }: { data: SpeedDevelopmentSummary
                 <div className="flex items-center gap-2">
                   <Gauge className="size-4 text-primary" aria-hidden="true" />
                   <h3 id="speed-readiness-title" className="text-sm font-semibold text-foreground">
-                    Speed readiness
+                    Training context
                   </h3>
                 </div>
-                <p className="mt-2 text-4xl font-semibold tracking-tight tabular-nums text-foreground">
-                  {formatNumber(summary.readiness.score, "", 0)}
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  Descriptive evidence only. No validated recovery score is available; consider your
+                  fatigue and discomfort.
                 </p>
               </div>
               <StatusPill tone={summary.readiness.tone}>{summary.readiness.label}</StatusPill>
@@ -213,12 +214,22 @@ export function DriverSpeedDevelopment({ data }: { data: SpeedDevelopmentSummary
             </Button>
           </section>
 
+          {summary.ballSpeedScenario ? (
+            <p className="text-sm leading-6 text-muted-foreground" data-ball-speed-scenario>
+              {formatNumber(summary.ballSpeedScenario.clubSpeedMph, "mph")} ×{" "}
+              {formatNumber(summary.ballSpeedScenario.assumedSmash, "", 2)} assumed smash ={" "}
+              {formatNumber(summary.ballSpeedScenario.ballSpeedMph, "mph")} ball speed.{" "}
+              {summary.ballSpeedScenario.assumption}
+            </p>
+          ) : null}
+
           {summary.project.ingredients.length > 0 ? (
             <section className="grid min-w-0 gap-2 xl:col-span-2" aria-label="Carry ingredients">
               <div>
                 <h3 className="text-sm font-semibold text-foreground">Carry ingredients</h3>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  Current evidence against the next requirement for this carry project.
+                  Measured evidence and an optional arithmetic scenario. Carry targets are goals,
+                  not projected outcomes.
                 </p>
               </div>
               <CompactReadoutGrid
@@ -264,9 +275,16 @@ export function DriverSpeedDevelopment({ data }: { data: SpeedDevelopmentSummary
       <DataPanel className="w-full">
         <SectionHeader
           title="Where speed is lost"
-          description="Four separate questions: ceiling, ball transfer, playable Driver and speed that reaches the course."
+          description="Separate dry-swing, practice and confirmed on-course evidence. Fastest practice shots do not establish maximum-effort intent."
         />
         <CardContent className="p-4 sm:p-5" data-speed-transfer-funnel>
+          <p className="mb-4 text-xs leading-5 text-muted-foreground">
+            Explicit intent: {summary.evidenceCohorts.normalBallShotIds.length} normal-ball,{" "}
+            {summary.evidenceCohorts.maximumBallShotIds.length} maximum-effort,{" "}
+            {summary.evidenceCohorts.noBallShotIds.length} no-ball observations. Intent is unknown
+            for {summary.evidenceCohorts.unknownIntentShotIds.length} observations. Dry speed
+            sessions remain separate.
+          </p>
           <ol
             className="grid min-w-0 gap-8 lg:grid-cols-4"
             aria-label="Driver speed transfer chain"

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildImportedShotReviewLifecycle } from "@/lib/shot-review";
 
 import {
   calculatePersonalBestTotalYd,
@@ -14,7 +15,7 @@ import {
 } from "@/lib/stock-yardage";
 
 describe("calculateStockYardage", () => {
-  it("uses median carry and removes extreme MAD outliers", () => {
+  it("keeps ordinary imperfect carries in the recent median without MAD trimming", () => {
     const result = calculateStockYardage([
       shot(150, 160, -8),
       shot(152, 162, -4),
@@ -22,22 +23,18 @@ describe("calculateStockYardage", () => {
       shot(153, 164, 4),
       shot(70, 90, 2),
     ]);
-
-    expect(result.sampleSize).toBe(4);
-    expect(result.excludedCount).toBe(1);
-    expect(result.carryMedianYd).toBe(151.5);
-    expect(result.carryMeanYd).toBe(151.5);
-    expect(result.totalMedianYd).toBe(161.5);
+    expect(result.sampleSize).toBe(5);
+    expect(result.excludedCount).toBe(0);
+    expect(result.carryMedianYd).toBe(151);
+    expect(result.carryMeanYd).toBe(135.2);
+    expect(result.totalMedianYd).toBe(161);
     expect(result.dispersionLeftYd).toBe(8);
     expect(result.dispersionRightYd).toBe(6);
-    expect(result.bestStockCarryYd).toBe(151.5);
+    expect(result.bestStockCarryYd).toBe(151);
     expect(result.personalBestCarryYd).toBe(153);
-    expect(result.stockExclusionReasons).toEqual([
-      { key: "outlier", label: "Outlier filter", count: 1 },
-    ]);
+    expect(result.stockExclusionReasons).toEqual([]);
     expect(result.latestReliableCarryYd).toBeNull();
     expect(result.coursePlayCarryYd).toBeNull();
-    expect(result.recommendedPlayNumberYd).toBeNull();
   });
 
   it("keeps a valid carry in stock while omitting its quarantined total", () => {
@@ -54,7 +51,7 @@ describe("calculateStockYardage", () => {
     expect(result.totalMedianYd).toBe(146.5);
   });
 
-  it("excludes chip, pitch, recovery, mishit, and bad-data rows", () => {
+  it("excludes incompatible intent and bad data but preserves ordinary identified mishits", () => {
     const result = calculateStockYardage([
       shot(140, 148, 0),
       shot(142, 149, 1),
@@ -65,9 +62,9 @@ describe("calculateStockYardage", () => {
       { ...shot(200, 220, 1), qualityTag: "bad_data" },
     ]);
 
-    expect(result.sampleSize).toBe(2);
-    expect(result.carryMedianYd).toBe(141);
-    expect(result.stockExclusionCount).toBe(5);
+    expect(result.sampleSize).toBe(3);
+    expect(result.carryMedianYd).toBe(140);
+    expect(result.stockExclusionCount).toBe(4);
   });
 
   it("excludes every non-evidence lifecycle state while restored overrides compatibility tags", () => {
@@ -99,14 +96,12 @@ describe("calculateStockYardage", () => {
     ];
 
     expect(selectStockYardageShots(rows).filteredShots.map((row) => row.id)).toEqual([
-      "restored",
       "included",
+      "restored",
+      "legacy-quality",
     ]);
     expect(calculateStockYardage(rows).stockExclusionReasons).toEqual(
-      expect.arrayContaining([
-        { key: "review-status", label: "Review status", count: 2 },
-        { key: "quality-tag", label: "Quality tag", count: 1 },
-      ]),
+      expect.arrayContaining([{ key: "review-status", label: "Review status", count: 2 }]),
     );
   });
 
@@ -141,11 +136,11 @@ describe("calculateStockYardage", () => {
       { clubType: "sw" },
     );
 
-    expect(result.sampleSize).toBe(0);
-    expect(result.carryMedianYd).toBeNull();
+    expect(result.sampleSize).toBe(1);
+    expect(result.carryMedianYd).toBe(55);
   });
 
-  it("uses the upper sand wedge cluster for full-stock carry when partial wedges dominate", () => {
+  it("uses explicit sand wedge intent regardless of carry clusters", () => {
     const result = calculateStockYardage(
       [
         { ...shot(22, 25, 1), clubType: "sw", shotCategory: "chip" },
@@ -165,11 +160,11 @@ describe("calculateStockYardage", () => {
       { clubType: "sw" },
     );
 
-    expect(result.sampleSize).toBe(6);
-    expect(result.carryMedianYd).toBe(91);
+    expect(result.sampleSize).toBe(8);
+    expect(result.carryMedianYd).toBe(89);
   });
 
-  it("keeps lob wedge out of stock yardage", () => {
+  it("retains explicitly full lob wedge attempts without deriving intent from distance", () => {
     const result = calculateStockYardage(
       [
         { ...shot(62, 66, 1), clubType: "lw", courseHoleNumber: null, sessionType: "range" },
@@ -180,8 +175,8 @@ describe("calculateStockYardage", () => {
       { clubType: "lw" },
     );
 
-    expect(result.sampleSize).toBe(0);
-    expect(result.carryMedianYd).toBeNull();
+    expect(result.sampleSize).toBe(3);
+    expect(result.carryMedianYd).toBe(62);
   });
 
   it("returns an empty result when no usable carry values exist", () => {
@@ -206,35 +201,34 @@ describe("calculateStockYardage", () => {
     const result = calculateStockYardage(shots);
     const sample = selectStockYardageShots(shots);
 
-    expect(result.sampleSize).toBe(4);
+    expect(result.sampleSize).toBe(5);
     expect(sample.filteredShots.map((sampleShot) => sampleShot.id)).toEqual([
-      "clean-long",
+      "clean-left",
       "clean-mid",
       "clean-right",
-      "clean-left",
+      "clean-long",
+      "short-outlier",
     ]);
   });
 
-  it("uses the best 20 stock shots so stronger new shots replace weaker ones", () => {
-    const baseline = Array.from({ length: 25 }, (_, index) => ({
-      ...shot(130 + index, 140 + index, 0, dateForDay(index + 1)),
-      id: `baseline-${130 + index}`,
+  it("uses a recent chronological sample without selecting only the longest shots", () => {
+    const baseline = Array.from({ length: 25 }, (_, i) => ({
+      ...shot(130 + i, 140 + i, 0, dateForDay(i + 1)),
+      id: `baseline-${130 + i}`,
     }));
     const newBest = { ...shot(156, 166, 0, dateForDay(30)), id: "new-best" };
-    const result = calculateStockYardage([...baseline, newBest], 50);
-    const sample = selectStockYardageShots([...baseline, newBest], 50);
-    const sampleIds = sample.cleanShots.map((sampleShot) => sampleShot.id);
-
-    expect(result.sampleSize).toBe(20);
-    expect(result.carryMedianYd).toBe(145.5);
-    expect(result.bestStockCarryYd).toBe(145.5);
+    const rows = [...baseline, newBest];
+    const result = calculateStockYardage(rows, 50);
+    const selected = selectStockYardageShots(rows, 50).filteredShots;
+    expect(result.sampleSize).toBe(26);
+    expect(result.carryMedianYd).toBe(142.5);
     expect(result.personalBestCarryYd).toBe(156);
-    expect(result.bestSampleFloorYd).toBe(136);
-    expect(sampleIds).toContain("new-best");
-    expect(sampleIds).toContain("baseline-154");
-    expect(sampleIds).toContain("baseline-136");
-    expect(sampleIds).not.toContain("baseline-135");
-    expect(sampleIds).not.toContain("baseline-130");
+    expect(result.bestSampleFloorYd).toBe(130);
+    expect(selected[0]?.id).toBe("new-best");
+    expect(selected.at(-1)?.id).toBe("baseline-130");
+    const recent = selectStockYardageShots(rows, 10).filteredShots;
+    expect(recent).toHaveLength(10);
+    expect(recent.map((r) => r.id)).not.toContain("baseline-130");
   });
 
   it("shows a one-off clean personal best without turning Best Stock into the max", () => {
@@ -294,12 +288,12 @@ describe("calculateStockYardage", () => {
     const result = calculateStockYardage(allShots, allShots.length);
     const latestSample = selectLatestReliableStockShots(allShots, allShots.length);
 
-    expect(result.bestStockCarryYd).toBe(220);
+    expect(result.bestStockCarryYd).toBe(210);
     expect(result.latestReliableSampleSize).toBe(20);
     expect(result.latestReliableCarryYd).toBe(200);
     expect(result.latestReliableCarryP25Yd).toBe(200);
     expect(result.latestReliableCarryP75Yd).toBe(200);
-    expect(result.coursePlayCarryYd).toBe(210);
+    expect(result.coursePlayCarryYd).toBe(200);
     expect(latestSample.filteredShots.every((sampleShot) => sampleShot.carryYd === 200)).toBe(true);
   });
 
@@ -318,7 +312,7 @@ describe("calculateStockYardage", () => {
     expect(result.latestReliableCarryP75Yd).toBe(206.3);
   });
 
-  it("hybrid course play keeps an optimistic driver and honest pitching wedge number", () => {
+  it("course carry uses the observed recent median without optimistic hybrid rounding", () => {
     const driverShots = [
       ...Array.from({ length: 20 }, (_, index) => shot(220, 235, 0, dateForSequence(index))),
       ...Array.from({ length: 20 }, (_, index) => shot(200, 214, 0, dateForSequence(index + 20))),
@@ -328,42 +322,42 @@ describe("calculateStockYardage", () => {
       ...Array.from({ length: 20 }, (_, index) => shot(115, 120, 0, dateForSequence(index + 20))),
     ];
 
-    expect(calculateStockYardage(driverShots, driverShots.length).coursePlayCarryYd).toBe(210);
+    expect(calculateStockYardage(driverShots, driverShots.length).coursePlayCarryYd).toBe(200);
     expect(
       calculateStockYardage(pitchingWedgeShots, pitchingWedgeShots.length).coursePlayCarryYd,
-    ).toBe(120);
+    ).toBe(115);
   });
 
-  it("classifies wedge roles and keeps only full wedge shots in stock samples", () => {
-    const shots = [
+  it("classifies wedge roles from explicit category and preserves short full swings", () => {
+    const rows = [
       { ...shot(22, 25, 1), id: "chip", clubType: "sw", shotCategory: "chip" },
-      { ...shot(52, 57, 1), id: "pitch", clubType: "sw", shotCategory: "full" },
-      { ...shot(84, 88, 1), id: "full-1", clubType: "sw", shotCategory: "full" },
-      { ...shot(92, 96, 1), id: "full-2", clubType: "sw", shotCategory: "full" },
+      { ...shot(52, 57, 1), id: "short-full", clubType: "sw", shotCategory: "full" },
+      { ...shot(84, 88, 1), id: "full", clubType: "sw", shotCategory: "full" },
+      { ...shot(92, 96, 1), id: "pitch", clubType: "sw", shotCategory: "pitch" },
     ];
-    const sample = selectStockYardageShots(shots, 50, { clubType: "sw" });
-    const roleSummaries = summarizeStockShotRoles(shots, 50, { clubType: "sw" });
-
-    expect(classifyStockShotRole(shots[0], { clubType: "sw" })).toBe("chip-touch");
-    expect(classifyStockShotRole(shots[1], { clubType: "sw" })).toBe("pitch");
-    expect(classifyStockShotRole(shots[2], { clubType: "sw" })).toBe("full");
-    expect(sample.filteredShots.map((sampleShot) => sampleShot.id)).toEqual(["full-2", "full-1"]);
-    expect(roleSummaries).toEqual([
+    expect(classifyStockShotRole(rows[0])).toBe("chip-touch");
+    expect(classifyStockShotRole(rows[1])).toBe("full");
+    expect(classifyStockShotRole({ ...rows[1], shotCategory: null })).toBeNull();
+    expect(selectStockYardageShots(rows).filteredShots.map((r) => r.id)).toEqual([
+      "short-full",
+      "full",
+    ]);
+    expect(summarizeStockShotRoles(rows)).toEqual([
       {
         role: "full",
         sampleSize: 2,
-        carryMedianYd: 88,
-        carryP25Yd: 86,
-        carryP75Yd: 90,
-        longestCarryYd: 92,
+        carryMedianYd: 68,
+        carryP25Yd: 60,
+        carryP75Yd: 76,
+        longestCarryYd: 84,
       },
       {
         role: "pitch",
         sampleSize: 1,
-        carryMedianYd: 52,
-        carryP25Yd: 52,
-        carryP75Yd: 52,
-        longestCarryYd: 52,
+        carryMedianYd: 92,
+        carryP25Yd: 92,
+        carryP75Yd: 92,
+        longestCarryYd: 92,
       },
       {
         role: "chip-touch",
@@ -422,27 +416,26 @@ describe("calculateStockYardage", () => {
     ]);
   });
 
-  it("explains why rows did not feed the best-stock sample", () => {
+  it("explains stock exclusions without inventing rank or distance-derived intent", () => {
     const rows = [
-      ...Array.from({ length: 21 }, (_, index) =>
-        shot(150 + index, 165, 0, dateForSequence(index)),
-      ),
-      { ...shot(25, 28, 0, dateForSequence(30)), clubType: "sw", shotCategory: "chip" },
-      { ...shot(50, 55, 0, dateForSequence(31)), clubType: "sw", shotCategory: "full" },
-      { ...shot(180, 190, 0, dateForSequence(32)), qualityTag: "mishit" },
-      { ...shot(0, 0, 0, dateForSequence(33)), carryYd: null },
+      ...Array.from({ length: 21 }, (_, i) => shot(150 + i, 165, 0, dateForSequence(i))),
+      { ...shot(25, 28, 0), shotCategory: "chip" },
+      { ...shot(50, 55, 0), clubType: "sw", shotCategory: "full" },
+      { ...shot(180, 190, 0), qualityTag: "severe-mishit" },
+      { carryYd: null, totalYd: null, sideCarryYd: null, shotCategory: "full" },
     ];
-    const reasons = explainStockExclusions(rows, rows.length, { clubType: "sw" });
-
-    expect(reasons).toEqual(
+    expect(explainStockExclusions(rows, rows.length)).toEqual(
       expect.arrayContaining([
-        { key: "best-stock-rank", label: "Outside top-20 sample", count: 1 },
         { key: "shot-category", label: "Chip/pitch/recovery", count: 1 },
-        { key: "shot-role", label: "Derived wedge role", count: 1 },
         { key: "quality-tag", label: "Quality tag", count: 1 },
         { key: "missing-carry", label: "Missing carry", count: 1 },
       ]),
     );
+    expect(
+      explainStockExclusions(rows, rows.length).some((r) =>
+        ["best-stock-rank", "outlier", "short-game-cluster", "shot-role"].includes(r.key),
+      ),
+    ).toBe(false);
   });
 
   it("does not lock sand wedge course play until enough full-role shots exist", () => {
@@ -531,3 +524,33 @@ function dateForDay(day: number) {
 function dateForSequence(index: number) {
   return new Date(Date.UTC(2026, 4, index + 1, 12)).toISOString();
 }
+
+it("does not round observed course carry upward to a five-yard step", () => {
+  const rows = Array.from({ length: 20 }, () => shot(151.2, 160, 0));
+  const result = calculateStockYardage(rows);
+  expect(result.coursePlayCarryYd).toBe(151.2);
+  expect(result.recommendedPlayNumberYd).toBe(151.2);
+});
+it("unknown intent and non-positive carry stay unresolved or invalid", () => {
+  const rows = [
+    { ...shot(50, 55, 0), shotCategory: null },
+    shot(0, 0, 0),
+    shot(-1, 1, 0),
+    { ...shot(20, 24, 0), clubType: "sw" },
+  ];
+  expect(selectStockYardageShots(rows).filteredShots.map((s) => s.carryYd)).toEqual([20]);
+});
+
+it("keeps automatically suggested ordinary mishits in stock while preserving clean records", () => {
+  const rows = ["top", "thin", "fat", "mishit"].map((qualityTag) => ({
+    ...shot(50, 60, 0),
+    qualityTag,
+    ...buildImportedShotReviewLifecycle({ qualityTag, shotCategory: "full" }),
+  }));
+  expect(rows.every((row) => row.reviewStatus === "suggested_exclusion")).toBe(true);
+  expect(selectStockYardageShots(rows).filteredShots).toHaveLength(4);
+  expect(selectPersonalBestCarryShot(rows)).toBeNull();
+  expect(
+    selectStockYardageShots([{ ...rows[0], reviewStatus: "user_excluded" }]).filteredShots,
+  ).toEqual([]);
+});

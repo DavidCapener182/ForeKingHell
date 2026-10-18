@@ -4,7 +4,7 @@ export default function SimulatorLabLoading() {
   return (
     <GolfRouteLoading
       title="Loading simulator lab"
-      subtitle="Preparing course sessions, hole overlays, shot maps, and event timeline context."
+      subtitle="Preparing carry gaps, comparable indoor sessions, equipment changes and practice evidence."
       variant="simulatorLab"
     />
   );

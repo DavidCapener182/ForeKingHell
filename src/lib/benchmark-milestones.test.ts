@@ -22,6 +22,9 @@ describe("benchmark level-ups", () => {
         from: "Beginner",
         to: "Average",
         carryYd: 220,
+        referenceVersion: "lmwt-legacy-v1",
+        calculationVersion: "best-30-carry-v1",
+        confirmed: true,
       }),
     ]);
   });

@@ -9,6 +9,8 @@ import {
   comparePlanWithShotSummaries,
   evaluatePracticePlanAgainstImportedSession,
   generatePracticePlan,
+  freezePracticeEvidence,
+  parseFrozenPracticeEvidence,
   parsePracticeComparison,
   practicePlannerAchievementCandidateIds,
   scoreCompletedPractice,
@@ -480,7 +482,9 @@ describe("practice planner", () => {
       },
     ]);
 
-    expect(comparison.decisions.some((decision) => decision.decision === "move_down")).toBe(true);
+    expect(comparison.decisions.every((decision) => decision.result === "insufficient_data")).toBe(
+      true,
+    );
   });
 
   it("matches an uploaded club count to the planned practice block", () => {
@@ -509,11 +513,12 @@ describe("practice planner", () => {
     const decision = comparison.decisions.find((item) => item.blockId === fiveWoodBlock?.id);
 
     expect(decision).toMatchObject({
-      actualBalls: 20,
-      matchedPlannedVolume: true,
-      decision: "move_down",
+      actualBalls: 0,
+      matchedPlannedVolume: false,
+      decision: "keep_priority",
+      result: "insufficient_data",
     });
-    expect(decision?.actual).toContain("20/20 matching shots");
+    expect(decision?.linkedShotIds).toEqual([]);
   });
 
   it("matches latest-session evidence when planned club casing differs from imported shots", () => {
@@ -798,7 +803,7 @@ describe("practice planner", () => {
       "range-fragment-2",
     );
     const rollup = buildPracticeEvidenceRollup(plan, fragments, "range-fragment-3");
-    const expected = expectedCounts(fragments.slice(0, 4));
+    const expected = expectedCounts(fragments.slice(0, 3));
 
     expect(firstRollup?.summary.shotCount).toBe(2);
     expect(secondRollup?.summary.shotCount).toBe(expectedCounts(fragments.slice(0, 2)).eligible);
@@ -806,7 +811,6 @@ describe("practice planner", () => {
       "range-fragment-1",
       "range-fragment-2",
       "range-fragment-3",
-      "aintree-course-round",
     ]);
     expect(rollup?.summary.id).toBe("range-fragment-1");
     expect(rollup?.summary.shotCount).toBe(expected.eligible);
@@ -823,14 +827,9 @@ describe("practice planner", () => {
       fragments,
       "aintree-course-round",
     );
-    expect(courseTriggeredRollup?.summary).toMatchObject({
-      id: rollup?.summary.id,
-      sourceType: rollup?.summary.sourceType,
-      sessionType: rollup?.summary.sessionType,
-      playContext: rollup?.summary.playContext,
-      shotCount: rollup?.summary.shotCount,
-    });
-    expect(courseTriggeredRollup?.sourceSessionIds).toEqual(rollup?.sourceSessionIds);
+    expect(courseTriggeredRollup?.sourceSessionIds).toEqual(["aintree-course-round"]);
+    expect(courseTriggeredRollup?.summary.playContext).toBe("simulator");
+    expect(courseTriggeredRollup?.summary.shotCount).toBe(fragments[3]!.shotCount);
   });
 
   it("deduplicates a replayed shot while rolling up same-day practice evidence", () => {
@@ -861,7 +860,7 @@ describe("practice planner", () => {
     expect(rollup?.summary.shotCount).toBe(3);
   });
 
-  it("includes every supported same-day launch-monitor provider", () => {
+  it("keeps same-day launch-monitor providers separate", () => {
     const plan = savedPlan(
       generatePracticePlan(context(), {
         sessionType: "range",
@@ -882,8 +881,8 @@ describe("practice planner", () => {
 
     const rollup = buildPracticeEvidenceRollup(plan, [rapsodo, square], rapsodo.id);
 
-    expect(rollup?.sourceSessionIds).toEqual(["rapsodo-session", "square-session"]);
-    expect(rollup?.summary.shotCount).toBe(5);
+    expect(rollup?.sourceSessionIds).toEqual(["rapsodo-session"]);
+    expect(rollup?.summary.shotCount).toBe(2);
   });
 
   it("does not reuse an already-uploaded session for a newly created practice", () => {
@@ -911,7 +910,7 @@ describe("practice planner", () => {
     expect(canImportedSessionReviewPracticePlan(nextPractice, nextUpload)).toBe(true);
   });
 
-  it("splits ordered shots into planned blocks", () => {
+  it("splits ordered shots with explicit block evidence into disjoint planned blocks", () => {
     const plan = generatePracticePlan(context(), {
       sessionType: "range",
       ballCount: 30,
@@ -924,6 +923,12 @@ describe("practice planner", () => {
       ...shotRows("5w", 9, 14, { offlineYd: 8, launchDirectionDeg: 2 }),
       ...shotRows("5w", 23, 8, { offlineYd: 10, launchDirectionDeg: 2 }),
     ];
+    let offset = 0;
+    for (const block of plan.blocks) {
+      for (const row of rows.slice(offset, offset + (block.ballCount ?? 0)))
+        row.practiceBlockId = block.id;
+      offset += block.ballCount ?? 0;
+    }
     const comparison = comparePlanWithShotRows(
       plan,
       "session-1",
@@ -975,11 +980,12 @@ describe("practice planner", () => {
 
     expect(comparison.scoringMode).toBe("aggregate");
     expect(fiveWoodDecision).toBeTruthy();
-    expect(fiveWoodDecisions.every((decision) => decision.actualBalls === 20)).toBe(true);
-    expect(fiveWoodDecisions.some((decision) => decision.confidence === "medium")).toBe(true);
+    expect(fiveWoodDecisions.every((decision) => decision.actualBalls === 0)).toBe(true);
+    expect(comparison.clubEvidence?.find((club) => club.clubType === "5w")?.shotCount).toBe(20);
+    expect(comparison.coverage).toBe("unresolved");
   });
 
-  it("excludes top-tagged imported rows from clean plan matching", () => {
+  it("retains top-tagged genuine attempts in practice evidence", () => {
     const plan = generatePracticePlan(context(), {
       sessionType: "range",
       ballCount: 80,
@@ -1013,13 +1019,16 @@ describe("practice planner", () => {
         ?.clubs.some((club) => club.toLowerCase() === "5w"),
     );
 
-    expect(comparison.planVsActual.actualShots).toBe(18);
-    expect(fiveWoodDecisions.every((decision) => decision.actualBalls === 18)).toBe(true);
+    expect(comparison.planVsActual.actualShots).toBe(20);
+    expect(comparison.clubEvidence?.find((club) => club.clubType === "5w")?.shotCount).toBe(20);
+    expect(fiveWoodDecisions.every((decision) => decision.result === "insufficient_data")).toBe(
+      true,
+    );
     expect(fiveWoodDecision?.matchedPlannedVolume).toBe(false);
     expect(fiveWoodDecision?.actualBalls).toBeLessThanOrEqual(fiveWoodDecision?.plannedBalls ?? 0);
   });
 
-  it("uses only included and restored shots as practice-plan evidence", () => {
+  it("retains unconfirmed attempts while respecting explicit exclusions and restored evidence", () => {
     const plan = generatePracticePlan(context(), {
       sessionType: "range",
       ballCount: 80,
@@ -1071,12 +1080,13 @@ describe("practice planner", () => {
         ?.clubs.some((club) => club.toLowerCase() === "5w"),
     );
 
-    expect(comparison.planVsActual.actualShots).toBe(2);
+    expect(comparison.planVsActual.actualShots).toBe(3);
     expect(fiveWoodDecision).toBeTruthy();
-    expect(fiveWoodDecisions.every((decision) => decision.actualBalls === 2)).toBe(true);
+    expect(comparison.clubEvidence?.find((club) => club.clubType === "5w")?.shotCount).toBe(3);
+    expect(fiveWoodDecisions.every((decision) => decision.linkedShotIds.length === 0)).toBe(true);
   });
 
-  it("uses every matching club shot for each relevant aggregate block", () => {
+  it("keeps repeated-club aggregate evidence at club level without reusing shots", () => {
     const plan = generatePracticePlan(context({ driverRoadmap: true }), {
       sessionType: "range",
       ballCount: 80,
@@ -1137,9 +1147,13 @@ describe("practice planner", () => {
 
     expect(repeatedDriverDecisions.length).toBeGreaterThan(1);
     expect(comparison.planVsActual.actualShots).toBe(rows.length);
+    expect(comparison.clubEvidence?.find((club) => club.clubType === "driver")?.shotIds).toEqual(
+      expectedShotIds,
+    );
     for (const decision of repeatedDriverDecisions) {
-      expect(decision.actualBalls).toBe(rows.length);
-      expect(decision.linkedShotIds).toEqual(expectedShotIds);
+      expect(decision.actualBalls).toBe(0);
+      expect(decision.linkedShotIds).toEqual([]);
+      expect(decision.result).toBe("insufficient_data");
     }
   });
 
@@ -1198,12 +1212,13 @@ describe("practice planner", () => {
 
     expect(comparison.scoringMode).toBe("aggregate");
     expect(fiveIronDecision).toMatchObject({
-      actualBalls: 5,
+      actualBalls: 0,
       matchedPlannedVolume: false,
       result: "insufficient_data",
     });
-    expect(fiveIronDecision?.actual).toContain("5/15 matching shots");
-    expect(fiveIronDecision?.summary).toContain("5 matching shots found");
+    expect(fiveIronDecision?.actual).toContain("block allocation unresolved");
+    expect(fiveIronDecision?.summary).toContain("inconclusive");
+    expect(comparison.clubEvidence?.find((club) => club.clubType === "5i")?.shotCount).toBe(5);
     expect(score.score).toBeLessThan(35);
   });
 
@@ -1232,7 +1247,11 @@ describe("practice planner", () => {
 
     expect(review.comparison.sourceSessionId).toBe("session-1");
     expect(review.comparison.planVsActual.actualShots).toBe(5);
-    expect(fiveIronDecision?.actualBalls).toBe(5);
+    expect(fiveIronDecision?.actualBalls).toBe(0);
+    expect(review.comparison.clubEvidence?.find((club) => club.clubType === "5i")?.shotCount).toBe(
+      5,
+    );
+    expect(review.score.verdict).toContain("Inconclusive");
     expect(fiveIronDecision?.matchedPlannedVolume).toBe(false);
     expect(review.score.score).toBeLessThan(35);
   });
@@ -1289,12 +1308,20 @@ describe("practice planner", () => {
       ).length;
 
     expect(selectedReview.comparison.scoringMode).toBe("aggregate");
-    expect(allocatedByClub("5w")).toBe(10);
-    expect(allocatedByClub("5i")).toBe(10);
-    expect(allocatedByClub("sw")).toBeGreaterThan(0);
+    expect(allocatedByClub("5w")).toBe(0);
+    expect(allocatedByClub("5i")).toBe(0);
+    expect(selectedReview.comparison.clubEvidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ clubType: "5w", shotCount: 10 }),
+        expect.objectContaining({ clubType: "5i", shotCount: 10 }),
+        expect.objectContaining({ clubType: "sw", shotCount: 5 }),
+      ]),
+    );
+    expect(allocatedByClub("driver")).toBe(5);
+    expect([...linkedShotIds]).toHaveLength(5);
   });
 
-  it("reuses timed club evidence without scoring no-ball work", () => {
+  it("leaves timed repeated-club evidence unresolved and excludes no-ball work", () => {
     const generated = generatePracticePlan(context(), {
       sessionType: "range",
       ballCount: 30,
@@ -1352,11 +1379,11 @@ describe("practice planner", () => {
     const linkedShotIds = review.comparison.decisions.flatMap((decision) => decision.linkedShotIds);
 
     expect(noBall?.actualBalls).toBe(0);
-    expect(transfer?.actualBalls).toBe(12);
-    expect(finish?.actualBalls).toBe(12);
-    expect(linkedShotIds).toHaveLength(24);
-    expect(new Set(linkedShotIds)).toHaveLength(12);
-    expect(review.score.completionPercent).toBe(100);
+    expect(transfer?.actualBalls).toBe(0);
+    expect(finish?.actualBalls).toBe(0);
+    expect(linkedShotIds).toHaveLength(0);
+    expect(review.comparison.clubEvidence?.[0]?.shotCount).toBe(12);
+    expect(review.score.verdict).toContain("Inconclusive");
   });
 
   it("block results use shot data rather than a manual score", () => {
@@ -1371,6 +1398,10 @@ describe("practice planner", () => {
       ...row,
       shotNumber: null,
     }));
+    const targetBlock = plan.blocks.find(
+      (item) => item.clubs.includes("5w") && item.ballCount === 20,
+    )!;
+    for (const row of rows) row.practiceBlockId = targetBlock.id;
     const comparison = comparePlanWithShotRows(
       plan,
       "session-1",
@@ -1389,11 +1420,15 @@ describe("practice planner", () => {
         ?.clubs.some((club) => club.toLowerCase() === "5w"),
     );
 
-    expect(fiveWoodDecisions.every((decision) => decision.actualBalls === 20)).toBe(true);
+    expect(fiveWoodDecisions.reduce((sum, decision) => sum + decision.actualBalls, 0)).toBe(20);
     expect(fiveWoodDecisions.filter((decision) => decision.actualBalls > 0)).toEqual(
       expect.arrayContaining([expect.objectContaining({ result: "failed" })]),
     );
-    expect(fiveWoodDecisions.every((decision) => decision.metrics.bigMisses === 20)).toBe(true);
+    expect(
+      fiveWoodDecisions
+        .filter((decision) => decision.actualBalls > 0)
+        .every((decision) => decision.metrics.bigMisses === 20),
+    ).toBe(true);
   });
 
   it("scores completed practice and adapts the next block after a miss", () => {
@@ -1420,8 +1455,212 @@ describe("practice planner", () => {
     });
     const adapted = adaptPracticePlanAfterBlock(plan, blockResults[1]);
 
-    expect(score.score).toBeGreaterThan(50);
+    expect(score.verdict).toContain("Inconclusive");
+    expect(score.score).toBeLessThan(50);
     expect(adapted.summary).toContain("Adaptive note");
+  });
+  it("freezes baseline IDs, measurements, budgets and rules before practice, excluding future evidence", () => {
+    const plan = generatePracticePlan(context(), {
+      sessionType: "range",
+      ballCount: 30,
+      timeMinutes: 30,
+      energy: "normal",
+      intent: "confidence",
+    });
+    plan.sourceContext.generatedAt = "2026-07-02T12:00:00.000Z";
+    const baseline = importedSession(12, [["driver", 12]], {
+      id: "baseline",
+      sessionDate: "2026-07-01T10:00:00.000Z",
+    });
+    baseline.shotRows[0]!.shotAt = new Date("2026-07-03T10:00:00.000Z");
+    const frozen = freezePracticeEvidence(plan, baseline, "2026-07-02T12:01:00.000Z");
+    expect(frozen.baselineShotIds).toHaveLength(11);
+    expect(frozen.baselineShotIds).not.toContain(baseline.shotRows[0]!.id);
+    const originalTarget = frozen.blocks[0]!.scoringRules.target;
+    plan.blocks[0]!.scoringRules.target = 999;
+    baseline.shotRows[1]!.carryYd = 999;
+    expect(frozen.blocks[0]!.scoringRules.target).toBe(originalTarget);
+    expect(frozen.baseline[0]!.carryYd).not.toBe(999);
+    expect(parseFrozenPracticeEvidence(JSON.parse(JSON.stringify(frozen)))).toEqual(frozen);
+    expect(parseFrozenPracticeEvidence({ ...frozen, version: "future-unknown" })).toBeNull();
+    expect(frozen.evaluationRules.missing).toBe("inconclusive");
+  });
+
+  it("never includes frozen baseline shots in their own outcome and round-trips review state", () => {
+    const plan = generatePracticePlan(context(), {
+      sessionType: "range",
+      ballCount: 30,
+      timeMinutes: 30,
+      energy: "normal",
+      intent: "confidence",
+    });
+    plan.sourceContext.generatedAt = "2026-07-02T12:00:00.000Z";
+    const baseline = importedSession(12, [["driver", 12]], {
+      id: "baseline",
+      sessionDate: "2026-07-01T10:00:00.000Z",
+    });
+    plan.frozenEvidence = freezePracticeEvidence(plan, baseline, "2026-07-02T12:01:00.000Z");
+    const comparison = evaluatePracticePlanAgainstImportedSession(plan, baseline, 92).comparison;
+    expect(comparison.planVsActual.actualShots).toBe(0);
+    expect(comparison.outcome).toBe("inconclusive");
+    const restored = parsePracticeComparison(JSON.parse(JSON.stringify(comparison)));
+    expect(restored?.sessionMatch).toBe("linked");
+    expect(restored?.coverage).toBe("unresolved");
+    expect(restored?.baselineShotIds).toEqual(plan.frozenEvidence.baselineShotIds);
+    expect(restored?.clubEvidence).toEqual([]);
+  });
+
+  it("compares only matching fully recorded intent and setup against frozen evidence", () => {
+    const generated = generatePracticePlan(context(), {
+      sessionType: "range",
+      ballCount: 30,
+      timeMinutes: 30,
+      energy: "normal",
+      intent: "confidence",
+    });
+    const plan = {
+      ...generated,
+      blocks: [{ ...generated.blocks[0]!, id: "driver", clubs: ["driver"] }],
+    };
+    plan.sourceContext.generatedAt = "2026-07-02T12:00:00Z";
+    const baseline = importedSession(12, [["driver", 12]], {
+      id: "baseline",
+      sessionDate: "2026-07-01T10:00:00Z",
+    });
+    baseline.shotRows.forEach((row) => {
+      row.clubId = "same-equipment";
+      row.comparisonContextKey = "full|fairway-target|settings-a|ball-a";
+      row.offlineYd = 15;
+    });
+    plan.frozenEvidence = freezePracticeEvidence(plan, baseline, "2026-07-02T12:01:00Z");
+    const outcome = importedSession(12, [["driver", 12]], {
+      id: "outcome",
+      sessionDate: "2026-07-03T10:00:00Z",
+    });
+    outcome.shotRows.forEach((row) => {
+      row.clubId = "same-equipment";
+      row.comparisonContextKey = "full|fairway-target|settings-a|ball-a";
+      row.offlineYd = 5;
+    });
+    expect(evaluatePracticePlanAgainstImportedSession(plan, outcome, 92).comparison.outcome).toBe(
+      "improved",
+    );
+    outcome.shotRows.forEach((row) => {
+      row.shotCategory = "pitch";
+      row.comparisonContextKey = "pitch|short-target|settings-a|ball-a";
+    });
+    expect(evaluatePracticePlanAgainstImportedSession(plan, outcome, 92).comparison.outcome).toBe(
+      "inconclusive",
+    );
+    outcome.shotRows.forEach((row) => {
+      row.comparisonContextKey = null;
+    });
+    expect(evaluatePracticePlanAgainstImportedSession(plan, outcome, 92).comparison.outcome).toBe(
+      "inconclusive",
+    );
+  });
+
+  it("keeps deliberate partials and unknown intent separate from full-swing block targets", () => {
+    const generated = generatePracticePlan(context(), {
+      sessionType: "range",
+      ballCount: 30,
+      timeMinutes: 30,
+      energy: "normal",
+      intent: "confidence",
+    });
+    const plan = {
+      ...generated,
+      totalBalls: 10,
+      blocks: [
+        {
+          ...generated.blocks[0]!,
+          id: "driver",
+          clubs: ["driver"],
+          ballCount: 10,
+          scoringRules: { metric: "playable", target: 7 },
+        },
+      ],
+    };
+    const session = importedSession(10, [["driver", 10]]);
+    session.shotRows.forEach((row) => {
+      row.shotCategory = "pitch";
+      row.offlineYd = 2;
+    });
+    const partial = evaluatePracticePlanAgainstImportedSession(plan, session, 92).comparison;
+    expect(partial.planVsActual.actualShots).toBe(10);
+    expect(partial.decisions[0]?.result).toBe("insufficient_data");
+    expect(partial.decisions[0]?.summary).toContain("intent");
+    session.shotRows.forEach((row) => {
+      row.shotCategory = undefined;
+    });
+    expect(
+      evaluatePracticePlanAgainstImportedSession(plan, session, 92).comparison.decisions[0]?.result,
+    ).toBe("insufficient_data");
+  });
+
+  it("missing lateral measurements produce an inconclusive block instead of a failure", () => {
+    const generated = generatePracticePlan(context(), {
+      sessionType: "range",
+      ballCount: 30,
+      timeMinutes: 30,
+      energy: "normal",
+      intent: "confidence",
+    });
+    const block = {
+      ...generated.blocks[0]!,
+      id: "measured-driver",
+      clubs: ["driver"],
+      ballCount: 10,
+      scoringRules: { metric: "playable", target: 7, evidenceMode: "launch_monitor" as const },
+    };
+    const plan = { ...generated, blocks: [block], totalBalls: 10 };
+    const session = importedSession(10, [["driver", 10]]);
+    session.shotRows.forEach((row) => {
+      row.offlineYd = null;
+      row.launchDirectionDeg = null;
+    });
+    const review = evaluatePracticePlanAgainstImportedSession(plan, session, 92, {
+      scoringMode: "aggregate",
+    });
+    expect(review.comparison.decisions[0]?.actualBalls).toBe(10);
+    expect(review.comparison.decisions[0]?.result).toBe("insufficient_data");
+    expect(review.score.verdict).toContain("Inconclusive");
+    expect(review.comparison.needsWork).toEqual([]);
+  });
+
+  it("allocates explicitly identified repeated-club evidence once without cherry-picking", () => {
+    const generated = generatePracticePlan(context(), {
+      sessionType: "range",
+      ballCount: 30,
+      timeMinutes: 30,
+      energy: "normal",
+      intent: "confidence",
+    });
+    const base = {
+      ...generated.blocks[0]!,
+      clubs: ["driver"],
+      ballCount: 5,
+      scoringRules: { metric: "playable", target: 3, evidenceMode: "launch_monitor" as const },
+    };
+    const plan = {
+      ...generated,
+      blocks: [
+        { ...base, id: "first" },
+        { ...base, id: "second" },
+      ],
+      totalBalls: 10,
+    };
+    const session = importedSession(10, [["driver", 10]]);
+    session.shotRows.forEach((row, index) => {
+      row.practiceBlockId = index < 5 ? "first" : "second";
+    });
+    const comparison = evaluatePracticePlanAgainstImportedSession(plan, session, 92, {
+      scoringMode: "aggregate",
+    }).comparison;
+    const allocated = comparison.decisions.flatMap((item) => item.linkedShotIds);
+    expect(comparison.decisions.map((item) => item.actualBalls)).toEqual([5, 5]);
+    expect(new Set(allocated).size).toBe(10);
+    expect(allocated).toHaveLength(10);
   });
 });
 
@@ -1501,6 +1740,7 @@ function shotRows(
   values: { offlineYd: number; launchDirectionDeg: number },
 ) {
   return Array.from({ length: count }, (_, index) => ({
+    practiceBlockId: null as string | null,
     id: `${clubType}-${startNumber + index}`,
     clubType,
     shotNumber: startNumber + index,
@@ -1513,6 +1753,7 @@ function shotRows(
     faceAngleDeg: 1,
     ballSpeedMph: 120,
     clubSpeedMph: 88,
+    shotCategory: "full",
     qualityTag: null,
   }));
 }

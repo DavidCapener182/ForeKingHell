@@ -1,3 +1,4 @@
+import { benchmarkAwardEvidence } from "./benchmark-evidence";
 import { evaluateRealRoundAchievements } from "./real-rounds";
 import { compareClubCarryToBenchmark } from "@/lib/club-benchmarks";
 import { formatClubType, isShortGameTouchClubType, isTrackedClubType } from "@/lib/club-format";
@@ -1311,7 +1312,7 @@ function evaluateBenchmarkLevels(collector: Collector, reliableStocks: Achieveme
             achievement.label,
             bestStock.comparison.levelLabel,
           )
-        : { benchmarkLevel: achievement.label },
+        : { ...benchmarkAwardEvidence(), benchmarkLevel: achievement.label },
     );
 
     if (bestStock && bestStock.score >= achievement.targetLevelIndex) {
@@ -1374,6 +1375,7 @@ function metadataForClubBenchmarkStock(
   generated: GeneratedClubBenchmarkAchievement,
 ) {
   return {
+    ...benchmarkAwardEvidence(stock),
     clubName: formatClubType(stock.clubType),
     clubType: stock.clubType,
     benchmarkLevel: generated.levelLabel,
@@ -1390,6 +1392,7 @@ function metadataForBenchmarkStock(
   actualLevel = benchmarkLevel,
 ) {
   return {
+    ...benchmarkAwardEvidence(stock),
     clubName: formatClubType(stock.clubType),
     clubType: stock.clubType,
     benchmarkLevel,
@@ -1406,6 +1409,7 @@ function metadataForBenchmarkBag(
   benchmarkAverageLevel: number,
 ) {
   return {
+    ...benchmarkAwardEvidence(),
     benchmarkLevel,
     benchmarkClubCount,
     benchmarkAverageLevel: roundMetricValue(benchmarkAverageLevel),

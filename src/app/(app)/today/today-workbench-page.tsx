@@ -262,10 +262,18 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
     return (
       <PageShell>
         <PageHeader
-          eyebrow={<StatusPill tone="amber">Setup</StatusPill>}
+          eyebrow={<StatusPill tone="amber">Temporarily unavailable</StatusPill>}
           title="Latest Practice Review"
-          description="Database connection required before the latest practice review can load."
+          description="Your latest practice review could not be loaded. Try again shortly."
         />
+        <div className="flex flex-wrap gap-3">
+          <Button asChild variant="outline">
+            <Link href="/today">Try Today again</Link>
+          </Button>
+          <Button asChild variant="ghost">
+            <Link href="/offline">Open saved golf</Link>
+          </Button>
+        </div>
         <TodayHydrationBoundary />
       </PageShell>
     );

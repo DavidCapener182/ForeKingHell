@@ -121,13 +121,30 @@ describe("practice planner view helpers", () => {
     expect(summarizePracticeOutcome(review, 79)).toMatchObject({
       status: "not_passed",
       label: "Not passed yet",
-      detail: "1 of 4 scored blocks passed. 3 still need work.",
+      detail: "1 of 4 scored blocks passed. 2 observed targets need work; 1 inconclusive.",
       passedBlocks: 1,
       failedBlocks: 1,
       partialBlocks: 1,
       insufficientBlocks: 1,
     });
-    expect(summarizePracticeOutcome(review, 80).label).toBe("Passed");
+    expect(summarizePracticeOutcome(review, 80).label).toBe("Not passed yet");
+  });
+
+  it("does not fail a practice when observed targets pass and remaining blocks lack evidence", () => {
+    const review = {
+      decisions: [
+        practiceDecision("passed"),
+        ...Array.from({ length: 5 }, () => practiceDecision("insufficient_data")),
+      ],
+    };
+    expect(summarizePracticeOutcome(review, 30)).toMatchObject({
+      status: "awaiting_evidence",
+      label: "Inconclusive",
+      passedBlocks: 1,
+      failedBlocks: 0,
+      insufficientBlocks: 5,
+    });
+    expect(summarizePracticeOutcome(review, 100).label).toBe("Inconclusive");
   });
 
   it("keeps pass, fail, partial and low-evidence block outcomes distinct", () => {

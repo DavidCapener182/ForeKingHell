@@ -47,7 +47,7 @@ export function ImportPracticeReview({
     >
       <UntitledSectionHeader
         title="Planned practice review"
-        description={`${review.title} · ${review.score}/100`}
+        description={review.title}
         action={
           <Button asChild variant="outline" className="min-h-11">
             <Link

@@ -3,15 +3,10 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useRoundUrlFilter } from "./round-url-filter";
-import { ChevronRight, Flag, Search } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 
 import type { RoundsWorkspaceRound } from "@/app/rounds/rounds-workspace";
-import {
-  IOSDisclosureGroup,
-  IOSGroupedList,
-  IOSListRow,
-  IOSSectionHeader,
-} from "@/components/app/ios-mobile";
+import { IOSDisclosureGroup, IOSGroupedList, IOSSectionHeader } from "@/components/app/ios-mobile";
 import { MobileSegmentedControl } from "@/components/app/mobile-controls";
 import { comparableScoringRounds, roundHistoryScore } from "@/lib/round-history-evidence";
 import { MobileFilterSheet } from "@/components/mobile-filter-sheet";
@@ -158,6 +153,9 @@ export function RoundsMobileList({ rounds }: { rounds: RoundsWorkspaceRound[] })
         </div>
       </MobileFilterSheet>
 
+      <p role="status" className="sr-only">
+        {filteredRounds.length} rounds shown
+      </p>
       <IOSSectionHeader
         title={<span id="mobile-round-history">Recent rounds</span>}
         description={`${filteredRounds.length} ${activeLabel.toLowerCase()}${searchTerm.trim() ? ` matching “${searchTerm.trim()}”` : ""}`}
@@ -166,12 +164,39 @@ export function RoundsMobileList({ rounds }: { rounds: RoundsWorkspaceRound[] })
         {recentRounds.length > 0 ? (
           roundRows(recentRounds)
         ) : (
-          <IOSListRow
-            label="No rounds match this view"
-            detail="Search another course, clear the filters, or add a round."
-            href="/rounds/new"
-            icon={Flag}
-          />
+          <div className="grid gap-3 p-4">
+            <p className="mobile-type-headline">
+              {rounds.length ? "No rounds match this view" : "No saved rounds yet"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {rounds.length
+                ? "Your saved rounds are still available. Clear the search and filters to return to them."
+                : "Start a round or import a saved scorecard to build your playing history."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {rounds.length ? (
+                <Button
+                  type="button"
+                  className="min-h-11"
+                  onClick={() => {
+                    setActiveFilter("all");
+                    setSearchTerm("");
+                  }}
+                >
+                  Show all saved rounds
+                </Button>
+              ) : (
+                <>
+                  <Button asChild className="min-h-11">
+                    <Link href="/rounds/new">Start a round</Link>
+                  </Button>
+                  <Button asChild variant="outline" className="min-h-11">
+                    <Link href="/import">Import round evidence</Link>
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
         )}
       </IOSGroupedList>
 

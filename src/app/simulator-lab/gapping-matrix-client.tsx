@@ -48,7 +48,7 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
       <ComparisonSearchSheet
         label="Selected club"
         entity="club"
-        description="Search clubs with indoor gapping evidence. Recommended carry remains separate from best stock and latest reliable."
+        description="Search clubs with indoor gapping evidence. Recommended carry remains separate from recent stock and the latest reliable sample."
         value={selectedClubId}
         onValueChange={setSelectedClubId}
         options={rows.map((row) => ({
@@ -77,7 +77,7 @@ export function GappingMatrixClient({ rows }: { rows: GappingMatrixRow[] }) {
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Metric label="Recommended" value={formatYards(selected.recommendedCarryYd)} />
-            <Metric label="Best stock" value={formatYards(selected.bestStockCarryYd)} />
+            <Metric label="Recent stock" value={formatYards(selected.bestStockCarryYd)} />
             <Metric label="Latest reliable" value={formatYards(selected.latestReliableCarryYd)} />
             <Metric label="Confidence" value={`${selected.confidenceScore}%`} />
             <Metric label="Usable shots" value={String(selected.sampleSize)} />

@@ -728,7 +728,7 @@ function buildPartialWedgeRow(
   fullCarryYd: number | null,
 ): WedgeMatrixShot {
   const label = key === "threeQuarter" ? "3/4" : "Half";
-  const measuredValues = partialWedgeCarryValues(club, key, fullCarryYd);
+  const measuredValues = partialWedgeCarryValues(club, key);
 
   if (measuredValues.length >= 3) {
     return {
@@ -768,39 +768,20 @@ function buildPartialWedgeRow(
 function partialWedgeCarryValues(
   club: BagIntelligenceClub,
   key: Exclude<WedgeMatrixShotKey, "full">,
-  fullCarryYd: number | null,
 ) {
   const categoryMatches =
     key === "threeQuarter"
       ? new Set(["three-quarter", "three quarter", "threequarter", "3/4"])
       : new Set(["half", "1/2"]);
 
-  return usableShots(club.shots)
-    .filter((shot): shot is BagIntelligenceShot & { carryYd: number } => isNumber(shot.carryYd))
-    .filter((shot) => {
-      const category = normalizeShotCategory(shot.shotCategory);
-
-      if (categoryMatches.has(category)) {
-        return true;
-      }
-
-      if (category === "pitch" && fullCarryYd !== null) {
-        if (key === "threeQuarter") {
-          return shot.carryYd > fullCarryYd * 0.74 && shot.carryYd <= fullCarryYd * 0.92;
-        }
-
-        return (
-          shot.carryYd >= Math.max(30, fullCarryYd * 0.45) && shot.carryYd <= fullCarryYd * 0.74
-        );
-      }
-
-      if (key === "half" && category === "chip") {
-        return fullCarryYd !== null && shot.carryYd >= Math.max(30, fullCarryYd * 0.45);
-      }
-
-      return false;
-    })
-    .map((shot) => shot.carryYd);
+  return (
+    usableShots(club.shots)
+      .filter((shot): shot is BagIntelligenceShot & { carryYd: number } => isNumber(shot.carryYd))
+      // Swing length is explicit intent; carry ratios cannot distinguish a half swing
+      // from a pitch, chip or ordinary imperfect full swing.
+      .filter((shot) => categoryMatches.has(normalizeShotCategory(shot.shotCategory)))
+      .map((shot) => shot.carryYd)
+  );
 }
 
 function buildSuggestedGapWedge(wedges: BagIntelligenceClub[]): WedgeMatrixClub | null {

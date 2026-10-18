@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildImportedShotReviewLifecycle } from "@/lib/shot-review";
 
 import { applyImportedShotQualityTriage } from "@/lib/imports/save-rapsodo-import";
 import type { EstablishedClubProfile } from "@/lib/imports/shot-quality-triage";
@@ -53,8 +54,8 @@ describe("applyImportedShotQualityTriage", () => {
       totalShots: 18,
       stockQuality: 2,
       likelyMishits: 4,
-      needsReview: 4,
-      partialShots: 8,
+      needsReview: 12,
+      partialShots: 0,
       unusableShots: 0,
       fieldIssues: 1,
     });
@@ -70,9 +71,7 @@ describe("applyImportedShotQualityTriage", () => {
       "needs_review",
       "needs_review",
     ]);
-    expect(result.shots.slice(8, 16).every((item) => item.shot.shotCategory === "pitch")).toBe(
-      true,
-    );
+    expect(result.shots.slice(8, 16).every((item) => item.shot.shotCategory === "full")).toBe(true);
     expect(result.shots[16]?.shot).toMatchObject({ carryYd: 173, qualityTag: null });
     expect(result.shots[17]?.shot).toMatchObject({ carryYd: 136.8, totalYd: null });
   });
@@ -110,7 +109,8 @@ describe("applyImportedShotQualityTriage", () => {
     ]);
     expect(result.summary).toMatchObject({
       likelyMishits: 4,
-      partialShots: 4,
+      partialShots: 0,
+      needsReview: 4,
       fieldIssues: 0,
     });
   });
@@ -131,18 +131,28 @@ describe("applyImportedShotQualityTriage", () => {
     });
   });
 
-  it("quarantines invalid carry without counting the row as stock-quality", () => {
-    const result = applyImportedShotQualityTriage([{ ...shot("7i", -12), totalYd: 100 }]);
+  it("quarantines invalid carry without discarding independent valid speed evidence", () => {
+    const result = applyImportedShotQualityTriage([
+      { ...shot("7i", -12, { ballSpeedMph: 110, clubSpeedMph: 80 }), totalYd: 100 },
+    ]);
 
     expect(result.shots[0]).toMatchObject({
-      classification: "unusable_shot",
-      shot: { carryYd: null, qualityTag: "bad_data" },
+      classification: "needs_review",
+      shot: { carryYd: null, qualityTag: null, ballSpeedMph: 110, clubSpeedMph: 80 },
     });
     expect(result.summary).toMatchObject({
       stockQuality: 0,
-      unusableShots: 1,
+      unusableShots: 0,
+      needsReview: 1,
       fieldIssues: 1,
     });
+    expect(buildImportedShotReviewLifecycle(result.shots[0].shot).reviewStatus).toBe("included");
+  });
+  it("preserves explicit confirmed invalid status even when only carry is quarantined", () => {
+    const invalid = { ...shot("7i", -12), totalYd: 100, qualityTag: "bad_data" };
+    const result = applyImportedShotQualityTriage([invalid]);
+    expect(result.shots[0].classification).toBe("unusable_shot");
+    expect(result.shots[0].shot.qualityTag).toBe("bad_data");
   });
 });
 

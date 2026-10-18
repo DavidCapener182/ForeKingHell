@@ -1,3 +1,4 @@
+import { achievementRewardKey, isAchievementRewardCandidateEligible } from "./benchmark-evidence";
 import { directionalMetricSql } from "@/lib/directional-confidence-sql";
 import { revalidatePath } from "next/cache";
 import { and, count, desc, eq, gte, inArray, like, lt, sql } from "drizzle-orm";
@@ -832,6 +833,13 @@ function statsFromMetadata(metadata: Record<string, unknown> | null | undefined)
   }
 
   const stats = [
+    stat(
+      "Reference",
+      formatText(metadata.referenceVersion) ??
+        (metadata.benchmarkLevel ? "Legacy version unrecorded" : null),
+    ),
+    stat("Calculation", formatText(metadata.calculationVersion)),
+    stat("Method", formatText(metadata.method)),
     stat("Club", formatText(metadata.clubName)),
     stat("Drill", formatText(metadata.drillTitle)),
     stat("Result", formatText(metadata.result)),
@@ -1287,7 +1295,10 @@ async function awardAchievements(
   const now = new Date();
 
   for (const candidate of candidates) {
-    if (existingIds.has(candidate.achievementId)) {
+    if (
+      existingIds.has(candidate.achievementId) ||
+      !isAchievementRewardCandidateEligible(candidate)
+    ) {
       continue;
     }
 
@@ -1307,7 +1318,7 @@ async function awardAchievements(
       achievementId: achievement.id,
       sessionId: candidate.sourceSessionId ?? null,
       shotId: candidate.sourceShotId ?? null,
-      dedupeKey: `achievement:${achievement.id}`,
+      dedupeKey: achievementRewardKey(achievement.id),
       metadataJson: {
         achievementName: achievement.name,
         ...(candidate.metadata ?? {}),

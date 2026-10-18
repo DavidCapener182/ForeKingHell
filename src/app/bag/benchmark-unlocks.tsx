@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ArrowUpRight, Medal, PartyPopper, Target, Trophy } from "lucide-react";
-import type { ClubBenchmarkRow } from "@/lib/club-benchmarks";
+import { BENCHMARK_REFERENCE_VERSION, type ClubBenchmarkRow } from "@/lib/club-benchmarks";
 import { nearestBenchmarkUnlocks } from "@/lib/benchmark-milestones";
 import { formatClubType } from "@/lib/club-format";
 import styles from "./benchmark-unlocks.module.css";
@@ -40,8 +40,10 @@ export function BenchmarkUnlocks({ rows }: { rows: ClubBenchmarkRow[] }) {
               {formatClubType(latest.row.clubType)} reached {latest.to}
             </h3>
             <p>
-              {latest.from} → {latest.to} · {number.format(latest.carryYd)} yd best-30 average ·{" "}
-              {latest.sampleSize} shots used
+              {latest.from} → {latest.to} · {number.format(latest.carryYd)} yd best-
+              {Math.min(30, latest.sampleSize)} average · {latest.sampleSize} shots used ·{" "}
+              {latest.confirmed ? "Confirmed sample" : "Provisional sample"} ·{" "}
+              {latest.referenceVersion ?? BENCHMARK_REFERENCE_VERSION}
             </p>
             <Link href={`/sessions/${latest.sessionId}`}>
               View the session behind it <ArrowUpRight size={15} aria-hidden="true" />
@@ -112,13 +114,15 @@ export function BenchmarkUnlocks({ rows }: { rows: ClubBenchmarkRow[] }) {
                   <span style={{ width: `${progress}%` }} />
                 </div>
                 <div className={styles.readout}>
-                  <span>{number.format(row.carryYd!)} yd now</span>
+                  <span>
+                    {number.format(row.carryYd!)} yd best-{Math.min(30, row.sampleSize)} avg
+                  </span>
                   <strong>{target.yards} yd target</strong>
                 </div>
                 <p className={styles.plan}>
-                  {row.nextLevelPlan
-                    ? `If your next ${row.nextLevelPlan.shotsNeeded} qualifying shots carry ${row.nextLevelPlan.targetCarryYd} yd or more, your best-30 average can reach this target.`
-                    : "Build your best-30 average with clean full swings."}
+                  The selected average must reach {target.yards} yd; individual shots need not all
+                  exceed it. {row.sampleSize < 30 ? "Provisional best-N sample. " : ""}
+                  {BENCHMARK_REFERENCE_VERSION}.
                 </p>
                 <Link href={`/bag/${row.clubId}`}>
                   Open {formatClubType(row.clubType)} <ArrowUpRight size={16} aria-hidden="true" />
@@ -135,8 +139,9 @@ export function BenchmarkUnlocks({ rows }: { rows: ClubBenchmarkRow[] }) {
             <Trophy size={16} aria-hidden="true" /> Your level-ups <span>{milestones.length}</span>
           </summary>
           <p>
-            Rebuilt from the saved shots in this benchmark review. Corrections can update these
-            results; older history outside the review may not appear.
+            Reconstructed benchmark history from the shots in this review; older history outside the
+            review may not appear. This view can change after corrections. Earned achievements
+            retain their original award evidence and XP.
           </p>
           <div className={styles.historyGrid}>
             {milestones.map((milestone) => (

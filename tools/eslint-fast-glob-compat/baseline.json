@@ -1,0 +1,1699 @@
+[
+  {
+    "pattern": "apps",
+    "matches": ["apps"]
+  },
+  {
+    "pattern": "@ROOT/apps",
+    "matches": ["@ROOT/apps"]
+  },
+  {
+    "pattern": "apps/",
+    "matches": ["apps/"]
+  },
+  {
+    "pattern": "@ROOT/apps/",
+    "matches": ["@ROOT/apps/"]
+  },
+  {
+    "pattern": "apps/*",
+    "matches": [
+      "apps/a+b",
+      "apps/a.b",
+      "apps/a[b]",
+      "apps/admin",
+      "apps/a{b}",
+      "apps/bang!",
+      "apps/foo(bar)",
+      "apps/site",
+      "apps/site.js",
+      "apps/space name"
+    ]
+  },
+  {
+    "pattern": "@ROOT/apps/*",
+    "matches": [
+      "@ROOT/apps/a+b",
+      "@ROOT/apps/a.b",
+      "@ROOT/apps/a[b]",
+      "@ROOT/apps/admin",
+      "@ROOT/apps/a{b}",
+      "@ROOT/apps/bang!",
+      "@ROOT/apps/foo(bar)",
+      "@ROOT/apps/site",
+      "@ROOT/apps/site.js",
+      "@ROOT/apps/space name"
+    ]
+  },
+  {
+    "pattern": "apps/**",
+    "matches": [
+      "apps/a+b",
+      "apps/a+b/pages",
+      "apps/a.b",
+      "apps/a.b/pages",
+      "apps/a[b]",
+      "apps/a[b]/pages",
+      "apps/admin",
+      "apps/admin/src",
+      "apps/admin/src/pages",
+      "apps/a{b}",
+      "apps/a{b}/pages",
+      "apps/bang!",
+      "apps/bang!/pages",
+      "apps/foo(bar)",
+      "apps/foo(bar)/pages",
+      "apps/site",
+      "apps/site.js",
+      "apps/site.js/pages",
+      "apps/site/node_modules",
+      "apps/site/node_modules/lib",
+      "apps/site/pages",
+      "apps/site/pages/blog",
+      "apps/space name",
+      "apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/apps/**",
+    "matches": [
+      "@ROOT/apps/a+b",
+      "@ROOT/apps/a+b/pages",
+      "@ROOT/apps/a.b",
+      "@ROOT/apps/a.b/pages",
+      "@ROOT/apps/a[b]",
+      "@ROOT/apps/a[b]/pages",
+      "@ROOT/apps/admin",
+      "@ROOT/apps/admin/src",
+      "@ROOT/apps/admin/src/pages",
+      "@ROOT/apps/a{b}",
+      "@ROOT/apps/a{b}/pages",
+      "@ROOT/apps/bang!",
+      "@ROOT/apps/bang!/pages",
+      "@ROOT/apps/foo(bar)",
+      "@ROOT/apps/foo(bar)/pages",
+      "@ROOT/apps/site",
+      "@ROOT/apps/site.js",
+      "@ROOT/apps/site.js/pages",
+      "@ROOT/apps/site/node_modules",
+      "@ROOT/apps/site/node_modules/lib",
+      "@ROOT/apps/site/pages",
+      "@ROOT/apps/site/pages/blog",
+      "@ROOT/apps/space name",
+      "@ROOT/apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "apps/**/",
+    "matches": [
+      "apps/a+b",
+      "apps/a+b/pages",
+      "apps/a.b",
+      "apps/a.b/pages",
+      "apps/a[b]",
+      "apps/a[b]/pages",
+      "apps/admin",
+      "apps/admin/src",
+      "apps/admin/src/pages",
+      "apps/a{b}",
+      "apps/a{b}/pages",
+      "apps/bang!",
+      "apps/bang!/pages",
+      "apps/foo(bar)",
+      "apps/foo(bar)/pages",
+      "apps/site",
+      "apps/site.js",
+      "apps/site.js/pages",
+      "apps/site/node_modules",
+      "apps/site/node_modules/lib",
+      "apps/site/pages",
+      "apps/site/pages/blog",
+      "apps/space name",
+      "apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/apps/**/",
+    "matches": [
+      "@ROOT/apps/a+b",
+      "@ROOT/apps/a+b/pages",
+      "@ROOT/apps/a.b",
+      "@ROOT/apps/a.b/pages",
+      "@ROOT/apps/a[b]",
+      "@ROOT/apps/a[b]/pages",
+      "@ROOT/apps/admin",
+      "@ROOT/apps/admin/src",
+      "@ROOT/apps/admin/src/pages",
+      "@ROOT/apps/a{b}",
+      "@ROOT/apps/a{b}/pages",
+      "@ROOT/apps/bang!",
+      "@ROOT/apps/bang!/pages",
+      "@ROOT/apps/foo(bar)",
+      "@ROOT/apps/foo(bar)/pages",
+      "@ROOT/apps/site",
+      "@ROOT/apps/site.js",
+      "@ROOT/apps/site.js/pages",
+      "@ROOT/apps/site/node_modules",
+      "@ROOT/apps/site/node_modules/lib",
+      "@ROOT/apps/site/pages",
+      "@ROOT/apps/site/pages/blog",
+      "@ROOT/apps/space name",
+      "@ROOT/apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "apps/*/**",
+    "matches": [
+      "apps/a+b",
+      "apps/a+b/pages",
+      "apps/a.b",
+      "apps/a.b/pages",
+      "apps/a[b]",
+      "apps/a[b]/pages",
+      "apps/admin",
+      "apps/admin/src",
+      "apps/admin/src/pages",
+      "apps/a{b}",
+      "apps/a{b}/pages",
+      "apps/bang!",
+      "apps/bang!/pages",
+      "apps/foo(bar)",
+      "apps/foo(bar)/pages",
+      "apps/site",
+      "apps/site.js",
+      "apps/site.js/pages",
+      "apps/site/node_modules",
+      "apps/site/node_modules/lib",
+      "apps/site/pages",
+      "apps/site/pages/blog",
+      "apps/space name",
+      "apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/apps/*/**",
+    "matches": [
+      "@ROOT/apps/a+b",
+      "@ROOT/apps/a+b/pages",
+      "@ROOT/apps/a.b",
+      "@ROOT/apps/a.b/pages",
+      "@ROOT/apps/a[b]",
+      "@ROOT/apps/a[b]/pages",
+      "@ROOT/apps/admin",
+      "@ROOT/apps/admin/src",
+      "@ROOT/apps/admin/src/pages",
+      "@ROOT/apps/a{b}",
+      "@ROOT/apps/a{b}/pages",
+      "@ROOT/apps/bang!",
+      "@ROOT/apps/bang!/pages",
+      "@ROOT/apps/foo(bar)",
+      "@ROOT/apps/foo(bar)/pages",
+      "@ROOT/apps/site",
+      "@ROOT/apps/site.js",
+      "@ROOT/apps/site.js/pages",
+      "@ROOT/apps/site/node_modules",
+      "@ROOT/apps/site/node_modules/lib",
+      "@ROOT/apps/site/pages",
+      "@ROOT/apps/site/pages/blog",
+      "@ROOT/apps/space name",
+      "@ROOT/apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "apps/**/**",
+    "matches": [
+      "apps/a+b",
+      "apps/a+b/pages",
+      "apps/a.b",
+      "apps/a.b/pages",
+      "apps/a[b]",
+      "apps/a[b]/pages",
+      "apps/admin",
+      "apps/admin/src",
+      "apps/admin/src/pages",
+      "apps/a{b}",
+      "apps/a{b}/pages",
+      "apps/bang!",
+      "apps/bang!/pages",
+      "apps/foo(bar)",
+      "apps/foo(bar)/pages",
+      "apps/site",
+      "apps/site.js",
+      "apps/site.js/pages",
+      "apps/site/node_modules",
+      "apps/site/node_modules/lib",
+      "apps/site/pages",
+      "apps/site/pages/blog",
+      "apps/space name",
+      "apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/apps/**/**",
+    "matches": [
+      "@ROOT/apps/a+b",
+      "@ROOT/apps/a+b/pages",
+      "@ROOT/apps/a.b",
+      "@ROOT/apps/a.b/pages",
+      "@ROOT/apps/a[b]",
+      "@ROOT/apps/a[b]/pages",
+      "@ROOT/apps/admin",
+      "@ROOT/apps/admin/src",
+      "@ROOT/apps/admin/src/pages",
+      "@ROOT/apps/a{b}",
+      "@ROOT/apps/a{b}/pages",
+      "@ROOT/apps/bang!",
+      "@ROOT/apps/bang!/pages",
+      "@ROOT/apps/foo(bar)",
+      "@ROOT/apps/foo(bar)/pages",
+      "@ROOT/apps/site",
+      "@ROOT/apps/site.js",
+      "@ROOT/apps/site.js/pages",
+      "@ROOT/apps/site/node_modules",
+      "@ROOT/apps/site/node_modules/lib",
+      "@ROOT/apps/site/pages",
+      "@ROOT/apps/site/pages/blog",
+      "@ROOT/apps/space name",
+      "@ROOT/apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "apps/*/pages",
+    "matches": [
+      "apps/a+b/pages",
+      "apps/a.b/pages",
+      "apps/a[b]/pages",
+      "apps/a{b}/pages",
+      "apps/bang!/pages",
+      "apps/foo(bar)/pages",
+      "apps/site.js/pages",
+      "apps/site/pages",
+      "apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/apps/*/pages",
+    "matches": [
+      "@ROOT/apps/a+b/pages",
+      "@ROOT/apps/a.b/pages",
+      "@ROOT/apps/a[b]/pages",
+      "@ROOT/apps/a{b}/pages",
+      "@ROOT/apps/bang!/pages",
+      "@ROOT/apps/foo(bar)/pages",
+      "@ROOT/apps/site.js/pages",
+      "@ROOT/apps/site/pages",
+      "@ROOT/apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "apps/**/pages",
+    "matches": [
+      "apps/a+b/pages",
+      "apps/a.b/pages",
+      "apps/a[b]/pages",
+      "apps/admin/src/pages",
+      "apps/a{b}/pages",
+      "apps/bang!/pages",
+      "apps/foo(bar)/pages",
+      "apps/site.js/pages",
+      "apps/site/pages",
+      "apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/apps/**/pages",
+    "matches": [
+      "@ROOT/apps/a+b/pages",
+      "@ROOT/apps/a.b/pages",
+      "@ROOT/apps/a[b]/pages",
+      "@ROOT/apps/admin/src/pages",
+      "@ROOT/apps/a{b}/pages",
+      "@ROOT/apps/bang!/pages",
+      "@ROOT/apps/foo(bar)/pages",
+      "@ROOT/apps/site.js/pages",
+      "@ROOT/apps/site/pages",
+      "@ROOT/apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "apps/**/pages/**",
+    "matches": [
+      "apps/a+b/pages",
+      "apps/a.b/pages",
+      "apps/a[b]/pages",
+      "apps/admin/src/pages",
+      "apps/a{b}/pages",
+      "apps/bang!/pages",
+      "apps/foo(bar)/pages",
+      "apps/site.js/pages",
+      "apps/site/pages",
+      "apps/site/pages/blog",
+      "apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/apps/**/pages/**",
+    "matches": [
+      "@ROOT/apps/a+b/pages",
+      "@ROOT/apps/a.b/pages",
+      "@ROOT/apps/a[b]/pages",
+      "@ROOT/apps/admin/src/pages",
+      "@ROOT/apps/a{b}/pages",
+      "@ROOT/apps/bang!/pages",
+      "@ROOT/apps/foo(bar)/pages",
+      "@ROOT/apps/site.js/pages",
+      "@ROOT/apps/site/pages",
+      "@ROOT/apps/site/pages/blog",
+      "@ROOT/apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "apps/.*",
+    "matches": ["apps/.hidden"]
+  },
+  {
+    "pattern": "@ROOT/apps/.*",
+    "matches": ["@ROOT/apps/.hidden"]
+  },
+  {
+    "pattern": "apps/{site,admin}",
+    "matches": ["apps/admin", "apps/site"]
+  },
+  {
+    "pattern": "@ROOT/apps/{site,admin}",
+    "matches": ["@ROOT/apps/admin", "@ROOT/apps/site"]
+  },
+  {
+    "pattern": "apps/{site,admin}/**",
+    "matches": [
+      "apps/admin/src",
+      "apps/admin/src/pages",
+      "apps/site/node_modules",
+      "apps/site/node_modules/lib",
+      "apps/site/pages",
+      "apps/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "@ROOT/apps/{site,admin}/**",
+    "matches": [
+      "@ROOT/apps/admin/src",
+      "@ROOT/apps/admin/src/pages",
+      "@ROOT/apps/site/node_modules",
+      "@ROOT/apps/site/node_modules/lib",
+      "@ROOT/apps/site/pages",
+      "@ROOT/apps/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "apps/+(site|admin)",
+    "matches": ["apps/admin", "apps/site"]
+  },
+  {
+    "pattern": "@ROOT/apps/+(site|admin)",
+    "matches": ["@ROOT/apps/admin", "@ROOT/apps/site"]
+  },
+  {
+    "pattern": "apps/!(site)",
+    "matches": [
+      "apps/.hidden",
+      "apps/a+b",
+      "apps/a.b",
+      "apps/a[b]",
+      "apps/admin",
+      "apps/a{b}",
+      "apps/bang!",
+      "apps/foo(bar)",
+      "apps/site.js",
+      "apps/space name"
+    ]
+  },
+  {
+    "pattern": "@ROOT/apps/!(site)",
+    "matches": [
+      "@ROOT/apps/.hidden",
+      "@ROOT/apps/a+b",
+      "@ROOT/apps/a.b",
+      "@ROOT/apps/a[b]",
+      "@ROOT/apps/admin",
+      "@ROOT/apps/a{b}",
+      "@ROOT/apps/bang!",
+      "@ROOT/apps/foo(bar)",
+      "@ROOT/apps/site.js",
+      "@ROOT/apps/space name"
+    ]
+  },
+  {
+    "pattern": "apps/@(site|admin)",
+    "matches": ["apps/admin", "apps/site"]
+  },
+  {
+    "pattern": "@ROOT/apps/@(site|admin)",
+    "matches": ["@ROOT/apps/admin", "@ROOT/apps/site"]
+  },
+  {
+    "pattern": "apps/[sa]*",
+    "matches": [
+      "apps/a+b",
+      "apps/a.b",
+      "apps/a[b]",
+      "apps/admin",
+      "apps/a{b}",
+      "apps/site",
+      "apps/site.js",
+      "apps/space name"
+    ]
+  },
+  {
+    "pattern": "@ROOT/apps/[sa]*",
+    "matches": [
+      "@ROOT/apps/a+b",
+      "@ROOT/apps/a.b",
+      "@ROOT/apps/a[b]",
+      "@ROOT/apps/admin",
+      "@ROOT/apps/a{b}",
+      "@ROOT/apps/site",
+      "@ROOT/apps/site.js",
+      "@ROOT/apps/space name"
+    ]
+  },
+  {
+    "pattern": "apps/?ite",
+    "matches": ["apps/site"]
+  },
+  {
+    "pattern": "@ROOT/apps/?ite",
+    "matches": ["@ROOT/apps/site"]
+  },
+  {
+    "pattern": "apps/{site,}/pages",
+    "matches": ["apps/site/pages"]
+  },
+  {
+    "pattern": "@ROOT/apps/{site,}/pages",
+    "matches": ["@ROOT/apps/site/pages"]
+  },
+  {
+    "pattern": "apps/{site,{admin,a.b}}/**",
+    "matches": [
+      "apps/a.b/pages",
+      "apps/admin/src",
+      "apps/admin/src/pages",
+      "apps/site/node_modules",
+      "apps/site/node_modules/lib",
+      "apps/site/pages",
+      "apps/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "@ROOT/apps/{site,{admin,a.b}}/**",
+    "matches": [
+      "@ROOT/apps/a.b/pages",
+      "@ROOT/apps/admin/src",
+      "@ROOT/apps/admin/src/pages",
+      "@ROOT/apps/site/node_modules",
+      "@ROOT/apps/site/node_modules/lib",
+      "@ROOT/apps/site/pages",
+      "@ROOT/apps/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "packages",
+    "matches": ["packages"]
+  },
+  {
+    "pattern": "@ROOT/packages",
+    "matches": ["@ROOT/packages"]
+  },
+  {
+    "pattern": "packages/",
+    "matches": ["packages/"]
+  },
+  {
+    "pattern": "@ROOT/packages/",
+    "matches": ["@ROOT/packages/"]
+  },
+  {
+    "pattern": "packages/*",
+    "matches": ["packages/ui", "packages/web"]
+  },
+  {
+    "pattern": "@ROOT/packages/*",
+    "matches": ["@ROOT/packages/ui", "@ROOT/packages/web"]
+  },
+  {
+    "pattern": "packages/**",
+    "matches": ["packages/ui", "packages/ui/src", "packages/web", "packages/web/pages"]
+  },
+  {
+    "pattern": "@ROOT/packages/**",
+    "matches": [
+      "@ROOT/packages/ui",
+      "@ROOT/packages/ui/src",
+      "@ROOT/packages/web",
+      "@ROOT/packages/web/pages"
+    ]
+  },
+  {
+    "pattern": "packages/**/",
+    "matches": ["packages/ui", "packages/ui/src", "packages/web", "packages/web/pages"]
+  },
+  {
+    "pattern": "@ROOT/packages/**/",
+    "matches": [
+      "@ROOT/packages/ui",
+      "@ROOT/packages/ui/src",
+      "@ROOT/packages/web",
+      "@ROOT/packages/web/pages"
+    ]
+  },
+  {
+    "pattern": "packages/*/**",
+    "matches": ["packages/ui", "packages/ui/src", "packages/web", "packages/web/pages"]
+  },
+  {
+    "pattern": "@ROOT/packages/*/**",
+    "matches": [
+      "@ROOT/packages/ui",
+      "@ROOT/packages/ui/src",
+      "@ROOT/packages/web",
+      "@ROOT/packages/web/pages"
+    ]
+  },
+  {
+    "pattern": "packages/**/**",
+    "matches": ["packages/ui", "packages/ui/src", "packages/web", "packages/web/pages"]
+  },
+  {
+    "pattern": "@ROOT/packages/**/**",
+    "matches": [
+      "@ROOT/packages/ui",
+      "@ROOT/packages/ui/src",
+      "@ROOT/packages/web",
+      "@ROOT/packages/web/pages"
+    ]
+  },
+  {
+    "pattern": "packages/*/pages",
+    "matches": ["packages/web/pages"]
+  },
+  {
+    "pattern": "@ROOT/packages/*/pages",
+    "matches": ["@ROOT/packages/web/pages"]
+  },
+  {
+    "pattern": "packages/**/pages",
+    "matches": ["packages/web/pages"]
+  },
+  {
+    "pattern": "@ROOT/packages/**/pages",
+    "matches": ["@ROOT/packages/web/pages"]
+  },
+  {
+    "pattern": "packages/**/pages/**",
+    "matches": ["packages/web/pages"]
+  },
+  {
+    "pattern": "@ROOT/packages/**/pages/**",
+    "matches": ["@ROOT/packages/web/pages"]
+  },
+  {
+    "pattern": "packages/.*",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/packages/.*",
+    "matches": []
+  },
+  {
+    "pattern": "packages/{site,admin}",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/packages/{site,admin}",
+    "matches": []
+  },
+  {
+    "pattern": "packages/{site,admin}/**",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/packages/{site,admin}/**",
+    "matches": []
+  },
+  {
+    "pattern": "packages/+(site|admin)",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/packages/+(site|admin)",
+    "matches": []
+  },
+  {
+    "pattern": "packages/!(site)",
+    "matches": ["packages/ui", "packages/web"]
+  },
+  {
+    "pattern": "@ROOT/packages/!(site)",
+    "matches": ["@ROOT/packages/ui", "@ROOT/packages/web"]
+  },
+  {
+    "pattern": "packages/@(site|admin)",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/packages/@(site|admin)",
+    "matches": []
+  },
+  {
+    "pattern": "packages/[sa]*",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/packages/[sa]*",
+    "matches": []
+  },
+  {
+    "pattern": "packages/?ite",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/packages/?ite",
+    "matches": []
+  },
+  {
+    "pattern": "packages/{site,}/pages",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/packages/{site,}/pages",
+    "matches": []
+  },
+  {
+    "pattern": "packages/{site,{admin,a.b}}/**",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/packages/{site,{admin,a.b}}/**",
+    "matches": []
+  },
+  {
+    "pattern": "range",
+    "matches": ["range"]
+  },
+  {
+    "pattern": "@ROOT/range",
+    "matches": ["@ROOT/range"]
+  },
+  {
+    "pattern": "range/",
+    "matches": ["range/"]
+  },
+  {
+    "pattern": "@ROOT/range/",
+    "matches": ["@ROOT/range/"]
+  },
+  {
+    "pattern": "range/*",
+    "matches": ["range/app03", "range/app04", "range/app1", "range/app2"]
+  },
+  {
+    "pattern": "@ROOT/range/*",
+    "matches": ["@ROOT/range/app03", "@ROOT/range/app04", "@ROOT/range/app1", "@ROOT/range/app2"]
+  },
+  {
+    "pattern": "range/**",
+    "matches": [
+      "range/app03",
+      "range/app03/pages",
+      "range/app04",
+      "range/app04/pages",
+      "range/app1",
+      "range/app1/pages",
+      "range/app2",
+      "range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/range/**",
+    "matches": [
+      "@ROOT/range/app03",
+      "@ROOT/range/app03/pages",
+      "@ROOT/range/app04",
+      "@ROOT/range/app04/pages",
+      "@ROOT/range/app1",
+      "@ROOT/range/app1/pages",
+      "@ROOT/range/app2",
+      "@ROOT/range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "range/**/",
+    "matches": [
+      "range/app03",
+      "range/app03/pages",
+      "range/app04",
+      "range/app04/pages",
+      "range/app1",
+      "range/app1/pages",
+      "range/app2",
+      "range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/range/**/",
+    "matches": [
+      "@ROOT/range/app03",
+      "@ROOT/range/app03/pages",
+      "@ROOT/range/app04",
+      "@ROOT/range/app04/pages",
+      "@ROOT/range/app1",
+      "@ROOT/range/app1/pages",
+      "@ROOT/range/app2",
+      "@ROOT/range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "range/*/**",
+    "matches": [
+      "range/app03",
+      "range/app03/pages",
+      "range/app04",
+      "range/app04/pages",
+      "range/app1",
+      "range/app1/pages",
+      "range/app2",
+      "range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/range/*/**",
+    "matches": [
+      "@ROOT/range/app03",
+      "@ROOT/range/app03/pages",
+      "@ROOT/range/app04",
+      "@ROOT/range/app04/pages",
+      "@ROOT/range/app1",
+      "@ROOT/range/app1/pages",
+      "@ROOT/range/app2",
+      "@ROOT/range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "range/**/**",
+    "matches": [
+      "range/app03",
+      "range/app03/pages",
+      "range/app04",
+      "range/app04/pages",
+      "range/app1",
+      "range/app1/pages",
+      "range/app2",
+      "range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/range/**/**",
+    "matches": [
+      "@ROOT/range/app03",
+      "@ROOT/range/app03/pages",
+      "@ROOT/range/app04",
+      "@ROOT/range/app04/pages",
+      "@ROOT/range/app1",
+      "@ROOT/range/app1/pages",
+      "@ROOT/range/app2",
+      "@ROOT/range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "range/*/pages",
+    "matches": ["range/app03/pages", "range/app04/pages", "range/app1/pages", "range/app2/pages"]
+  },
+  {
+    "pattern": "@ROOT/range/*/pages",
+    "matches": [
+      "@ROOT/range/app03/pages",
+      "@ROOT/range/app04/pages",
+      "@ROOT/range/app1/pages",
+      "@ROOT/range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "range/**/pages",
+    "matches": ["range/app03/pages", "range/app04/pages", "range/app1/pages", "range/app2/pages"]
+  },
+  {
+    "pattern": "@ROOT/range/**/pages",
+    "matches": [
+      "@ROOT/range/app03/pages",
+      "@ROOT/range/app04/pages",
+      "@ROOT/range/app1/pages",
+      "@ROOT/range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "range/**/pages/**",
+    "matches": ["range/app03/pages", "range/app04/pages", "range/app1/pages", "range/app2/pages"]
+  },
+  {
+    "pattern": "@ROOT/range/**/pages/**",
+    "matches": [
+      "@ROOT/range/app03/pages",
+      "@ROOT/range/app04/pages",
+      "@ROOT/range/app1/pages",
+      "@ROOT/range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "range/.*",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/range/.*",
+    "matches": []
+  },
+  {
+    "pattern": "range/{site,admin}",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/range/{site,admin}",
+    "matches": []
+  },
+  {
+    "pattern": "range/{site,admin}/**",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/range/{site,admin}/**",
+    "matches": []
+  },
+  {
+    "pattern": "range/+(site|admin)",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/range/+(site|admin)",
+    "matches": []
+  },
+  {
+    "pattern": "range/!(site)",
+    "matches": ["range/app03", "range/app04", "range/app1", "range/app2"]
+  },
+  {
+    "pattern": "@ROOT/range/!(site)",
+    "matches": ["@ROOT/range/app03", "@ROOT/range/app04", "@ROOT/range/app1", "@ROOT/range/app2"]
+  },
+  {
+    "pattern": "range/@(site|admin)",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/range/@(site|admin)",
+    "matches": []
+  },
+  {
+    "pattern": "range/[sa]*",
+    "matches": ["range/app03", "range/app04", "range/app1", "range/app2"]
+  },
+  {
+    "pattern": "@ROOT/range/[sa]*",
+    "matches": ["@ROOT/range/app03", "@ROOT/range/app04", "@ROOT/range/app1", "@ROOT/range/app2"]
+  },
+  {
+    "pattern": "range/?ite",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/range/?ite",
+    "matches": []
+  },
+  {
+    "pattern": "range/{site,}/pages",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/range/{site,}/pages",
+    "matches": []
+  },
+  {
+    "pattern": "range/{site,{admin,a.b}}/**",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/range/{site,{admin,a.b}}/**",
+    "matches": []
+  },
+  {
+    "pattern": "aliases",
+    "matches": ["aliases"]
+  },
+  {
+    "pattern": "@ROOT/aliases",
+    "matches": ["@ROOT/aliases"]
+  },
+  {
+    "pattern": "aliases/",
+    "matches": ["aliases/"]
+  },
+  {
+    "pattern": "@ROOT/aliases/",
+    "matches": ["@ROOT/aliases/"]
+  },
+  {
+    "pattern": "aliases/*",
+    "matches": ["aliases/site"]
+  },
+  {
+    "pattern": "@ROOT/aliases/*",
+    "matches": ["@ROOT/aliases/site"]
+  },
+  {
+    "pattern": "aliases/**",
+    "matches": [
+      "aliases/site",
+      "aliases/site/node_modules",
+      "aliases/site/node_modules/lib",
+      "aliases/site/pages",
+      "aliases/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "@ROOT/aliases/**",
+    "matches": [
+      "@ROOT/aliases/site",
+      "@ROOT/aliases/site/node_modules",
+      "@ROOT/aliases/site/node_modules/lib",
+      "@ROOT/aliases/site/pages",
+      "@ROOT/aliases/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "aliases/**/",
+    "matches": [
+      "aliases/site",
+      "aliases/site/node_modules",
+      "aliases/site/node_modules/lib",
+      "aliases/site/pages",
+      "aliases/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "@ROOT/aliases/**/",
+    "matches": [
+      "@ROOT/aliases/site",
+      "@ROOT/aliases/site/node_modules",
+      "@ROOT/aliases/site/node_modules/lib",
+      "@ROOT/aliases/site/pages",
+      "@ROOT/aliases/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "aliases/*/**",
+    "matches": [
+      "aliases/site",
+      "aliases/site/node_modules",
+      "aliases/site/node_modules/lib",
+      "aliases/site/pages",
+      "aliases/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "@ROOT/aliases/*/**",
+    "matches": [
+      "@ROOT/aliases/site",
+      "@ROOT/aliases/site/node_modules",
+      "@ROOT/aliases/site/node_modules/lib",
+      "@ROOT/aliases/site/pages",
+      "@ROOT/aliases/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "aliases/**/**",
+    "matches": [
+      "aliases/site",
+      "aliases/site/node_modules",
+      "aliases/site/node_modules/lib",
+      "aliases/site/pages",
+      "aliases/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "@ROOT/aliases/**/**",
+    "matches": [
+      "@ROOT/aliases/site",
+      "@ROOT/aliases/site/node_modules",
+      "@ROOT/aliases/site/node_modules/lib",
+      "@ROOT/aliases/site/pages",
+      "@ROOT/aliases/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "aliases/*/pages",
+    "matches": ["aliases/site/pages"]
+  },
+  {
+    "pattern": "@ROOT/aliases/*/pages",
+    "matches": ["@ROOT/aliases/site/pages"]
+  },
+  {
+    "pattern": "aliases/**/pages",
+    "matches": ["aliases/site/pages"]
+  },
+  {
+    "pattern": "@ROOT/aliases/**/pages",
+    "matches": ["@ROOT/aliases/site/pages"]
+  },
+  {
+    "pattern": "aliases/**/pages/**",
+    "matches": ["aliases/site/pages", "aliases/site/pages/blog"]
+  },
+  {
+    "pattern": "@ROOT/aliases/**/pages/**",
+    "matches": ["@ROOT/aliases/site/pages", "@ROOT/aliases/site/pages/blog"]
+  },
+  {
+    "pattern": "aliases/.*",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/aliases/.*",
+    "matches": []
+  },
+  {
+    "pattern": "aliases/{site,admin}",
+    "matches": ["aliases/site"]
+  },
+  {
+    "pattern": "@ROOT/aliases/{site,admin}",
+    "matches": ["@ROOT/aliases/site"]
+  },
+  {
+    "pattern": "aliases/{site,admin}/**",
+    "matches": [
+      "aliases/site/node_modules",
+      "aliases/site/node_modules/lib",
+      "aliases/site/pages",
+      "aliases/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "@ROOT/aliases/{site,admin}/**",
+    "matches": [
+      "@ROOT/aliases/site/node_modules",
+      "@ROOT/aliases/site/node_modules/lib",
+      "@ROOT/aliases/site/pages",
+      "@ROOT/aliases/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "aliases/+(site|admin)",
+    "matches": ["aliases/site"]
+  },
+  {
+    "pattern": "@ROOT/aliases/+(site|admin)",
+    "matches": ["@ROOT/aliases/site"]
+  },
+  {
+    "pattern": "aliases/!(site)",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/aliases/!(site)",
+    "matches": []
+  },
+  {
+    "pattern": "aliases/@(site|admin)",
+    "matches": ["aliases/site"]
+  },
+  {
+    "pattern": "@ROOT/aliases/@(site|admin)",
+    "matches": ["@ROOT/aliases/site"]
+  },
+  {
+    "pattern": "aliases/[sa]*",
+    "matches": ["aliases/site"]
+  },
+  {
+    "pattern": "@ROOT/aliases/[sa]*",
+    "matches": ["@ROOT/aliases/site"]
+  },
+  {
+    "pattern": "aliases/?ite",
+    "matches": ["aliases/site"]
+  },
+  {
+    "pattern": "@ROOT/aliases/?ite",
+    "matches": ["@ROOT/aliases/site"]
+  },
+  {
+    "pattern": "aliases/{site,}/pages",
+    "matches": ["aliases/site/pages"]
+  },
+  {
+    "pattern": "@ROOT/aliases/{site,}/pages",
+    "matches": ["@ROOT/aliases/site/pages"]
+  },
+  {
+    "pattern": "aliases/{site,{admin,a.b}}/**",
+    "matches": [
+      "aliases/site/node_modules",
+      "aliases/site/node_modules/lib",
+      "aliases/site/pages",
+      "aliases/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "@ROOT/aliases/{site,{admin,a.b}}/**",
+    "matches": [
+      "@ROOT/aliases/site/node_modules",
+      "@ROOT/aliases/site/node_modules/lib",
+      "@ROOT/aliases/site/pages",
+      "@ROOT/aliases/site/pages/blog"
+    ]
+  },
+  {
+    "pattern": "apps/site/pages/blog",
+    "matches": ["apps/site/pages/blog"]
+  },
+  {
+    "pattern": "@ROOT/apps/site/pages/blog",
+    "matches": ["@ROOT/apps/site/pages/blog"]
+  },
+  {
+    "pattern": "apps/admin/src/pages",
+    "matches": ["apps/admin/src/pages"]
+  },
+  {
+    "pattern": "@ROOT/apps/admin/src/pages",
+    "matches": ["@ROOT/apps/admin/src/pages"]
+  },
+  {
+    "pattern": "apps/space name/pages",
+    "matches": ["apps/space name/pages"]
+  },
+  {
+    "pattern": "@ROOT/apps/space name/pages",
+    "matches": ["@ROOT/apps/space name/pages"]
+  },
+  {
+    "pattern": "apps/a.b/pages",
+    "matches": ["apps/a.b/pages"]
+  },
+  {
+    "pattern": "@ROOT/apps/a.b/pages",
+    "matches": ["@ROOT/apps/a.b/pages"]
+  },
+  {
+    "pattern": "apps/a[b]/pages",
+    "matches": ["apps/a[b]/pages"]
+  },
+  {
+    "pattern": "@ROOT/apps/a[b]/pages",
+    "matches": ["@ROOT/apps/a[b]/pages"]
+  },
+  {
+    "pattern": "apps/foo(bar)/pages",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/apps/foo(bar)/pages",
+    "matches": []
+  },
+  {
+    "pattern": "apps/a{b}/pages",
+    "matches": ["apps/a{b}/pages"]
+  },
+  {
+    "pattern": "@ROOT/apps/a{b}/pages",
+    "matches": ["@ROOT/apps/a{b}/pages"]
+  },
+  {
+    "pattern": "apps/bang!/pages",
+    "matches": ["apps/bang!/pages"]
+  },
+  {
+    "pattern": "@ROOT/apps/bang!/pages",
+    "matches": ["@ROOT/apps/bang!/pages"]
+  },
+  {
+    "pattern": "apps/a+b/pages",
+    "matches": ["apps/a+b/pages"]
+  },
+  {
+    "pattern": "@ROOT/apps/a+b/pages",
+    "matches": ["@ROOT/apps/a+b/pages"]
+  },
+  {
+    "pattern": "apps/.hidden/pages",
+    "matches": ["apps/.hidden/pages"]
+  },
+  {
+    "pattern": "@ROOT/apps/.hidden/pages",
+    "matches": ["@ROOT/apps/.hidden/pages"]
+  },
+  {
+    "pattern": ".hidden-app/pages",
+    "matches": [".hidden-app/pages"]
+  },
+  {
+    "pattern": "@ROOT/.hidden-app/pages",
+    "matches": ["@ROOT/.hidden-app/pages"]
+  },
+  {
+    "pattern": "apps/site/.cache/deep",
+    "matches": ["apps/site/.cache/deep"]
+  },
+  {
+    "pattern": "@ROOT/apps/site/.cache/deep",
+    "matches": ["@ROOT/apps/site/.cache/deep"]
+  },
+  {
+    "pattern": "apps/site/node_modules/lib",
+    "matches": ["apps/site/node_modules/lib"]
+  },
+  {
+    "pattern": "@ROOT/apps/site/node_modules/lib",
+    "matches": ["@ROOT/apps/site/node_modules/lib"]
+  },
+  {
+    "pattern": "apps/site.js/pages",
+    "matches": ["apps/site.js/pages"]
+  },
+  {
+    "pattern": "@ROOT/apps/site.js/pages",
+    "matches": ["@ROOT/apps/site.js/pages"]
+  },
+  {
+    "pattern": "packages/ui/src",
+    "matches": ["packages/ui/src"]
+  },
+  {
+    "pattern": "@ROOT/packages/ui/src",
+    "matches": ["@ROOT/packages/ui/src"]
+  },
+  {
+    "pattern": "packages/web/pages",
+    "matches": ["packages/web/pages"]
+  },
+  {
+    "pattern": "@ROOT/packages/web/pages",
+    "matches": ["@ROOT/packages/web/pages"]
+  },
+  {
+    "pattern": "range/app1/pages",
+    "matches": ["range/app1/pages"]
+  },
+  {
+    "pattern": "@ROOT/range/app1/pages",
+    "matches": ["@ROOT/range/app1/pages"]
+  },
+  {
+    "pattern": "range/app2/pages",
+    "matches": ["range/app2/pages"]
+  },
+  {
+    "pattern": "@ROOT/range/app2/pages",
+    "matches": ["@ROOT/range/app2/pages"]
+  },
+  {
+    "pattern": "range/app03/pages",
+    "matches": ["range/app03/pages"]
+  },
+  {
+    "pattern": "@ROOT/range/app03/pages",
+    "matches": ["@ROOT/range/app03/pages"]
+  },
+  {
+    "pattern": "range/app04/pages",
+    "matches": ["range/app04/pages"]
+  },
+  {
+    "pattern": "@ROOT/range/app04/pages",
+    "matches": ["@ROOT/range/app04/pages"]
+  },
+  {
+    "pattern": ".",
+    "matches": ["."]
+  },
+  {
+    "pattern": "@ROOT/.",
+    "matches": ["@ROOT/."]
+  },
+  {
+    "pattern": "./",
+    "matches": ["./"]
+  },
+  {
+    "pattern": "@ROOT/",
+    "matches": ["@ROOT/"]
+  },
+  {
+    "pattern": "*",
+    "matches": ["aliases", "apps", "packages", "range"]
+  },
+  {
+    "pattern": "@ROOT/*",
+    "matches": ["@ROOT/aliases", "@ROOT/apps", "@ROOT/packages", "@ROOT/range"]
+  },
+  {
+    "pattern": "**",
+    "matches": [
+      "aliases",
+      "aliases/site",
+      "aliases/site/node_modules",
+      "aliases/site/node_modules/lib",
+      "aliases/site/pages",
+      "aliases/site/pages/blog",
+      "apps",
+      "apps/a+b",
+      "apps/a+b/pages",
+      "apps/a.b",
+      "apps/a.b/pages",
+      "apps/a[b]",
+      "apps/a[b]/pages",
+      "apps/admin",
+      "apps/admin/src",
+      "apps/admin/src/pages",
+      "apps/a{b}",
+      "apps/a{b}/pages",
+      "apps/bang!",
+      "apps/bang!/pages",
+      "apps/foo(bar)",
+      "apps/foo(bar)/pages",
+      "apps/site",
+      "apps/site.js",
+      "apps/site.js/pages",
+      "apps/site/node_modules",
+      "apps/site/node_modules/lib",
+      "apps/site/pages",
+      "apps/site/pages/blog",
+      "apps/space name",
+      "apps/space name/pages",
+      "packages",
+      "packages/ui",
+      "packages/ui/src",
+      "packages/web",
+      "packages/web/pages",
+      "range",
+      "range/app03",
+      "range/app03/pages",
+      "range/app04",
+      "range/app04/pages",
+      "range/app1",
+      "range/app1/pages",
+      "range/app2",
+      "range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/**",
+    "matches": [
+      "@ROOT/aliases",
+      "@ROOT/aliases/site",
+      "@ROOT/aliases/site/node_modules",
+      "@ROOT/aliases/site/node_modules/lib",
+      "@ROOT/aliases/site/pages",
+      "@ROOT/aliases/site/pages/blog",
+      "@ROOT/apps",
+      "@ROOT/apps/a+b",
+      "@ROOT/apps/a+b/pages",
+      "@ROOT/apps/a.b",
+      "@ROOT/apps/a.b/pages",
+      "@ROOT/apps/a[b]",
+      "@ROOT/apps/a[b]/pages",
+      "@ROOT/apps/admin",
+      "@ROOT/apps/admin/src",
+      "@ROOT/apps/admin/src/pages",
+      "@ROOT/apps/a{b}",
+      "@ROOT/apps/a{b}/pages",
+      "@ROOT/apps/bang!",
+      "@ROOT/apps/bang!/pages",
+      "@ROOT/apps/foo(bar)",
+      "@ROOT/apps/foo(bar)/pages",
+      "@ROOT/apps/site",
+      "@ROOT/apps/site.js",
+      "@ROOT/apps/site.js/pages",
+      "@ROOT/apps/site/node_modules",
+      "@ROOT/apps/site/node_modules/lib",
+      "@ROOT/apps/site/pages",
+      "@ROOT/apps/site/pages/blog",
+      "@ROOT/apps/space name",
+      "@ROOT/apps/space name/pages",
+      "@ROOT/packages",
+      "@ROOT/packages/ui",
+      "@ROOT/packages/ui/src",
+      "@ROOT/packages/web",
+      "@ROOT/packages/web/pages",
+      "@ROOT/range",
+      "@ROOT/range/app03",
+      "@ROOT/range/app03/pages",
+      "@ROOT/range/app04",
+      "@ROOT/range/app04/pages",
+      "@ROOT/range/app1",
+      "@ROOT/range/app1/pages",
+      "@ROOT/range/app2",
+      "@ROOT/range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "**/",
+    "matches": [
+      "aliases",
+      "aliases/site",
+      "aliases/site/node_modules",
+      "aliases/site/node_modules/lib",
+      "aliases/site/pages",
+      "aliases/site/pages/blog",
+      "apps",
+      "apps/a+b",
+      "apps/a+b/pages",
+      "apps/a.b",
+      "apps/a.b/pages",
+      "apps/a[b]",
+      "apps/a[b]/pages",
+      "apps/admin",
+      "apps/admin/src",
+      "apps/admin/src/pages",
+      "apps/a{b}",
+      "apps/a{b}/pages",
+      "apps/bang!",
+      "apps/bang!/pages",
+      "apps/foo(bar)",
+      "apps/foo(bar)/pages",
+      "apps/site",
+      "apps/site.js",
+      "apps/site.js/pages",
+      "apps/site/node_modules",
+      "apps/site/node_modules/lib",
+      "apps/site/pages",
+      "apps/site/pages/blog",
+      "apps/space name",
+      "apps/space name/pages",
+      "packages",
+      "packages/ui",
+      "packages/ui/src",
+      "packages/web",
+      "packages/web/pages",
+      "range",
+      "range/app03",
+      "range/app03/pages",
+      "range/app04",
+      "range/app04/pages",
+      "range/app1",
+      "range/app1/pages",
+      "range/app2",
+      "range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/**/",
+    "matches": [
+      "@ROOT/aliases",
+      "@ROOT/aliases/site",
+      "@ROOT/aliases/site/node_modules",
+      "@ROOT/aliases/site/node_modules/lib",
+      "@ROOT/aliases/site/pages",
+      "@ROOT/aliases/site/pages/blog",
+      "@ROOT/apps",
+      "@ROOT/apps/a+b",
+      "@ROOT/apps/a+b/pages",
+      "@ROOT/apps/a.b",
+      "@ROOT/apps/a.b/pages",
+      "@ROOT/apps/a[b]",
+      "@ROOT/apps/a[b]/pages",
+      "@ROOT/apps/admin",
+      "@ROOT/apps/admin/src",
+      "@ROOT/apps/admin/src/pages",
+      "@ROOT/apps/a{b}",
+      "@ROOT/apps/a{b}/pages",
+      "@ROOT/apps/bang!",
+      "@ROOT/apps/bang!/pages",
+      "@ROOT/apps/foo(bar)",
+      "@ROOT/apps/foo(bar)/pages",
+      "@ROOT/apps/site",
+      "@ROOT/apps/site.js",
+      "@ROOT/apps/site.js/pages",
+      "@ROOT/apps/site/node_modules",
+      "@ROOT/apps/site/node_modules/lib",
+      "@ROOT/apps/site/pages",
+      "@ROOT/apps/site/pages/blog",
+      "@ROOT/apps/space name",
+      "@ROOT/apps/space name/pages",
+      "@ROOT/packages",
+      "@ROOT/packages/ui",
+      "@ROOT/packages/ui/src",
+      "@ROOT/packages/web",
+      "@ROOT/packages/web/pages",
+      "@ROOT/range",
+      "@ROOT/range/app03",
+      "@ROOT/range/app03/pages",
+      "@ROOT/range/app04",
+      "@ROOT/range/app04/pages",
+      "@ROOT/range/app1",
+      "@ROOT/range/app1/pages",
+      "@ROOT/range/app2",
+      "@ROOT/range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "**/pages",
+    "matches": [
+      "aliases/site/pages",
+      "apps/a+b/pages",
+      "apps/a.b/pages",
+      "apps/a[b]/pages",
+      "apps/admin/src/pages",
+      "apps/a{b}/pages",
+      "apps/bang!/pages",
+      "apps/foo(bar)/pages",
+      "apps/site.js/pages",
+      "apps/site/pages",
+      "apps/space name/pages",
+      "packages/web/pages",
+      "range/app03/pages",
+      "range/app04/pages",
+      "range/app1/pages",
+      "range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "@ROOT/**/pages",
+    "matches": [
+      "@ROOT/aliases/site/pages",
+      "@ROOT/apps/a+b/pages",
+      "@ROOT/apps/a.b/pages",
+      "@ROOT/apps/a[b]/pages",
+      "@ROOT/apps/admin/src/pages",
+      "@ROOT/apps/a{b}/pages",
+      "@ROOT/apps/bang!/pages",
+      "@ROOT/apps/foo(bar)/pages",
+      "@ROOT/apps/site.js/pages",
+      "@ROOT/apps/site/pages",
+      "@ROOT/apps/space name/pages",
+      "@ROOT/packages/web/pages",
+      "@ROOT/range/app03/pages",
+      "@ROOT/range/app04/pages",
+      "@ROOT/range/app1/pages",
+      "@ROOT/range/app2/pages"
+    ]
+  },
+  {
+    "pattern": "**/.cache/**",
+    "matches": [
+      "aliases/site/.cache",
+      "aliases/site/.cache/deep",
+      "apps/site/.cache",
+      "apps/site/.cache/deep"
+    ]
+  },
+  {
+    "pattern": "@ROOT/**/.cache/**",
+    "matches": [
+      "@ROOT/aliases/site/.cache",
+      "@ROOT/aliases/site/.cache/deep",
+      "@ROOT/apps/site/.cache",
+      "@ROOT/apps/site/.cache/deep"
+    ]
+  },
+  {
+    "pattern": "!apps/site",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/!apps/site",
+    "matches": []
+  },
+  {
+    "pattern": "!apps/*",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/!apps/*",
+    "matches": []
+  },
+  {
+    "pattern": "apps//site",
+    "matches": ["apps/site"]
+  },
+  {
+    "pattern": "@ROOT/apps//site",
+    "matches": ["@ROOT/apps/site"]
+  },
+  {
+    "pattern": "./apps/site",
+    "matches": ["./apps/site"]
+  },
+  {
+    "pattern": "@ROOT/apps/site",
+    "matches": ["@ROOT/apps/site"]
+  },
+  {
+    "pattern": "apps/not-found",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/apps/not-found",
+    "matches": []
+  },
+  {
+    "pattern": "apps/*.{js,ts}",
+    "matches": ["apps/site.js"]
+  },
+  {
+    "pattern": "@ROOT/apps/*.{js,ts}",
+    "matches": ["@ROOT/apps/site.js"]
+  },
+  {
+    "pattern": "range/app{1..4}",
+    "matches": ["range/app1", "range/app2"]
+  },
+  {
+    "pattern": "@ROOT/range/app{1..4}",
+    "matches": ["@ROOT/range/app1", "@ROOT/range/app2"]
+  },
+  {
+    "pattern": "range/app{03..04}",
+    "matches": ["range/app03", "range/app04"]
+  },
+  {
+    "pattern": "@ROOT/range/app{03..04}",
+    "matches": ["@ROOT/range/app03", "@ROOT/range/app04"]
+  },
+  {
+    "pattern": "range/app{1..4}/**",
+    "matches": ["range/app1/pages", "range/app2/pages"]
+  },
+  {
+    "pattern": "@ROOT/range/app{1..4}/**",
+    "matches": ["@ROOT/range/app1/pages", "@ROOT/range/app2/pages"]
+  },
+  {
+    "pattern": "apps/a\\[b\\]",
+    "matches": []
+  },
+  {
+    "pattern": "@ROOT/apps/a\\[b\\]",
+    "matches": []
+  }
+]

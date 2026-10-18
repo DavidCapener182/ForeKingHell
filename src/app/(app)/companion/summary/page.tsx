@@ -65,7 +65,7 @@ export default async function CompanionSummaryPage({
             summary.rows.map((row, index) => (
               <div key={`${row.label}-${index}`} className="grid gap-2 rounded-xl border p-5">
                 <dt className="text-sm text-muted-foreground">{row.label}</dt>
-                <dd className="font-semibold">{row.value}</dd>
+                <dd className="break-words font-semibold">{row.value}</dd>
                 {row.detail ? (
                   <dd className="text-sm leading-6 text-muted-foreground">{row.detail}</dd>
                 ) : null}
