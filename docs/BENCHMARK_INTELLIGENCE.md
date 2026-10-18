@@ -64,4 +64,4 @@ Existing achievements retain their original recorded evidence; legacy records wi
 
 Authenticated imports, production data reads/writes, real model calls, administrative/billing operations and retention claims have not been exercised. Browser evidence uses visibly labelled synthetic fixtures of actual components. No production migration, re-import, secret modification or unrelated PR merge occurred.
 
-The unchanged dependency audit is a release blocker, independently reproduced on clean current main. See [exact findings and separate remediation decision](DEPENDENCY_RELEASE_BLOCKER_2026_10_18.md).
+The separately approved dependency-only repair clears the unchanged high/critical audit gate. See [baseline findings and verified repair](DEPENDENCY_RELEASE_BLOCKER_2026_10_18.md). No PR101 product changes, migrations or security-policy exceptions are included.
