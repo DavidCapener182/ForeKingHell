@@ -446,7 +446,7 @@ async function BagWorkbenchPage({
                     id: "distances",
                     label: "Distances",
                     content: (
-                      <div className="grid min-w-0 gap-5">
+                      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
                         <div className={surface === "companion" ? undefined : styles.phoneExplorer}>
                           <MobileBagLadder clubs={quickBagClubs} />
                           <MobileBagDistanceExplorer clubs={quickBagClubs} />
@@ -473,7 +473,7 @@ async function BagWorkbenchPage({
                     id: "clubs",
                     label: "Clubs",
                     content: (
-                      <div className="grid min-w-0 gap-5">
+                      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
                         <QuickBagClient
                           clubs={quickBagClubs}
                           accountId={accountId}
@@ -514,7 +514,7 @@ async function BagWorkbenchPage({
                     id: "scoring",
                     label: "Scoring",
                     content: (
-                      <div className="grid min-w-0 gap-5">
+                      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
                         <ConfidenceHeatMapPanel heatMaps={confidenceHeatMaps} />
                         <BagSupportingEvidence
                           title="Scoring supporting evidence"
@@ -530,7 +530,7 @@ async function BagWorkbenchPage({
                     id: "fitting",
                     label: "Fitting",
                     content: (
-                      <div className="grid min-w-0 gap-5">
+                      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
                         <FittingStudio
                           bag={bag}
                           equipment={equipmentContext}
@@ -568,7 +568,7 @@ async function BagWorkbenchPage({
                     id: "history",
                     label: "History",
                     content: (
-                      <div className="grid min-w-0 gap-5">
+                      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
                         <BagHistoryTimeline events={historyTimeline} />
                       </div>
                     ),
@@ -577,7 +577,7 @@ async function BagWorkbenchPage({
                     id: "evidence",
                     label: "Evidence",
                     content: (
-                      <div className="grid min-w-0 gap-5">
+                      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
                         <BagScoreTrendPanel
                           points={bagScoreTrend}
                           currentScore={smartBagBuilder.currentScore}
@@ -630,7 +630,7 @@ function BagSupportingEvidence({
             data-variant="ghost"
             className={buttonVariants({
               variant: "ghost",
-              className: "h-auto w-full justify-between p-0 text-left",
+              className: "h-auto w-full justify-between whitespace-normal p-0 text-left",
             })}
           >
             <span className="min-w-0">
@@ -642,7 +642,7 @@ function BagSupportingEvidence({
             <ChevronDown className="size-4 shrink-0" aria-hidden />
           </CollapsibleTrigger>
         </div>
-        <CollapsibleContent className="grid gap-5 border-t border-border p-4">
+        <CollapsibleContent className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 border-t border-border p-4">
           {children}
         </CollapsibleContent>
       </Collapsible>
@@ -672,8 +672,8 @@ function FittingStudio({
   );
 
   return (
-    <div className="grid gap-5" data-bag-fitting-studio>
-      <div className="grid gap-4 xl:grid-cols-2">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5" data-bag-fitting-studio>
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 xl:grid-cols-2">
         <FittingFocusSection
           eyebrow="Equipment spec"
           title={`${bag.length} clubs in the active bag`}
@@ -681,14 +681,16 @@ function FittingStudio({
           href="/equipment"
           icon={<ShoppingBag className="size-5" />}
         >
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid min-w-0 gap-2 sm:grid-cols-2">
             {bag.slice(0, 6).map((club) => (
               <div
                 key={club.id}
                 className="flex items-center justify-between gap-3 border-b border-border/70 py-2 text-sm"
               >
-                <span className="font-semibold">{formatClubType(club.type)}</span>
-                <span className="truncate text-right text-muted-foreground">{club.brandModel}</span>
+                <span className="shrink-0 font-semibold">{formatClubType(club.type)}</span>
+                <span className="min-w-0 flex-1 break-words text-right text-muted-foreground [overflow-wrap:anywhere]">
+                  {club.brandModel}
+                </span>
               </div>
             ))}
           </div>
@@ -735,7 +737,7 @@ function FittingStudio({
       </div>
 
       <section aria-labelledby="fitting-wedge-matrix-title">
-        <div className="mb-3 flex items-end justify-between gap-4">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
               Scoring end
@@ -771,18 +773,23 @@ function FittingFocusSection({
   children?: React.ReactNode;
 }) {
   return (
-    <Card className="group overflow-hidden transition-colors hover:border-primary/35">
-      <CardContent className="grid h-full content-between gap-5 p-5">
-        <div>
+    <Card className="group min-w-0 transition-colors hover:border-primary/35">
+      <CardContent className="grid h-full min-w-0 grid-cols-[minmax(0,1fr)] content-between gap-5 p-5">
+        <div className="min-w-0 [overflow-wrap:anywhere]">
           <div className="flex items-center justify-between gap-3 text-primary">
             <p className="text-xs font-semibold uppercase tracking-[0.14em]">{eyebrow}</p>
             {icon}
           </div>
           <h3 className="mt-3 text-2xl font-semibold tracking-tight">{title}</h3>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
-          {children ? <div className="mt-4">{children}</div> : null}
+          {children ? <div className="mt-4 min-w-0">{children}</div> : null}
         </div>
-        <Button asChild variant="outline" size="sm" className="w-fit">
+        <Button
+          asChild
+          variant="outline"
+          size="sm"
+          className="h-auto min-h-11 w-fit max-w-full whitespace-normal"
+        >
           <Link href={href} prefetch={false}>
             Open section
           </Link>
@@ -2109,9 +2116,9 @@ function BagConfidenceLadder({
   return (
     <section
       id="bag-confidence"
-      className="grid min-w-0 scroll-mt-28 gap-4 overflow-x-clip xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.7fr)] xl:items-start"
+      className="grid min-w-0 scroll-mt-28 gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.7fr)] xl:items-start"
     >
-      <DataPanel className="min-w-0 overflow-x-clip">
+      <DataPanel className="min-w-0">
         <SectionHeader
           title="Distance ladder"
           description="Your trusted carry is the marker. The shaded rail is the expected range; the connector is the measured gap to the next club."
@@ -2137,7 +2144,7 @@ function BagConfidenceLadder({
                   <Link
                     href={`/bag/${row.id}`}
                     prefetch={false}
-                    className="focus-aaa grid min-h-24 grid-cols-[minmax(120px,0.34fr)_minmax(260px,1fr)_110px] items-center gap-5 px-5 py-4 outline-none transition-colors hover:bg-muted/35"
+                    className="focus-aaa grid min-h-24 min-w-0 grid-cols-[minmax(0,1fr)] items-center gap-3 px-4 py-4 outline-none transition-colors hover:bg-muted/35 md:grid-cols-[minmax(120px,0.34fr)_minmax(260px,1fr)_110px] md:gap-5 md:px-5"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -2149,7 +2156,7 @@ function BagConfidenceLadder({
                           {formatClubType(row.clubType)}
                         </p>
                       </div>
-                      <p className="mt-1 truncate pl-[1.125rem] text-xs text-muted-foreground">
+                      <p className="mt-1 break-words pl-[1.125rem] text-xs text-muted-foreground [overflow-wrap:anywhere]">
                         {row.brandModel}
                       </p>
                     </div>
@@ -2193,18 +2200,18 @@ function BagConfidenceLadder({
                       </div>
                     </div>
 
-                    <div className="text-right">
+                    <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 text-left md:block md:text-right">
                       <p className="text-3xl font-semibold tabular-nums tracking-tight">
                         {compactCarryYards(visualCarry)}
                         <span className="ml-1 text-sm font-medium text-muted-foreground">yd</span>
                       </p>
-                      <StatusPill tone={confidence.tone} className="mt-2">
+                      <StatusPill tone={confidence.tone} className="md:mt-2">
                         {confidence.label}
                       </StatusPill>
                     </div>
                   </Link>
                   {nextRow ? (
-                    <div className="pointer-events-none absolute -bottom-3 right-[7.35rem] z-10 flex translate-y-1/2 items-center gap-2 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold shadow-sm">
+                    <div className="pointer-events-none absolute -bottom-3 right-4 z-10 flex translate-y-1/2 items-center gap-2 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold shadow-sm md:right-[7.35rem]">
                       <span className="text-muted-foreground">Gap</span>
                       <span className={toneTextClass(gap.tone)}>{gap.value}</span>
                       <span className="sr-only">to {formatClubType(nextRow.clubType)}</span>
@@ -2217,7 +2224,7 @@ function BagConfidenceLadder({
         </CardContent>
       </DataPanel>
 
-      <div className="grid gap-3" data-bag-gapping-doctor>
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3" data-bag-gapping-doctor>
         {leadFinding ? (
           <Alert variant={leadFinding.tone === "pink" ? "destructive" : "default"}>
             {leadFinding.tone === "green" ? (
@@ -2237,7 +2244,7 @@ function BagConfidenceLadder({
             type="button"
             className={buttonVariants({
               variant: "outline",
-              className: "w-full justify-between",
+              className: "h-auto min-h-11 w-full justify-between whitespace-normal",
             })}
           >
             Review all gap findings

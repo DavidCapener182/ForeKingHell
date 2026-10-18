@@ -418,7 +418,7 @@ export function TargetDistanceSelector({
             </div>
 
             <div
-              className="mt-7 grid w-full grid-cols-3 gap-3 sm:grid-cols-5"
+              className="mt-7 grid w-full grid-cols-[repeat(auto-fit,minmax(min(100%,5rem),1fr))] gap-3"
               aria-label="Target distance presets"
             >
               {TARGET_PRESETS.map((distance) => (

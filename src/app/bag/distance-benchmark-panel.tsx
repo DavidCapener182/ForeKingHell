@@ -271,7 +271,7 @@ export function DistanceBenchmarkPanel({
                 key={value}
                 type="button"
                 variant={mode === value ? "secondary" : "ghost"}
-                className="min-h-11 px-3"
+                className="h-auto min-h-11 min-w-0 whitespace-normal px-2 text-center [overflow-wrap:anywhere] sm:px-3"
                 aria-pressed={mode === value}
                 onClick={() => setMode(value!)}
               >
@@ -656,7 +656,7 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
             <MobileDataCard
               href={`/bag/${row.clubId}`}
               title={formatClubType(row.clubType)}
-              subtitle={row.brandModel}
+              subtitle={<span className="[overflow-wrap:anywhere]">{row.brandModel}</span>}
               action={<BenchmarkBadge row={row} />}
               className="h-full rounded-[var(--mobile-radius-lg)] border border-border bg-card px-4 py-4 shadow-sm"
             >
@@ -835,7 +835,9 @@ function LevelMetricContent({
             <MobileDataCard
               href={`/bag/${comparison.row.clubId}`}
               title={formatClubType(comparison.row.clubType)}
-              subtitle={comparison.row.brandModel}
+              subtitle={
+                <span className="[overflow-wrap:anywhere]">{comparison.row.brandModel}</span>
+              }
               action={<MetricLevelBadge comparison={comparison} metric={metric} />}
               className="h-full rounded-[var(--mobile-radius-lg)] border border-border bg-card px-4 py-4 shadow-sm"
             >
@@ -1069,7 +1071,7 @@ function PeerComparisonContent({
               <MobileDataCard
                 href={`/bag/${row.clubId}`}
                 title={formatClubType(row.clubType)}
-                subtitle={row.brandModel}
+                subtitle={<span className="[overflow-wrap:anywhere]">{row.brandModel}</span>}
                 action={<PeerPercentileBadge percentile={bestClubRank?.peer?.percentile ?? null} />}
                 className="h-full rounded-[var(--mobile-radius-lg)] border border-border bg-card px-4 py-4 shadow-sm"
               >

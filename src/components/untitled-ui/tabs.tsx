@@ -9,6 +9,13 @@ import { Item } from "react-stately/Item";
 type TabItem = { id: string; label: string; content: ReactNode };
 import styles from "./tabs.module.css";
 
+function revealTab(container: HTMLDivElement, tab: HTMLElement) {
+  const left = tab.offsetLeft;
+  if (left < container.scrollLeft) container.scrollLeft = left;
+  else if (left + tab.offsetWidth > container.scrollLeft + container.clientWidth)
+    container.scrollLeft = left + tab.offsetWidth - container.clientWidth;
+}
+
 /** Explicit React Aria selection contract; local composition of Untitled UI Underline tabs. */
 export function UntitledTabs({
   items,
@@ -46,10 +53,7 @@ export function UntitledTabs({
     const revealSelected = () => {
       const active = root.querySelector<HTMLElement>('[aria-selected="true"]');
       if (!active) return;
-      const left = active.offsetLeft;
-      if (left < root.scrollLeft) root.scrollLeft = left;
-      else if (left + active.offsetWidth > root.scrollLeft + root.clientWidth)
-        root.scrollLeft = left + active.offsetWidth - root.clientWidth;
+      revealTab(root, active);
     };
     revealSelected();
     const observer = new ResizeObserver(revealSelected);
@@ -59,7 +63,14 @@ export function UntitledTabs({
   }, [selectedKey]);
   return (
     <div className={styles.root}>
-      <div className={styles.strip} ref={strip}>
+      <div
+        className={styles.strip}
+        ref={strip}
+        onFocusCapture={(event) => {
+          const tab = (event.target as HTMLElement).closest<HTMLElement>('[role="tab"]');
+          if (tab) revealTab(event.currentTarget, tab);
+        }}
+      >
         <div {...tabListProps} ref={list} className={styles.list}>
           {items.map((item) => (
             <UnderlineTab key={item.id} item={item} state={state} instanceId={instanceId} />
