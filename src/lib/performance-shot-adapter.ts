@@ -37,7 +37,9 @@ export function performanceSourceContext(
   row: PerformanceSourceRow,
   equipment: PerformanceEquipmentPeriod[] = [],
 ): PerformanceShot {
-  const raw = normaliseSourceRawJson(row.sourceRawJson);
+  // Recover metric provenance without silently changing historical cohort context.
+  const metricRaw = normaliseSourceRawJson(row.sourceRawJson);
+  const raw = typeof row.sourceRawJson === "string" ? {} : metricRaw;
   const field = (...keys: string[]) => {
     for (const key of keys) {
       const value = raw[key]?.trim();
@@ -81,8 +83,8 @@ export function performanceSourceContext(
     for (const metric of metrics) metricStatus[metric] = "unknown";
   };
   try {
-    const metadata: unknown = raw.__lmwtMetricProvenance
-      ? JSON.parse(raw.__lmwtMetricProvenance)
+    const metadata: unknown = metricRaw.__lmwtMetricProvenance
+      ? JSON.parse(metricRaw.__lmwtMetricProvenance)
       : null;
     if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
       const statuses = new Set<MetricStatus>([
@@ -106,7 +108,7 @@ export function performanceSourceContext(
           metricStatus[metric] = reading.status as MetricStatus;
         else metricStatus[metric] = "unknown";
       }
-    } else if (Object.hasOwn(raw, "__lmwtMetricProvenance")) unresolvedProvenance();
+    } else if (Object.hasOwn(metricRaw, "__lmwtMetricProvenance")) unresolvedProvenance();
   } catch {
     // An unreadable explicit record cannot be replaced with weaker legacy certainty.
     unresolvedProvenance();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { performanceSourceContext, type PerformanceSourceRow } from "./performance-shot-adapter";
-import { performanceMetricValue } from "./performance-intelligence";
+import { buildPerformanceIntelligence, performanceMetricValue } from "./performance-intelligence";
 const row: PerformanceSourceRow = {
   id: "synthetic-shot",
   clubId: "club",
@@ -165,5 +165,33 @@ describe("performance source adapter", () => {
     });
     expect(output.metricStatus?.clubSpeedMph).toBe("unknown");
     expect(performanceMetricValue(output, "clubSpeedMph")).toBeNull();
+  });
+  it("decodes metric evidence without reclassifying historical context or deduplicating its cohort", () => {
+    const encoded = JSON.stringify({
+      "Firmware Version": "fixture-firmware",
+      "Ball Type": "fixture-ball",
+      Environment: "indoor",
+      __lmwtSwingIntent: "no_ball",
+      __lmwtCanonicalSwingId: "duplicate-fixture",
+      __lmwtCanonicalDuplicateConfirmed: "true",
+      __lmwtMetricProvenance: JSON.stringify({ clubSpeedMph: { status: "measured" } }),
+    });
+    const input = [row, { ...row, id: "second-shot", carryYd: 160 }];
+    const before = input.map((shot) => performanceSourceContext(shot));
+    const after = input.map((shot) =>
+      performanceSourceContext({ ...shot, sourceRawJson: encoded }),
+    );
+    expect(
+      buildPerformanceIntelligence(after).groups.map((group) => group.potential.shotIds),
+    ).toEqual(buildPerformanceIntelligence(before).groups.map((group) => group.potential.shotIds));
+    for (const shot of after) {
+      expect(shot.settingsKey).toBeNull();
+      expect(shot.ballType).toBeNull();
+      expect(shot.environment).toBeNull();
+      expect(shot.intentKey).toBeUndefined();
+      expect(shot.canonicalSwingId).toBeNull();
+      expect(shot.canonicalDuplicateConfirmed).toBe(false);
+      expect(shot.metricStatus?.clubSpeedMph).toBe("measured");
+    }
   });
 });
