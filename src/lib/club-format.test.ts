@@ -4,6 +4,7 @@ import {
   currentBagClubs,
   formatClubIdentityLabel,
   formatCompanionClubType,
+  shotFilterClubTypes,
 } from "@/lib/club-format";
 
 describe("companion club labels", () => {
@@ -51,5 +52,9 @@ it("keeps the named Driver and 5W when unused imported club types are retired", 
   const before = structuredClone(clubs);
 
   expect(currentBagClubs(clubs)).toEqual(current);
+  expect(shotFilterClubTypes(clubs)).toEqual(["driver", "5w", "9i"]);
+  expect(shotFilterClubTypes(clubs, "3w")).toEqual(["driver", "5w", "9i", "3w"]);
+  expect(shotFilterClubTypes(clubs, "driver")).toEqual(["driver", "5w", "9i"]);
+  expect(shotFilterClubTypes(clubs, "unknown")).toEqual(["driver", "5w", "9i"]);
   expect(clubs).toEqual(before);
 });
