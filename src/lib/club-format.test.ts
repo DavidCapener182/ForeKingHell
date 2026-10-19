@@ -4,6 +4,7 @@ import {
   currentBagClubs,
   formatClubIdentityLabel,
   formatCompanionClubType,
+  shotFilterClubTypes,
 } from "@/lib/club-format";
 
 describe("companion club labels", () => {
@@ -35,4 +36,25 @@ it("distinguishes clubs sharing the same model", () => {
   expect(formatClubIdentityLabel({ type: "driver", brand: "TaylorMade", model: "Qi4D Max" })).toBe(
     "Driver · TaylorMade Qi4D Max",
   );
+});
+
+it("keeps the named Driver and 5W when unused imported club types are retired", () => {
+  const current = [
+    { type: "driver", active: true, brand: "TaylorMade", model: "Qi4D Max" },
+    { type: "5w", active: true, brand: "TaylorMade", model: "Qi4D Max" },
+    { type: "9i", active: true, brand: "TaylorMade", model: "Qi" },
+  ];
+  const retired = ["3w", "5h", "7h", "dr", "driver", "5w"].map((type) => ({
+    type,
+    active: false,
+  }));
+  const clubs = [...retired, ...current];
+  const before = structuredClone(clubs);
+
+  expect(currentBagClubs(clubs)).toEqual(current);
+  expect(shotFilterClubTypes(clubs)).toEqual(["driver", "5w", "9i"]);
+  expect(shotFilterClubTypes(clubs, "3w")).toEqual(["driver", "5w", "9i", "3w"]);
+  expect(shotFilterClubTypes(clubs, "driver")).toEqual(["driver", "5w", "9i"]);
+  expect(shotFilterClubTypes(clubs, "unknown")).toEqual(["driver", "5w", "9i"]);
+  expect(clubs).toEqual(before);
 });

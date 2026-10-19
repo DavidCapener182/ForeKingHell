@@ -1,4 +1,4 @@
-import { currentBagClubs } from "@/lib/club-format";
+import { currentBagClubs, shotFilterClubTypes } from "@/lib/club-format";
 import styles from "@/app/shots/shot-explorer.module.css";
 import {
   assessFlightEvidence,
@@ -671,7 +671,7 @@ async function getLiveShotDatabase(filters: ShotFilters) {
       value: club.id,
       label: [formatClubType(club.type), club.brand, club.model].filter(Boolean).join(" · "),
     })),
-    clubsForFilter: [...new Set(clubRows.map((club) => club.type))].filter(isTrackedClubType),
+    clubsForFilter: shotFilterClubTypes(clubRows, filters.club),
     categories: ["tee", "approach", "pitch", "chip", "full", "recovery"],
   };
 }

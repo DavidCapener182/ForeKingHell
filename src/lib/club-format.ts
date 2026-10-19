@@ -146,3 +146,14 @@ export function currentBagClubs<
     (club) => club.brand?.trim() || club.model?.trim() || !namedTypes.has(club.type),
   );
 }
+
+/** Current choices, plus an explicit historical selection so saved links remain clearable. */
+export function shotFilterClubTypes<
+  T extends { type: string; active: boolean; brand?: string | null; model?: string | null },
+>(clubs: T[], selectedType?: string): string[] {
+  const types = currentBagClubs(clubs).map((club) => club.type);
+  if (selectedType && clubs.some((club) => club.type === selectedType)) {
+    types.push(selectedType);
+  }
+  return [...new Set(types)].filter(isTrackedClubType);
+}
