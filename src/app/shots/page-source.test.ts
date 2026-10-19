@@ -13,6 +13,14 @@ const filterSource = readFileSync(
 );
 
 describe("Shot Explorer analytics workbench", () => {
+  it("uses current bag choices for filters while retaining historical shot queries", () => {
+    expect(pageSource).toContain(
+      "clubsForFilter: [...new Set(currentBagClubs(clubRows).map((club) => club.type))]",
+    );
+    expect(pageSource).toContain("clauses.push(eq(shots.clubType, filters.club))");
+    expect(pageSource).not.toContain("eq(clubs.active, true)");
+  });
+
   it("keeps desktop focused on one toolbar, the evidence table and a right detail panel", () => {
     expect(pageSource).toContain("data-shots-desktop-workbench");
     expect(pageSource).toContain("<ShotFilterToolbar");

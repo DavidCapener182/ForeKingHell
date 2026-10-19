@@ -671,7 +671,9 @@ async function getLiveShotDatabase(filters: ShotFilters) {
       value: club.id,
       label: [formatClubType(club.type), club.brand, club.model].filter(Boolean).join(" · "),
     })),
-    clubsForFilter: [...new Set(clubRows.map((club) => club.type))].filter(isTrackedClubType),
+    clubsForFilter: [...new Set(currentBagClubs(clubRows).map((club) => club.type))].filter(
+      isTrackedClubType,
+    ),
     categories: ["tee", "approach", "pitch", "chip", "full", "recovery"],
   };
 }

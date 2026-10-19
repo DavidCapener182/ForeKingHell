@@ -36,3 +36,20 @@ it("distinguishes clubs sharing the same model", () => {
     "Driver · TaylorMade Qi4D Max",
   );
 });
+
+it("keeps the named Driver and 5W when unused imported club types are retired", () => {
+  const current = [
+    { type: "driver", active: true, brand: "TaylorMade", model: "Qi4D Max" },
+    { type: "5w", active: true, brand: "TaylorMade", model: "Qi4D Max" },
+    { type: "9i", active: true, brand: "TaylorMade", model: "Qi" },
+  ];
+  const retired = ["3w", "5h", "7h", "dr", "driver", "5w"].map((type) => ({
+    type,
+    active: false,
+  }));
+  const clubs = [...retired, ...current];
+  const before = structuredClone(clubs);
+
+  expect(currentBagClubs(clubs)).toEqual(current);
+  expect(clubs).toEqual(before);
+});
