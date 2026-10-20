@@ -91,7 +91,7 @@
     "ws": "^8.21.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24",
     "@types/proj4": "^2.5.6",
@@ -99,7 +99,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.18.1",
-    "axe-core": "^4.11.4",
+    "axe-core": "^4.14.0",
     "drizzle-kit": "^0.31.10",
     "esbuild": "^0.28.1",
     "eslint": "^9",
@@ -109,7 +109,7 @@
     "prettier": "^3.8.3",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^5.0.1",
+    "vitest": "^5.0.5",
     "fast-glob": "file:./tools/eslint-fast-glob-compat/forekinghell-eslint-fast-glob-compat-1.0.5.tgz",
     "brace-expansion": "5.0.12",
     "picomatch": "4.0.7"
