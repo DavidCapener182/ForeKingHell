@@ -34,7 +34,7 @@ jobs:
       FKH_RELEASE_MANIFEST_PRIVATE_KEY: ${{ secrets.FKH_RELEASE_MANIFEST_PRIVATE_KEY }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24.15.0
           cache: npm
