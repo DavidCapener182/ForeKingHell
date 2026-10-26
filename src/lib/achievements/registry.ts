@@ -1784,11 +1784,7 @@ export type GeneratedClubPersonalBestAchievement = {
 };
 
 export type GeneratedClubMasteryMetric =
-  | "carrySpreadYd"
-  | "totalSpreadYd"
-  | "offlineAverageYd"
-  | "launchSpreadDeg"
-  | "smashAverage";
+  "carrySpreadYd" | "totalSpreadYd" | "offlineAverageYd" | "launchSpreadDeg" | "smashAverage";
 
 export type GeneratedClubMasteryAchievement = {
   id: string;

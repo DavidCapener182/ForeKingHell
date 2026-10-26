@@ -61,17 +61,15 @@ const rules: Rule[] = [
     tier: "gold",
     xp: 200,
   },
-  ...([100, 90, 85, 80] as const).map(
-    (target, index): Rule => ({
-      id: `real_break_${target}`,
-      name: `On Course: Break ${target}`,
-      description: `Shoot under ${target} in a real 18-hole round on a par-65-or-higher course.`,
-      metric: "score",
-      target,
-      tier: (["bronze", "silver", "gold", "platinum"] as const)[index],
-      xp: [50, 100, 200, 400][index],
-    }),
-  ),
+  ...([100, 90, 85, 80] as const).map((target, index): Rule => ({
+    id: `real_break_${target}`,
+    name: `On Course: Break ${target}`,
+    description: `Shoot under ${target} in a real 18-hole round on a par-65-or-higher course.`,
+    metric: "score",
+    target,
+    tier: (["bronze", "silver", "gold", "platinum"] as const)[index],
+    xp: [50, 100, 200, 400][index],
+  })),
   {
     id: "real_first_birdie",
     name: "Birdie in the Wild",

@@ -32,8 +32,7 @@ export async function GET(request: Request) {
   const queriedDatasets = await Promise.all(
     exportableDatasets.map(async (entry) => {
       const table = schema[entry.dataset as keyof typeof schema] as unknown as
-        | ExportTable
-        | undefined;
+        ExportTable | undefined;
       if (!table) {
         throw new Error(`Export table binding missing for ${entry.dataset}.`);
       }

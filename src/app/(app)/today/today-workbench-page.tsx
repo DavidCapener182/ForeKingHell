@@ -1516,15 +1516,7 @@ function DataCleaningMetric({ label, value }: { label: string; value: string }) 
 type PracticeCardStatus = "ready" | "needed" | "optional";
 type PracticeCardTone = "green" | "sky" | "pink" | "amber" | "slate";
 type PracticeIllustrationKind =
-  | "target"
-  | "golfer"
-  | "clipboard"
-  | "progress"
-  | "flag"
-  | "share"
-  | "alert"
-  | "aim"
-  | "club";
+  "target" | "golfer" | "clipboard" | "progress" | "flag" | "share" | "alert" | "aim" | "club";
 
 type PracticeFlowStep = {
   title: string;

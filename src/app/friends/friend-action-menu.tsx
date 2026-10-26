@@ -16,12 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useClientReady } from "@/hooks/use-client-ready";
 export type PeopleDirectoryStatus =
-  | "friend"
-  | "incoming"
-  | "outgoing"
-  | "suggested"
-  | "search"
-  | "blocked";
+  "friend" | "incoming" | "outgoing" | "suggested" | "search" | "blocked";
 type Operation = "request" | "accept" | "decline" | "cancel" | "remove" | "block" | "unblock";
 const labels: Record<Operation, string> = {
   request: "Send friend request",

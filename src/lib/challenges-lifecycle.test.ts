@@ -57,8 +57,4 @@ function shot(totalYd: number, reviewStatus: "included" | "restored" | ExcludedS
 }
 
 type ExcludedStatus =
-  | "suggested_exclusion"
-  | "user_excluded"
-  | "calibration"
-  | "warm_up"
-  | "launch_monitor_error";
+  "suggested_exclusion" | "user_excluded" | "calibration" | "warm_up" | "launch_monitor_error";

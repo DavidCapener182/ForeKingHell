@@ -26,10 +26,7 @@ export type ReviewEvidenceShot = {
 };
 export type AutomaticShotSuggestion = {
   classification:
-    | "Possible wrong club"
-    | "Partial swing"
-    | "Sensor anomaly"
-    | "Suggested exclusion";
+    "Possible wrong club" | "Partial swing" | "Sensor anomaly" | "Suggested exclusion";
   reason: string;
   confidence: "High" | "Moderate";
   suggestedClubId?: string;

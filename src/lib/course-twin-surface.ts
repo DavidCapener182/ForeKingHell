@@ -5,14 +5,7 @@ import type {
 } from "@/lib/course-twin-contract";
 
 export type CourseTwinSurface =
-  | "tee"
-  | "fairway"
-  | "green"
-  | "rough"
-  | "bunker"
-  | "water"
-  | "trees"
-  | "out_of_bounds";
+  "tee" | "fairway" | "green" | "rough" | "bunker" | "water" | "trees" | "out_of_bounds";
 
 type CourseTwinPlayableFeatureType = Exclude<CourseTwinFeature["type"], "course_boundary">;
 

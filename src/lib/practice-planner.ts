@@ -57,22 +57,12 @@ import { xpForAchievement } from "@/lib/achievements/xp";
 import type { ShotReviewStatus } from "@/lib/shot-review";
 
 export type PracticeSessionType =
-  | "range"
-  | "short_game"
-  | "speed"
-  | "putting"
-  | "course_warmup"
-  | "mixed";
+  "range" | "short_game" | "speed" | "putting" | "course_warmup" | "mixed";
 
 export type PracticeEnergyLevel = "fresh" | "normal" | "tired" | "niggle";
 
 export type PracticeIntent =
-  | "scoring"
-  | "confidence"
-  | "latest_weakness"
-  | "round_preparation"
-  | "distance_mapping"
-  | "speed";
+  "scoring" | "confidence" | "latest_weakness" | "round_preparation" | "distance_mapping" | "speed";
 
 export type PracticeCompletionStatus = "complete" | "partial" | "missed";
 export type PracticeBlockEvaluationResult = "passed" | "mixed" | "failed" | "insufficient_data";
@@ -4421,8 +4411,7 @@ function confidenceLabel(
 function blockDecision(
   blockItem: PracticeBlock,
   summary:
-    | { shotCount: number; playableRate: number | null; offlineAverageYd: number | null }
-    | undefined,
+    { shotCount: number; playableRate: number | null; offlineAverageYd: number | null } | undefined,
 ): PracticeComparison["decisions"][number]["decision"] {
   if (!summary || summary.shotCount === 0) {
     return "keep_priority";

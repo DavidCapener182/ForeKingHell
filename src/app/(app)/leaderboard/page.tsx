@@ -118,12 +118,7 @@ type PlayerLeaderboardSortMetric =
   | "longest-drive"
   | "source";
 type ChallengeLeaderboardSortMetric =
-  | "challenge"
-  | "template"
-  | "participants"
-  | "leader"
-  | "score"
-  | "source";
+  "challenge" | "template" | "participants" | "leader" | "score" | "source";
 type PlayerLeaderboardSortState = {
   metric: PlayerLeaderboardSortMetric;
   dir: LeaderboardSortDirection;

@@ -77,8 +77,8 @@ jobs:
       CRON_SECRET: ci-cron-secret-at-least-32-characters
       PLAYWRIGHT_E2E_AUTH_BYPASS: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -111,7 +111,7 @@ jobs:
         run: npx vitest run tests/integration/pro-feature-foundation.test.ts tests/integration/pro-round-plan-access.test.ts
       - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run test:e2e -- --project=${{ matrix.project }} --shard=${{ matrix.shardIndex || 1 }}/${{ matrix.shardTotal || 1 }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: browser-results-${{ matrix.project }}-${{ matrix.shardIndex || 1 }}
@@ -128,8 +128,8 @@ jobs:
   dependency-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -148,8 +148,8 @@ jobs:
       SCORECARD_PROOF_SECRET: ci-scorecard-proof-secret-32-characters
       CRON_SECRET: ci-cron-secret-at-least-32-characters
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -157,7 +157,7 @@ jobs:
       - run: npm run build
       - run: npm run check:route-budgets
       - run: npm run build:analyze
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: next-bundle-analysis
           path: .next/diagnostics/analyze
@@ -166,7 +166,7 @@ jobs:
       - run: npm run test:lighthouse
       - name: Save Lighthouse diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nightly-lighthouse
           path: output/lighthouse

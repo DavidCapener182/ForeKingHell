@@ -1,13 +1,7 @@
 /** Metric-level provenance. Unknown units/flags remain unresolved, never guessed. */
 export const METRIC_PROVENANCE_VERSION = "metric-provenance-v1";
 export type MetricStatus =
-  | "measured"
-  | "estimated"
-  | "derived"
-  | "reconstructed"
-  | "unknown"
-  | "unavailable"
-  | "invalid";
+  "measured" | "estimated" | "derived" | "reconstructed" | "unknown" | "unavailable" | "invalid";
 export type EvidenceMetric =
   | "carryYd"
   | "totalYd"
@@ -23,16 +17,7 @@ export type EvidenceMetric =
   | "launchAngleDeg"
   | "landAngleDeg";
 export type MetricUnit =
-  | "yd"
-  | "ft"
-  | "m"
-  | "mph"
-  | "kph"
-  | "m/s"
-  | "deg"
-  | "rpm"
-  | "ratio"
-  | "unknown";
+  "yd" | "ft" | "m" | "mph" | "kph" | "m/s" | "deg" | "rpm" | "ratio" | "unknown";
 export type MetricReading = {
   metric: EvidenceMetric;
   value: number | null;

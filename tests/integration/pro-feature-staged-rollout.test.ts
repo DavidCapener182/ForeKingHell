@@ -59,6 +59,9 @@ describe.skipIf(!enabled)("Code rollout before optional migration0062", () => {
         }),
       ).toMatchObject({ ok: true });
       expect((await getProTrialEligibility(actor.id)).eligible).toBe(false);
+      const [eligibility] = await db`select count(*)::int as total from fkh_usage_events
+        where user_id=${actor.id} and event_type='pro_trial_import_eligible'`;
+      expect(eligibility.total).toBe(1);
       vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_synthetic");
       vi.stubEnv("STRIPE_PRO_MONTHLY_PRICE_ID", "price_synthetic");
       const provider = vi.fn();

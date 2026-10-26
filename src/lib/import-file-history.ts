@@ -86,7 +86,6 @@ export async function getImportFileHistory(userId: string, params: ImportHistory
     statuses: statuses.map((row) => row.value),
     sources: sources.map((row) => row.value),
     preferredDistanceUnit: (profile?.preferredUnits === "metres" ? "meters" : "yards") as
-      | "meters"
-      | "yards",
+      "meters" | "yards",
   };
 }

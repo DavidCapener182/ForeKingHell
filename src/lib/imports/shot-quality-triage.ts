@@ -2,11 +2,7 @@ import { isShortGameTouchClubType } from "@/lib/club-format";
 import { quarantineIncompatibleTotalDistance } from "@/lib/imports/shot-metric-integrity";
 
 export type ShotQualityClassification =
-  | "stock_quality"
-  | "likely_mishit"
-  | "needs_review"
-  | "partial_shot"
-  | "bad_data_field";
+  "stock_quality" | "likely_mishit" | "needs_review" | "partial_shot" | "bad_data_field";
 
 export type ClubIdentityProvenance = "source" | "mapped_source" | "inferred" | "unknown";
 
@@ -49,11 +45,7 @@ export type EstablishedClubProfile = {
 };
 
 export type ShotQualityMetricField =
-  | "carryYd"
-  | "totalYd"
-  | "ballSpeedMph"
-  | "clubSpeedMph"
-  | "smashFactor";
+  "carryYd" | "totalYd" | "ballSpeedMph" | "clubSpeedMph" | "smashFactor";
 
 export type ShotQualityEvidenceCode =
   | "total_below_carry"

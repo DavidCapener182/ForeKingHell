@@ -1252,8 +1252,7 @@ export function maxEligibleShotDistance(
 }
 
 type AppliedImportTriageClassification =
-  | Exclude<ShotQualityClassification, "bad_data_field">
-  | "unusable_shot";
+  Exclude<ShotQualityClassification, "bad_data_field"> | "unusable_shot";
 
 export function applyImportedShotQualityTriage(
   shotsToTriage: ParsedRapsodoShot[],

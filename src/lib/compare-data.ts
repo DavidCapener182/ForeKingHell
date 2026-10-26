@@ -28,18 +28,9 @@ import { selectStockYardageShots } from "@/lib/stock-yardage";
 import { getBlockedUserIds, getFriendIds } from "@/lib/social";
 
 export type CompareFocusMode =
-  | "today"
-  | "latest-session"
-  | "session"
-  | "last-7"
-  | "last-30"
-  | "custom";
+  "today" | "latest-session" | "session" | "last-7" | "last-30" | "custom";
 export type CompareBaselineMode =
-  | "before-focus"
-  | "all-time"
-  | "previous-session"
-  | "previous-30"
-  | "custom";
+  "before-focus" | "all-time" | "previous-session" | "previous-30" | "custom";
 export type CompareConditionMode = "same" | "indoor-outdoor" | "practice-round";
 
 export type CompareFilters = {

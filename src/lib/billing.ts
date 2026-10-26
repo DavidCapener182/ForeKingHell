@@ -255,6 +255,7 @@ export async function createCheckoutSession(input: {
       "content-type": "application/x-www-form-urlencoded",
     },
     body: params,
+    signal: AbortSignal.timeout(20_000),
   }).catch(() => null);
   const payload = (await response?.json().catch(() => null)) as unknown;
 

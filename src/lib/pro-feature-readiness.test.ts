@@ -16,6 +16,7 @@ import {
 beforeEach(() => {
   vi.clearAllMocks();
   db.execute.mockResolvedValue([{ ready: false }]);
+  db.select.mockReturnValue({ from: () => ({ where: async () => [{ total: 0 }] }) });
 });
 it("hides trial offers before schema rollout without touching absent tables", async () => {
   expect(await getProTrialEligibility("owner", "free")).toMatchObject({

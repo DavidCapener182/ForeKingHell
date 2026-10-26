@@ -28,6 +28,16 @@ export async function getProTrialEligibility(
       storageReady: false,
     };
   const plan = activePlanKey ?? (await readActivePlan(userId, executor));
+  // The existing usage ledger survives a code-first rollout before migration 0062.
+  await executor.execute(sql`
+    insert into fkh_billing_trials (user_id, pro_trial_eligible_after_import_at)
+    select ${userId}::uuid, min(created_at) from fkh_usage_events
+    where user_id = ${userId}::uuid and event_type = 'pro_trial_import_eligible'
+    having count(*) > 0
+    on conflict (user_id) do update set pro_trial_eligible_after_import_at =
+      coalesce(fkh_billing_trials.pro_trial_eligible_after_import_at,
+        excluded.pro_trial_eligible_after_import_at)
+  `);
   const [trial] = await executor
     .select()
     .from(billingTrials)
@@ -89,12 +99,18 @@ export async function markTrialEligibleAfterFirstImport(
   userId: string,
   executor: BillingTrialExecutor = getDb(),
 ) {
-  if (!(await proFeatureStorageReady(executor))) return false;
   const [imports] = await executor
     .select({ total: sql<number>`count(*)::int` })
     .from(importFiles)
     .where(and(eq(importFiles.userId, userId), ne(importFiles.status, "duplicate")));
   if (imports?.total !== 1) return false;
+  await executor.execute(sql`
+    insert into fkh_usage_events (user_id, event_type, quantity)
+    select ${userId}::uuid, 'pro_trial_import_eligible', 1
+    where not exists (select 1 from fkh_usage_events
+      where user_id = ${userId}::uuid and event_type = 'pro_trial_import_eligible')
+  `);
+  if (!(await proFeatureStorageReady(executor))) return false;
   await executor
     .insert(billingTrials)
     .values({ userId, proTrialEligibleAfterImportAt: new Date() })
@@ -137,9 +153,7 @@ export async function markTrialConsumed(
   return !previous?.proTrialConsumedAt;
 }
 
-/** A durable request ID and row lock give concurrent devices the same Stripe idempotency key.
- * An uncertain attempt is never replaced automatically; a matching expired Checkout event may clear it.
- */
+/** A row lock shares one request ID across devices. Stale attempts require provider reconciliation. */
 export async function reserveProTrialCheckout(userId: string) {
   if (!(await proFeatureStorageReady()))
     throw new Error("Trial checkout is temporarily unavailable.");
@@ -157,26 +171,98 @@ export async function reserveProTrialCheckout(userId: string) {
         url: row.checkoutUrl,
         sessionId: row.checkoutSessionId,
       };
+    let requestId = row.checkoutRequestId;
+    let requestedAt = row.checkoutRequestedAt;
     if (
       row.checkoutRequestId &&
       row.checkoutRequestedAt &&
       Date.now() - row.checkoutRequestedAt.getTime() >= 23 * 60 * 60 * 1000
     ) {
-      throw new Error(
-        "Your previous trial checkout needs confirmation before another can start. Open billing again after Stripe confirms its status.",
+      // Never replay an idempotency key after Stripe may have pruned it. Search
+      // all bounded result pages before concluding that no session was created.
+      const existing = await findReservedStripeCheckout(
+        userId,
+        row.checkoutRequestId,
+        row.checkoutRequestedAt,
       );
+      if (existing?.status === "complete") throw new Error("Checkout confirmation pending.");
+      if (existing?.status === "open") {
+        const target = new URL(existing.url ?? "");
+        if (target.protocol !== "https:" || target.hostname !== "checkout.stripe.com")
+          throw new Error("Invalid recovered checkout destination.");
+        await tx
+          .update(billingTrials)
+          .set({ checkoutSessionId: existing.id, checkoutUrl: target.href, updatedAt: new Date() })
+          .where(eq(billingTrials.userId, userId));
+        return { requestId: row.checkoutRequestId, url: target.href, sessionId: existing.id };
+      }
+      requestId = null;
+      requestedAt = null;
     }
-    const requestId = row.checkoutRequestId ?? randomUUID();
+    requestId ??= randomUUID();
     await tx
       .update(billingTrials)
       .set({
         checkoutRequestId: requestId,
-        checkoutRequestedAt: row.checkoutRequestedAt ?? new Date(),
+        checkoutRequestedAt: requestedAt ?? new Date(),
+        checkoutSessionId: null,
+        checkoutUrl: null,
         updatedAt: new Date(),
       })
       .where(eq(billingTrials.userId, userId));
     return { requestId, url: null, sessionId: null };
   });
+}
+
+async function findReservedStripeCheckout(userId: string, requestId: string, requestedAt: Date) {
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+  if (!apiKey) throw new Error("Checkout reconciliation is unavailable.");
+  const params = new URLSearchParams({
+    limit: "100",
+    "created[gte]": String(Math.floor(requestedAt.getTime() / 1000) - 60),
+  });
+  const matches: Array<{
+    id: string;
+    status: "open" | "expired" | "complete";
+    url: string | null;
+  }> = [];
+  for (let page = 0; page < 5; page++) {
+    const response = await fetch(`https://api.stripe.com/v1/checkout/sessions?${params}`, {
+      headers: { authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+    const payload: unknown = await response.json();
+    if (
+      !response.ok ||
+      !payload ||
+      typeof payload !== "object" ||
+      !("data" in payload) ||
+      !Array.isArray(payload.data) ||
+      !("has_more" in payload) ||
+      typeof payload.has_more !== "boolean"
+    )
+      throw new Error("Could not confirm previous checkout.");
+    for (const entry of payload.data) {
+      if (
+        entry?.client_reference_id !== userId ||
+        entry?.metadata?.user_id !== userId ||
+        entry?.metadata?.trial_request_id !== requestId
+      )
+        continue;
+      if (typeof entry.id !== "string" || !["open", "expired", "complete"].includes(entry.status))
+        throw new Error("Unexpected checkout reconciliation result.");
+      matches.push({ id: entry.id, status: entry.status, url: entry.url ?? null });
+    }
+    if (!payload.has_more) {
+      if (matches.length > 1) throw new Error("Multiple prior checkouts require confirmation.");
+      return matches[0] ?? null;
+    }
+    const lastId = payload.data.at(-1)?.id;
+    if (typeof lastId !== "string" || lastId === params.get("starting_after"))
+      throw new Error("Incomplete checkout reconciliation.");
+    params.set("starting_after", lastId);
+  }
+  throw new Error("Checkout reconciliation needs a narrower provider review.");
 }
 
 export async function rememberProTrialCheckout(

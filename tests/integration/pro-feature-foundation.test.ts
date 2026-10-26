@@ -73,6 +73,17 @@ describe.skipIf(!enabled)("Pro feature database foundation", () => {
     expect(await markTrialEligibleAfterFirstImport(userId)).toBe(false);
     expect((await getProTrialEligibility(userId)).eligible).toBe(false);
   });
+  it("recovers first-import eligibility recorded before optional storage was available", async () => {
+    await firstImport();
+    await db!`insert into fkh_usage_events(user_id,event_type,quantity)
+      values(${userId},'pro_trial_import_eligible',1)`;
+    await firstImport();
+    expect((await getProTrialEligibility(userId)).eligible).toBe(true);
+    expect((await getProTrialEligibility(userId)).eligible).toBe(true);
+    const [trial] =
+      await db!`select count(*)::int total from fkh_billing_trials where user_id=${userId}`;
+    expect(trial.total).toBe(1);
+  });
   it("gives simultaneous devices one durable checkout request and preserves unconsumed eligibility", async () => {
     await firstImport();
     await markTrialEligibleAfterFirstImport(userId);
@@ -328,6 +339,96 @@ describe.skipIf(!enabled)("Pro feature database foundation", () => {
     );
     expect(results.filter(Boolean)).toHaveLength(1);
   });
+  it("rotates a stale sessionless request only after a complete provider scan, sharing the new reservation", async () => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_synthetic");
+    await firstImport();
+    await markTrialEligibleAfterFirstImport(userId);
+    const old = await reserveProTrialCheckout(userId);
+    await db!`update fkh_billing_trials set checkout_requested_at=now()-interval '25 hours' where user_id=${userId}`;
+    const provider = vi.fn(async () => Response.json({ data: [], has_more: false }));
+    vi.stubGlobal("fetch", provider);
+    const reservations = await Promise.all(
+      Array.from({ length: 5 }, () => reserveProTrialCheckout(userId)),
+    );
+    expect(new Set(reservations.map((r) => r.requestId)).size).toBe(1);
+    expect(reservations[0].requestId).not.toBe(old.requestId);
+    expect(provider).toHaveBeenCalledTimes(1);
+    expect((await getProTrialEligibility(userId)).consumed).toBe(false);
+  });
+  it("recovers a lost provider response from a later result page without creating another session", async () => {
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_synthetic");
+    await firstImport();
+    await markTrialEligibleAfterFirstImport(userId);
+    const old = await reserveProTrialCheckout(userId);
+    await db!`update fkh_billing_trials set checkout_requested_at=now()-interval '25 hours' where user_id=${userId}`;
+    const provider = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: [{ id: "cs_other", client_reference_id: "someone_else" }],
+          has_more: true,
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: [
+            {
+              id: "cs_recovered",
+              status: "open",
+              url: "https://checkout.stripe.com/c/pay/recovered",
+              client_reference_id: userId,
+              metadata: { user_id: userId, trial_request_id: old.requestId },
+            },
+          ],
+          has_more: false,
+        }),
+      );
+    vi.stubGlobal("fetch", provider);
+    expect(await reserveProTrialCheckout(userId)).toEqual({
+      requestId: old.requestId,
+      sessionId: "cs_recovered",
+      url: "https://checkout.stripe.com/c/pay/recovered",
+    });
+    expect(provider.mock.calls[1][0]).toContain("starting_after=cs_other");
+    expect((await reserveProTrialCheckout(userId)).sessionId).toBe("cs_recovered");
+    expect(provider).toHaveBeenCalledTimes(2);
+  });
+  it.each(["complete", "unavailable", "incomplete", "ambiguous"])(
+    "does not rotate a stale reservation when provider evidence is %s",
+    async (kind) => {
+      vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_synthetic");
+      await firstImport();
+      await markTrialEligibleAfterFirstImport(userId);
+      const old = await reserveProTrialCheckout(userId);
+      await db!`update fkh_billing_trials set checkout_requested_at=now()-interval '25 hours' where user_id=${userId}`;
+      const match = {
+        id: "cs_existing",
+        status: "complete",
+        client_reference_id: userId,
+        metadata: { user_id: userId, trial_request_id: old.requestId },
+      };
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          kind === "unavailable"
+            ? Response.json({ error: "unavailable" }, { status: 503 })
+            : Response.json({
+                data:
+                  kind === "incomplete"
+                    ? []
+                    : kind === "ambiguous"
+                      ? [match, { ...match, id: "cs_duplicate", status: "expired" }]
+                      : [match],
+                has_more: kind === "incomplete",
+              }),
+        ),
+      );
+      await expect(reserveProTrialCheckout(userId)).rejects.toThrow();
+      const [row] =
+        await db!`select checkout_request_id from fkh_billing_trials where user_id=${userId}`;
+      expect(row.checkout_request_id).toBe(old.requestId);
+    },
+  );
   it("rolls trial consumption and entitlements back together when entitlement insertion fails", async () => {
     await firstImport();
     await markTrialEligibleAfterFirstImport(userId);

@@ -37,8 +37,7 @@ export function CourseTwinShowcase() {
     const frame = window.requestAnimationFrame(() => {
       const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const connection = (navigator as Navigator & { connection?: unknown }).connection as
-        | { saveData?: boolean; effectiveType?: string }
-        | undefined;
+        { saveData?: boolean; effectiveType?: string } | undefined;
       const lowPowerConnection =
         connection?.saveData ||
         connection?.effectiveType === "slow-2g" ||

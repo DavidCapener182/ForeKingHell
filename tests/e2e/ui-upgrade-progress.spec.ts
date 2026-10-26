@@ -38,7 +38,10 @@ test("P01: shared URL tabs and explicit unavailable comparison across surfaces",
       await page.setViewportSize(viewport);
       const tabs = page.getByRole("tablist", { name: "Progress sections" });
       await expect(tabs).toBeVisible();
-      await expect(page.locator("[data-progress-tabs]:visible")).toHaveAttribute("data-ready", "true");
+      await expect(page.locator("[data-progress-tabs]:visible")).toHaveAttribute(
+        "data-ready",
+        "true",
+      );
       await expect(
         page.getByRole("heading", { level: 1, name: "Progress", exact: true }),
       ).toHaveCount(1);

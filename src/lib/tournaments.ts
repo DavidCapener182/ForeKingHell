@@ -95,8 +95,7 @@ export type RankedTournamentStanding = RankableTournamentStanding & {
 };
 
 type TournamentDb =
-  | ReturnType<typeof getDb>
-  | Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+  ReturnType<typeof getDb> | Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 
 type SessionRow = typeof sessions.$inferSelect;
 type TeeSetRow = typeof teeSets.$inferSelect;
