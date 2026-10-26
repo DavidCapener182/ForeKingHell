@@ -68,8 +68,20 @@ jobs:
       - name: Route JavaScript budgets
         run: npm run check:route-budgets
 
+      - name: Install Chromium system dependencies
+        timeout-minutes: 3
+        run: npx playwright install-deps chromium
+
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 7
+        run: |
+          for attempt in 1 2 3; do
+            if timeout 120s npx playwright install chromium; then
+              exit 0
+            fi
+            echo "Chromium download attempt ${attempt}/3 failed."
+          done
+          exit 1
 
       - name: Public authentication smoke
         run: npx playwright test tests/e2e/auth.spec.ts --project=chromium
