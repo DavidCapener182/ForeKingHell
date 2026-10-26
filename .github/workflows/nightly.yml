@@ -12,6 +12,11 @@ jobs:
   browser-matrix:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     services:
       postgres:
         image: postgres:17-alpine
@@ -63,10 +68,26 @@ jobs:
           await sql.end();
           NODE
       - run: npm run db:migrate
+      - name: Trial and round-plan database acceptance
+        if: matrix.shard == 1
+        env:
+          RUN_PRO_FEATURE_DB_TESTS: "1"
+        run: npx vitest run tests/integration/pro-feature-foundation.test.ts tests/integration/pro-round-plan-access.test.ts
       - run: npx playwright install --with-deps chromium firefox webkit
-      - run: npm run test:e2e
-      - run: npm run build
-      - run: npm run test:lighthouse
+      - name: Browser coverage
+        timeout-minutes: 38
+        run: npx playwright test --shard=${{ matrix.shard }}/8 --reporter=list,blob,html
+      - name: Save browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-playwright-${{ matrix.shard }}
+          path: |
+            blob-report
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7
 
   dependency-audit:
     runs-on: ubuntu-latest
@@ -105,3 +126,13 @@ jobs:
           name: next-bundle-analysis
           path: .next/diagnostics/analyze
           retention-days: 14
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:lighthouse
+      - name: Save Lighthouse diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-lighthouse
+          path: output/lighthouse
+          if-no-files-found: ignore
+          retention-days: 7

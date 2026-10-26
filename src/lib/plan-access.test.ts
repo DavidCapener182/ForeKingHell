@@ -6,6 +6,7 @@ import type { PlanKey } from "@/lib/billing-plan-catalog";
 
 const plans: PlanKey[] = ["free", "plus", "pro", "coach", "full"];
 const expected: Record<PaidFeature, boolean[]> = {
+  course_twin_round_plan: [false, false, true, true, true],
   advanced_analytics: [false, true, true, true, true],
   private_competitions: [false, true, true, true, true],
   share_customisation: [false, true, true, true, true],

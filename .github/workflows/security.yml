@@ -39,6 +39,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Verify exact lint-evidence false-positive fingerprints
+        run: node scripts/verification/verify-lint-scan-fingerprints.mjs
       - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

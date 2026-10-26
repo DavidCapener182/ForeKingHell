@@ -1,6 +1,7 @@
 import type { PlanKey } from "@/lib/billing-plan-catalog";
 
 export const paidFeatures = {
+  course_twin_round_plan: { minimumPlan: "pro", label: "Course Twin round plan (all 18 holes)" },
   advanced_analytics: { minimumPlan: "plus", label: "Advanced analytics and saved comparisons" },
   private_competitions: { minimumPlan: "plus", label: "Private competitions" },
   share_customisation: { minimumPlan: "plus", label: "Portrait share-card exports" },

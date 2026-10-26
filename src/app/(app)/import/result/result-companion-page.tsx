@@ -1,3 +1,4 @@
+import { ImportAllowanceSummary } from "@/app/import/import-allowance-panel";
 import Link from "next/link";
 import { ImportResultShotReview } from "@/app/import/import-result-shot-review";
 import { ImportResultRecovery, ImportPracticeReview } from "@/app/import/import-result-sections";
@@ -35,6 +36,7 @@ export default async function ImportResultCompanionPage({
 
   return (
     <PageShell>
+      <ImportAllowanceSummary />
       <MobileAppShell className="gap-6" data-companion-import-result>
         <UntitledPageHeader
           title={result.isRound ? "Round saved" : "Session saved"}

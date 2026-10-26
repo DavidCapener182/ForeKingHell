@@ -1,3 +1,5 @@
+import { getActivePlanKeyForUser } from "@/lib/billing";
+import { planHasFeature } from "@/lib/plan-access";
 import { getCurrentUser } from "@/lib/current-user";
 import { getCourseTwinBagProfiles, getCourseTwinManifest } from "@/lib/course-twin-data";
 import { getMobileCourseTwinBagProfiles } from "@/lib/mobile-quick-bag-data";
@@ -18,6 +20,23 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
   if (!Number.isInteger(requestedHole) || requestedHole < 1 || requestedHole > 18) {
     return Response.json({ error: "holeNumber must be an integer from 1 to 18" }, { status: 400 });
   }
+  const preview = query.get("preview");
+  if (preview !== null && preview !== "1")
+    return Response.json({ error: "Unknown preview" }, { status: 400 });
+  if (
+    (preview === "1" && requestedHole !== 1) ||
+    (requestedHole > 1 &&
+      !planHasFeature(await getActivePlanKeyForUser(user.id), "course_twin_round_plan"))
+  )
+    return Response.json(
+      {
+        error: "Full 18-hole planning requires Pro",
+        code: "PLAN_REQUIRED",
+        minimumPlan: "pro",
+        upgradeUrl: "/billing?required=pro&feature=course_twin_round_plan",
+      },
+      { status: 403, headers: { "Cache-Control": "private, no-store" } },
+    );
   const manifest = await getCourseTwinManifest({ userId: user.id, courseId });
   if (!manifest) return Response.json({ error: "Course Twin not found" }, { status: 404 });
   if (!manifest.holes.some((hole) => hole.holeNumber === requestedHole)) {

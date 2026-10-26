@@ -1,4 +1,5 @@
 "use client";
+import { useImportAllowance } from "./import-allowance-panel";
 import Link from "next/link";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -16,6 +17,8 @@ export function ImportSourceChooser({
   companion?: boolean;
 }) {
   const [source, setSource] = useState(initialSource);
+  const allowance = useImportAllowance();
+  const uploadBlocked = source === "csv" && allowance.state?.allowed === false;
   const query = useSearchParams();
   const next = new URLSearchParams(query.toString());
   next.set("source", source);
@@ -58,14 +61,18 @@ export function ImportSourceChooser({
         ]}
       />
       <div className="flex flex-wrap items-center gap-3">
-        <Button asChild className="min-h-11">
-          <Link href={href} prefetch={false}>
-            {source === "rapsodo"
-              ? "Continue to R-Cloud"
-              : source === "sample"
-                ? "Preview sample"
-                : "Choose CSV files"}
-          </Link>
+        <Button asChild={!uploadBlocked} disabled={uploadBlocked} className="min-h-11">
+          {uploadBlocked ? (
+            <span>Choose CSV files</span>
+          ) : (
+            <Link href={href} prefetch={false}>
+              {source === "rapsodo"
+                ? "Continue to R-Cloud"
+                : source === "sample"
+                  ? "Preview sample"
+                  : "Choose CSV files"}
+            </Link>
+          )}
         </Button>
         <Button asChild variant="ghost" className="min-h-11">
           <Link href="/rounds/new">

@@ -15,6 +15,6 @@ describe("Drizzle migration journal", () => {
       expect(existsSync(resolve(root, `drizzle/${entry.tag}.sql`))).toBe(true);
     }
 
-    expect(journal.entries.at(-1)?.tag).toBe("0061_round_load_weighting");
+    expect(journal.entries.at(-1)?.tag).toBe("0062_pro_trial_and_round_plan");
   });
 });

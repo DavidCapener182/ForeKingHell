@@ -16,10 +16,15 @@ These are launch constraints, not hidden failures.
 - OpenAI coach and scorecard routes require `OPENAI_API_KEY`; rules-based fallbacks should remain understandable when the key is absent.
 - Stripe billing should not be shown to testers unless price IDs and webhook verification are configured in the target environment.
 - Course rating/slope and scorecard proof can still be incomplete for manual or imported rounds; Data Health should call this out.
-- `npm audit --audit-level=high` exits successfully. The full registry audit currently reports 10
-  moderate transitive advisories in OpenTelemetry/Vercel observability and esbuild under Drizzle
-  tooling. npm's proposed remediations require breaking OpenTelemetry or Drizzle changes, so they
-  are tracked for upstream-compatible releases rather than force-applied to production.
+- As of 16 October 2026, the approved, narrowly scoped Next ESLint directory adapter
+  removes the vulnerable fast-glob/micromatch/braces chain while preserving the recorded
+  lint behavior. The unchanged high-severity audit gate passes: 11 moderate, zero high,
+  zero critical. The adapter requires maintenance when the pinned Next caller changes;
+  see `LINT_COMPATIBILITY_RELEASE_2026_10_16.md`. No advisory waiver was renewed.
+- Production migration 0062 remains unapplied. Schema readiness guards keep ordinary
+  billing/imports available while hiding trial offers and disabling round-plan persistence
+  until both new tables exist. Activating these capabilities needs a separately approved
+  migration and real preview/payment acceptance.
 - The live rollback-only RLS matrix verifies owner, coach, viewer, editor, friend, stranger, blocked,
   group-moderator, administrator and anonymous boundaries. It does not replace deployed-preview
   browser verification or explicit user scoping for privileged application-server queries.

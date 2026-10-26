@@ -1,0 +1,52 @@
+[
+  {
+    "pattern": "apps/*",
+    "result": ["ROOT/apps/a.b", "ROOT/apps/admin", "ROOT/apps/site", "ROOT/apps/space name"]
+  },
+  {
+    "pattern": "apps/**",
+    "result": [
+      "ROOT/apps/a.b",
+      "ROOT/apps/a.b/pages",
+      "ROOT/apps/admin",
+      "ROOT/apps/admin/src",
+      "ROOT/apps/admin/src/pages",
+      "ROOT/apps/site",
+      "ROOT/apps/site/pages",
+      "ROOT/apps/space name",
+      "ROOT/apps/space name/pages"
+    ]
+  },
+  {
+    "pattern": "apps/{site,admin}",
+    "result": ["ROOT/apps/admin", "ROOT/apps/site"]
+  },
+  {
+    "pattern": "apps/+(site|admin)",
+    "result": ["ROOT/apps/admin", "ROOT/apps/site"]
+  },
+  {
+    "pattern": "apps/space name",
+    "result": ["ROOT/apps/space name"]
+  },
+  {
+    "pattern": "apps/.*",
+    "result": ["ROOT/apps/.hidden"]
+  },
+  {
+    "pattern": "apps/no-match",
+    "result": []
+  },
+  {
+    "pattern": "apps/site",
+    "result": ["ROOT/apps/site"]
+  },
+  {
+    "pattern": "apps/*/pages",
+    "result": ["ROOT/apps/a.b/pages", "ROOT/apps/site/pages", "ROOT/apps/space name/pages"]
+  },
+  {
+    "pattern": "!apps/site",
+    "result": []
+  }
+]

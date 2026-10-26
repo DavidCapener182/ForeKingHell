@@ -37,14 +37,21 @@ const renderOrder: CourseTwinFeature["type"][] = [
 export function CourseTwinMobilePlan({
   manifest,
   hole,
+  selectedIntent,
+  allowCustomClub = true,
+  onIntentChange,
 }: {
   manifest: CourseTwinManifest;
   hole: CourseTwinHole;
+  selectedIntent?: MobilePlanIntent;
+  allowCustomClub?: boolean;
+  onIntentChange?: (intent: MobilePlanIntent) => void;
 }) {
   const [document, setDocument] = useState<CourseTwinStrategyDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
-  const [intent, setIntent] = useState<MobilePlanIntent>("normal");
+  const [localIntent, setIntent] = useState<MobilePlanIntent>("normal");
+  const intent = selectedIntent ?? localIntent;
   const [customClub, setCustomClub] = useState<string | null>(null);
   useEffect(() => {
     const controller = new AbortController();
@@ -213,6 +220,7 @@ export function CourseTwinMobilePlan({
                       aria-pressed={!customClub && intent === value}
                       onClick={() => {
                         setIntent(value);
+                        onIntentChange?.(value);
                         setCustomClub(null);
                       }}
                     >
@@ -233,30 +241,48 @@ export function CourseTwinMobilePlan({
                   </p>
                   <p>
                     <strong>{Math.round(modelledHazardChance(selected) * 100)}%</strong>
-                    <span>modelled hazard landings</span>
+                    <span>Modelled hazard chance</span>
                   </p>
                 </div>
               </>
             ) : (
               <>
-                <PlanClubPicker
-                  document={document}
-                  selected={selected}
-                  onChange={setCustomClub}
-                  label="Preview club"
-                />
+                {allowCustomClub ? (
+                  <PlanClubPicker
+                    document={document}
+                    selected={selected}
+                    onChange={setCustomClub}
+                    label="Preview club"
+                  />
+                ) : (
+                  <h2>
+                    {formatClubType(selected.clubType)} · {Math.round(selected.carryMedianYd)}y
+                    carry
+                  </h2>
+                )}
                 <p className={styles.planReason}>
                   Your measured carry and spread, placed from the reference tee. Actual hazards and
                   tee position need checking.
                 </p>
               </>
             )}
+            <p className="text-sm">
+              Confidence: {selected.confidence.replaceAll("_", " ")}
+              {selected.evidenceWindow?.lowCarryYd != null &&
+              selected.evidenceWindow?.highCarryYd != null
+                ? ` · measured carry window ${Math.round(selected.evidenceWindow.lowCarryYd)}–${Math.round(selected.evidenceWindow.highCarryYd)}y`
+                : ""}
+            </p>
+            <p className="text-sm text-muted-foreground">{document.disclosure}</p>
+            {!mappedSurfaces ? (
+              <p className="text-sm">Estimated outline — treat hazards cautiously.</p>
+            ) : null}
             <details className={styles.planEvidence}>
               <summary>
                 {selected.sampleSize} trusted shots · view evidence
                 <ChevronDown aria-hidden />
               </summary>
-              {mappedSurfaces ? (
+              {mappedSurfaces && allowCustomClub ? (
                 <PlanClubPicker
                   document={document}
                   selected={selected}
@@ -300,15 +326,19 @@ export function CourseTwinMobilePlan({
             <h2>
               {error
                 ? "Strategy unavailable"
-                : document
-                  ? "More shot evidence needed"
-                  : "Finding your club"}
+                : document?.clubs.length
+                  ? "No measured option for this intent"
+                  : document
+                    ? "More shot evidence needed"
+                    : "Finding your club"}
             </h2>
             <p>
               {error ??
-                (document
-                  ? "Add trusted full-swing carry and side readings to model this hole."
-                  : "Using your latest trusted bag evidence.")}
+                (document?.clubs.length
+                  ? "Choose Normal to view your measured recommendation. No alternative is invented."
+                  : document
+                    ? "Add trusted full-swing carry and side readings to model this hole."
+                    : "Using your latest trusted bag evidence.")}
             </p>
             {error ? (
               <button

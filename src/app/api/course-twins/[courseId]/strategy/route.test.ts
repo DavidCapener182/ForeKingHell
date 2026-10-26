@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   user: vi.fn(),
+  plan: vi.fn(),
   manifest: vi.fn(),
   mobile: vi.fn(),
   stock: vi.fn(),
   build: vi.fn(),
 }));
+vi.mock("@/lib/billing", () => ({ getActivePlanKeyForUser: mocks.plan }));
 vi.mock("@/lib/current-user", () => ({ getCurrentUser: mocks.user }));
 vi.mock("@/lib/course-twin-data", () => ({
   getCourseTwinManifest: mocks.manifest,
@@ -20,6 +22,7 @@ const request = (query = "") =>
   });
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.plan.mockResolvedValue("pro");
   mocks.user.mockResolvedValue({ id: "owner" });
   mocks.manifest.mockResolvedValue({ holes: [{ holeNumber: 1 }] });
   mocks.mobile.mockResolvedValue([{ clubId: "mobile" }]);
@@ -44,6 +47,28 @@ describe("Course Twin strategy evidence routing", () => {
     expect((await request("holeNumber=2")).status).toBe(404);
     expect(mocks.mobile).not.toHaveBeenCalled();
     expect(mocks.stock).not.toHaveBeenCalled();
+  });
+  it("gates every hole after the teaser for Free and Plus, including direct requests", async () => {
+    for (const plan of ["free", "plus"]) {
+      mocks.plan.mockResolvedValue(plan);
+      expect((await request("holeNumber=1")).status).toBe(200);
+      for (let hole = 2; hole <= 18; hole++)
+        expect((await request(`holeNumber=${hole}`)).status).toBe(403);
+      expect((await request("holeNumber=18&preview=1")).status).toBe(403);
+    }
+    expect((await request("preview=yes")).status).toBe(400);
+  });
+  it("allows every mapped hole for Pro, Coach and Full, and validates numeric bounds", async () => {
+    mocks.manifest.mockResolvedValue({
+      holes: Array.from({ length: 18 }, (_, i) => ({ holeNumber: i + 1 })),
+    });
+    for (const plan of ["pro", "coach", "full"]) {
+      mocks.plan.mockResolvedValue(plan);
+      for (let hole = 1; hole <= 18; hole++)
+        expect((await request(`holeNumber=${hole}`)).status).toBe(200);
+    }
+    for (const hole of ["0", "19", "1.5", "NaN"])
+      expect((await request(`holeNumber=${hole}`)).status).toBe(400);
   });
   it("does not silently substitute stock evidence when mobile dispersion is insufficient", async () => {
     mocks.mobile.mockResolvedValue([]);

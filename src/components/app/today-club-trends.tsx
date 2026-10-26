@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   clubFamilies,
   compareClubSessions,
@@ -265,9 +265,14 @@ export function TodayClubTrends({
       <Tabs
         value={club?.clubId ?? ""}
         onValueChange={(id) => chooseClub(latestSeries(clubs, id)!)}
-        className="min-w-0"
+        className="contents"
       >
-        <div className="min-w-0 overflow-x-auto">
+        <div
+          role="region"
+          aria-label="Progress club choices"
+          tabIndex={0}
+          className="min-w-0 overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring"
+        >
           <TabsList aria-label="Progress club" className="h-auto justify-start">
             {physicalClubs
               .filter((c) => c.family === activeFamily)
@@ -294,517 +299,560 @@ export function TodayClubTrends({
               })}
           </TabsList>
         </div>
-      </Tabs>
-      <Tabs
-        value={metricKey}
-        onValueChange={(key) => update({ cpMetric: key })}
-        className="min-w-0"
-      >
-        <div className="min-w-0 overflow-x-auto">
-          <TabsList aria-label="Progress metric" className="h-auto justify-start">
-            {trendMetrics.map((m) => (
-              <TabsTrigger key={m.key} value={m.key} className="min-h-11 whitespace-nowrap">
-                {m.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
-      </Tabs>
-      <div className="grid min-w-0 gap-3 md:grid-cols-2">
-        {club && (
-          <label className="grid min-w-0 gap-1 text-sm">
-            Comparable series
-            <select
-              aria-label="Comparable series"
-              className={`${controlClass} w-full`}
-              value={club.id}
-              onChange={(e) => update({ cpSeries: e.target.value, cpSession: null })}
+        <TabsContent value={club?.clubId ?? ""} className="contents">
+          <Tabs
+            value={metricKey}
+            onValueChange={(key) => update({ cpMetric: key })}
+            className="contents"
+          >
+            <div
+              role="region"
+              aria-label="Progress metric choices"
+              tabIndex={0}
+              className="min-w-0 overflow-x-auto focus-visible:outline-2 focus-visible:outline-ring"
             >
-              {clubs
-                .filter((c) => c.clubId === club.clubId)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {provenance(c)}
-                  </option>
+              <TabsList aria-label="Progress metric" className="h-auto justify-start">
+                {trendMetrics.map((m) => (
+                  <TabsTrigger key={m.key} value={m.key} className="min-h-11 whitespace-nowrap">
+                    {m.label}
+                  </TabsTrigger>
                 ))}
-            </select>
-          </label>
-        )}
-        {club && (
-          <label className="grid min-w-0 gap-1 text-sm">
-            Comparison upload
-            <select
-              aria-label="Comparison upload"
-              className={`${controlClass} w-full`}
-              value={sessionId ?? ""}
-              onChange={(e) => update({ cpSession: e.target.value })}
-            >
-              {selection.unavailable && (
-                <option value={sessionId}>Requested upload unavailable</option>
-              )}
-              {club.points
-                .filter((p) => mode === "dashboard" || p.current)
-                .map((p) => (
-                  <option key={p.sessionId} value={p.sessionId}>
-                    {p.date} · {p.fileName ?? "Upload"} · {p.sessionId.slice(0, 8)}
-                  </option>
-                ))}
-            </select>
-          </label>
-        )}
-        {metric.clubEvidence && (
-          <label className="grid min-w-0 gap-1 text-sm">
-            Club data evidence
-            <select
-              aria-label="Club data evidence"
-              className={`${controlClass} w-full`}
-              value={evidence}
-              onChange={(e) => update({ cpEvidence: e.target.value })}
-            >
-              {evidenceClasses.map((trust) => (
-                <option key={trust}>{trust}</option>
-              ))}
-            </select>
-          </label>
-        )}
-      </div>
-      {comparison && !selection.unavailable ? (
-        <>
-          <p className="text-xs text-muted-foreground">
-            {metric.description} · {provenance(club!)}
-            {metric.clubEvidence ? ` · ${evidence} club data` : ""}. Provider does not establish
-            unchanged device identity.
-            {club?.playContext === "unknown"
-              ? " Practice context is unrecorded; comparability is limited."
-              : ""}
-          </p>
-          <dl data-progress-cards className="grid min-w-0 gap-3 sm:grid-cols-3">
-            {(
-              [
-                ["Current", comparison.a, comparison.current],
-                ["Previous", comparison.b, comparison.previous],
-              ] as const
-            ).map(([title, reading, point]) => (
-              <div key={title} className="min-w-0 rounded-xl border p-3">
-                <dt className="text-sm text-muted-foreground">{title}</dt>
-                <dd className="mt-1 text-xl font-semibold tabular-nums sm:text-2xl">
-                  {formatTrendValue(reading.value, metricKey)}
-                </dd>
-                <dd className="mt-1 text-xs">
-                  {reading.count} readings ·{" "}
-                  {point?.date ??
-                    (history === "complete" ? "No baseline session" : "History unavailable")}
-                </dd>
-                {point && (
-                  <dd className="break-words text-xs text-muted-foreground">
-                    {point.fileName ?? point.sessionId.slice(0, 8)}
-                  </dd>
-                )}
-              </div>
-            ))}
-            <div className="min-w-0 rounded-xl border p-3">
-              <dt className="text-sm text-muted-foreground">Change</dt>
-              <dd className="mt-1 text-xl font-semibold tabular-nums sm:text-2xl">
-                {comparison.delta === null
-                  ? "Unavailable"
-                  : `${comparison.delta >= 0 ? "+" : "−"}${formatTrendValue(Math.abs(comparison.delta), metricKey)}`}
-              </dd>
-              <dd className="mt-1 text-sm">{comparison.text}</dd>
+              </TabsList>
             </div>
-          </dl>
-          {comparison.sampleContext && (
-            <p className="text-xs text-muted-foreground">{comparison.sampleContext}</p>
-          )}
-        </>
-      ) : (
-        <p role="status">
-          {clubs.length
-            ? "Choose an available club and comparable upload. Explicit unavailable scopes are not filled from another session."
-            : "No eligible full shots for an active saved club in the selected practice scope."}
-        </p>
-      )}
-      <div>
-        <h3 className="mb-2 text-sm font-semibold">Whole bag · {metric.label}</h3>
-        <div aria-label="Whole-bag changes" className="flex min-w-0 gap-2 overflow-x-auto pb-2">
-          {bagClubs.map((c) => {
-            const id =
-              c.id === club?.id && sessionId
-                ? sessionId
-                : mode === "today" && query.has("cpSession")
-                  ? query.get("cpSession")!
-                  : (c.points.findLast((p) => p.current)?.sessionId ?? "");
-            const p = compareClubSessions(
-              c,
-              id,
-              metricKey,
-              c.id === club?.id ? evidence : c.defaultEvidence,
-              history,
-            );
-            return (
-              <button
-                type="button"
-                key={c.clubId}
-                aria-pressed={c.id === club?.id}
-                className={`${controlClass} w-44 shrink-0 p-3 text-left ${c.id === club?.id ? "border-primary bg-secondary" : ""}`}
-                onClick={() =>
-                  update({
-                    cpClub: c.clubId,
-                    cpSeries: c.id,
-                    cpSession: id,
-                    cpEvidence: c.defaultEvidence,
-                  })
-                }
-              >
-                <span className="block truncate font-medium" title={c.label}>
-                  {c.label}
-                </span>
-                <span className="block tabular-nums">
-                  {formatTrendValue(p.a.value, metricKey)} ·{" "}
-                  {p.delta === null
-                    ? p.text
-                    : `${p.delta >= 0 ? "+" : "−"}${formatTrendValue(Math.abs(p.delta), metricKey)}`}
-                </span>
-                <span className="block truncate text-xs text-muted-foreground">
-                  {Math.min(p.a.count, p.b.count) < 10 ? "Early signal · " : ""}
-                  {metric.clubEvidence ? `${c.defaultEvidence} · ` : ""}
-                  {c.source} · {c.playContext}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      {club && !selection.unavailable && (
-        <>
-          <div className="flex flex-wrap items-center gap-2" aria-label="History controls">
-            {[5, 10, 20].map((n) => (
-              <Button
-                key={n}
-                className="min-h-11"
-                variant={windowSize === n ? "secondary" : "outline"}
-                aria-pressed={windowSize === n}
-                onClick={() => update({ cpWindow: String(n) })}
-              >
-                Last {n}
-              </Button>
-            ))}
-            <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm">
-              <input
-                type="checkbox"
-                checked={rolling}
-                onChange={(e) => update({ cpRolling: e.target.checked ? "1" : "0" })}
-                className="size-5"
-              />
-              3-session rolling average
-            </label>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {points.length} of {windowSize} requested sessions
-            {points.length < windowSize
-              ? history === "complete"
-                ? " · fewer sessions available"
-                : " · fewer sessions available within the loading bound"
-              : ""}
-            . {history === "bounded" ? "History truncated by the documented loading bound." : ""}{" "}
-            Europe/London · vertical axis includes zero ({metric.unit || "ratio"}). Missing readings
-            leave breaks.
-          </p>
-          {nonMissing.length ? (
-            <div className="overflow-hidden rounded-xl border border-border bg-background">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-                <div>
-                  <p className="text-sm font-semibold">
-                    {metric.label} over {points.length} sessions
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    One point per session · {metric.unit || "ratio"}
-                  </p>
-                </div>
-                {focused && (
-                  <div className="text-right">
-                    <p className="text-sm font-semibold tabular-nums text-primary">
-                      {formatTrendValue(
-                        metricReading(focused, metricKey, evidence).value,
-                        metricKey,
+            <TabsContent value={metricKey} className="contents">
+              <div className="grid min-w-0 gap-3 md:grid-cols-2">
+                {club && (
+                  <label className="grid min-w-0 gap-1 text-sm">
+                    Comparable series
+                    <select
+                      aria-label="Comparable series"
+                      className={`${controlClass} w-full`}
+                      value={club.id}
+                      onChange={(e) => update({ cpSeries: e.target.value, cpSession: null })}
+                    >
+                      {clubs
+                        .filter((c) => c.clubId === club.clubId)
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {provenance(c)}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                )}
+                {club && (
+                  <label className="grid min-w-0 gap-1 text-sm">
+                    Comparison upload
+                    <select
+                      aria-label="Comparison upload"
+                      className={`${controlClass} w-full`}
+                      value={sessionId ?? ""}
+                      onChange={(e) => update({ cpSession: e.target.value })}
+                    >
+                      {selection.unavailable && (
+                        <option value={sessionId}>Requested upload unavailable</option>
                       )}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{focused.date.split(",")[0]}</p>
-                  </div>
+                      {club.points
+                        .filter((p) => mode === "dashboard" || p.current)
+                        .map((p) => (
+                          <option key={p.sessionId} value={p.sessionId}>
+                            {p.date} · {p.fileName ?? "Upload"} · {p.sessionId.slice(0, 8)}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                )}
+                {metric.clubEvidence && (
+                  <label className="grid min-w-0 gap-1 text-sm">
+                    Club data evidence
+                    <select
+                      aria-label="Club data evidence"
+                      className={`${controlClass} w-full`}
+                      value={evidence}
+                      onChange={(e) => update({ cpEvidence: e.target.value })}
+                    >
+                      {evidenceClasses.map((trust) => (
+                        <option key={trust}>{trust}</option>
+                      ))}
+                    </select>
+                  </label>
                 )}
               </div>
-              <div ref={chartRef} className="h-72 w-full min-w-0 sm:h-80" data-session-chart>
-                <svg
-                  viewBox={`0 0 ${chartSize.width} ${chartSize.height}`}
-                  className="block h-full w-full"
-                  role="img"
-                  aria-label={`${club.label} ${metric.label} session graph, ${metric.unit || "ratio"}; use the inspection buttons for exact values`}
+              {comparison && !selection.unavailable ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    {metric.description} · {provenance(club!)}
+                    {metric.clubEvidence ? ` · ${evidence} club data` : ""}. Provider does not
+                    establish unchanged device identity.
+                    {club?.playContext === "unknown"
+                      ? " Practice context is unrecorded; comparability is limited."
+                      : ""}
+                  </p>
+                  <dl data-progress-cards className="grid min-w-0 gap-3 sm:grid-cols-3">
+                    {(
+                      [
+                        ["Current", comparison.a, comparison.current],
+                        ["Previous", comparison.b, comparison.previous],
+                      ] as const
+                    ).map(([title, reading, point]) => (
+                      <div key={title} className="min-w-0 rounded-xl border p-3">
+                        <dt className="text-sm text-muted-foreground">{title}</dt>
+                        <dd className="mt-1 text-xl font-semibold tabular-nums sm:text-2xl">
+                          {formatTrendValue(reading.value, metricKey)}
+                        </dd>
+                        <dd className="mt-1 text-xs">
+                          {reading.count} readings ·{" "}
+                          {point?.date ??
+                            (history === "complete"
+                              ? "No baseline session"
+                              : "History unavailable")}
+                        </dd>
+                        {point && (
+                          <dd className="break-words text-xs text-muted-foreground">
+                            {point.fileName ?? point.sessionId.slice(0, 8)}
+                          </dd>
+                        )}
+                      </div>
+                    ))}
+                    <div className="min-w-0 rounded-xl border p-3">
+                      <dt className="text-sm text-muted-foreground">Change</dt>
+                      <dd className="mt-1 text-xl font-semibold tabular-nums sm:text-2xl">
+                        {comparison.delta === null
+                          ? "Unavailable"
+                          : `${comparison.delta >= 0 ? "+" : "−"}${formatTrendValue(Math.abs(comparison.delta), metricKey)}`}
+                      </dd>
+                      <dd className="mt-1 text-sm">{comparison.text}</dd>
+                    </div>
+                  </dl>
+                  {comparison.sampleContext && (
+                    <p className="text-xs text-muted-foreground">{comparison.sampleContext}</p>
+                  )}
+                </>
+              ) : (
+                <p role="status">
+                  {clubs.length
+                    ? "Choose an available club and comparable upload. Explicit unavailable scopes are not filled from another session."
+                    : "No eligible full shots for an active saved club in the selected practice scope."}
+                </p>
+              )}
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">Whole bag · {metric.label}</h3>
+                <div
+                  role="group"
+                  aria-label="Whole-bag changes"
+                  className="flex min-w-0 gap-2 overflow-x-auto pb-2"
                 >
-                  <defs>
-                    <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.12" />
-                      <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.01" />
-                    </linearGradient>
-                  </defs>
-                  {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
-                    <g key={ratio}>
-                      <line
-                        x1={left}
-                        x2={right}
-                        y1={y(min + ratio * (max - min))}
-                        y2={y(min + ratio * (max - min))}
-                        stroke="var(--border)"
-                        strokeDasharray={ratio === 0 ? undefined : "3 5"}
-                      />
-                      <text
-                        x={left - 12}
-                        y={y(min + ratio * (max - min)) + 4}
-                        textAnchor="end"
-                        fill="var(--muted-foreground)"
-                        fontSize="11"
-                        className="tabular-nums"
-                      >
-                        {(min + ratio * (max - min)).toFixed(metric.digits)}
-                      </text>
-                    </g>
-                  ))}
-                  <path d={areaPath} fill={`url(#${gradientId})`} />
-                  {focusedIndex >= 0 && values[focusedIndex] !== null && (
-                    <line
-                      x1={x(focusedIndex)}
-                      x2={x(focusedIndex)}
-                      y1={top}
-                      y2={bottom}
-                      stroke="var(--primary)"
-                      strokeOpacity="0.2"
-                      strokeDasharray="4 4"
-                    />
-                  )}
-                  <path
-                    data-session-path
-                    d={path(values)}
-                    fill="none"
-                    stroke="var(--primary)"
-                    strokeWidth="2.5"
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
-                  {rolling && (
-                    <path
-                      data-rolling-path
-                      d={path(rollingValues)}
-                      fill="none"
-                      stroke="var(--muted-foreground)"
-                      strokeDasharray="6 4"
-                      strokeWidth="2"
-                    />
-                  )}
-                  {points.map(
-                    (p, i) =>
-                      values[i] !== null && (
-                        <g key={p.sessionId}>
-                          {p.sessionId === focused?.sessionId && (
-                            <circle
-                              cx={x(i)}
-                              cy={y(values[i]!)}
-                              r="12"
-                              fill="var(--primary)"
-                              fillOpacity="0.09"
-                              pointerEvents="none"
-                            />
-                          )}
-                          <circle
-                            data-session-point={p.sessionId}
-                            cx={x(i)}
-                            cy={y(values[i]!)}
-                            r={
-                              p.sessionId === sessionId
-                                ? 5
-                                : p.sessionId === comparison?.previous?.sessionId
-                                  ? 5
-                                  : 3.5
-                            }
-                            fill={p.sessionId === sessionId ? "var(--primary)" : "var(--card)"}
-                            stroke="var(--primary)"
-                            strokeWidth={p.sessionId === comparison?.previous?.sessionId ? 2.5 : 2}
-                            className="cursor-pointer"
-                            onPointerEnter={() => setInspected(p.sessionId)}
-                            onClick={() => setInspected(p.sessionId)}
-                          >
-                            <title>{`${p.date}: ${formatTrendValue(values[i], metricKey)}`}</title>
-                          </circle>
-                          <circle
-                            cx={x(i)}
-                            cy={y(values[i]!)}
-                            r={hitRadius}
-                            fill="transparent"
-                            className="cursor-pointer"
-                            onPointerEnter={() => setInspected(p.sessionId)}
-                            onClick={() => setInspected(p.sessionId)}
-                            aria-hidden="true"
-                          />
-                        </g>
-                      ),
-                  )}
-                  {points.map((p, i) => {
-                    const every = Math.max(
-                      1,
-                      Math.ceil((points.length - 1) / (chartSize.width < 600 ? 2 : 5)),
+                  {bagClubs.map((c) => {
+                    const id =
+                      c.id === club?.id && sessionId
+                        ? sessionId
+                        : mode === "today" && query.has("cpSession")
+                          ? query.get("cpSession")!
+                          : (c.points.findLast((p) => p.current)?.sessionId ?? "");
+                    const p = compareClubSessions(
+                      c,
+                      id,
+                      metricKey,
+                      c.id === club?.id ? evidence : c.defaultEvidence,
+                      history,
                     );
-                    if (i !== points.length - 1 && i % every !== 0) return null;
-                    if (i !== points.length - 1 && i !== 0 && points.length - 1 - i < every / 2)
-                      return null;
                     return (
-                      <text
-                        key={p.sessionId}
-                        x={x(i)}
-                        y={chartSize.height - 14}
-                        textAnchor={
-                          points.length === 1
-                            ? "middle"
-                            : i === 0
-                              ? "start"
-                              : i === points.length - 1
-                                ? "end"
-                                : "middle"
+                      <button
+                        type="button"
+                        key={c.clubId}
+                        aria-pressed={c.id === club?.id}
+                        className={`${controlClass} w-44 shrink-0 p-3 text-left ${c.id === club?.id ? "border-primary bg-secondary" : ""}`}
+                        onClick={() =>
+                          update({
+                            cpClub: c.clubId,
+                            cpSeries: c.id,
+                            cpSession: id,
+                            cpEvidence: c.defaultEvidence,
+                          })
                         }
-                        fill="var(--muted-foreground)"
-                        fontSize="11"
                       >
-                        {new Date(p.timestamp).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                          timeZone: "Europe/London",
-                        })}
-                      </text>
+                        <span className="block truncate font-medium" title={c.label}>
+                          {c.label}
+                        </span>
+                        <span className="block tabular-nums">
+                          {formatTrendValue(p.a.value, metricKey)} ·{" "}
+                          {p.delta === null
+                            ? p.text
+                            : `${p.delta >= 0 ? "+" : "−"}${formatTrendValue(Math.abs(p.delta), metricKey)}`}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {Math.min(p.a.count, p.b.count) < 10 ? "Early signal · " : ""}
+                          {metric.clubEvidence ? `${c.defaultEvidence} · ` : ""}
+                          {c.source} · {c.playContext}
+                        </span>
+                      </button>
                     );
                   })}
-                </svg>
+                </div>
               </div>
-            </div>
-          ) : (
-            <p className="py-5 text-sm">
-              No {metric.label.toLowerCase()} readings in these sessions. Try another metric.
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Filled point: selected comparison upload. Ring: immediate previous session.{" "}
-            {rolling
-              ? "Dashed line: equal-session 3-session rolling average; a missing value leaves a gap."
-              : ""}
-          </p>
-          <div
-            aria-label="Inspect session points"
-            className="flex min-w-0 gap-2 overflow-x-auto pb-2"
-          >
-            {points.map((p, i) => (
-              <button
-                key={p.sessionId}
-                type="button"
-                className={`${controlClass} shrink-0`}
-                aria-pressed={focused?.sessionId === p.sessionId}
-                onFocus={() => setInspected(p.sessionId)}
-                onClick={() => setInspected(p.sessionId)}
-              >
-                {i + 1} · {p.date}
-                {p.sessionId === sessionId
-                  ? " · current"
-                  : p.sessionId === comparison?.previous?.sessionId
-                    ? " · previous"
-                    : ""}
-              </button>
-            ))}
-          </div>
-          {focused && (
-            <div
-              data-inspected-session
-              aria-live="polite"
-              className="rounded-lg border p-3 text-sm"
-            >
-              <p>
-                {focused.date} ·{" "}
-                {formatTrendValue(metricReading(focused, metricKey, evidence).value, metricKey)} ·{" "}
-                {metricReading(focused, metricKey, evidence).count} readings
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {provenance(club)}
-                {metric.clubEvidence ? ` · ${evidence}` : ""}
-                {focused.weather ? ` · ${focused.weather}` : ""}
-                {focused.ambiguousTime ? " · ambiguous timestamp tie" : ""}
-              </p>
-              <a
-                className="inline-flex min-h-11 items-center underline"
-                href={`/sessions/${focused.sessionId}`}
-              >
-                Review source upload · {focused.fileName ?? focused.sessionId.slice(0, 8)}
-              </a>
-            </div>
-          )}
-          <details>
-            <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">
-              Session values and evidence method
-            </summary>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <caption className="sr-only">
-                  {club.label} {metric.label} session values
-                </caption>
-                <thead>
-                  <tr>
-                    <th className="p-2">Upload (Europe/London)</th>
-                    <th className="p-2">Value ({metric.unit || "ratio"})</th>
-                    <th className="p-2">Readings</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {points.map((p) => (
-                    <tr key={p.sessionId} className="border-t">
-                      <td className="p-2">
-                        <Link
-                          className="inline-flex min-h-11 items-center underline"
-                          prefetch={false}
-                          href={`/sessions/${p.sessionId}`}
+              {club && !selection.unavailable && (
+                <>
+                  <div className="flex flex-wrap items-center gap-2" aria-label="History controls">
+                    {[5, 10, 20].map((n) => (
+                      <Button
+                        key={n}
+                        className="min-h-11"
+                        variant={windowSize === n ? "secondary" : "outline"}
+                        aria-pressed={windowSize === n}
+                        onClick={() => update({ cpWindow: String(n) })}
+                      >
+                        Last {n}
+                      </Button>
+                    ))}
+                    <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={rolling}
+                        onChange={(e) => update({ cpRolling: e.target.checked ? "1" : "0" })}
+                        className="size-5"
+                      />
+                      3-session rolling average
+                    </label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {points.length} of {windowSize} requested sessions
+                    {points.length < windowSize
+                      ? history === "complete"
+                        ? " · fewer sessions available"
+                        : " · fewer sessions available within the loading bound"
+                      : ""}
+                    .{" "}
+                    {history === "bounded"
+                      ? "History truncated by the documented loading bound."
+                      : ""}{" "}
+                    Europe/London · vertical axis includes zero ({metric.unit || "ratio"}). Missing
+                    readings leave breaks.
+                  </p>
+                  {nonMissing.length ? (
+                    <div className="overflow-hidden rounded-xl border border-border bg-background">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+                        <div>
+                          <p className="text-sm font-semibold">
+                            {metric.label} over {points.length} sessions
+                          </p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            One point per session · {metric.unit || "ratio"}
+                          </p>
+                        </div>
+                        {focused && (
+                          <div className="text-right">
+                            <p className="text-sm font-semibold tabular-nums text-primary">
+                              {formatTrendValue(
+                                metricReading(focused, metricKey, evidence).value,
+                                metricKey,
+                              )}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {focused.date.split(",")[0]}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div
+                        ref={chartRef}
+                        className="h-72 w-full min-w-0 sm:h-80"
+                        data-session-chart
+                      >
+                        <svg
+                          viewBox={`0 0 ${chartSize.width} ${chartSize.height}`}
+                          className="block h-full w-full"
+                          role="img"
+                          aria-label={`${club.label} ${metric.label} session graph, ${metric.unit || "ratio"}; use the inspection buttons for exact values`}
                         >
-                          {p.date} · {p.fileName ?? p.sessionId.slice(0, 8)}
-                          {p.sessionId === sessionId
-                            ? " · current"
-                            : p.sessionId === comparison?.previous?.sessionId
-                              ? " · previous"
-                              : ""}
-                        </Link>
-                      </td>
-                      <td className="p-2 tabular-nums">
-                        {formatTrendValue(metricReading(p, metricKey, evidence).value, metricKey)}
-                      </td>
-                      <td className="p-2">{metricReading(p, metricKey, evidence).count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <p className="mt-3 text-xs leading-5 text-muted-foreground">
-              Eligible recorded full-shot practice, without distance outlier trimming. Session means
-              and carry sample standard deviation are separate from stock-yardage medians and
-              practice-day or pooled-shot reports. Previous means the immediate preceding eligible
-              session in this exact series, even when its metric is missing. At least 3 readings in
-              both sessions are required for interpreted changes; fewer than 10 is an early signal.
-              Stable uses descriptive bands (2 yd carry/lateral miss/spread; 1 mph ball speed), not
-              a statistical test. Dashboard uses equal-session linear regression against recorded
-              session time with at least 5 adequately sampled sessions. A rolling average never
-              changes the comparison or verdict. Session.date orders uploads; tied timestamps have
-              deterministic ID ordering but no interpreted change. Provider does not prove device
-              identity. Unknown context stays separate. {method}
-            </p>
-            {mode === "dashboard" && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                {describeSessionTrend(points, metricKey, evidence)}
-              </p>
-            )}
-            <Link className="inline-flex min-h-11 items-center text-sm underline" href="/goals">
-              Review saved goals
-            </Link>
-          </details>
-        </>
-      )}
+                          <defs>
+                            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.12" />
+                              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.01" />
+                            </linearGradient>
+                          </defs>
+                          {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
+                            <g key={ratio}>
+                              <line
+                                x1={left}
+                                x2={right}
+                                y1={y(min + ratio * (max - min))}
+                                y2={y(min + ratio * (max - min))}
+                                stroke="var(--border)"
+                                strokeDasharray={ratio === 0 ? undefined : "3 5"}
+                              />
+                              <text
+                                x={left - 12}
+                                y={y(min + ratio * (max - min)) + 4}
+                                textAnchor="end"
+                                fill="var(--muted-foreground)"
+                                fontSize="11"
+                                className="tabular-nums"
+                              >
+                                {(min + ratio * (max - min)).toFixed(metric.digits)}
+                              </text>
+                            </g>
+                          ))}
+                          <path d={areaPath} fill={`url(#${gradientId})`} />
+                          {focusedIndex >= 0 && values[focusedIndex] !== null && (
+                            <line
+                              x1={x(focusedIndex)}
+                              x2={x(focusedIndex)}
+                              y1={top}
+                              y2={bottom}
+                              stroke="var(--primary)"
+                              strokeOpacity="0.2"
+                              strokeDasharray="4 4"
+                            />
+                          )}
+                          <path
+                            data-session-path
+                            d={path(values)}
+                            fill="none"
+                            stroke="var(--primary)"
+                            strokeWidth="2.5"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                          />
+                          {rolling && (
+                            <path
+                              data-rolling-path
+                              d={path(rollingValues)}
+                              fill="none"
+                              stroke="var(--muted-foreground)"
+                              strokeDasharray="6 4"
+                              strokeWidth="2"
+                            />
+                          )}
+                          {points.map(
+                            (p, i) =>
+                              values[i] !== null && (
+                                <g key={p.sessionId}>
+                                  {p.sessionId === focused?.sessionId && (
+                                    <circle
+                                      cx={x(i)}
+                                      cy={y(values[i]!)}
+                                      r="12"
+                                      fill="var(--primary)"
+                                      fillOpacity="0.09"
+                                      pointerEvents="none"
+                                    />
+                                  )}
+                                  <circle
+                                    data-session-point={p.sessionId}
+                                    cx={x(i)}
+                                    cy={y(values[i]!)}
+                                    r={
+                                      p.sessionId === sessionId
+                                        ? 5
+                                        : p.sessionId === comparison?.previous?.sessionId
+                                          ? 5
+                                          : 3.5
+                                    }
+                                    fill={
+                                      p.sessionId === sessionId ? "var(--primary)" : "var(--card)"
+                                    }
+                                    stroke="var(--primary)"
+                                    strokeWidth={
+                                      p.sessionId === comparison?.previous?.sessionId ? 2.5 : 2
+                                    }
+                                    className="cursor-pointer"
+                                    onPointerEnter={() => setInspected(p.sessionId)}
+                                    onClick={() => setInspected(p.sessionId)}
+                                  >
+                                    <title>{`${p.date}: ${formatTrendValue(values[i], metricKey)}`}</title>
+                                  </circle>
+                                  <circle
+                                    cx={x(i)}
+                                    cy={y(values[i]!)}
+                                    r={hitRadius}
+                                    fill="transparent"
+                                    className="cursor-pointer"
+                                    onPointerEnter={() => setInspected(p.sessionId)}
+                                    onClick={() => setInspected(p.sessionId)}
+                                    aria-hidden="true"
+                                  />
+                                </g>
+                              ),
+                          )}
+                          {points.map((p, i) => {
+                            const every = Math.max(
+                              1,
+                              Math.ceil((points.length - 1) / (chartSize.width < 600 ? 2 : 5)),
+                            );
+                            if (i !== points.length - 1 && i % every !== 0) return null;
+                            if (
+                              i !== points.length - 1 &&
+                              i !== 0 &&
+                              points.length - 1 - i < every / 2
+                            )
+                              return null;
+                            return (
+                              <text
+                                key={p.sessionId}
+                                x={x(i)}
+                                y={chartSize.height - 14}
+                                textAnchor={
+                                  points.length === 1
+                                    ? "middle"
+                                    : i === 0
+                                      ? "start"
+                                      : i === points.length - 1
+                                        ? "end"
+                                        : "middle"
+                                }
+                                fill="var(--muted-foreground)"
+                                fontSize="11"
+                              >
+                                {new Date(p.timestamp).toLocaleDateString("en-GB", {
+                                  day: "numeric",
+                                  month: "short",
+                                  timeZone: "Europe/London",
+                                })}
+                              </text>
+                            );
+                          })}
+                        </svg>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="py-5 text-sm">
+                      No {metric.label.toLowerCase()} readings in these sessions. Try another
+                      metric.
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Filled point: selected comparison upload. Ring: immediate previous session.{" "}
+                    {rolling
+                      ? "Dashed line: equal-session 3-session rolling average; a missing value leaves a gap."
+                      : ""}
+                  </p>
+                  <div
+                    aria-label="Inspect session points"
+                    className="flex min-w-0 gap-2 overflow-x-auto pb-2"
+                  >
+                    {points.map((p, i) => (
+                      <button
+                        key={p.sessionId}
+                        type="button"
+                        className={`${controlClass} shrink-0`}
+                        aria-pressed={focused?.sessionId === p.sessionId}
+                        onFocus={() => setInspected(p.sessionId)}
+                        onClick={() => setInspected(p.sessionId)}
+                      >
+                        {i + 1} · {p.date}
+                        {p.sessionId === sessionId
+                          ? " · current"
+                          : p.sessionId === comparison?.previous?.sessionId
+                            ? " · previous"
+                            : ""}
+                      </button>
+                    ))}
+                  </div>
+                  {focused && (
+                    <div
+                      data-inspected-session
+                      aria-live="polite"
+                      className="rounded-lg border p-3 text-sm"
+                    >
+                      <p>
+                        {focused.date} ·{" "}
+                        {formatTrendValue(
+                          metricReading(focused, metricKey, evidence).value,
+                          metricKey,
+                        )}{" "}
+                        · {metricReading(focused, metricKey, evidence).count} readings
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {provenance(club)}
+                        {metric.clubEvidence ? ` · ${evidence}` : ""}
+                        {focused.weather ? ` · ${focused.weather}` : ""}
+                        {focused.ambiguousTime ? " · ambiguous timestamp tie" : ""}
+                      </p>
+                      <a
+                        className="inline-flex min-h-11 items-center underline"
+                        href={`/sessions/${focused.sessionId}`}
+                      >
+                        Review source upload · {focused.fileName ?? focused.sessionId.slice(0, 8)}
+                      </a>
+                    </div>
+                  )}
+                  <details>
+                    <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">
+                      Session values and evidence method
+                    </summary>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <caption className="sr-only">
+                          {club.label} {metric.label} session values
+                        </caption>
+                        <thead>
+                          <tr>
+                            <th className="p-2">Upload (Europe/London)</th>
+                            <th className="p-2">Value ({metric.unit || "ratio"})</th>
+                            <th className="p-2">Readings</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {points.map((p) => (
+                            <tr key={p.sessionId} className="border-t">
+                              <td className="p-2">
+                                <Link
+                                  className="inline-flex min-h-11 items-center underline"
+                                  prefetch={false}
+                                  href={`/sessions/${p.sessionId}`}
+                                >
+                                  {p.date} · {p.fileName ?? p.sessionId.slice(0, 8)}
+                                  {p.sessionId === sessionId
+                                    ? " · current"
+                                    : p.sessionId === comparison?.previous?.sessionId
+                                      ? " · previous"
+                                      : ""}
+                                </Link>
+                              </td>
+                              <td className="p-2 tabular-nums">
+                                {formatTrendValue(
+                                  metricReading(p, metricKey, evidence).value,
+                                  metricKey,
+                                )}
+                              </td>
+                              <td className="p-2">{metricReading(p, metricKey, evidence).count}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                      Eligible recorded full-shot practice, without distance outlier trimming.
+                      Session means and carry sample standard deviation are separate from
+                      stock-yardage medians and practice-day or pooled-shot reports. Previous means
+                      the immediate preceding eligible session in this exact series, even when its
+                      metric is missing. At least 3 readings in both sessions are required for
+                      interpreted changes; fewer than 10 is an early signal. Stable uses descriptive
+                      bands (2 yd carry/lateral miss/spread; 1 mph ball speed), not a statistical
+                      test. Dashboard uses equal-session linear regression against recorded session
+                      time with at least 5 adequately sampled sessions. A rolling average never
+                      changes the comparison or verdict. Session.date orders uploads; tied
+                      timestamps have deterministic ID ordering but no interpreted change. Provider
+                      does not prove device identity. Unknown context stays separate. {method}
+                    </p>
+                    {mode === "dashboard" && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {describeSessionTrend(points, metricKey, evidence)}
+                      </p>
+                    )}
+                    <Link
+                      className="inline-flex min-h-11 items-center text-sm underline"
+                      href="/goals"
+                    >
+                      Review saved goals
+                    </Link>
+                  </details>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+      </Tabs>
     </section>
   );
 }
