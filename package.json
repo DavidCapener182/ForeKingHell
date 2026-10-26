@@ -52,7 +52,7 @@
     "@opentelemetry/api-logs": "^0.223.0",
     "@opentelemetry/instrumentation": "^0.223.0",
     "@opentelemetry/sdk-logs": "^0.223.0",
-    "@react-three/drei": "^10.7.7",
+    "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.6.1",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.110.8",
