@@ -1,10 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { dataGovernanceManifest } from "@/lib/data-governance-manifest";
+import { getTableName } from "drizzle-orm";
 
 const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
   getOptionalCurrentUserId: vi.fn(),
+  proFeatureStorageReady: vi.fn(),
+}));
+
+vi.mock("@/lib/pro-feature-readiness", () => ({
+  proFeatureStorageReady: mocks.proFeatureStorageReady,
 }));
 
 vi.mock("@/db/client", () => ({
@@ -20,6 +26,7 @@ describe("personal data export route", () => {
     vi.resetModules();
     mocks.getDb.mockReset();
     mocks.getOptionalCurrentUserId.mockReset();
+    mocks.proFeatureStorageReady.mockResolvedValue(true);
   });
 
   it("rejects anonymous requests", async () => {
@@ -101,6 +108,34 @@ describe("personal data export route", () => {
         .sort(),
     );
   });
+  it.each([false, true])(
+    "exports existing data with optional storage readiness %s",
+    async (ready) => {
+      mocks.getOptionalCurrentUserId.mockResolvedValue("user-1");
+      mocks.proFeatureStorageReady.mockResolvedValue(ready);
+      const tables: string[] = [];
+      mocks.getDb.mockReturnValue({
+        select: () => ({
+          from: (table: Parameters<typeof getTableName>[0]) => {
+            const name = getTableName(table);
+            if (!ready && ["fkh_billing_trials", "fkh_course_twin_round_plans"].includes(name))
+              throw new Error("Optional table is absent");
+            tables.push(name);
+            return { where: () => emptyRows() };
+          },
+        }),
+      });
+      const { GET } = await import("@/app/api/settings/export/route");
+      const response = await GET(new Request("http://localhost/api/settings/export"));
+      expect(response.status).toBe(200);
+      const payload = await response.json();
+      expect(payload.data.billingTrials).toEqual([]);
+      expect(payload.data.courseTwinRoundPlans).toEqual([]);
+      expect(tables.includes("fkh_billing_trials")).toBe(ready);
+      expect(tables.includes("fkh_course_twin_round_plans")).toBe(ready);
+      expect(tables).toContain("fkh_sessions");
+    },
+  );
 });
 
 function emptyDb() {

@@ -8,6 +8,7 @@ import { getOptionalCurrentUserId } from "@/lib/current-user";
 import { dataGovernanceManifest, exportRulesForGovernance } from "@/lib/data-governance-manifest";
 import { createPersonalDataExport } from "@/lib/personal-data-export";
 import { recordProductWorkflowEvent } from "@/lib/product-events";
+import { proFeatureStorageReady } from "@/lib/pro-feature-readiness";
 
 export const dynamic = "force-dynamic";
 
@@ -25,12 +26,18 @@ export async function GET(request: Request) {
   const exportedAt = new Date();
   const db = getDb();
   const [profile] = await db.select().from(users).where(eq(users.id, userId));
+  const optionalStorageReady = await proFeatureStorageReady(db);
 
   const exportableDatasets = dataGovernanceManifest.filter(
     (entry) => entry.export && entry.dataset !== "users" && entry.dataset !== "shots",
   );
   const queriedDatasets = await Promise.all(
     exportableDatasets.map(async (entry) => {
+      if (
+        !optionalStorageReady &&
+        ["billingTrials", "courseTwinRoundPlans"].includes(entry.dataset)
+      )
+        return [entry.dataset, []] as const;
       const table = schema[entry.dataset as keyof typeof schema] as unknown as
         ExportTable | undefined;
       if (!table) {

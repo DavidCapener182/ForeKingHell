@@ -21,6 +21,7 @@ import { getProTrialEligibility } from "@/lib/billing-pro-trial";
 import { getBillingPageData, createCheckoutSession } from "@/lib/billing";
 import { saveRapsodoImport } from "@/lib/imports/save-rapsodo-import";
 import { GET, POST } from "@/app/api/course-twins/[courseId]/round-plan/route";
+import { GET as exportSettings } from "@/app/api/settings/export/route";
 const enabled = process.env.RUN_STAGED_FEATURE_DB_TESTS === "1";
 const url = process.env.DATABASE_URL;
 if (enabled) {
@@ -62,6 +63,14 @@ describe.skipIf(!enabled)("Code rollout before optional migration0062", () => {
       const [eligibility] = await db`select count(*)::int as total from fkh_usage_events
         where user_id=${actor.id} and event_type='pro_trial_import_eligible'`;
       expect(eligibility.total).toBe(1);
+      const exported = await exportSettings(
+        new Request("https://example.invalid/api/settings/export"),
+      );
+      expect(exported.status).toBe(200);
+      const document = await exported.json();
+      expect(document.data.billingTrials).toEqual([]);
+      expect(document.data.courseTwinRoundPlans).toEqual([]);
+      expect(document.data.sessions).toHaveLength(1);
       vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_synthetic");
       vi.stubEnv("STRIPE_PRO_MONTHLY_PRICE_ID", "price_synthetic");
       const provider = vi.fn();
