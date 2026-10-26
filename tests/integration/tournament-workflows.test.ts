@@ -1,3 +1,4 @@
+import { grantFixturePlan } from "../support/paid-fixture";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { createScorecardProofToken } from "@/lib/scorecard-proof-token";
@@ -38,6 +39,7 @@ describe.skipIf(!enabled)("tournament participation and saved-round submissions"
     [owner, organizer] = (
       await sql`insert into fkh_users(name) values('Tournament fixture player'),('Tournament fixture organizer') returning id`
     ).map((row) => row.id);
+    await grantFixturePlan(sql, [owner, organizer]);
     actor.userId = owner;
     trigger = `tournament_fixture_${Date.now()}`;
     tournamentId = (

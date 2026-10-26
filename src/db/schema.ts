@@ -3663,3 +3663,60 @@ export type NewCourseRecordGoal = typeof courseRecordGoals.$inferInsert;
 export type NewCourseFollow = typeof courseFollows.$inferInsert;
 export type NewUserFeaturePreference = typeof userFeaturePreferences.$inferInsert;
 export type NewWeeklyRecap = typeof weeklyRecaps.$inferInsert;
+
+export const billingTrials = pgTable(
+  "fkh_billing_trials",
+  {
+    userId: uuid("user_id")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    proTrialEligibleAfterImportAt: timestamp("pro_trial_eligible_after_import_at", {
+      withTimezone: true,
+    }),
+    proTrialStartedAt: timestamp("pro_trial_started_at", { withTimezone: true }),
+    proTrialEndsAt: timestamp("pro_trial_ends_at", { withTimezone: true }),
+    proTrialConsumedAt: timestamp("pro_trial_consumed_at", { withTimezone: true }),
+    stripeSubscriptionId: varchar("stripe_subscription_id", { length: 120 }),
+    checkoutRequestId: uuid("checkout_request_id"),
+    checkoutRequestedAt: timestamp("checkout_requested_at", { withTimezone: true }),
+    checkoutSessionId: varchar("checkout_session_id", { length: 120 }),
+    checkoutUrl: text("checkout_url"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("fkh_billing_trials_consumed_idx").on(table.proTrialConsumedAt)],
+);
+
+export const courseTwinRoundPlans = pgTable(
+  "fkh_course_twin_round_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    teeLabel: varchar("tee_label", { length: 80 }),
+    intent: varchar("intent", { length: 24 }).notNull().default("normal"),
+    holesJson: jsonb("holes_json")
+      .$type<import("@/lib/course-twin-round-plan-model").RoundPlanHole[]>()
+      .notNull()
+      .default([]),
+    evidenceBasis: varchar("evidence_basis", { length: 40 }).notNull().default("latest-reliable"),
+    manifestPackageVersion: integer("manifest_package_version").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fkh_course_twin_round_plans_user_course_idx").on(
+      table.userId,
+      table.courseId,
+      table.createdAt,
+    ),
+    check(
+      "fkh_course_twin_round_plans_intent_check",
+      sql`${table.intent} in ('safe','normal','aggressive')`,
+    ),
+  ],
+);

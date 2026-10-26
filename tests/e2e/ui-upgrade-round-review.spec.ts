@@ -86,6 +86,10 @@ test("Round review exposes all panels and retains mobile context drafts", async 
       ]) {
         await page.setViewportSize({ width, height });
         await page.getByRole("tab", { name: "Corrections", exact: true }).click();
+        await expect(page.getByRole("tab", { name: "Corrections", exact: true })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
         if (surface === "workbench" && width < 1024)
           await page.getByRole("button", { name: /^Course link/ }).click();
         await expect(
@@ -96,12 +100,24 @@ test("Round review exposes all panels and retains mobile context drafts", async 
             .getByRole("textbox", { name: "Round notes", exact: true })
             .fill("Retained context draft");
         await page.getByRole("tab", { name: "Evidence", exact: true }).click();
+        await expect(page.getByRole("tab", { name: "Evidence", exact: true })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
         await page.getByRole("tab", { name: "Corrections", exact: true }).click();
+        await expect(page.getByRole("tab", { name: "Corrections", exact: true })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
         if (surface === "companion")
           await expect(page.getByRole("textbox", { name: "Round notes", exact: true })).toHaveValue(
             "Retained context draft",
           );
         await page.getByRole("tab", { name: "Scorecard", exact: true }).click();
+        await expect(page.getByRole("tab", { name: "Scorecard", exact: true })).toHaveAttribute(
+          "aria-selected",
+          "true",
+        );
         await expect(page.locator("h1:visible")).toHaveCount(1);
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),

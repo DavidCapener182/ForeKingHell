@@ -113,9 +113,7 @@ export async function loadActiveCourseTwinRoundClient(courseId: string) {
     cache: "no-store",
   });
   const body = (await response.json()) as
-    | CourseTwinRoundClientDocument
-    | null
-    | { error?: unknown };
+    CourseTwinRoundClientDocument | null | { error?: unknown };
   if (!response.ok) {
     throw new Error(
       body && "error" in body && typeof body.error === "string"

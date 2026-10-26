@@ -1,6 +1,26 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { prepareFlightPathFixture } from "./flight-path-fixture";
+const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
+test.beforeEach(async ({ page }, info) => {
+  fixtureCleanup.set(
+    page,
+    await prepareFlightPathFixture(
+      page,
+      String(info.project.use.baseURL),
+      true,
+      false,
+      undefined,
+      false,
+      false,
+      info.title.includes("stock sample drawer"),
+    ),
+  );
+});
+test.afterEach(async ({ page }) => {
+  await fixtureCleanup.get(page)?.();
+});
 test.skip(process.env.PLAYWRIGHT_E2E_AUTH_BYPASS !== "1", "Authorised local fixture required");
-test("Bag provides six retained tasks on both surfaces", async ({ page }, info) => {
+test("Bag provides four retained tasks on both surfaces", async ({ page }, info) => {
   test.skip(info.project.name !== "chromium");
   test.setTimeout(240000);
   const errors: string[] = [];
@@ -20,7 +40,7 @@ test("Bag provides six retained tasks on both surfaces", async ({ page }, info) 
       [1024, 800],
     ]) {
       await page.setViewportSize({ width, height });
-      for (const label of ["Distances", "Clubs", "Scoring", "Fitting", "History", "Evidence"]) {
+      for (const label of ["Distances", "Clubs", "Scoring", "Fitting"]) {
         const tab = page.getByRole("tab", { name: label, exact: true });
         await tab.click();
         await expect(tab).toHaveAttribute("aria-selected", "true");
@@ -41,9 +61,9 @@ test("Bag provides six retained tasks on both surfaces", async ({ page }, info) 
     await page.getByRole("button", { name: "Adjust bag change", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "Bag simulator settings" })).toBeVisible();
     await page.keyboard.press("Escape");
-    await page.getByRole("tab", { name: "History", exact: true }).click();
+    await page.getByRole("tab", { name: "Scoring", exact: true }).click();
     await page.reload();
-    await expect(page.getByRole("tab", { name: "History", exact: true })).toHaveAttribute(
+    await expect(page.getByRole("tab", { name: "Scoring", exact: true })).toHaveAttribute(
       "aria-selected",
       "true",
     );
@@ -57,7 +77,9 @@ test("Bag stock sample drawer retains full evidence controls", async ({ page }, 
   await expect(page.locator("[data-url-tabs]")).toHaveAttribute("data-ready", "true", {
     timeout: 60000,
   });
-  await page.getByText("Club supporting tools", { exact: true }).click();
+  const supportingTools = page.getByRole("button", { name: /^Club supporting tools/ });
+  await supportingTools.click();
+  await expect(supportingTools).toHaveAttribute("aria-expanded", "true");
   await page.getByRole("button", { name: /Best-stock filters/ }).click();
   await page.getByRole("button", { name: "Review stock sample", exact: true }).first().click();
   const sheet = page.getByRole("dialog");

@@ -75,9 +75,8 @@ test("Billing keeps saved paid access and complete history visible on both surfa
         ).toBeVisible();
         await expect(page.getByText("Foreign billing user", { exact: true })).toHaveCount(0);
         if (width < 768) {
-          await page.getByText("Complete feature comparison", { exact: true }).click();
           await expect(
-            page.getByRole("term").filter({ hasText: "Scorecard extracts" }),
+            page.getByRole("listitem").filter({ hasText: "Up to 10 scorecard extracts per month" }),
           ).toBeVisible();
           await page.getByRole("button", { name: /Pro.*Details/ }).click();
           const panel = page.getByRole("dialog", { name: "Subscription details" });

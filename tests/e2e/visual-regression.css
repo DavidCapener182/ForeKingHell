@@ -14,3 +14,10 @@
 nextjs-portal {
   display: none !important;
 }
+
+/* Use the app's bundled font for portable screenshots. Separate browser tests
+   still assert the actual Apple/native font contract. */
+body,
+body * {
+  font-family: var(--font-ui-source), sans-serif !important;
+}

@@ -44,6 +44,8 @@ const directUserOwned = [
   "groupPosts",
   "billingCustomers",
   "subscriptions",
+  "billingTrials",
+  "courseTwinRoundPlans",
   "entitlements",
   "usageEvents",
   "aiUsageEvents",
@@ -207,6 +209,8 @@ const allSchemaDatasets = [
   "leaderboardSnapshots",
   "billingCustomers",
   "subscriptions",
+  "billingTrials",
+  "courseTwinRoundPlans",
   "stripeWebhookEvents",
   "entitlements",
   "usageEvents",
@@ -306,6 +310,7 @@ const allSchemaDatasets = [
 
 const redactions: Record<string, string[]> = {
   billingCustomers: ["stripeCustomerId"],
+  billingTrials: ["stripeSubscriptionId", "checkoutRequestId", "checkoutSessionId", "checkoutUrl"],
   contentExports: ["storagePath"],
   courseTwinBuilds: ["executionReference", "errorMessage", "idempotencyKey", "inputFingerprint"],
   courseTwinCatalogJobs: ["candidateJson", "errorMessage", "idempotencyKey"],

@@ -1,3 +1,4 @@
+import { grantFixturePlan } from "../support/paid-fixture";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { closeDb } from "@/db/client";
@@ -30,6 +31,7 @@ describe.skipIf(!enabled)("training state save", () => {
       actor.id = (
         await db`insert into fkh_users(name) values('Synthetic training state') returning id`
       )[0].id;
+      await grantFixturePlan(db, [actor.id]);
       const form = new FormData();
       for (const [key, value] of Object.entries({
         sessionDate: "2026-02-30",
@@ -87,6 +89,7 @@ describe.skipIf(!enabled)("training state save", () => {
             await db`insert into fkh_sessions(user_id,source,type,date,raw_csv_text) values(${owner},'csv','range',now(),'synthetic') returning id`
           )[0].id,
         );
+      await grantFixturePlan(db, owners);
       actor.id = owners[0];
       const form = new FormData();
       for (const [key, value] of Object.entries({

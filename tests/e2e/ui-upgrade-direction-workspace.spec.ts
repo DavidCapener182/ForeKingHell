@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import postgres from "postgres";
+import { grantFixturePlan } from "../support/paid-fixture";
 import { randomUUID } from "node:crypto";
 test("workspace exposes owned direction flags and retains unrelated alignment after recovery", async ({
   page,
@@ -27,6 +28,7 @@ test("workspace exposes owned direction flags and retains unrelated alignment af
         await db`insert into fkh_users(name,email) values('Synthetic direction owner',${email}),('Synthetic direction outsider',${`foreign-${email}`}) returning id`
       ).map((r) => r.id),
     );
+    await grantFixturePlan(db, ids);
     const owned = (
       await db`insert into fkh_sessions(user_id,source,type,date,file_name,raw_csv_text,data_confidence_json) values(${ids[0]},'csv','range',now(),'Owned flagged direction session','synthetic',${db.json({ alignment: "misaligned" })}),(${ids[1]},'csv','range',now(),'Foreign hidden direction session','synthetic',${db.json({ alignment: "misaligned" })}) returning id`
     )[0].id;

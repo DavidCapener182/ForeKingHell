@@ -22,7 +22,7 @@ describe("desktop workbench controls source", () => {
     expect(source).not.toContain("Date.now()");
     expect(source).toContain("window.localStorage.setItem(savedViewsKey, JSON.stringify(next))");
     expect(source).toContain(
-      'export const desktopSavedViewsUpdatedEvent = "fkh:desktop-saved-views-updated"',
+      'export { desktopSavedViewsUpdatedEvent } from "@/components/app/desktop-saved-view-events"',
     );
     expect(source).toContain(
       "window.dispatchEvent(new CustomEvent(desktopSavedViewsUpdatedEvent))",

@@ -1,4 +1,15 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { prepareFlightPathFixture } from "./flight-path-fixture";
+const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
+test.beforeEach(async ({ page }, info) => {
+  fixtureCleanup.set(
+    page,
+    await prepareFlightPathFixture(page, String(info.project.use.baseURL), true),
+  );
+});
+test.afterEach(async ({ page }) => {
+  await fixtureCleanup.get(page)?.();
+});
 test("Analysis overview retains provenance and scoped entry points", async ({ page }, info) => {
   test.skip(info.project.name !== "chromium");
   test.setTimeout(120000);
@@ -19,9 +30,11 @@ test("Analysis overview retains provenance and scoped entry points", async ({ pa
       const hero = page.locator("[data-analysis-hero]");
       await expect(hero).toBeVisible();
       await expect(hero.locator("img")).toHaveJSProperty("complete", true);
-      expect(
-        await hero.locator("img").evaluate((image) => (image as HTMLImageElement).naturalWidth),
-      ).toBeGreaterThan(0);
+      await expect
+        .poll(() =>
+          hero.locator("img").evaluate((image) => (image as HTMLImageElement).naturalWidth),
+        )
+        .toBeGreaterThan(0);
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
       ).toBe(true);

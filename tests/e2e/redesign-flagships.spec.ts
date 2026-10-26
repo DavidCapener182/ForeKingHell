@@ -62,19 +62,23 @@ test.describe("redesigned flagship workflows", () => {
     page,
   }) => {
     await page.goto("/surface/workbench?next=%2Ftoday", { waitUntil: "domcontentloaded" });
-    await expectPageReady(page, /Today/i);
+    await expectPageReady(page, /Today|Home/i);
     const panel = page.locator("[data-today-decision-hero]");
     for (const width of [320, 390, 430, 768, 1024, 1440, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       await expect(panel).toBeVisible();
-      await expect(panel.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Today", exact: true }),
+      ).toBeVisible();
+      await expect(panel.getByRole("heading", { level: 2 }).first()).toBeVisible();
       const evidence = await panel.locator("[data-decision-evidence]").boundingBox();
       expect(evidence).not.toBeNull();
       for (const link of await panel.getByRole("link").all()) {
         await expect(link).toBeVisible();
         const box = await link.boundingBox();
         expect(box).not.toBeNull();
-        expect(box!.height).toBeGreaterThanOrEqual(44);
+        // Browser layout APIs can return44px with subpixel floating-point noise.
+        expect(Math.round(box!.height * 100) / 100).toBeGreaterThanOrEqual(44);
         const intersects =
           box!.x < evidence!.x + evidence!.width &&
           box!.x + box!.width > evidence!.x &&

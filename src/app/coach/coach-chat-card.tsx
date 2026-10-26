@@ -51,8 +51,7 @@ export function CoachChatCard({ questionId = "coach-question" }: { questionId?: 
         body: JSON.stringify({ message }),
       });
       const payload = (await result.json().catch(() => null)) as
-        | (CoachChatResponse & { message?: string })
-        | null;
+        (CoachChatResponse & { message?: string }) | null;
 
       if (!result.ok || !payload?.answer) {
         setError(payload?.message ?? "Could not answer that coach question.");

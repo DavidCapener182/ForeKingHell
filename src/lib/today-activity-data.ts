@@ -98,32 +98,28 @@ export async function getTodayActivity(userId: string): Promise<TodayActivity[]>
         date: item.date,
       };
     }),
-    ...imports.map(
-      (item): TodayActivity => ({
-        id: `import:${item.id}`,
-        kind: "import",
-        title: "Shots imported",
-        detail:
-          item.source === "rapsodo"
-            ? "Rapsodo"
-            : item.source === "trackman"
-              ? "TrackMan"
-              : "Golf data saved",
-        href: item.sessionId ? `/sessions/${item.sessionId}` : "/import",
-        date: item.date,
-      }),
-    ),
-    ...practices.map(
-      (item): TodayActivity => ({
-        id: `practice:${item.id}`,
-        kind: "practice",
-        title: item.title,
-        detail:
-          item.status === "analysed" ? "Practice reviewed" : "Practice completed · activity only",
-        href: `/practice?planId=${item.id}`,
-        date: item.date!,
-      }),
-    ),
+    ...imports.map((item): TodayActivity => ({
+      id: `import:${item.id}`,
+      kind: "import",
+      title: "Shots imported",
+      detail:
+        item.source === "rapsodo"
+          ? "Rapsodo"
+          : item.source === "trackman"
+            ? "TrackMan"
+            : "Golf data saved",
+      href: item.sessionId ? `/sessions/${item.sessionId}` : "/import",
+      date: item.date,
+    })),
+    ...practices.map((item): TodayActivity => ({
+      id: `practice:${item.id}`,
+      kind: "practice",
+      title: item.title,
+      detail:
+        item.status === "analysed" ? "Practice reviewed" : "Practice completed · activity only",
+      href: `/practice?planId=${item.id}`,
+      date: item.date!,
+    })),
     ...achievements.flatMap((item): TodayActivity[] => {
       const achievement = getAchievement(item.achievementId);
       return achievement
@@ -139,25 +135,21 @@ export async function getTodayActivity(userId: string): Promise<TodayActivity[]>
           ]
         : [];
     }),
-    ...bests.map(
-      (item): TodayActivity => ({
-        id: `pb:${item.id}`,
-        kind: "personal-best",
-        title: `${typeof item.metadata.clubType === "string" ? formatClubType(item.metadata.clubType) : "Golf"} personal best`,
-        detail: [item.metricValue, item.metricLabel, "PB recorded"].filter(Boolean).join(" · "),
-        href: "/bag/longest",
-        date: item.date,
-      }),
-    ),
-    ...readGoalMovements(preferences[0]?.settings?.goalMovements).map(
-      (item): TodayActivity => ({
-        id: `goal:${item.id}`,
-        kind: "goal",
-        title: item.title,
-        detail: `${item.from} → ${item.to} ${item.unit} · Value updated`,
-        href: "/goals",
-        date: new Date(item.recordedAt),
-      }),
-    ),
+    ...bests.map((item): TodayActivity => ({
+      id: `pb:${item.id}`,
+      kind: "personal-best",
+      title: `${typeof item.metadata.clubType === "string" ? formatClubType(item.metadata.clubType) : "Golf"} personal best`,
+      detail: [item.metricValue, item.metricLabel, "PB recorded"].filter(Boolean).join(" · "),
+      href: "/bag/longest",
+      date: item.date,
+    })),
+    ...readGoalMovements(preferences[0]?.settings?.goalMovements).map((item): TodayActivity => ({
+      id: `goal:${item.id}`,
+      kind: "goal",
+      title: item.title,
+      detail: `${item.from} → ${item.to} ${item.unit} · Value updated`,
+      href: "/goals",
+      date: new Date(item.recordedAt),
+    })),
   ]);
 }

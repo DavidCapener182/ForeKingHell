@@ -1,11 +1,22 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { prepareFlightPathFixture } from "./flight-path-fixture";
+const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
+test.beforeEach(async ({ page }, info) => {
+  fixtureCleanup.set(
+    page,
+    await prepareFlightPathFixture(page, String(info.project.use.baseURL), true),
+  );
+});
+test.afterEach(async ({ page }) => {
+  await fixtureCleanup.get(page)?.();
+});
 test.skip(process.env.PLAYWRIGHT_E2E_AUTH_BYPASS !== "1", "Authorised fixture required");
 test("Club profile keeps every analysis and exact shot evidence", async ({ page }, info) => {
   test.skip(info.project.name !== "chromium");
   test.setTimeout(240000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.stack ?? e.message));
-  await page.goto("/bag");
+  await page.goto("/bag?tab=clubs");
   const link = page.locator('a[href^="/bag/"]').filter({ hasNotText: "Best" }).first();
   await expect(link).toBeVisible({ timeout: 60000 });
   const href = await link.getAttribute("href");

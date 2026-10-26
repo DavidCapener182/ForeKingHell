@@ -32,6 +32,7 @@
   border-color: var(--primary);
   color: var(--primary);
 }
+.strip:focus-visible,
 .tab[data-focus-visible],
 .panel[data-focus-visible] {
   outline: 2px solid var(--ring);
@@ -48,4 +49,9 @@
 
 .panel[data-inert] {
   display: none;
+}
+
+.strip:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }

@@ -61,14 +61,7 @@ const dayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
 });
 
 type ActivityKind =
-  | "round"
-  | "practice"
-  | "pb"
-  | "achievement"
-  | "challenge"
-  | "course-record"
-  | "goal"
-  | "status";
+  "round" | "practice" | "pb" | "achievement" | "challenge" | "course-record" | "goal" | "status";
 
 export function FeedCardList({
   items,

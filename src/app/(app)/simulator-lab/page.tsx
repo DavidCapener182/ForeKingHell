@@ -882,9 +882,7 @@ function ConfidenceTimeline({ reality }: { reality: RangeRealityHandicapData }) 
             item.value === null ? null : (
               <g key={item.id}>
                 <title>
-                  {item.label}: {item.valueLabel}; {item.confidenceScore}% confidence;{" "}
-                  {item.sampleSize ?? "unknown"} shots used across {item.sessionCount ?? "unknown"}{" "}
-                  sessions.
+                  {`${item.label}: ${item.valueLabel}; ${item.confidenceScore}% confidence; ${item.sampleSize ?? "unknown"} shots used across ${item.sessionCount ?? "unknown"} sessions.`}
                 </title>
                 <circle
                   cx={xScale(index)}

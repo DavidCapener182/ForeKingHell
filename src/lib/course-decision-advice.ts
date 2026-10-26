@@ -2,11 +2,7 @@ import { formatClubType, isShortGameTouchClubType } from "@/lib/club-format";
 import type { StockYardage } from "@/lib/stock-yardage";
 
 export type ClubDecisionLabel =
-  | "Trust"
-  | "Developing"
-  | "Needs calibration"
-  | "Do not trust yet"
-  | "Touch shots only";
+  "Trust" | "Developing" | "Needs calibration" | "Do not trust yet" | "Touch shots only";
 export type CourseDecisionTone = "green" | "sky" | "pink" | "amber" | "slate";
 
 export type CourseDecisionClub = {

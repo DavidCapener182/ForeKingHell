@@ -76,7 +76,7 @@ test("Clubhouse feed keeps scope, source identity and reviewed publishing across
           latest,
         );
         await controls
-          .getByRole("textbox", { name: "Search loaded activity", exact: true })
+          .getByRole("textbox", { name: "Search activity", exact: true })
           .fill("No synthetic match");
         await controls.getByRole("button", { name: "Search", exact: true }).click();
         await expect(page.getByText("No activity in this view", { exact: true })).toBeVisible();

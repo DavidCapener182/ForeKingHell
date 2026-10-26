@@ -2,13 +2,7 @@ import { polygonFromLatLngRing, type GeoJsonPolygon } from "@/lib/course-feature
 import type { LatLngPoint } from "@/lib/geo/yard-projection";
 
 export type OsmCourseFeatureType =
-  | "fairway"
-  | "green"
-  | "bunker"
-  | "water"
-  | "rough"
-  | "trees"
-  | "course_boundary";
+  "fairway" | "green" | "bunker" | "water" | "rough" | "trees" | "course_boundary";
 
 export type OsmCourseFeature = {
   osmType: string;

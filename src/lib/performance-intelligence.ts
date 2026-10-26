@@ -3,13 +3,7 @@ import { mean, median, percentile } from "@/lib/analysis-statistics";
 /** Product rules, not a statistical confidence model. Quantiles use linear interpolation (R-7). */
 export const PERFORMANCE_RULE_VERSION = "performance-intelligence-v1";
 export type MetricStatus =
-  | "measured"
-  | "estimated"
-  | "derived"
-  | "reconstructed"
-  | "unknown"
-  | "unavailable"
-  | "invalid";
+  "measured" | "estimated" | "derived" | "reconstructed" | "unknown" | "unavailable" | "invalid";
 export type PerformanceMetric = "carryYd" | "ballSpeedMph" | "clubSpeedMph" | "sideCarryYd";
 export type PerformanceShot = {
   id: string;

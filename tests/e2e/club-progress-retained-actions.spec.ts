@@ -71,6 +71,11 @@ test("progress preserves round resume and shot correction with refreshed evidenc
       expect(
         await db`select id from fkh_shots where id in ${db(shots.map((s) => s.id))} and club_id=${iron.id}`,
       ).toHaveLength(1);
+      // The success message precedes the router refresh. Wait for the transition
+      // to finish before a new document navigation can race that refresh in Firefox.
+      await expect(
+        correction.getByRole("button", { name: "Update club", exact: true }),
+      ).toBeEnabled();
       await page.goto(`/today?session=${practice.id}&cpClub=${driver.id}&cpMetric=carryYd`);
       await expect(page.locator("[data-progress-cards]")).toContainText("11 readings");
       await page

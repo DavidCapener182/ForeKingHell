@@ -8,7 +8,7 @@ const axePath = path.join(process.cwd(), "node_modules", "axe-core", "axe.min.js
 
 export const authStorageState = process.env.PLAYWRIGHT_AUTH_STATE;
 export const hasLocalAuthBypass = localAuthBypassEnabled(
-  process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100",
+  process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${process.env.PLAYWRIGHT_PORT ?? "3100"}`,
 );
 export const hasAuthenticatedE2e =
   hasLocalAuthBypass || Boolean(authStorageState && existsSync(authStorageState));
@@ -76,12 +76,16 @@ export async function expectPageReady(page: Page, expectedText: RegExp | string)
       );
     }
   }
+  const mobileHeader = page.locator("[data-mobile-nav-hydrated]").filter({ visible: true });
+  if (await mobileHeader.count()) {
+    await expect(mobileHeader).toHaveAttribute("data-mobile-nav-hydrated", "true");
+  }
   await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
 }
 
 async function expectWithOneReload(page: Page, expectedText: RegExp | string, timeout: number) {
   try {
-    await expect(page.locator("body")).toContainText(expectedText, { timeout });
+    await expect(page.getByRole("main")).toContainText(expectedText, { timeout });
   } catch (error) {
     if (page.isClosed()) {
       throw error;
@@ -89,11 +93,17 @@ async function expectWithOneReload(page: Page, expectedText: RegExp | string, ti
 
     await page.reload({ waitUntil: "commit", timeout: 45_000 });
     await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => {});
-    await expect(page.locator("body")).toContainText(expectedText, { timeout });
+    await expect(page.getByRole("main")).toContainText(expectedText, { timeout });
   }
 }
 
 export async function injectAxe(page: Page) {
+  // Paid routes stream a temporary redirect document. Audit the rendered destination,
+  // rather than Next's meta refresh while the client is still navigating.
+  await expect(page.locator('meta[http-equiv="refresh"]')).toHaveCount(0);
+  await expect(page.getByRole("main").getByRole("heading", { level: 1 }).first()).toBeVisible();
+  await expect(page.locator("[data-route-error-state]")).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText(/Internal Server Error|Application error/i);
   await page.addScriptTag({ content: readFileSync(axePath, "utf8") });
 }
 

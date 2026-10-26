@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { grantFixturePlan } from "../support/paid-fixture";
 test("Recaps retain saved evidence and reports use explicit named review on both surfaces", async ({
   page,
   context,
@@ -25,6 +26,7 @@ test("Recaps retain saved evidence and reports use explicit named review on both
   try {
     for (const name of ["Synthetic recap owner", "Synthetic foreign owner"])
       owners.push((await db`insert into fkh_users(name) values(${name}) returning id`)[0].id);
+    await grantFixturePlan(db, [owners[0]]);
     const own = (
       await db`insert into fkh_feed_items(user_id,item_type,headline,context,proof_url,visibility) values(${owners[0]},'status_update','Original owned activity','Original source facts','/feed?filter=me','private') returning id`
     )[0].id;

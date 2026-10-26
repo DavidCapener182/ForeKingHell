@@ -1,3 +1,4 @@
+import { registerLocalPaidPersona } from "./local-paid-persona";
 import { test } from "@playwright/test";
 
 import {
@@ -9,6 +10,8 @@ import {
 } from "./helpers";
 
 test.use({ bypassCSP: true });
+
+registerLocalPaidPersona();
 
 test.describe("accessibility smoke checks", () => {
   test("login has no critical or serious axe violations", async ({ page }) => {

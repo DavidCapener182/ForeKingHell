@@ -3419,6 +3419,16 @@ export function CourseTwinScene({
           return isCompactViewport ? (
             <Drawer open={Boolean(hudPanel)} onOpenChange={(open) => !open && closeHudPanel()}>
               <DrawerContent
+                onOpenAutoFocus={(event) => {
+                  event.preventDefault();
+                  const panel =
+                    hudPanel === "course"
+                      ? "[data-course-twin-primary-controls]"
+                      : "[data-course-twin-shot-controls]";
+                  document
+                    .querySelector<HTMLElement>(`${panel} button[aria-label^="Close"]`)
+                    ?.focus();
+                }}
                 data-mobile-preserve-dark
                 className="max-h-[86dvh] overflow-y-auto border-white/12 bg-[#07150e] pb-[calc(1rem+env(safe-area-inset-bottom))] text-white"
                 style={{ colorScheme: "dark" }}

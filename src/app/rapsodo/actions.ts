@@ -873,20 +873,18 @@ async function getRapsodoClubChoices(
   const localKeys = new Set(localChoices.map((choice) => choice.clubKey));
   const rapsodoOnlyChoices = rapsodoBagClubs
     .filter((club) => !localKeys.has(club.clubKey))
-    .map(
-      (club): RapsodoClubChoice => ({
-        clubKey: club.clubKey,
-        clubType: club.clubType,
-        clubLabel: club.clubLabel,
-        clubBrand: club.clubBrand,
-        clubModel: club.clubModel,
-        stockCarryYd: null,
-        stockTotalYd: null,
-        averageBallSpeedMph: null,
-        sampleSize: 0,
-        rapsodoClubId: club.rapsodoClubId,
-      }),
-    );
+    .map((club): RapsodoClubChoice => ({
+      clubKey: club.clubKey,
+      clubType: club.clubType,
+      clubLabel: club.clubLabel,
+      clubBrand: club.clubBrand,
+      clubModel: club.clubModel,
+      stockCarryYd: null,
+      stockTotalYd: null,
+      averageBallSpeedMph: null,
+      sampleSize: 0,
+      rapsodoClubId: club.rapsodoClubId,
+    }));
 
   return uniqueClubChoices([...localChoices, ...rapsodoOnlyChoices]);
 }

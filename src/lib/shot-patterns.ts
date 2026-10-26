@@ -148,21 +148,19 @@ export async function getShotPattern(request: ShotPatternRequest): Promise<ShotP
     .orderBy(desc(shots.shotAt))
     .limit(limit);
 
-  const rawShots = rows.map(
-    (row): ShotPatternRawShot => ({
-      id: row.id,
-      clubId: row.clubId,
-      clubType: row.clubType,
-      carryYd: row.carryYd,
-      totalYd: row.totalYd,
-      sideCarryYd: row.sideCarryYd,
-      shotAt: row.shotAt,
-      reviewStatus: row.reviewStatus,
-      shotCategory: row.shotCategory,
-      qualityTag: row.qualityTag,
-      sessionType: row.sessionType,
-    }),
-  );
+  const rawShots = rows.map((row): ShotPatternRawShot => ({
+    id: row.id,
+    clubId: row.clubId,
+    clubType: row.clubType,
+    carryYd: row.carryYd,
+    totalYd: row.totalYd,
+    sideCarryYd: row.sideCarryYd,
+    shotAt: row.shotAt,
+    reviewStatus: row.reviewStatus,
+    shotCategory: row.shotCategory,
+    qualityTag: row.qualityTag,
+    sessionType: row.sessionType,
+  }));
   const firstRow = rows[0] ?? null;
 
   return buildShotPatternResult({

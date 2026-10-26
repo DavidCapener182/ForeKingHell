@@ -80,3 +80,23 @@ export async function openCustomerPortalFormAction(
     return { ok: false, error: "Could not open billing management. Try again later." };
   }
 }
+
+export async function startProTrialCheckoutAction(
+  _previous: { ok: boolean; error?: string; url?: string },
+  _formData: FormData,
+): Promise<{ ok: boolean; error?: string; url?: string }> {
+  void _previous;
+  void _formData;
+  try {
+    const result = await createCheckoutSession({
+      planKey: "pro",
+      interval: "monthly",
+      origin: getSiteOrigin(),
+      trialDays: 7,
+      trialReason: "post_first_import",
+    });
+    return result.error ? { ok: false, error: result.error } : { ok: true, url: result.url };
+  } catch {
+    return { ok: false, error: "Could not start your trial. Try again from billing." };
+  }
+}

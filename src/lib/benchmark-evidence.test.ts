@@ -66,17 +66,14 @@ describe("live Bag evidence assembly (synthetic fixtures)", () => {
     expect(benchmarkObservationMetric({ ...shot(0), carryYd: null }, "clubSpeedMph")).toBe(90);
   });
   it("discloses measured, estimated and excluded readings within the same best-30 cohort", () => {
-    const rows = Array.from(
-      { length: 40 },
-      (_, index): BenchmarkObservation => ({
-        ...shot(index),
-        clubSpeedMph: index < 30 ? 90 : 140,
-        metricStatus: {
-          clubSpeedMph: index < 10 ? "measured" : index < 20 ? "estimated" : "unknown",
-        },
-        sourceRawJson: index < 10 ? { "Apex (ft)": "90" } : { Apex: "90" },
-      }),
-    );
+    const rows = Array.from({ length: 40 }, (_, index): BenchmarkObservation => ({
+      ...shot(index),
+      clubSpeedMph: index < 30 ? 90 : 140,
+      metricStatus: {
+        clubSpeedMph: index < 10 ? "measured" : index < 20 ? "estimated" : "unknown",
+      },
+      sourceRawJson: index < 10 ? { "Apex (ft)": "90" } : { Apex: "90" },
+    }));
     const intelligence = buildPerformanceIntelligence(rows, { asOf });
     const [result] = buildEvidenceBenchmarkRows([club], intelligence, rows);
     expect(result!.selectedShotIds).toEqual(rows.slice(0, 30).map((row) => row.id));

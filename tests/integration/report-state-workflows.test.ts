@@ -1,3 +1,4 @@
+import { grantFixturePlan } from "../support/paid-fixture";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { randomUUID } from "node:crypto";
@@ -33,6 +34,7 @@ describe.skipIf(!enabled)("report state actions", () => {
       const ids = (
         await sql`insert into fkh_users(name) values('Synthetic report owner'),('Synthetic report stranger') returning id`
       ).map((r) => r.id);
+      await grantFixturePlan(sql, ids);
       actor.id = ids[0];
       try {
         expect(await createCoachReportWithStateAction(new FormData())).toMatchObject({ ok: false });
@@ -110,6 +112,7 @@ describe.skipIf(!enabled)("report state actions", () => {
   it("serializes simultaneous first submissions into one frozen report", async () => {
     const [owner] =
       await sql`insert into fkh_users(name) values('Synthetic concurrent report owner') returning id`;
+    await grantFixturePlan(sql, [owner.id]);
     actor.id = owner.id;
     try {
       const form = new FormData();

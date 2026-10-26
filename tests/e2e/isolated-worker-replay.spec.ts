@@ -1,13 +1,18 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
 
-test.use({ actionTimeout: 15000 });
+test.use({ actionTimeout: 15000, serviceWorkers: "allow" });
 
 for (const surface of ["companion"] as const) {
   test(`offline upload replays through a real service worker message`, async ({
     page,
     context,
+    browserName,
   }) => {
+    test.skip(
+      browserName !== "chromium",
+      "Playwright exposes service-worker execution only in Chromium.",
+    );
     const url = process.env.DATABASE_URL;
     const target = url ? new URL(url) : null;
     test.skip(
@@ -53,6 +58,7 @@ for (const surface of ["companion"] as const) {
         surface === "companion" ? { width: 390, height: 844 } : { width: 1440, height: 900 },
       );
       await page.goto(`/surface/${surface}?next=%2Fimport%3Fsource%3Dcsv`);
+      await expect(page.locator("#companion-csv-file")).toBeEnabled();
       await page
         .locator("#companion-csv-file")
         .setInputFiles({ name: fileName, mimeType: "text/csv", buffer: Buffer.from(csv) });

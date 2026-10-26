@@ -10,8 +10,49 @@ permissions:
 
 jobs:
   browser-matrix:
+    name: Browser quality (${{ matrix.project }} ${{ matrix.shardIndex || 1 }}/${{ matrix.shardTotal || 1 }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        project:
+          - firefox
+          - webkit
+          - desktop-1024x768
+          - desktop-1280x720
+          - desktop-1366x768
+          - desktop-1440x900
+          - desktop-1920x1080
+          - desktop-2560x1440
+          - mobile-small
+          - mobile-iphone
+          - mobile-webkit
+          - mobile-pixel
+          - tablet-ipad-mini
+          - phone-landscape
+        # Base Chromium expands many journeys across its own viewport states.
+        # Its passing cases exceed one 45-minute job; shard rather than raise timeouts.
+        include:
+          - project: chromium
+            shardIndex: 1
+            shardTotal: 6
+          - project: chromium
+            shardIndex: 2
+            shardTotal: 6
+          - project: chromium
+            shardIndex: 3
+            shardTotal: 6
+          - project: chromium
+            shardIndex: 4
+            shardTotal: 6
+          - project: chromium
+            shardIndex: 5
+            shardTotal: 6
+          - project: chromium
+            shardIndex: 6
+            shardTotal: 6
     services:
       postgres:
         image: postgres:17-alpine
@@ -36,8 +77,8 @@ jobs:
       CRON_SECRET: ci-cron-secret-at-least-32-characters
       PLAYWRIGHT_E2E_AUTH_BYPASS: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -63,16 +104,32 @@ jobs:
           await sql.end();
           NODE
       - run: npm run db:migrate
+      - name: Trial and round-plan database acceptance
+        if: matrix.project == 'chromium' && matrix.shardIndex == 1
+        env:
+          RUN_PRO_FEATURE_DB_TESTS: "1"
+        run: npx vitest run tests/integration/pro-feature-foundation.test.ts tests/integration/pro-round-plan-access.test.ts
       - run: npx playwright install --with-deps chromium firefox webkit
-      - run: npm run test:e2e
+      - run: npm run test:e2e -- --project=${{ matrix.project }} --shard=${{ matrix.shardIndex || 1 }}/${{ matrix.shardTotal || 1 }}
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: browser-results-${{ matrix.project }}-${{ matrix.shardIndex || 1 }}
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14
       - run: npm run build
+        id: production-build
+        if: always() && matrix.project == 'chromium' && matrix.shardIndex == 1
       - run: npm run test:lighthouse
+        if: always() && matrix.project == 'chromium' && matrix.shardIndex == 1 && steps.production-build.outcome == 'success'
 
   dependency-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -91,8 +148,8 @@ jobs:
       SCORECARD_PROOF_SECRET: ci-scorecard-proof-secret-32-characters
       CRON_SECRET: ci-cron-secret-at-least-32-characters
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -100,8 +157,18 @@ jobs:
       - run: npm run build
       - run: npm run check:route-budgets
       - run: npm run build:analyze
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: next-bundle-analysis
           path: .next/diagnostics/analyze
           retention-days: 14
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:lighthouse
+      - name: Save Lighthouse diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-lighthouse
+          path: output/lighthouse
+          if-no-files-found: ignore
+          retention-days: 7

@@ -287,6 +287,38 @@ describe("proxy responsive dashboard route", () => {
     },
   );
 
+  it.each(["companion", "workbench"])(
+    "serves profile QR images without a page rewrite on %s",
+    async (surface) => {
+      const response = await proxy(
+        new NextRequest("https://app.example.com/friends/qr/fixture-user", {
+          headers: {
+            cookie: `${bypassCookie}; fkh-app-surface=${surface}`,
+            "user-agent": phoneUserAgent,
+          },
+        }),
+      );
+      expect(response.headers.get("x-middleware-next")).toBe("1");
+      expect(response.headers.get("x-middleware-rewrite")).toBeNull();
+    },
+  );
+
+  it("keeps profile QR images behind sign-in", async () => {
+    configureSupabaseAuth();
+    vi.mocked(createServerClient).mockReturnValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
+      },
+    } as never);
+    const response = await proxy(
+      new NextRequest("https://app.example.com/friends/qr/fixture-user", {
+        headers: { cookie: "fkh-app-surface=companion", "user-agent": phoneUserAgent },
+      }),
+    );
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toContain("/login");
+  });
+
   it("preserves the requested Dashboard and explicit workbench on a phone", async () => {
     const response = await proxy(
       new NextRequest("https://app.example.com/dashboard", {

@@ -50,8 +50,7 @@ test("Course record alias preserves exact identity query and public destination"
       score: 5,
       yards: 300,
     }));
-    const [round] =
-      await db`insert into fkh_sessions(user_id,source,type,date,course_id,tee_set_id,course_name,scorecard_json,raw_csv_text) values(${owner!},'manual','real_round','2026-09-02',${course.id},${tee.id},'Synthetic record course',${db.json(scorecard)},'unchanged proof round') returning id`;
+    await db`insert into fkh_sessions(user_id,source,type,date,course_id,tee_set_id,course_name,scorecard_json,raw_csv_text) values(${owner!},'manual','real_round','2026-09-02',${course.id},${tee.id},'Synthetic record course',${db.json(scorecard)},'unchanged proof round') returning id`;
     await page.goto(`/courses/${course.id}/records`);
     const [board] =
       await db`select id from fkh_course_records where course_id=${course.id} and record_type='best_gross_score' and period='all_time' and scope='public' limit 1`;

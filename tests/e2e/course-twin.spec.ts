@@ -1,113 +1,167 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import { prepareFlightPathFixture } from "./flight-path-fixture";
 import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
 
 test.describe("Course Twin", () => {
   test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run Course Twin checks.");
   test.use(authStorageState ? { storageState: authStorageState } : {});
+  const localFixtures = new WeakMap<Page, (() => Promise<void>) & { sessionId?: string }>();
+  test.beforeEach(async ({ page }, info) => {
+    if (
+      /playable twin|persisted My Bag|manual putt|every mobile control|desktop Course Twin/.test(
+        info.title,
+      )
+    ) {
+      localFixtures.set(
+        page,
+        await prepareFlightPathFixture(
+          page,
+          String(info.project.use.baseURL),
+          true,
+          false,
+          "4de11156-16fd-4a36-84e0-fadda53456b0",
+        ),
+      );
+    }
+  });
+  test.afterEach(async ({ page }) => {
+    await localFixtures.get(page)?.();
+  });
+
   test("serves and browser-renders every verified first-wave package", async ({
     browser,
     page,
-  }) => {
+  }, info) => {
     test.setTimeout(360_000);
+    test.skip(
+      !["chromium", "firefox", "webkit"].includes(info.project.name),
+      "The package sweep creates identical desktop contexts; run once per browser engine.",
+    );
     skipWhenNoAuth();
-    const report = JSON.parse(
-      readFileSync(
-        resolve("tools/course-twin-builder/catalog/uk-first-wave-packages.json"),
-        "utf8",
-      ),
-    ) as {
-      completed: number;
-      packageGenerationComplete: boolean;
-      manualVisualQaComplete: boolean;
-      packages: Array<{
-        courseId: string;
-        slug: string;
-        qualityGrade: string;
-        mappedHoles: number;
-        assets: Array<{ fileName: string; byteLength: number }>;
-      }>;
-    };
-    expect(report.packageGenerationComplete).toBe(true);
-    expect(report.manualVisualQaComplete).toBe(true);
-    expect(report.completed).toBeGreaterThanOrEqual(20);
-    expect(report.completed).toBeLessThanOrEqual(50);
+    const cleanup = await prepareFlightPathFixture(page, String(info.project.use.baseURL), true);
+    try {
+      const report = JSON.parse(
+        readFileSync(
+          resolve("tools/course-twin-builder/catalog/uk-first-wave-packages.json"),
+          "utf8",
+        ),
+      ) as {
+        completed: number;
+        packageGenerationComplete: boolean;
+        manualVisualQaComplete: boolean;
+        packages: Array<{
+          courseId: string;
+          slug: string;
+          qualityGrade: string;
+          mappedHoles: number;
+          assets: Array<{ fileName: string; byteLength: number }>;
+        }>;
+      };
+      expect(report.packageGenerationComplete).toBe(true);
+      expect(report.manualVisualQaComplete).toBe(true);
+      expect(report.completed).toBeGreaterThanOrEqual(20);
+      expect(report.completed).toBeLessThanOrEqual(50);
 
-    for (const entry of report.packages) {
-      const response = await page.request.get(`/api/course-twins/${entry.courseId}/manifest`);
-      expect(response.status(), `${entry.slug} manifest`).toBe(200);
-      await expect(response.json()).resolves.toMatchObject({
-        course: { id: entry.courseId },
-        quality: { grade: entry.qualityGrade, mappedHoles: entry.mappedHoles },
-      });
-      for (const asset of entry.assets) {
-        const assetResponse = await page.request.get(
-          `/course-twins/${entry.slug}/${asset.fileName}`,
-        );
-        expect(assetResponse.status(), `${entry.slug}/${asset.fileName}`).toBe(200);
-        expect((await assetResponse.body()).byteLength).toBe(asset.byteLength);
-      }
-    }
-
-    const storageState = await page.context().storageState();
-    const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100";
-    for (const entry of report.packages) {
-      const context = await browser.newContext({ baseURL, storageState, serviceWorkers: "block" });
-      const renderPage = await context.newPage();
-      const courseRequestFailures: string[] = [];
-      const coursePaths = [
-        `/play/${entry.courseId}`,
-        `/api/course-twins/${entry.courseId}`,
-        `/course-twins/${entry.slug}/`,
-      ];
-      renderPage.on("response", (response) => {
-        const pathname = new URL(response.url()).pathname;
-        if (response.status() >= 400 && coursePaths.some((path) => pathname.startsWith(path))) {
-          courseRequestFailures.push(`${response.status()} ${pathname}`);
-        }
-      });
-      renderPage.on("requestfailed", (request) => {
-        const pathname = new URL(request.url()).pathname;
-        const errorText = request.failure()?.errorText;
-        if (
-          errorText !== "net::ERR_ABORTED" &&
-          coursePaths.some((path) => pathname.startsWith(path))
-        ) {
-          courseRequestFailures.push(`network ${pathname}: ${errorText}`);
-        }
-      });
-      try {
-        await renderPage.goto(`/play/${entry.courseId}`, {
-          waitUntil: "domcontentloaded",
-          timeout: 90_000,
+      for (const entry of report.packages) {
+        const response = await page.request.get(`/api/course-twins/${entry.courseId}/manifest`);
+        expect(response.status(), `${entry.slug} manifest`).toBe(200);
+        await expect(response.json()).resolves.toMatchObject({
+          course: { id: entry.courseId },
+          quality: { grade: entry.qualityGrade, mappedHoles: entry.mappedHoles },
         });
-        await expect(
-          renderPage
-            .getByText(/Grade B/)
-            .filter({ visible: true })
-            .first(),
-        ).toBeVisible();
-        await expect(renderPage.locator("canvas")).toBeVisible();
-        await expect
-          .poll(
-            () =>
-              renderPage.evaluate(() => {
-                const gameWindow = window as typeof window & {
-                  render_game_to_text?: () => string;
-                };
-                const state = JSON.parse(gameWindow.render_game_to_text?.() ?? "{}");
-                return state.terrain?.status ?? null;
-              }),
-            { message: `${entry.slug} terrain readiness` },
-          )
-          .toBe("ready");
-        expect(courseRequestFailures, entry.slug).toEqual([]);
-      } finally {
-        await context.close();
+        for (const asset of entry.assets) {
+          const assetResponse = await page.request.get(
+            `/course-twins/${entry.slug}/${asset.fileName}`,
+          );
+          expect(assetResponse.status(), `${entry.slug}/${asset.fileName}`).toBe(200);
+          expect((await assetResponse.body()).byteLength).toBe(asset.byteLength);
+        }
       }
+
+      const storageState = await page.context().storageState();
+      const baseURL = String(info.project.use.baseURL);
+      for (const entry of report.packages) {
+        const context = await browser.newContext({
+          baseURL,
+          storageState,
+          viewport: { width: 1440, height: 1000 },
+          serviceWorkers: "block",
+        });
+        const renderPage = await context.newPage();
+        const courseRequestFailures: string[] = [];
+        const coursePaths = [
+          `/play/${entry.courseId}`,
+          `/api/course-twins/${entry.courseId}`,
+          `/course-twins/${entry.slug}/`,
+        ];
+        renderPage.on("response", (response) => {
+          const pathname = new URL(response.url()).pathname;
+          if (response.status() >= 400 && coursePaths.some((path) => pathname.startsWith(path))) {
+            courseRequestFailures.push(`${response.status()} ${pathname}`);
+          }
+        });
+        renderPage.on("requestfailed", (request) => {
+          const pathname = new URL(request.url()).pathname;
+          const errorText = request.failure()?.errorText;
+          if (
+            !new Set(["net::ERR_ABORTED", "NS_BINDING_ABORTED", "cancelled"]).has(
+              errorText ?? "",
+            ) &&
+            coursePaths.some((path) => pathname.startsWith(path))
+          ) {
+            courseRequestFailures.push(`network ${pathname}: ${errorText}`);
+          }
+        });
+        const terrainResponse = renderPage.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname === `/course-twins/${entry.slug}/terrain.f32` &&
+            response.status() === 200,
+        );
+        try {
+          // Verify packaged imagery without depending on optional live satellite enrichment.
+          await renderPage.goto(`/play/${entry.courseId}?quality=balanced`, {
+            waitUntil: "domcontentloaded",
+            timeout: 90_000,
+          });
+          await renderPage
+            .getByRole("button", { name: "Open Course Twin settings", exact: true })
+            .click();
+          await expect(
+            renderPage
+              .getByText(new RegExp(`Grade ${entry.qualityGrade}`))
+              .filter({ visible: true })
+              .first(),
+          ).toBeVisible();
+          await renderPage
+            .getByRole("button", { name: "Close course controls", exact: true })
+            .filter({ visible: true })
+            .click();
+          await expect(renderPage.locator("canvas")).toBeVisible();
+          await (await terrainResponse).finished();
+          await expect
+            .poll(
+              () =>
+                renderPage.evaluate(() => {
+                  const gameWindow = window as typeof window & {
+                    render_game_to_text?: () => string;
+                  };
+                  const state = JSON.parse(gameWindow.render_game_to_text?.() ?? "{}");
+                  return state.terrain?.status ?? null;
+                }),
+              { message: `${entry.slug} terrain readiness` },
+            )
+            .toBe("ready");
+          expect(courseRequestFailures, entry.slug).toEqual([]);
+        } finally {
+          await context.close();
+        }
+      }
+    } finally {
+      await cleanup();
     }
   });
 
@@ -122,7 +176,9 @@ test.describe("Course Twin", () => {
     await expect(
       page.getByRole("link", { name: "Course Twin", exact: true }).first(),
     ).toBeVisible();
-    const bootleCard = page.locator("article").filter({ hasText: "Bootle Golf Course (Bootle)" });
+    const bootleCard = page
+      .locator('[data-slot="card"]')
+      .filter({ hasText: "Aintree Golf Centre" });
     await expect(bootleCard).toBeVisible();
     const bootleTwinLink = bootleCard.getByRole("link", {
       name: "Open Course Twin",
@@ -136,7 +192,7 @@ test.describe("Course Twin", () => {
       waitUntil: "domcontentloaded",
       timeout: 90_000,
     });
-    await expectPageReady(page, /Bootle Golf Course/i);
+    await expectPageReady(page, /Aintree Golf Centre/i);
 
     const pilotLink = page.getByRole("link", { name: "Open Course Twin", exact: true });
     await expect(pilotLink).toBeVisible();
@@ -169,17 +225,17 @@ test.describe("Course Twin", () => {
       await expect(missingResponse.json()).resolves.toEqual({ error: "Course Twin not found" });
     }
 
-    await pilotLink.click();
-    await expect(page).toHaveURL(new RegExp(`/play/${courseId}$`));
+    await page.goto(`${pilotHref}?quality=balanced`);
+    await expect(page).toHaveURL(new RegExp(`/play/${courseId}\\?quality=balanced$`));
     await expect(page.locator("canvas").filter({ visible: true }).first()).toBeVisible();
     await expect
-      .poll(() => readTerrainStatus(page), { message: "Bootle terrain readiness" })
+      .poll(() => readTerrainStatus(page), { message: "Aintree terrain readiness" })
       .toBe("ready");
     await expect(
-      page.getByRole("button", { name: "Strategy" }).filter({ visible: true }).first(),
+      page.getByRole("radio", { name: "Plan", exact: true }).filter({ visible: true }).first(),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Play", exact: true }).filter({ visible: true }).first(),
+      page.getByRole("radio", { name: "Play", exact: true }).filter({ visible: true }).first(),
     ).toBeVisible();
     await page
       .getByRole("button", { name: "Open Course Twin settings" })
@@ -275,12 +331,11 @@ test.describe("Course Twin", () => {
     await page.getByRole("button", { name: "Cart" }).filter({ visible: true }).click();
     const beforeCart = await readExplorationPosition(page);
     await page.keyboard.down("ArrowUp");
-    await page.evaluate(() => {
-      const gameWindow = window as typeof window & { advanceTime?: (milliseconds: number) => void };
-      for (let frame = 0; frame < 60; frame += 1) gameWindow.advanceTime?.(1000 / 60);
-    });
-    await page.keyboard.up("ArrowUp");
-    await expect.poll(() => readExplorationPosition(page)).not.toEqual(beforeCart);
+    try {
+      await expect.poll(() => readExplorationPosition(page)).not.toEqual(beforeCart);
+    } finally {
+      await page.keyboard.up("ArrowUp");
+    }
     if (testInfo.project.name === "chromium") {
       await page.getByRole("button", { name: "Leave group" }).click();
       await expect(page.getByRole("button", { name: "Start group session" })).toBeVisible({
@@ -288,12 +343,13 @@ test.describe("Course Twin", () => {
       });
     }
 
-    const bootleSessionId = "7aca3491-bd8d-4016-a05c-d1ba87f87db4";
+    const bootleSessionId = localFixtures.get(page)?.sessionId;
+    expect(bootleSessionId).toBeTruthy();
     await page.goto(`/rounds/${bootleSessionId}`, {
       waitUntil: "domcontentloaded",
       timeout: 90_000,
     });
-    await expectPageReady(page, /Round review|Bootle Golf Course/i);
+    await expectPageReady(page, /Round review|Aintree Golf Centre/i);
 
     const replayPilotLink = page.getByRole("link", {
       name: "Open 3D replay",
@@ -304,9 +360,16 @@ test.describe("Course Twin", () => {
       "href",
       /^\/play\/[0-9a-f-]+\?sessionId=[0-9a-f-]+$/,
     );
-    await replayPilotLink.click();
-    await expect(page).toHaveURL(/\/play\/[0-9a-f-]+\?sessionId=[0-9a-f-]+$/);
-    await expect(page.getByRole("button", { name: "View shot 1" })).toBeVisible();
+    const replayHref = await replayPilotLink.getAttribute("href");
+    await page.goto(`${replayHref}&quality=balanced`);
+    await expect(page).toHaveURL(/\/play\/[0-9a-f-]+\?sessionId=[0-9a-f-]+&quality=balanced$/);
+    await page
+      .getByRole("button", { name: "Open replay selection" })
+      .filter({ visible: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "View shot 1", exact: true }).first(),
+    ).toBeVisible();
   });
 
   test("opens the existing Aintree course as a nine-hole Grade B twin", async ({ page }) => {
@@ -329,7 +392,9 @@ test.describe("Course Twin", () => {
     });
     await expectPageReady(page, /Course Twin/i);
     await expect(page.getByRole("heading", { name: "Course Twin", exact: true })).toBeVisible();
-    const aintreeCard = page.locator("article").filter({ hasText: "Aintree Golf Centre" });
+    const aintreeCard = page
+      .locator('[data-slot="card"]')
+      .filter({ hasText: "Aintree Golf Centre" });
     await expect(aintreeCard).toBeVisible();
     await expect(aintreeCard.getByText("Grade B")).toBeVisible();
     await aintreeCard.getByRole("link", { name: "Open Course Twin" }).click();
@@ -358,36 +423,39 @@ test.describe("Course Twin", () => {
     );
     await expectPageReady(page, /Aintree Golf Centre/i);
 
-    const fallback = page.locator("[data-course-twin-low-power-fallback]");
+    const fallback = page.getByRole("region", { name: "2D Course Twin", exact: true });
     await expect(fallback).toBeVisible();
-    await expect(page.getByText("2D Course Twin · low-power mode", { exact: true })).toBeVisible();
+    await expect(fallback.getByText("Course Twin · map view", { exact: true })).toBeVisible();
+    await expect(fallback.getByRole("img", { name: "Hole 1 estimated outline" })).toBeVisible();
+    await expect(fallback.getByRole("link", { name: "Club strategy", exact: true })).toBeVisible();
+    const enable3d = fallback.getByRole("button", { name: "Open balanced 3D course view" });
+    await expect(enable3d).toBeVisible();
+    for (let hole = 1; hole <= 9; hole++) {
+      await expect(
+        fallback.getByRole("heading", { name: `Hole ${hole}`, exact: true }),
+      ).toBeVisible();
+      await expect(
+        fallback.getByRole("heading", { name: `Hole ${hole}`, exact: true }),
+      ).toBeInViewport();
+      if (hole < 9)
+        await fallback
+          .getByRole("navigation", { name: "Hole navigation" })
+          .getByRole("button", { name: "Next", exact: true })
+          .click();
+    }
     await expect(
-      page.getByRole("img", { name: /Overhead course plan showing 9 mapped holes/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("list", { name: "Course holes" }).getByRole("listitem"),
-    ).toHaveCount(9);
-    await expect(page.getByRole("link", { name: "Open Strategy map" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Try balanced 3D" })).toBeVisible();
-    const fallbackScroll = await fallback.evaluate((element) => ({
-      bodyMode: document.body.dataset.mobileImmersive ?? null,
-      clientHeight: element.clientHeight,
-      mainViewport: element.closest("main")?.dataset.courseTwinViewport ?? null,
-      mobileMedia: window.matchMedia("(max-width: 1023px)").matches,
-      overflowY: getComputedStyle(element).overflowY,
+      fallback
+        .getByRole("navigation", { name: "Hole navigation" })
+        .getByRole("button", { name: "Next", exact: true }),
+    ).toBeDisabled();
+    await expect(enable3d).toBeInViewport();
+    const layout = await fallback.evaluate((element) => ({
+      bodyMode: document.body.dataset.mobileImmersive,
+      mainViewport: element.closest("main")?.dataset.courseTwinViewport,
+      pageWidth: document.documentElement.scrollWidth,
     }));
-    expect(fallbackScroll).toMatchObject({
-      bodyMode: "course-twin",
-      mainViewport: "true",
-      mobileMedia: true,
-      overflowY: "auto",
-    });
-    expect(fallbackScroll.clientHeight).toBeLessThanOrEqual(568);
-    const finalHole = page.getByRole("list", { name: "Course holes" }).getByRole("listitem").last();
-    await finalHole.scrollIntoViewIfNeeded();
-    await expect(finalHole).toBeInViewport();
-    await page.getByRole("button", { name: "Try balanced 3D" }).scrollIntoViewIfNeeded();
-    await expect(page.getByRole("button", { name: "Try balanced 3D" })).toBeInViewport();
+    expect(layout).toMatchObject({ bodyMode: "course-twin", mainViewport: "true" });
+    expect(layout.pageWidth).toBeLessThanOrEqual(320);
     await expect(page.locator("canvas")).toHaveCount(0);
   });
 
@@ -406,8 +474,26 @@ test.describe("Course Twin", () => {
       { width: 844, height: 390, maxBottomStackRatio: 0.32 },
     ] as const;
 
+    // Compact shot controls are shown for an active round; a clean account
+    // otherwise correctly sees the taller round setup form.
+    const createRound = await page.request.post(`/api/course-twins/${courseId}/rounds`, {
+      data: {
+        mode: "play",
+        holeCount: 9,
+        startingHole: 1,
+        rules: {
+          windSpeedMph: 0,
+          windDirectionDeg: 0,
+          greenRule: "automatic_putts",
+          mulligansAllowed: true,
+          competition: false,
+        },
+      },
+    });
+    expect(createRound.status()).toBe(201);
+
     await page.setViewportSize(mobileViewports[0]);
-    await page.goto(`/play/${courseId}`, {
+    await page.goto(`/play/${courseId}?quality=balanced`, {
       waitUntil: "domcontentloaded",
       timeout: 90_000,
     });
@@ -421,7 +507,7 @@ test.describe("Course Twin", () => {
             requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
           }),
       );
-      await expect(page).toHaveURL(new RegExp(`/play/${courseId}$`));
+      await expect(page).toHaveURL(new RegExp(`/play/${courseId}(?:\\?|$)`));
 
       const immersiveViewport = page.locator("[data-course-twin-viewport]");
       const stage = page.locator("[data-course-twin-stage]");
@@ -456,20 +542,23 @@ test.describe("Course Twin", () => {
       expectBoxInsideViewport(layout.details, viewport, 44);
       expectBoxInsideViewport(layout.modeDock, viewport);
       expect(layout.modeDockScrollWidth).toBeLessThanOrEqual(layout.modeDockClientWidth + 1);
-      expect(layout.modes.map((item) => item.label)).toEqual(["Strategy", "Replay", "Play"]);
+      expect(layout.modes.map((item) => item.label)).toEqual(["Plan", "Replay", "Play"]);
       for (const modeControl of layout.modes) {
         expectBoxInsideViewport(modeControl.box, viewport, 44);
       }
 
-      for (const label of ["Strategy", "Replay", "Play"]) {
-        const modeControl = modeDock.getByRole("button", { name: label, exact: true });
+      for (const label of ["Plan", "Replay", "Play"]) {
+        const modeControl = modeDock.getByRole("radio", { name: label, exact: true });
         await expect(modeControl).toBeVisible();
       }
 
-      const playMode = modeDock.getByRole("button", { name: "Play", exact: true });
+      const playMode = modeDock.getByRole("radio", { name: "Play", exact: true });
       await playMode.click();
-      await expect(playMode).toHaveAttribute("aria-pressed", "true");
+      await expect(playMode).toHaveAttribute("aria-checked", "true");
       await expect(actionTray).toBeVisible();
+      await expect(
+        actionTray.getByRole("combobox", { name: "Club and modelled carry in yards" }),
+      ).toBeVisible();
       const modelledLabel = actionTray.locator("[data-course-twin-modelled-label]");
       await expect(modelledLabel).toBeVisible();
       await expect(modelledLabel).toContainText("Modelled");
@@ -505,10 +594,13 @@ test.describe("Course Twin", () => {
         await expect(page.getByRole("dialog")).toBeVisible();
         const closeDetails = page.getByRole("button", { name: "Close analysis controls" });
         await expect(closeDetails).toBeFocused();
-        expectBoxInsideViewport(
-          await readElementBox(page, "[data-course-twin-shot-controls]"),
-          viewport,
-        );
+        await expect
+          .poll(async () => {
+            const box = await readLocatorBox(page.getByRole("dialog"));
+            return box.y + box.height;
+          })
+          .toBeLessThanOrEqual(viewport.height + 1);
+        expectBoxInsideViewport(await readLocatorBox(page.getByRole("dialog")), viewport);
         await page.keyboard.press("Escape");
         await expect(shotControls).toBeHidden();
         await expect(details).toBeFocused();
@@ -530,7 +622,7 @@ test.describe("Course Twin", () => {
     ]);
 
     await page.setViewportSize({ width: 1024, height: 768 });
-    await page.goto(`/play/${courseId}`, {
+    await page.goto(`/play/${courseId}?quality=balanced`, {
       waitUntil: "domcontentloaded",
       timeout: 90_000,
     });
@@ -565,7 +657,7 @@ test.describe("Course Twin", () => {
 
     const courseId = "4de11156-16fd-4a36-84e0-fadda53456b0";
     await page.setViewportSize({ width: 1792, height: 1029 });
-    await page.goto(`/play/${courseId}`, {
+    await page.goto(`/play/${courseId}?quality=balanced`, {
       waitUntil: "domcontentloaded",
       timeout: 90_000,
     });
@@ -585,7 +677,7 @@ test.describe("Course Twin", () => {
 
     const controlSurfaces = {
       shotControls,
-      holeHud: page.locator("[data-course-twin-hole-hud]"),
+      holeHud: page.locator("[data-course-twin-hole-hud]:visible"),
       modeDock: visibleModeDock,
       currentPlan: page.locator("[data-course-twin-current-plan]"),
       holeNav: page.locator("[data-course-twin-hole-nav]"),
@@ -611,7 +703,7 @@ test.describe("Course Twin", () => {
   test("starts, resumes and safely abandons a persisted My Bag round", async ({ page }) => {
     test.setTimeout(120_000);
     skipWhenNoAuth();
-    const courseId = "9beb5429-67e4-4f4e-a187-adbe0df74b62";
+    const courseId = "4de11156-16fd-4a36-84e0-fadda53456b0";
 
     const existingResponse = await page.request.get(`/api/course-twins/${courseId}/rounds`);
     expect(existingResponse.status()).toBe(200);
@@ -633,11 +725,14 @@ test.describe("Course Twin", () => {
       expect([200, 201]).toContain(abandonResponse.status());
     }
 
-    await page.goto(`/play/${courseId}`, { waitUntil: "domcontentloaded", timeout: 90_000 });
-    await expectPageReady(page, /Bootle Golf Course/i);
+    await page.goto(`/play/${courseId}?quality=balanced`, {
+      waitUntil: "domcontentloaded",
+      timeout: 90_000,
+    });
+    await expectPageReady(page, /Aintree Golf Centre/i);
     await page
       .locator("[data-course-twin-runtime-mode-dock]:visible")
-      .getByRole("button", { name: "Play", exact: true })
+      .getByRole("radio", { name: "Play", exact: true })
       .last()
       .click();
     await expect(page.getByText("Start My Bag test round")).toBeVisible();
@@ -725,7 +820,7 @@ test.describe("Course Twin", () => {
   }) => {
     test.setTimeout(180_000);
     skipWhenNoAuth();
-    const courseId = "9beb5429-67e4-4f4e-a187-adbe0df74b62";
+    const courseId = "4de11156-16fd-4a36-84e0-fadda53456b0";
 
     const existingResponse = await page.request.get(`/api/course-twins/${courseId}/rounds`);
     expect(existingResponse.status()).toBe(200);
@@ -819,11 +914,11 @@ test.describe("Course Twin", () => {
     });
     expect(shotResponse.status()).toBe(201);
 
-    await page.goto(`/play/${courseId}`, {
+    await page.goto(`/play/${courseId}?quality=balanced`, {
       waitUntil: "domcontentloaded",
       timeout: 90_000,
     });
-    await expectPageReady(page, /Bootle Golf Course/i);
+    await expectPageReady(page, /Aintree Golf Centre/i);
     await page.getByRole("button", { name: "Open advanced controls" }).last().click();
     const puttStatus = page.getByText(/Approximate green · putt 1/i);
     await puttStatus.scrollIntoViewIfNeeded();
@@ -1042,20 +1137,6 @@ async function readCompactPlayLayout(page: import("@playwright/test").Page) {
         })),
     };
   });
-}
-
-async function readElementBox(page: import("@playwright/test").Page, selector: string) {
-  return page.evaluate((targetSelector) => {
-    const element = document.querySelector<HTMLElement>(targetSelector);
-    if (!element) throw new Error(`Missing Course Twin element: ${targetSelector}`);
-    const rectangle = element.getBoundingClientRect();
-    return {
-      x: rectangle.x,
-      y: rectangle.y,
-      width: rectangle.width,
-      height: rectangle.height,
-    };
-  }, selector);
 }
 
 async function readLocatorBox(locator: Locator) {

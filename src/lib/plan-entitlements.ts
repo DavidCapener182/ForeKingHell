@@ -22,6 +22,7 @@ export const planEntitlements = {
     ["ai_scorecard_extracts_monthly", { value: 2 }],
   ],
   pro: [
+    ["course_twin_round_plan", { value: true }],
     ["private_course_record_boards", { value: true }],
     ["private_friend_tournaments", { value: true }],
     ["max_monthly_imports", { value: 999999, label: "Unlimited" }],
@@ -40,6 +41,7 @@ export const planEntitlements = {
     ["ai_scorecard_extracts_monthly", { value: 10 }],
   ],
   coach: [
+    ["course_twin_round_plan", { value: true }],
     ["ai_record_strategy", { value: true }],
     ["advanced_verification_analytics", { value: true }],
     ["private_course_record_boards", { value: true }],
@@ -61,6 +63,7 @@ export const planEntitlements = {
     ["ai_scorecard_extracts_monthly", { value: 25 }],
   ],
   full: [
+    ["course_twin_round_plan", { value: true }],
     ["lifetime_full", { value: true }],
     ["max_monthly_imports", { value: 999999, label: "Unlimited" }],
     ["max_friend_groups", { value: 999999, label: "Unlimited" }],

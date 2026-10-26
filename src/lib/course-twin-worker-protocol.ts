@@ -9,11 +9,7 @@ const MAX_WORKER_ASSET_BYTES = 6 * 1024 * 1024;
 export type CourseTwinWorkerAsset = {
   fileName: string;
   contentType:
-    | "application/octet-stream"
-    | "image/jpeg"
-    | "image/png"
-    | "image/ktx2"
-    | "model/gltf-binary";
+    "application/octet-stream" | "image/jpeg" | "image/png" | "image/ktx2" | "model/gltf-binary";
   sha256: string;
   dataBase64: string;
 };

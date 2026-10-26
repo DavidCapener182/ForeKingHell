@@ -77,7 +77,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { savedInsightUpdatedEvent } from "@/components/app/desktop-save-insight-button";
-import { desktopSavedViewsUpdatedEvent } from "@/components/app/desktop-workbench-controls";
+import { desktopSavedViewsUpdatedEvent } from "@/components/app/desktop-saved-view-events";
 import { NotificationCentre } from "@/components/app/workbench/notification-centre";
 import { WorkspaceSwitcher } from "@/components/app/workbench/workspace-switcher";
 import { cn } from "@/lib/utils";
@@ -740,12 +740,14 @@ export function DesktopWorkbenchChrome({
 
     if (event.key === "ArrowDown") {
       event.preventDefault();
+      event.stopPropagation();
       setActiveCommandIndex((safeActiveCommandIndex + 1) % filteredCommands.length);
       return;
     }
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
+      event.stopPropagation();
       setActiveCommandIndex(
         (safeActiveCommandIndex - 1 + filteredCommands.length) % filteredCommands.length,
       );
@@ -754,18 +756,21 @@ export function DesktopWorkbenchChrome({
 
     if (event.key === "Home") {
       event.preventDefault();
+      event.stopPropagation();
       setActiveCommandIndex(0);
       return;
     }
 
     if (event.key === "End") {
       event.preventDefault();
+      event.stopPropagation();
       setActiveCommandIndex(filteredCommands.length - 1);
       return;
     }
 
     if (event.key === "Enter" && activeCommand) {
       event.preventDefault();
+      event.stopPropagation();
       selectCommand(activeCommand);
     }
   }

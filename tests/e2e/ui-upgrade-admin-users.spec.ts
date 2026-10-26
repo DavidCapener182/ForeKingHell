@@ -79,7 +79,7 @@ test("Account management preserves filter query and exact account role updates o
         await expect(filter).toHaveCount(0);
         const register = page.locator('section[data-workbench-scope="admin-users"]');
         const downloadReady = page.waitForEvent("download");
-        await register.locator("[data-export-table-id]").click();
+        await register.locator("[data-export-table-id]:visible").click();
         const csv = await readFile((await (await downloadReady).path())!, "utf8");
         expect(csv).toContain(email);
         expect(csv).toContain("Synthetic managed player");
@@ -103,7 +103,7 @@ test("Account management preserves filter query and exact account role updates o
         ).toHaveValue(email);
         await expect(register.locator('[data-column="email"]:visible')).toHaveCount(0);
         const hiddenReady = page.waitForEvent("download");
-        await register.locator("[data-export-table-id]").click();
+        await register.locator("[data-export-table-id]:visible").click();
         const hiddenCsv = await readFile((await (await hiddenReady).path())!, "utf8");
         expect(hiddenCsv).toContain("Synthetic managed player");
         expect(hiddenCsv).not.toContain(email);

@@ -28,8 +28,7 @@ export function rejectOversizedRequest(request: NextRequest, maxBytes: number) {
 }
 
 export type BoundedJsonResult =
-  | { ok: true; value: unknown }
-  | { ok: false; response: NextResponse };
+  { ok: true; value: unknown } | { ok: false; response: NextResponse };
 
 /** Reads JSON while enforcing the byte limit on the consumed stream, even when
  * Content-Length is absent or incorrect. Invalid JSON is returned as null so

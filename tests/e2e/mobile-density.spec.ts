@@ -1,5 +1,16 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { prepareFlightPathFixture } from "./flight-path-fixture";
+const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
+test.beforeEach(async ({ page }, info) => {
+  fixtureCleanup.set(
+    page,
+    await prepareFlightPathFixture(page, String(info.project.use.baseURL), true),
+  );
+});
+test.afterEach(async ({ page }) => {
+  await fixtureCleanup.get(page)?.();
+});
 import { expect, test, type Page } from "@playwright/test";
 
 import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
@@ -37,19 +48,27 @@ test.describe("companion and workbench density contract", () => {
 
     for (const viewport of phoneViewports) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      await openSurface(page, "companion", "/today", /Today/i);
+      await openSurface(page, "companion", "/today", /Today|Home/i);
 
       const mobileNav = page.getByRole("navigation", { name: "Mobile primary" });
       await expect(mobileNav).toBeVisible();
-      await expect(mobileNav.getByRole("link", { name: "Today" })).toBeVisible();
-      await expect(mobileNav.getByRole("link", { name: "Practice" })).toBeVisible();
+      await expect(mobileNav.getByRole("link", { name: "Home" })).toBeVisible();
       await expect(mobileNav.getByRole("link", { name: "Play" })).toBeVisible();
-      await expect(mobileNav.getByRole("link", { name: "Sessions" })).toBeVisible();
-      await expect(mobileNav.getByRole("button", { name: "Open more navigation" })).toBeVisible();
+      await expect(mobileNav.getByRole("link", { name: "Activity" })).toBeVisible();
+      await expect(mobileNav.getByRole("link", { name: "Bag" })).toBeVisible();
+      await expect(
+        page
+          .getByRole("banner", { name: "Mobile app bar" })
+          .getByRole("button", { name: /Open more/ }),
+      ).toBeVisible();
       await expect(page.getByRole("navigation", { name: "Primary navigation" })).toBeHidden();
       await expectNoHorizontalOverflow(page);
       if (viewport.height > viewport.width) {
-        const primaryAction = page.locator("[data-primary-recommendation] a").first();
+        const primaryAction = page
+          .locator(
+            "[data-today-companion] > a, [data-primary-recommendation] [data-today-primary-action]",
+          )
+          .first();
         await expect(primaryAction).toBeVisible();
         const actionBottom = await primaryAction.evaluate(
           (element) => element.getBoundingClientRect().bottom,
@@ -69,7 +88,7 @@ test.describe("companion and workbench density contract", () => {
       {
         name: "practice",
         route: "/practice",
-        ready: /Recommended session|Active Range Mode/i,
+        ready: /Recommended for you|Practice/i,
         answer: "[data-current-practice-plan], [data-active-range-mode]",
       },
       {
@@ -82,7 +101,7 @@ test.describe("companion and workbench density contract", () => {
         name: "sessions",
         route: "/sessions",
         ready: /Sessions/i,
-        answer: '[role="radiogroup"][aria-label="Session type"]',
+        answer: "[data-session-toolbar]",
       },
     ];
     for (const route of routes) {

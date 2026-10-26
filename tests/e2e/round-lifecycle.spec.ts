@@ -165,8 +165,9 @@ test("round creation retries once, phone scoring recovers, and completion opens 
       ).toHaveCount(0);
     }
     await page.screenshot({ path: testInfo.outputPath("round-review-phone.png"), fullPage: true });
-    await expect(page.getByText("No scored holes over par", { exact: true })).toBeVisible();
-    await expect(page.getByText("18 holes at par", { exact: true })).toBeVisible();
+    const summary = page.getByRole("tabpanel", { name: "Summary", exact: true });
+    await expect(summary.getByText("No scored holes over par", { exact: true })).toBeVisible();
+    await expect(summary.getByText(`${tee.holes} holes at par`, { exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Review round decisions", exact: true }).click();
     const notesForm = page.getByRole("form", { name: "Round review notes" });
     await expect(notesForm).toBeVisible({ timeout: 60_000 });
