@@ -288,17 +288,16 @@ describe("production readiness gate", () => {
     const mobileNavSource = readFileSync(join(root, "src/components/app/mobile-nav.tsx"), "utf8");
 
     expect(mobilePrimaryItems.map((item) => item.label)).toEqual([
-      "Today",
-      "Sessions",
-      "Practice",
-      "Play",
+      "Home",
       "Bag",
+      "Play",
+      "Activity",
     ]);
     expect(appRouteMetadata.some((route) => route.id === "profile")).toBe(true);
     expect(mobileNavSource).toContain("Find a page or tool");
     expect(mobileNavSource).toContain("Open full desktop site");
     expect(mobileMoreGroups.flatMap((group) => group.items.map((item) => item.href))).toEqual(
-      expect.arrayContaining(["/settings", "/privacy", "/profile"]),
+      expect.arrayContaining(["/practice", "/settings", "/privacy", "/profile"]),
     );
     expect(mobileNavSource).not.toContain('className="ios-drawer-group grid grid-cols-3');
     expect(mobileNavSource).toContain("focus-aaa");

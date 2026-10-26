@@ -57,7 +57,7 @@ describe("shot master-detail DTO", () => {
   it("keeps a practice shot permanently deletable and exposes only formatted detail fields", () => {
     const result = buildShotMasterDetailDto(shot());
 
-    expect(result.clubLabel).toBe("TaylorMade Qi4D Max");
+    expect(result.clubLabel).toBe("Driver · TaylorMade Qi4D Max");
     expect(result.carryLabel).toBe("194.7");
     expect(result.canDeletePermanently).toBe(true);
     expect(result.evidenceStatus).toBe("trusted");

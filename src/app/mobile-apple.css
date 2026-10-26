@@ -1645,4 +1645,29 @@
     z-index: 30;
     background: var(--ios-background);
   }
+  /* The companion has its own fixed tab bar. Keep page content above it without
+     adding a second screenful of PageShell padding on every route. */
+  [data-app-surface="companion"] main#main-content {
+    min-height: 0;
+    padding-top: 0.75rem;
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+  }
+  [data-app-surface="companion"] main#main-content > div {
+    gap: 0.875rem;
+  }
+  [data-app-surface="companion"] .ios-mobile-screen {
+    row-gap: 1rem;
+  }
+  [data-app-surface="companion"]
+    .ios-app-header[data-mobile-root="true"]
+    button[aria-label^="Open more tools"] {
+    grid-column: 1;
+    background: transparent !important;
+  }
+  [data-app-surface="companion"]
+    .ios-app-header[data-mobile-root="true"]
+    a[aria-label="Import launch-monitor data"] {
+    grid-column: 2;
+    grid-row: 1;
+  }
 }

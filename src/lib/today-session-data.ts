@@ -43,6 +43,10 @@ export type TodayPracticeShot = {
   sessionType: string;
   courseName: string | null;
   sessionDate: Date;
+  playContext?: string;
+  shotPlayContext?: string;
+  clubActive?: boolean;
+  weather?: { conditions?: string | null; wind?: string | null; temperature?: string | null };
   shotAt: Date;
   shotNumber: number | null;
   clubId?: string;
@@ -220,6 +224,10 @@ export const practiceShotSelect = {
   sessionType: sessions.type,
   courseName: sessions.courseName,
   sessionDate: sessions.date,
+  playContext: sessions.playContext,
+  shotPlayContext: shots.playContext,
+  clubActive: clubs.active,
+  weather: sessions.weatherJson,
   shotAt: shots.shotAt,
   shotNumber: shots.shotNumber,
   clubId: shots.clubId,

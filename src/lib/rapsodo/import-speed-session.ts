@@ -13,7 +13,7 @@ export async function importRapsodoSpeedSession(userId: string, providerSessionI
     throw new SpeedImportError("Choose an R-Speed session from your connected account.");
   const stored = await getStoredRapsodoToken();
   if (!stored) throw new SpeedImportError("Connect R-Cloud before importing a speed session.");
-  const client = new RapsodoCloudClient();
+  const client = new RapsodoCloudClient({ beta: stored.beta });
   const available = await client.listSpeedSessions(stored.token, { take: 100 });
   const selected = available.find((item) => item.providerSessionId === providerSessionId);
   if (!selected)

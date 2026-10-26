@@ -105,7 +105,7 @@ const imageTreatmentByVariant: Partial<Record<PageArtworkVariant, string>> = {
   friends: imageTreatmentByCrop.fairway,
   groups: imageTreatmentByCrop.fairway,
   settings: imageTreatmentByCrop.fairway,
-  challenges: imageTreatmentByCrop.tee,
+  challenges: "object-center opacity-90 saturate-[0.92]",
   tournaments: imageTreatmentByCrop.fairway,
 };
 

@@ -115,7 +115,7 @@ const STOCK_EXCLUSION_LABELS: Record<StockExclusionReasonKey, string> = {
   "shot-role": "Derived wedge role",
   "short-game-cluster": "Below full wedge cluster",
   "recent-window": "Outside recent window",
-  "best-stock-rank": "Outside top-20 sample",
+  "best-stock-rank": "Outside recent stock sample",
   outlier: "Outlier filter",
 };
 
@@ -162,16 +162,13 @@ export function calculateStockYardage(
   }
 
   const filteredTotal = filteredShots.map((shot) => shot.totalYd).filter(isNumber);
-  const filteredSide = filteredShots.map((shot) => shot.sideCarryYd).filter(isNumber);
+  // Distance outliers remain evidence of misses for dispersion.
+  const filteredSide = cleanShots.map((shot) => shot.sideCarryYd).filter(isNumber);
   const filteredBallSpeed = filteredShots.map((shot) => shot.ballSpeedMph ?? null).filter(isNumber);
   const filteredLaunch = filteredShots.map((shot) => shot.launchAngleDeg ?? null).filter(isNumber);
 
   const carryMedianYd = median(filteredCarry);
   const distanceStdDev = standardDeviation(filteredCarry);
-  const sideAbsP75 = percentile(
-    filteredSide.map((value) => Math.abs(value)),
-    0.75,
-  );
   const mostRecentShotAt = filteredShots.reduce<number | null>((latest, shot) => {
     const value = dateValue(shot.shotAt);
     return latest === null || value > latest ? value : latest;
@@ -180,7 +177,6 @@ export function calculateStockYardage(
     sampleSize: filteredCarry.length,
     carryMedianYd,
     distanceStdDev,
-    sideAbsP75,
     mostRecentShotAt,
   });
   const bestStockCarryYd = roundOne(carryMedianYd);
@@ -230,7 +226,7 @@ export function selectStockYardageShots<T extends StockShot>(
   const recentCandidatePool = [...stockCandidates]
     .sort((left, right) => dateValue(right.shotAt) - dateValue(left.shotAt))
     .slice(0, maxShots);
-  const cleanShots = selectBestStockShots(
+  const cleanShots = selectRecentStockShots(
     recentCandidatePool,
     options.averageSampleSize ?? STOCK_AVERAGE_SAMPLE_SIZE,
   );
@@ -354,7 +350,7 @@ export function explainStockExclusions<T extends StockShot>(
     incrementReason(reasonCounts, "recent-window", recentWindowExclusions);
   }
 
-  const cleanShots = selectBestStockShots(
+  const cleanShots = selectRecentStockShots(
     recentCandidatePool,
     options.averageSampleSize ?? STOCK_AVERAGE_SAMPLE_SIZE,
   );
@@ -609,13 +605,10 @@ function selectSandWedgeStockCluster<T extends StockShot>(shots: T[]) {
   return shots;
 }
 
-function selectBestStockShots<T extends StockShot>(shots: T[], sampleSize: number) {
+function selectRecentStockShots<T extends StockShot>(shots: T[], sampleSize: number) {
   return [...shots]
     .filter((shot): shot is T & { carryYd: number } => isNumber(shot.carryYd))
-    .sort(
-      (left, right) =>
-        right.carryYd - left.carryYd || dateValue(right.shotAt) - dateValue(left.shotAt),
-    )
+    .sort((left, right) => dateValue(right.shotAt) - dateValue(left.shotAt))
     .slice(0, sampleSize);
 }
 
@@ -628,7 +621,12 @@ function filterStockOutliers<T extends StockShot>(shots: T[]) {
 
   const rawMedian = median(carryValues);
   const mad = median(carryValues.map((value) => Math.abs(value - rawMedian)));
-  const maxDeviation = mad === 0 ? Number.POSITIVE_INFINITY : mad * 2.5;
+  // A repeated central value must not let a single extreme reading bypass filtering.
+  // Small samples do not establish a dependable distribution.
+  const maxDeviation =
+    carryValues.length < 5
+      ? Number.POSITIVE_INFINITY
+      : Math.max(Math.abs(rawMedian) * 0.05, mad * 2.5);
 
   return shots.filter((shot) => {
     if (shot.carryYd === null) {
@@ -666,24 +664,18 @@ function calculateConfidence(input: {
   sampleSize: number;
   carryMedianYd: number;
   distanceStdDev: number;
-  sideAbsP75: number | null;
   mostRecentShotAt: number | null;
 }) {
   const sampleSizeScore = clamp(input.sampleSize / STOCK_AVERAGE_SAMPLE_SIZE, 0, 1);
   const distanceSpread = input.carryMedianYd === 0 ? 1 : input.distanceStdDev / input.carryMedianYd;
   const distanceConsistencyScore = clamp(1 - distanceSpread / 0.18, 0, 1);
-  const dispersionScore = input.sideAbsP75 === null ? 0.5 : clamp(1 - input.sideAbsP75 / 55, 0, 1);
   const recencyScore =
     input.mostRecentShotAt === null
       ? 0.5
       : clamp(1 - daysSince(input.mostRecentShotAt) / 120, 0, 1);
 
   return Math.round(
-    (sampleSizeScore * 0.35 +
-      distanceConsistencyScore * 0.35 +
-      dispersionScore * 0.2 +
-      recencyScore * 0.1) *
-      100,
+    (sampleSizeScore * 0.45 + distanceConsistencyScore * 0.45 + recencyScore * 0.1) * 100,
   );
 }
 

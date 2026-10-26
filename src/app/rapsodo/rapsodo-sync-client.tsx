@@ -116,6 +116,7 @@ import {
 } from "@/components/ui/select";
 
 type ConnectionStatus = {
+  beta?: boolean;
   connected: boolean;
   expiresAt: string | null;
   profile: Record<string, unknown> | null;
@@ -215,6 +216,7 @@ export function RapsodoSyncClient({
   const operationBusy = useRef(false);
   const loadBusy = useRef(false);
   const [status, setStatus] = useState(initialStatus);
+  const [beta, setBeta] = useState(initialStatus.beta === true);
   const [notice, setNotice] = useState<Notice>({ kind: "idle" });
   const [saveStatus, setSaveStatus] = useState<SaveStatus | null>(null);
   const [saveConfirmation, setSaveConfirmation] = useState<SaveConfirmation | null>(null);
@@ -579,7 +581,7 @@ export function RapsodoSyncClient({
     setNotice({ kind: "idle" });
     setLoadingLabel("Signing in");
     startTransition(async () => {
-      const result = await loginRapsodoAction({ email, password });
+      const result = await loginRapsodoAction({ email, password, beta });
       setLoadingLabel(null);
 
       if (!result.ok) {
@@ -591,6 +593,7 @@ export function RapsodoSyncClient({
       setStatus({
         connected: result.data.connected,
         expiresAt: null,
+        beta: result.data.beta,
         profile: result.data.profile,
       });
       setNotice({
@@ -1063,7 +1066,7 @@ export function RapsodoSyncClient({
                     <div className="trust-indicator rounded-lg p-3 text-sm">
                       <div className="flex items-center gap-2 font-medium">
                         <ShieldCheck className="size-4" />
-                        Token saved
+                        {status.beta ? "Beta R-Cloud · Token saved" : "R-Cloud · Token saved"}
                       </div>
                       <p className="mt-1 text-muted-foreground">
                         {status.expiresAt
@@ -1114,6 +1117,20 @@ export function RapsodoSyncClient({
                       login();
                     }}
                   >
+                    <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
+                      <input
+                        type="checkbox"
+                        checked={beta}
+                        onChange={(event) => setBeta(event.target.checked)}
+                        disabled={isPending || Boolean(loadingLabel)}
+                      />
+                      Use beta R-Cloud
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      {beta
+                        ? "Connect to beta-rcloud.rapsodo.com with your usual Rapsodo email and password."
+                        : "Use the usual R-Cloud workflow."}
+                    </p>
                     <label className="grid gap-1.5 text-sm font-medium">
                       Rapsodo email
                       <Input

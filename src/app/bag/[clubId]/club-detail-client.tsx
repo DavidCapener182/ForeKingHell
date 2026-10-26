@@ -613,7 +613,7 @@ function ClubIntelligence({
           />
           <IntelligenceMetric
             icon={Gauge}
-            label={isShortGameTouch ? "Full stock" : "Best Stock"}
+            label={isShortGameTouch ? "Full stock" : "Stock carry"}
             value={formatWholeYards(
               isShortGameTouch
                 ? isSandWedge
@@ -626,7 +626,7 @@ function ClubIntelligence({
           />
           <IntelligenceMetric
             icon={TrendingUp}
-            label="Personal Best"
+            label="Performance ceiling"
             value={formatWholeYards(stock.personalBestCarryYd)}
             detail="Longest clean carry"
             tone="neutral"
@@ -720,12 +720,12 @@ function ClubIntelligence({
 
         <div className="rounded-lg border border-border bg-muted/35 p-4">
           <p className="text-sm font-semibold">
-            {isShortGameTouch ? "Role separation" : "Best-stock filter reasons"}
+            {isShortGameTouch ? "Role separation" : "Stock performance and misses"}
           </p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {isShortGameTouch
               ? shortGameStockNote(clubType)
-              : `${formatStockExclusionReasons(stock.stockExclusionReasons)}. Best Stock is the median of the selected top-20 clean stock sample, while Personal Best keeps the single longest clean full-role carry visible without making it the play number.`}
+              : `${formatStockExclusionReasons(stock.stockExclusionReasons)}. ${stock.excludedCount} distance outliers retained for review. Stock carry is the robust median of the most recent 20 eligible full shots. Distance outliers are omitted from stock carry but retained in the sample’s dispersion. The performance ceiling is the longest eligible full-shot carry, not a stock yardage. Carry confidence uses sample size, distance consistency and recency; lateral readings have separate alignment checks.`}
           </p>
         </div>
       </CardContent>

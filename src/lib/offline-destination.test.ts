@@ -30,3 +30,13 @@ it("never creates an external reconnect destination from a shortcut", () => {
       ),
     ).toEqual({ section: "today", target: "/today" });
 });
+it("keeps saved Practice destinations independent of primary-tab visibility", () => {
+  expect(offlineDestination(new URL("https://golf.example/offline?section=practice"))).toEqual({
+    section: "practice", target: "/practice",
+  });
+  for (const path of ["/practice/quick-range?planId=saved#block-2", "/coach?report=saved"]) {
+    expect(offlineDestination(new URL(path, "https://golf.example"))).toEqual({
+      section: "practice", target: path,
+    });
+  }
+});

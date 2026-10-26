@@ -136,7 +136,7 @@ Public sharing stays opt-in through profile and settings privacy controls.
 
 ## Visual Assets
 
-Reusable app art lives in `public/assets` and is wired through `PageArtwork`, `ClubArtwork`, `CourseLogoArtwork` and mobile sports components. Current assets cover import/Rapsodo, shots, stock yardages, rounds, handicap, coach, progress, achievements, course records, feed, provider devices, tour covers, challenge cards, course fallback imagery and club artwork.
+Reusable app art lives in `public/assets` and is wired through `PageArtwork`, `ClubArtwork` and mobile sports components. Current assets cover import/Rapsodo, shots, stock yardages, rounds, handicap, coach, progress, achievements, course records, feed, provider devices, tour covers, challenge cards, course fallback imagery and club artwork.
 
 Keep media containers small and intentional. Prefer `h-16`, `h-24`, `h-32`, `aspect-[16/9]`, `aspect-[4/3]` or `aspect-square`, and do not render empty image boxes.
 

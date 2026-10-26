@@ -10,6 +10,7 @@ const IV_BYTES = 12;
 let ephemeralSecret: Buffer | null = null;
 
 export type StoredRapsodoToken = {
+  beta?: boolean;
   ownerUserId: string;
   token: string;
   profile: Record<string, unknown> | null;
@@ -42,12 +43,14 @@ export async function getStoredRapsodoToken() {
 export async function setStoredRapsodoToken(
   token: string,
   profile: Record<string, unknown> | null,
+  beta = false,
 ) {
   const ownerUserId = await requireCurrentUserId();
   const now = Date.now();
   const expiresAt = now + TOKEN_TTL_SECONDS * 1000;
   const encrypted = encryptTokenPayload({
     ownerUserId,
+    beta,
     token,
     profile,
     createdAt: now,
