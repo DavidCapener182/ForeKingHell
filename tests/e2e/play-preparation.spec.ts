@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { prepareFlightPathFixture } from "./flight-path-fixture";
 import { hasLocalAuthBypass } from "./helpers";
 
 test("Play preserves the selected tee and hole through strategy, reload and round preparation", async ({
@@ -16,6 +17,7 @@ test("Play preserves the selected tee and hole through strategy, reload and roun
   );
   test.setTimeout(120_000);
   const sql = postgres(databaseUrl!, { max: 1 });
+  const cleanup = await prepareFlightPathFixture(page, String(testInfo.project.use.baseURL), true);
   try {
     const [tee] = await sql`select t.id, t.name, t.course_id from fkh_tee_sets t
       join fkh_courses c on c.id=t.course_id where c.visibility='shared'
@@ -28,9 +30,9 @@ test("Play preserves the selected tee and hole through strategy, reload and roun
     const desktop = page.locator("[data-play-desktop-command-centre]");
     await expect(desktop.getByText(tee.name, { exact: true }).first()).toBeVisible();
     await expect(desktop.getByText("4/4 essentials", { exact: true })).toBeVisible();
-    await expect(desktop.getByRole("list", { name: "Course preparation status" })).toContainText(
-      "Optional",
-    );
+    await expect(
+      desktop.getByRole("list", { name: "Course preparation status" }),
+    ).not.toContainText("Needed");
     const keyHoleLink = desktop.locator('a[href*="&hole="]').first();
     const keyHoleUrl = new URL((await keyHoleLink.getAttribute("href"))!, page.url());
     const hole = keyHoleUrl.searchParams.get("hole")!;
@@ -81,8 +83,10 @@ test("Play preserves the selected tee and hole through strategy, reload and roun
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/surface/companion?next=${encodeURIComponent(`/play?${query}`)}`);
     await expect(page.locator("[data-selected-course]")).toContainText(tee.name);
-    await page.getByText("Your preparation checklist", { exact: true }).click();
-    await expect(page.locator("[data-pre-round-readiness]")).toContainText("Optional");
+    const checklist = page.locator("[data-pre-round-readiness]");
+    await checklist.locator("summary").click();
+    await expect(checklist).toContainText("4/4 essentials");
+    await expect(checklist).not.toContainText("Needed");
     await page.screenshot({ path: testInfo.outputPath("play-phone.png"), fullPage: true });
     await page.getByRole("link", { name: "Prepare Course", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`teeSetId=${tee.id}`));
@@ -98,6 +102,7 @@ test("Play preserves the selected tee and hole through strategy, reload and roun
       ),
     ).toBe(0);
   } finally {
+    await cleanup();
     await sql.end();
   }
 });

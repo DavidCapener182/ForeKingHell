@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+test.use({ storageState: { cookies: [], origins: [] } });
 test("Sign-in and join keep one heading, complete modes and safe return context", async ({
   page,
 }, info) => {

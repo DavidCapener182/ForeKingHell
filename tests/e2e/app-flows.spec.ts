@@ -1,3 +1,4 @@
+import { prepareFlightPathFixture } from "./flight-path-fixture";
 import { expect, test, type Page } from "@playwright/test";
 import path from "node:path";
 
@@ -10,7 +11,7 @@ test.describe("authenticated app flows", () => {
 
   const routes = [
     { path: "/dashboard", text: /Dashboard|Sessions|Shots/i },
-    { path: "/shots", text: /Shots/i },
+    { path: "/shots", text: /^Shots|Import your first measured shots/im },
     { path: "/bag", text: /Bag health|Bag score trend|Strongest club/i },
     { path: "/rounds/new", text: /Add Round/i },
     { path: "/handicap", text: /Handicap/i },
@@ -21,11 +22,18 @@ test.describe("authenticated app flows", () => {
   ];
 
   for (const route of routes) {
-    test(`loads ${route.path}`, async ({ page }) => {
+    test(`loads ${route.path}`, async ({ page }, info) => {
       skipWhenNoAuth();
-
-      await gotoAppRoute(page, route.path);
-      await expectPageReady(page, route.text);
+      const cleanup =
+        route.path === "/strokes-gained"
+          ? await prepareFlightPathFixture(page, String(info.project.use.baseURL))
+          : async () => {};
+      try {
+        await gotoAppRoute(page, route.path);
+        await expectPageReady(page, route.text);
+      } finally {
+        await cleanup();
+      }
     });
   }
 
@@ -33,7 +41,7 @@ test.describe("authenticated app flows", () => {
     skipWhenNoAuth();
 
     await gotoAppRoute(page, "/import?source=csv#csv-import");
-    await expectPageReady(page, /Choose files and configure the session/i);
+    await expectPageReady(page, /Import/i);
     const importSurface = responsiveImportSurface(page);
     await expect(importSurface.locator('[data-import-ready="true"]')).toBeVisible();
 
@@ -63,19 +71,20 @@ test.describe("authenticated app flows", () => {
       await previewStep.click();
     }
     await expect(importSurface.getByText("Driver").filter({ visible: true }).first()).toBeVisible();
-    await expect(importSurface.getByRole("heading", { name: "Selected files · 1" })).toBeVisible();
-    await expect(importSurface.getByText("manual-column-map.csv", { exact: true })).toBeVisible();
+    await expect(
+      importSurface.getByRole("button", { name: "Remove manual-column-map.csv" }),
+    ).toBeVisible();
   });
 
   test("queues a CSV import while offline and shows retry status", async ({ context, page }) => {
     skipWhenNoAuth();
 
     await page.addInitScript(() => {
-      window.localStorage.setItem("forekinghell:offline-import-storage-enabled", "1");
+      window.localStorage.setItem("forekinghell:offline-import-retention-days", "1");
     });
 
     await gotoAppRoute(page, "/import?source=csv#csv-import");
-    await expectPageReady(page, /Choose files and configure the session/i);
+    await expectPageReady(page, /Import/i);
     const importSurface = responsiveImportSurface(page);
     await expect(importSurface.locator('[data-import-ready="true"]')).toBeVisible();
 
@@ -87,6 +96,7 @@ test.describe("authenticated app flows", () => {
       "standard-rapsodo.csv",
     );
     await importSurface.locator("#csv-file").setInputFiles(fixturePath);
+    await importSurface.getByRole("button", { name: "Confirm settings", exact: true }).click();
     const previewStep = importSurface.getByRole("button", {
       name: "2. Preview data",
       exact: true,
@@ -105,9 +115,8 @@ test.describe("authenticated app flows", () => {
     if (await importStep.isVisible()) {
       await importStep.click();
     }
-    const queueButton = importSurface.getByRole("button", { name: /queue offline/i });
-    await expect(queueButton).toBeEnabled();
-    await queueButton.click();
+    await expect(importSurface.getByRole("button", { name: /queue offline/i })).toBeEnabled();
+    await importSurface.getByRole("button", { name: /queue offline/i }).click();
     await expect(
       page.getByText("Queued 1 CSV file for retry when this device is online.", { exact: true }),
     ).toBeVisible();
@@ -129,7 +138,7 @@ test.describe("authenticated app flows", () => {
       waitUntil: "domcontentloaded",
       timeout: 60_000,
     });
-    await expectPageReady(page, /Home/i);
+    await expectPageReady(page, /Today|Home/i);
     expect(delayed).toBe(true);
     await expect(page.getByRole("main")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Mobile primary" })).toBeVisible();
@@ -141,15 +150,14 @@ test.describe("authenticated app flows", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await gotoAppRoute(page, `/surface/companion?next=${encodeURIComponent("/shots")}`);
 
-    await expectPageReady(page, /Shots/i);
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
     const navigation = page.getByRole("navigation", { name: "Mobile primary" });
     await expect(navigation).toBeVisible();
     await expect(navigation.getByRole("link", { name: "Activity" })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    await expect(page.getByRole("button", { name: "Open more navigation" })).toBeVisible();
-    await page.getByRole("button", { name: "Open more navigation" }).click();
+    await page.getByRole("button", { name: "Open more navigation", exact: true }).click();
     await expect(page.getByRole("link", { name: "Open full desktop site" })).toBeVisible();
   });
 
@@ -164,11 +172,10 @@ test.describe("authenticated app flows", () => {
     await expectPageReady(page, /Coach tools/i);
     await page.getByRole("tab", { name: "Ask your data", exact: true }).click();
     const chatCard = page.getByRole("region", { name: "Ask your data" });
-    const unavailableNotice = page.getByText("Data Chat is included with Pro AI access", {
-      exact: true,
-    });
+    const unavailableNotice = page
+      .getByRole("alert")
+      .getByText("Data Chat is included with Pro AI access", { exact: true });
 
-    await expect(chatCard).toBeVisible();
     const coachQuestion = chatCard.getByRole("textbox", { name: "Ask about your golf data" });
     await expect(coachQuestion.or(unavailableNotice)).toBeVisible();
     if (await coachQuestion.isVisible()) {

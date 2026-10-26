@@ -1,6 +1,12 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "@playwright/test";
+
+import { prepareFlightPathFixture } from "./flight-path-fixture";
+const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
+test.afterEach(async ({ page }) => {
+  await fixtureCleanup.get(page)?.();
+});
 
 import { authStorageState, hasAuthenticatedE2e, hasLocalAuthBypass } from "./helpers";
 
@@ -25,6 +31,16 @@ const viewports = requestedViewport
   ? allViewports.filter(({ name }) => name === requestedViewport)
   : allViewports;
 
+function viewportsForProject(info: TestInfo): LayoutViewport[] {
+  if (requestedViewport || ["chromium", "firefox", "webkit"].includes(info.project.name)) {
+    return [...viewports];
+  }
+  const viewport = info.project.use.viewport;
+  // Extra projects audit their configured canvas instead of repeating the
+  // engine sweeps and missing their own laptop, ultrawide or device width.
+  return viewport ? [{ name: info.project.name, ...viewport }] : [...viewports];
+}
+
 const requestedRoutes = new Set(
   (process.env.PLAYWRIGHT_LAYOUT_ROUTE ?? "")
     .split(",")
@@ -41,10 +57,11 @@ const authenticatedStaticRoutes = discoverStaticAppRoutes().filter(
 test.describe("layout audit", () => {
   test.setTimeout(1_800_000);
 
-  test("public pages do not create document overflow", async ({ page }) => {
+  test("public pages do not create document overflow", async ({ page }, info) => {
+    const projectViewports = viewportsForProject(info);
     await interceptCspReports(page);
 
-    for (const viewport of viewports) {
+    for (const viewport of projectViewports) {
       await page.setViewportSize(viewport);
 
       for (const route of publicRoutes) {
@@ -59,7 +76,12 @@ test.describe("layout audit", () => {
     test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run authenticated layout audit.");
     test.use(authStorageState ? { storageState: authStorageState } : {});
 
-    test("static app routes stay within their intended canvas", async ({ context, page }) => {
+    test("static app routes stay within their intended canvas", async ({ context, page }, info) => {
+      const projectViewports = viewportsForProject(info);
+      fixtureCleanup.set(
+        page,
+        await prepareFlightPathFixture(page, String(info.project.use.baseURL), true, true),
+      );
       test.skip(
         !hasLocalAuthBypass && (!authStorageState || !existsSync(authStorageState)),
         "Set PLAYWRIGHT_AUTH_STATE to run authenticated layout audit.",
@@ -72,14 +94,14 @@ test.describe("layout audit", () => {
         "No authenticated static routes discovered.",
       );
 
-      await page.setViewportSize(viewports[0]);
+      await page.setViewportSize(projectViewports[0]);
       await gotoLayoutRoute(page, authProbeRoute);
       await page.waitForLoadState("networkidle", { timeout: 3_000 }).catch(() => {});
       test.skip(/\/login(?:\?|$)/.test(page.url()), "Stored auth state redirected to login.");
 
       const navigationFailures: NavigationFailure[] = [];
 
-      for (const viewport of viewports) {
+      for (const viewport of projectViewports) {
         await page.setViewportSize(viewport);
 
         for (const route of authenticatedStaticRoutes) {
@@ -142,7 +164,7 @@ test.describe("layout audit", () => {
   });
 });
 
-type LayoutViewport = (typeof allViewports)[number];
+type LayoutViewport = { name: string; width: number; height: number };
 
 type NavigationFailure = {
   route: string;
@@ -151,6 +173,7 @@ type NavigationFailure = {
 };
 
 async function expectLayoutBounds(page: Page, route: string, viewport: LayoutViewport) {
+  await expect(page.getByRole("main")).toBeVisible();
   const readMetrics = () =>
     page.evaluate(() => ({
       path: location.pathname,

@@ -1,3 +1,4 @@
+import { grantFixturePlan } from "../support/paid-fixture";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { closeDb } from "@/db/client";
@@ -34,6 +35,7 @@ describe.skipIf(!enabled)("coach workspace state actions", () => {
     const ids = (
       await sql`insert into fkh_users(name) values('Synthetic coach'),('Synthetic player'),('Synthetic stranger') returning id`
     ).map((r) => r.id);
+    await grantFixturePlan(sql, ids);
     const [coach, player, stranger] = ids;
     actor.id = coach;
     const draft = {

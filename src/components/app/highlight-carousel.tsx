@@ -87,6 +87,20 @@ export function HighlightCarousel({
     return () => window.clearInterval(timer);
   }, [api, rotating, index]);
 
+  useEffect(() => {
+    if (!api) return;
+    const carousel = api.rootNode().parentElement;
+    // A slide change can replace the hovered descendant before WebKit sends
+    // mouseleave. Reconcile against the next actual pointer target as well.
+    const updateHover = (event: PointerEvent) => {
+      if (event.pointerType === "mouse") {
+        setHovered(Boolean(carousel?.contains(event.target as Node)));
+      }
+    };
+    document.addEventListener("pointermove", updateHover);
+    return () => document.removeEventListener("pointermove", updateHover);
+  }, [api]);
+
   if (!slides.length) return null;
   return (
     <Carousel

@@ -33,7 +33,9 @@ test("P03 Dashboard UI remains available on both surfaces", async ({ page }, inf
         false,
       );
       await expect(page.locator("#readiness")).toContainText("Mapped course and tees");
-      await expect(page.locator("#changes [data-progress-comparison]")).toBeVisible();
+      await expect(
+        page.locator("#club-progress[data-club-progress][data-progress-mode=dashboard]"),
+      ).toBeVisible();
     }
   }
   expect(errors).toEqual([]);

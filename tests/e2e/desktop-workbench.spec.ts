@@ -2,10 +2,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 
 import { authStorageState, expectPageReady } from "./helpers";
+import { prepareFlightPathFixture } from "./flight-path-fixture";
 
 const hasAuthBypass = process.env.PLAYWRIGHT_E2E_AUTH_BYPASS === "1";
 const useAuthStorage = Boolean(authStorageState) && !hasAuthBypass;
-const baseUrl = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100");
+const baseUrl = new URL(
+  process.env.PLAYWRIGHT_BASE_URL ?? `http://localhost:${process.env.PLAYWRIGHT_PORT ?? "3100"}`,
+);
 const authUserId = authStorageState ? extractSupabaseUserId(authStorageState) : null;
 const desktopMatrixViewports = [
   { name: "desktop-1024x768", width: 1024, height: 768 },
@@ -18,16 +21,20 @@ const desktopMatrixViewports = [
 const desktopMatrixRoutes = [
   { path: "/dashboard", ready: /Quick answers|Dashboard/i },
   { path: "/today", ready: /Best scoring read|Practice usefulness/i },
-  { path: "/shots", ready: /Shot explorer/i },
+  { path: "/shots", ready: /Shots|Import your first measured shots/i },
   { path: "/bag", ready: /AI bag rail|Bag/i },
   { path: "/speed", ready: /Speed Centre/i },
   { path: "/strokes-gained", ready: /AI strokes-gained rail|Strokes gained/i },
   { path: "/rounds?filter=scorecard-only", ready: /Round history|Rounds/i },
   { path: "/leaderboard?tab=monthly&sort=monthly-shots&dir=desc", ready: /Leaderboard/i },
-  { path: "/data-chat", ready: /AI data rail|Ask LM World Tour/i },
+  { path: "/data-chat", ready: /Data Chat|Ask LM World Tour/i },
 ] as const;
 
 test.describe("desktop workbench", () => {
+  const fixtureCleanup = new WeakMap<Page, Awaited<ReturnType<typeof prepareFlightPathFixture>>>();
+  test.afterEach(async ({ page }) => {
+    await fixtureCleanup.get(page)?.();
+  });
   test.skip(
     !hasAuthBypass && !useAuthStorage,
     "Set PLAYWRIGHT_AUTH_STATE or PLAYWRIGHT_E2E_AUTH_BYPASS=1 to run desktop workbench flows.",
@@ -41,19 +48,46 @@ test.describe("desktop workbench", () => {
   );
   test.setTimeout(90_000);
 
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }, info) => {
+    await context.addCookies([
+      {
+        name: "fkh-app-surface",
+        value: "workbench",
+        domain: baseUrl.hostname,
+        path: "/",
+        sameSite: "Lax",
+      },
+    ]);
     if (!hasAuthBypass || useAuthStorage) {
       return;
     }
 
     await context.addCookies([createPlaywrightBypassCookie()]);
+    fixtureCleanup.set(
+      page,
+      await prepareFlightPathFixture(
+        page,
+        String(info.project.use.baseURL),
+        true,
+        true,
+        /main table skip|round history|round detail/.test(info.title)
+          ? "4de11156-16fd-4a36-84e0-fadda53456b0"
+          : undefined,
+        /challenge and tournament detail/.test(info.title),
+        false,
+        false,
+        /priority pages/.test(info.title),
+      ),
+    );
   });
 
   test("command palette supports desktop route switching", async ({ page }) => {
     skipWhenNoDesktopAuth();
     const hydrationWarnings = collectHydrationWarnings(page);
+    // Compile the destination before measuring command navigation in development.
+    await page.request.get("/rounds/new");
 
-    await page.route("**/api/desktop-workbench/commands", async (route) => {
+    await page.route("**/api/desktop-workbench/commands*", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -63,21 +97,25 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Dashboard|Today/i);
+    await expectPageReady(page, /Dashboard|Today|Home/i);
 
     await page.keyboard.press("ControlOrMeta+K");
     await expect(page.getByRole("dialog", { name: /command palette/i })).toBeVisible();
     await page.getByPlaceholder(/search driver/i).fill("shots");
-    await page.getByRole("link", { name: /Shots/i }).first().click();
+    await page
+      .getByRole("dialog", { name: /command palette/i })
+      .locator('a[href="/shots"]')
+      .click();
 
     await expect(page).toHaveURL(/\/shots/);
-    await expectPageReady(page, /Shot explorer/i);
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
 
     await page.keyboard.press("ControlOrMeta+K");
     const commandDialog = page.getByRole("dialog", { name: /command palette/i });
     await expect(commandDialog).toBeVisible();
     await page.getByPlaceholder(/search driver/i).fill("add round");
     await expect(commandDialog.locator("[data-command-active='true']")).toContainText("Add round");
+    await expect(page.getByPlaceholder(/search driver/i)).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/rounds\/new/);
     expect(hydrationWarnings).toEqual([]);
@@ -88,7 +126,7 @@ test.describe("desktop workbench", () => {
   }) => {
     skipWhenNoDesktopAuth();
 
-    await page.route("**/api/desktop-workbench/commands", async (route) => {
+    await page.route("**/api/desktop-workbench/commands*", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -141,7 +179,10 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
 
     await page.keyboard.press("ControlOrMeta+K");
     const search = page.getByPlaceholder(/Search driver/i);
@@ -184,7 +225,10 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
 
     await page.evaluate(() => {
       window.localStorage.setItem(
@@ -220,7 +264,7 @@ test.describe("desktop workbench", () => {
     await savedViewResult.click();
 
     await expect(page).toHaveURL(/\/shots\?sort=carry/);
-    await expectPageReady(page, /Shot explorer/i);
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
   });
 
   test("command palette recent items preserve selected workspace object labels", async ({
@@ -228,7 +272,7 @@ test.describe("desktop workbench", () => {
   }) => {
     skipWhenNoDesktopAuth();
 
-    await page.route("**/api/desktop-workbench/commands", async (route) => {
+    await page.route("**/api/desktop-workbench/commands*", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -257,7 +301,10 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
     await page.evaluate(() => window.localStorage.removeItem("fkh:desktop-recent-items"));
 
     await page.keyboard.press("ControlOrMeta+K");
@@ -320,7 +367,10 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
 
     await page.getByRole("button", { name: /Open workbench menu/i }).click();
     const workspaceMenu = page.getByRole("menu");
@@ -360,7 +410,7 @@ test.describe("desktop workbench", () => {
       window.localStorage.removeItem("fkh:desktop-pinned-items");
     });
 
-    await page.route("**/api/desktop-workbench/commands", async (route) => {
+    await page.route("**/api/desktop-workbench/commands*", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -381,7 +431,10 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
 
     await page.keyboard.press("ControlOrMeta+K");
     const commandDialog = page.getByRole("dialog", { name: /command palette/i });
@@ -410,7 +463,18 @@ test.describe("desktop workbench", () => {
       }
     });
 
+    const readNotificationIds = new Set<string>();
     await page.route("**/api/desktop-workbench/notifications", async (route) => {
+      if (route.request().method() === "POST") {
+        const { ids } = route.request().postDataJSON() as { ids: string[] };
+        ids.forEach((id) => readNotificationIds.add(id));
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ readIds: [...readNotificationIds] }),
+        });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -456,14 +520,17 @@ test.describe("desktop workbench", () => {
               tone: "green",
               unread: false,
             },
-          ],
+          ].map((item) => ({ ...item, unread: item.unread && !readNotificationIds.has(item.id) })),
         }),
       });
     });
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
 
     await page.getByRole("button", { name: /Open workbench menu/i }).click();
     await page.getByRole("button", { name: /Open notifications/i }).click();
@@ -489,7 +556,10 @@ test.describe("desktop workbench", () => {
     await expect(page.getByText("2 unread")).toBeVisible();
 
     await page.reload();
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
     await page.getByRole("button", { name: /Open workbench menu/i }).click();
     await page.getByRole("button", { name: /Open notifications/i }).click();
     await expect(page.getByText("2 unread")).toBeVisible();
@@ -498,7 +568,7 @@ test.describe("desktop workbench", () => {
     ).toContainText("Read");
 
     await page.getByRole("button", { name: /Mark all read/i }).click();
-    await expect(page.getByText("All clear")).toBeVisible();
+    await expect(page.getByText("0 unread", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Mark read/i })).toHaveCount(0);
   });
 
@@ -508,7 +578,10 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
 
     await page.keyboard.press("?");
     await expect(page.getByRole("dialog", { name: /Keyboard shortcuts/i })).toBeVisible();
@@ -519,13 +592,15 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("g");
     await page.keyboard.press("s");
     await expect(page).toHaveURL(/\/shots/);
-    await expectPageReady(page, /Shot explorer/i);
-    await expect(page.locator("[data-page-search]").first()).toBeVisible();
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
+    await expect(page.getByRole("searchbox", { name: "Search shots", exact: true })).toBeVisible();
 
     await page.keyboard.press("/");
     await expect
       .poll(() =>
-        page.evaluate(() => document.activeElement?.hasAttribute("data-page-search") ?? false),
+        page
+          .getByRole("searchbox", { name: "Search shots", exact: true })
+          .evaluate((input) => document.activeElement === input),
       )
       .toBe(true);
 
@@ -551,7 +626,10 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("g");
     await page.keyboard.press("d");
     await expect(page).toHaveURL(/\/dashboard/);
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Dashboard/i }),
     ).toBeVisible();
@@ -564,11 +642,11 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/shots");
-    await expectPageReady(page, /Shot explorer/i);
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
     expect(hydrationWarnings).toEqual([]);
     await page.evaluate(() => window.localStorage.removeItem("fkh:desktop-saved-insights"));
     await page.reload();
-    await expectPageReady(page, /Shot explorer/i);
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
     expect(hydrationWarnings).toEqual([]);
 
     await page.getByRole("button", { name: /Open AI assistant for Shots/i }).click();
@@ -594,7 +672,7 @@ test.describe("desktop workbench", () => {
     await expect.poll(() => page.locator('[data-aria-hidden="true"]').count()).toBe(0);
 
     await page.reload();
-    await expectPageReady(page, /Shot explorer/i);
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
     await page.getByRole("button", { name: /Open command palette/i }).click();
     await expect(
       page
@@ -605,25 +683,28 @@ test.describe("desktop workbench", () => {
     expect(hydrationWarnings).toEqual([]);
   });
 
-  test("AI rail saved insights appear in the command palette rail", async ({ page }) => {
+  test("Coach saved insights appear in the command palette rail", async ({ page }) => {
     skipWhenNoDesktopAuth();
 
     await page.setViewportSize({ width: 2200, height: 1100 });
     await gotoAppRoute(page, "/coach");
-    await expectPageReady(page, /AI coach rail/i);
+    await expectPageReady(page, /Coach|Build a measured baseline/i);
     await page.evaluate(() => window.localStorage.removeItem("fkh:desktop-saved-insights"));
     await page.reload({ waitUntil: "commit" });
-    await expectAppText(page, /AI coach rail/i, 45_000);
+    await expectAppText(page, /Coach|Build a measured baseline/i, 45_000);
 
-    const rail = page.getByRole("complementary", { name: /AI coach rail/i });
+    await page.getByRole("button", { name: /Open AI assistant for Coach/i }).click();
+    const rail = page.getByRole("dialog", { name: /Coach assistant/i });
     await rail.getByRole("button", { name: /Save this insight/i }).click();
     await expect(rail.getByRole("button", { name: /Insight saved/i })).toBeVisible();
 
+    await page.keyboard.press("Escape");
+    await expect(rail).toHaveCount(0);
     await page.keyboard.press("ControlOrMeta+K");
     const commandDialog = page.getByRole("dialog", { name: /command palette/i });
     await expect(commandDialog.locator("aside").getByText(/Saved insights/i)).toBeVisible();
     await expect(
-      commandDialog.locator("aside").getByRole("link", { name: /AI coach rail insight/i }),
+      commandDialog.locator("aside").getByRole("link", { name: /Coach insight/i }),
     ).toHaveAttribute("href", "/coach");
   });
 
@@ -632,7 +713,10 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
 
     await page.getByRole("button", { name: /Open desktop account menu/i }).click();
     await expect(page.getByRole("menuitem", { name: /^Profile$/i })).toHaveAttribute(
@@ -655,7 +739,10 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
 
     const openSwitcher = async () => {
       await expect(page.getByRole("menu", { name: /Open workbench menu/i })).toHaveCount(0);
@@ -678,34 +765,48 @@ test.describe("desktop workbench", () => {
     await expect(page.getByRole("menuitem", { name: /Coach desk/i })).toBeVisible();
     const adminOption = page.getByRole("menuitem", { name: /Admin console/i });
     const hasAdminWorkspace = (await adminOption.count()) > 0;
-    await page.getByRole("menuitem", { name: /Coach desk/i }).click();
+    await Promise.all([
+      page.waitForURL(/\/coach/),
+      page.getByRole("menuitem", { name: /Coach desk/i }).click(),
+    ]);
 
     await expect(page).toHaveURL(/\/coach/);
-    await expectPageReady(page, /AI coach rail/i);
+    await expectPageReady(page, /Coach|Build a measured baseline/i);
     switcher = await openSwitcher();
     await expect(switcher).toContainText("Coach desk");
 
     await switcher.click();
-    await page.getByRole("menuitem", { name: /Player workspace/i }).click();
+    await Promise.all([
+      page.waitForURL(/\/dashboard/),
+      page.getByRole("menuitem", { name: /Player workspace/i }).click(),
+    ]);
 
     await expect(page).toHaveURL(/\/dashboard/);
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
     switcher = await openSwitcher();
     await expect(switcher).toContainText("Player workspace");
 
     await switcher.click();
     if (hasAdminWorkspace) {
-      await page.getByRole("menuitem", { name: /Admin console/i }).click();
+      await Promise.all([
+        page.waitForURL(/\/admin/),
+        page.getByRole("menuitem", { name: /Admin console/i }).click(),
+      ]);
       await expect(page).toHaveURL(/\/admin/);
-      await expectPageReady(page, /Operating pages/i);
+      await expectPageReady(page, /Operations console/i);
       await expectNoAiRail(page, /AI admin rail/i);
       switcher = await openSwitcher();
       await expect(switcher).toContainText("Admin console");
       await page.keyboard.press("Escape");
 
       await page.setViewportSize({ width: 2200, height: 1100 });
-      await expectPageReady(page, /AI admin rail/i);
-      await expect(page.getByRole("complementary", { name: /AI admin rail/i })).toBeVisible();
+      await expectPageReady(page, /Operations console/i);
+      await expect(
+        page.getByRole("heading", { name: "Operational status", exact: true }),
+      ).toBeVisible();
     } else {
       await expect(page.getByRole("menuitem", { name: /Admin console/i })).toHaveCount(0);
     }
@@ -716,11 +817,14 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
     await expect(page.getByRole("button", { name: /Skip to main table/i })).toHaveCount(0);
 
     await gotoAppRoute(page, "/shots");
-    await expectPageReady(page, /Shot explorer/i);
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
 
     const skipToMainTable = page.getByRole("button", { name: /Skip to main table/i });
     const mainTableTarget = page.locator("[data-main-table-target='true']");
@@ -746,6 +850,7 @@ test.describe("desktop workbench", () => {
 
     await gotoAppRoute(page, "/bag");
     await expectPageReady(page, /Bag|Gapping/i);
+    await page.getByRole("button", { name: /^Full gapping evidence/ }).click();
     await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
       "aria-label",
       "Full bag gapping table",
@@ -758,11 +863,11 @@ test.describe("desktop workbench", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
 
     await gotoAppRoute(page, "/shots");
-    await expectPageReady(page, /Shot explorer/i);
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
     await expectWorkbenchRowKeyboardNavigation(page, 'table[data-workbench-export-table="shots"]');
 
     await gotoAppRoute(page, "/admin/users");
-    await expectAppText(page, /Users and access/i, 45_000);
+    await expectAppText(page, /Account management/i, 45_000);
     await expectWorkbenchRowKeyboardNavigation(
       page,
       'table[data-workbench-export-table="admin-users"]',
@@ -774,7 +879,10 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
 
     await page.evaluate(() => {
       const table = document.createElement("table");
@@ -812,7 +920,10 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Quick answers/i);
+    await expectPageReady(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+    );
 
     const sidebarShell = page.locator("[data-sidebar-density]");
 
@@ -825,7 +936,11 @@ test.describe("desktop workbench", () => {
       .toBe("compact");
 
     await page.reload({ waitUntil: "commit" });
-    await expectAppText(page, /Quick answers/i, 45_000);
+    await expectAppText(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+      45_000,
+    );
     await expect(page.locator("[data-sidebar-density]")).toHaveAttribute(
       "data-sidebar-density",
       "compact",
@@ -846,54 +961,42 @@ test.describe("desktop workbench", () => {
     );
   });
 
-  test("dashboard layout controls support modes, hidden panels and reset", async ({ page }) => {
+  test("dashboard sections and evidence disclosure remain usable after reload", async ({
+    page,
+  }) => {
     skipWhenNoDesktopAuth();
-
     await page.setViewportSize({ width: 1440, height: 900 });
-
     await gotoAppRoute(page, "/dashboard");
-    await expectPageReady(page, /Quick answers/i);
-
-    const controls = page.locator("[data-dashboard-layout-controls]");
-    const grid = page.locator("[data-dashboard-bento-grid]");
-    const playsLikePanel = page.locator('[data-dashboard-panel="plays-like"]');
-    const playsLikeControls = page.locator('[data-dashboard-panel-control="plays-like"]');
-
-    await expect(controls).toBeVisible();
-    await controls.locator("summary").click();
-    await controls.getByRole("button", { name: /Reset/i }).click();
-    await expect(grid).toHaveAttribute("data-dashboard-mode", "standard");
-    await expect(playsLikePanel).toBeVisible();
-
-    await controls.getByRole("button", { name: /Executive/i }).click();
-    await expect(grid).toHaveAttribute("data-dashboard-mode", "executive");
-    await expect(playsLikePanel).toHaveCount(0);
-
-    await controls.getByRole("button", { name: /Standard/i }).click();
-    await expect(grid).toHaveAttribute("data-dashboard-mode", "standard");
-    await expect(playsLikePanel).toBeVisible();
-
-    await playsLikeControls.getByRole("button", { name: /Hide/i }).click();
-    await expect(playsLikePanel).toHaveCount(0);
-    await expect
-      .poll(() =>
-        page.evaluate(() => window.localStorage.getItem("fkh:dashboard-workspace-layout:v1")),
-      )
-      .toContain("plays-like");
-
+    await expectPageReady(page, /Latest saved evidence|Your latest round/i);
+    const sections = page.getByRole("navigation", { name: "Dashboard sections" });
+    for (const [label, target] of [
+      ["Practice", "practice"],
+      ["Driver & speed", "driver-speed"],
+      ["Changes", "club-progress"],
+      ["Club delivery", "delivery"],
+      ["Round readiness", "readiness"],
+      ["Current work", "current-work"],
+    ]) {
+      const link = sections.getByRole("link", { name: label, exact: true });
+      await expect(link).toHaveAttribute("href", `#${target}`);
+      await link.click();
+      await expect(page.locator(`#${target}`)).toBeInViewport();
+    }
+    const driverEvidence = page.locator("#driver-speed > details");
+    await driverEvidence.locator("summary").click();
+    await expect(driverEvidence).toHaveAttribute("open", "");
+    await driverEvidence.locator("summary").click();
+    await expect(driverEvidence).not.toHaveAttribute("open");
     await page.reload({ waitUntil: "commit" });
-    await expectAppText(page, /Dashboard layout/i, 45_000);
-    await expect(page.locator('[data-dashboard-panel="plays-like"]')).toHaveCount(0);
-
-    await page.locator("[data-dashboard-layout-controls] summary").click();
-    await page
-      .locator("[data-dashboard-layout-controls]")
-      .getByRole("button", { name: /Reset/i })
-      .click();
-    await expect(page.locator('[data-dashboard-panel="plays-like"]')).toBeVisible();
+    await expectPageReady(page, /Latest saved evidence|Your latest round/i);
+    await expect(sections).toBeVisible();
+    await expect(driverEvidence.locator("summary")).toBeVisible();
+    await expectNoHorizontalOverflow(page, "dashboard sections after reload");
   });
 
-  test("dashboard bento panels stay readable without a persistent AI rail", async ({ page }) => {
+  test("dashboard evidence sections stay readable without a persistent AI rail", async ({
+    page,
+  }) => {
     skipWhenNoDesktopAuth();
 
     await page.addInitScript(() => {
@@ -930,13 +1033,17 @@ test.describe("desktop workbench", () => {
     for (const viewport of viewports) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await gotoAppRoute(page, "/dashboard");
-      await expectAppText(page, /Quick answers/i, 45_000);
-      await expect(page.locator("[data-dashboard-panel]").first()).toBeVisible();
+      await expectAppText(
+        page,
+        /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+        45_000,
+      );
+      await expect(page.locator("[data-dashboard-ui] > section").first()).toBeVisible();
 
       await expectNoAiRail(page, /AI performance rail/i);
 
       const minPanelWidth = await page.evaluate(() => {
-        const widths = Array.from(document.querySelectorAll("[data-dashboard-panel]")).map(
+        const widths = Array.from(document.querySelectorAll("[data-dashboard-ui] > section")).map(
           (panel) => panel.getBoundingClientRect().width,
         );
 
@@ -945,7 +1052,7 @@ test.describe("desktop workbench", () => {
 
       expect(
         minPanelWidth,
-        `${viewport.label} should not squeeze dashboard bento cards into narrow columns`,
+        `${viewport.label} should not squeeze dashboard evidence into narrow columns`,
       ).toBeGreaterThanOrEqual(viewport.minPanelWidth);
 
       await expectNoHorizontalOverflow(page, viewport.label);
@@ -970,10 +1077,10 @@ test.describe("desktop workbench", () => {
     });
 
     await page.setViewportSize({ width: 1440, height: 900 });
-    await gotoAppRoute(page, "/shots?club=driver&sort=carry&dir=desc");
-    await expectPageReady(page, /Shot explorer/i);
+    await gotoAppRoute(page, "/shots?club=Driver&sort=carry&dir=desc");
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
 
-    const shotsWorkbench = page.locator('[data-workbench-scope="shots"]').first();
+    const shotsWorkbench = page.getByRole("main");
     const shotsToolbar = shotsWorkbench.locator("[data-desktop-workbench-toolbar]");
 
     await expect(shotsToolbar).toBeVisible();
@@ -1023,7 +1130,7 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/shots");
-    await expectPageReady(page, /Shot explorer/i);
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
 
     const table = page.locator('table[data-workbench-export-table="shots"]');
     const rows = table.locator("tbody tr[tabindex]");
@@ -1039,12 +1146,16 @@ test.describe("desktop workbench", () => {
     await rows.nth(1).click();
 
     await expect(rows.nth(1)).toHaveAttribute("aria-selected", "true");
-    await expect(detail).toContainText(selectedClub);
+    await expect(
+      page.getByRole("heading", { name: new RegExp(`${selectedClub} · shot`) }),
+    ).toBeVisible();
     await expect(detail).toContainText("Club speed");
     await expect(detail).toContainText("Smash");
-    await expect(detail.getByRole("link", { name: /Filter this club/i })).toHaveAttribute(
-      "href",
-      /\/shots\?club=/,
+    await detail.getByRole("tab", { name: "Source", exact: true }).click();
+    await expect(detail.getByRole("tabpanel", { name: "Source" })).toContainText("Source record");
+    await detail.getByRole("tab", { name: "History", exact: true }).click();
+    await expect(detail.getByRole("tabpanel", { name: "History" })).toContainText(
+      "Source imported",
     );
   });
 
@@ -1053,14 +1164,14 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/shots?sort=carry");
-    await expectPageReady(page, /Shot explorer/i);
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
     await page.evaluate(() => window.localStorage.removeItem("fkh:saved-views:shots"));
     await page.evaluate(() => window.localStorage.removeItem("fkh:visible-columns:shots"));
     await page.evaluate(() => window.localStorage.removeItem("fkh:desktop-workbench-density"));
     await page.reload();
-    await expectPageReady(page, /Shot explorer/i);
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
 
-    const shotsWorkbench = page.locator('[data-workbench-scope="shots"]').first();
+    const shotsWorkbench = page.getByRole("main");
 
     await shotsWorkbench.getByRole("button", { name: /Columns/i }).click();
     await setMenuItemCheckbox(page, /^Launch$/i, false);
@@ -1115,15 +1226,15 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/shots");
-    await expectPageReady(page, /Shot explorer/i);
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
     await page.evaluate(() => {
       window.localStorage.removeItem("fkh:visible-columns:shots");
       window.localStorage.removeItem("fkh:desktop-workbench-density");
     });
     await page.reload();
-    await expectPageReady(page, /Shot explorer/i);
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
 
-    let shotsWorkbench = page.locator('[data-workbench-scope="shots"]').first();
+    let shotsWorkbench = page.getByRole("main");
 
     await shotsWorkbench.getByRole("button", { name: /Columns/i }).click();
     await setMenuItemCheckbox(page, /^Launch$/i, false);
@@ -1137,137 +1248,97 @@ test.describe("desktop workbench", () => {
     await expect(page.locator("html")).toHaveAttribute("data-table-density", "compact");
 
     await page.reload();
-    await expectPageReady(page, /Shot explorer/i);
-    shotsWorkbench = page.locator('[data-workbench-scope="shots"]').first();
+    await expectPageReady(page, /^Shots|Import your first measured shots/im);
+    shotsWorkbench = page.getByRole("main");
     await expect(shotsWorkbench.locator('th[data-column="launch"]')).toBeHidden();
     await expect(page.locator("html")).toHaveAttribute("data-table-density", "compact");
   });
 
-  test("rounds workbench supports saved filters, columns, export and assistant entry", async ({
+  test("round history supports type filters, search, review links and assistant entry", async ({
     page,
   }) => {
     skipWhenNoDesktopAuth();
-
     await page.setViewportSize({ width: 1440, height: 900 });
-    await gotoAppRoute(page, "/rounds?filter=scorecard-only");
-    await expectPageReady(page, /AI round rail/i);
-
+    await gotoAppRoute(page, "/rounds");
+    await expectPageReady(page, /Round history/i);
     await expectNoAiRail(page, /AI round rail/i);
     await expect(page.getByRole("button", { name: /Open AI assistant for Rounds/i })).toBeVisible();
-    await expect(page.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
-    await expect(page.getByRole("button", { name: /Scorecard only/i }).first()).toHaveAttribute(
-      "data-variant",
-      "default",
+    const table = page.getByRole("table", { name: "Round history table", exact: true });
+    const round = table.getByRole("row").filter({ hasText: "Aintree Golf Centre" });
+    await expect(round).toHaveCount(1);
+    await expect(round.getByRole("link", { name: /Review Aintree Golf Centre/i })).toHaveAttribute(
+      "href",
+      /\/rounds\/[a-f0-9-]+$/,
     );
-
-    const roundTable = page.locator('table[data-workbench-export-table="rounds"]');
-    const dateHead = roundTable.locator('th[data-column="date"]');
-    const scoreHead = roundTable.locator('th[data-column="score"]');
-
-    await expect(dateHead).toHaveAttribute("aria-sort", "descending");
-    await scoreHead.getByRole("button", { name: /Sort rounds by Score/i }).click();
-    await expect(scoreHead).toHaveAttribute("aria-sort", "ascending");
-    await expect(dateHead).toHaveAttribute("aria-sort", "none");
-    const visibleScores = await roundTable
-      .locator('tbody tr td[data-column="score"]')
-      .evaluateAll((cells) =>
-        cells
-          .map((cell) => Number(cell.textContent?.trim()))
-          .filter((value) => Number.isFinite(value)),
-      );
-    expect(visibleScores).toEqual([...visibleScores].sort((left, right) => left - right));
-
-    await page.getByRole("button", { name: /Saved views/i }).click();
-    await expect(page.getByText(/Scorecard-only cleanup/i)).toBeVisible();
-    await page.keyboard.press("Escape");
-
-    await page.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /^Putts$/i, false);
-    await expect(page.locator('th[data-column="putts"]')).toBeHidden();
-    await page.keyboard.press("Escape");
-
-    const [download] = await Promise.all([
-      page.waitForEvent("download"),
-      page.getByRole("button", { name: /^Export$/i }).click(),
-    ]);
-    expect(download.suggestedFilename()).toBe("forekinghell-rounds-view.csv");
-    await expect(page.getByRole("button", { name: /Exported/i })).toBeVisible();
+    const type = page.getByRole("combobox", { name: "Round type", exact: true });
+    await type.selectOption("shot-linked");
+    await expect(round).toHaveCount(1);
+    await type.selectOption("scorecard-only");
+    await expect(round).toHaveCount(0);
+    await type.selectOption("all");
+    const search = page.getByRole("searchbox", { name: "Search rounds", exact: true });
+    await search.fill("No matching test course");
+    await expect(round).toHaveCount(0);
+    await search.fill("Aintree");
+    await expect(round).toHaveCount(1);
+    await page.reload({ waitUntil: "commit" });
+    await expectPageReady(page, /Round history/i);
+    await expect(search).toHaveValue("Aintree");
+    await expect(round).toHaveCount(1);
   });
 
-  test("courses workbench supports saved views, columns, export and table focus", async ({
+  test("course library supports search, views, favourites and mapped-hole evidence", async ({
     page,
   }) => {
     skipWhenNoDesktopAuth();
-
     await page.setViewportSize({ width: 1440, height: 900 });
-    await gotoAppRoute(page, "/courses?tab=patterns");
-    await expectPageReady(page, /AI course rail/i);
-
+    await gotoAppRoute(page, "/courses");
+    await expectPageReady(page, /Courses/i);
     await expectNoAiRail(page, /AI course rail/i);
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Courses/i }),
     ).toBeVisible();
-    await expect(page.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "Course library table",
+    const search = page.getByRole("textbox", { name: "Search courses", exact: true });
+    await search.fill("Aintree");
+    await page.getByRole("radio", { name: "Table view", exact: true }).click();
+    const table = page.locator("[data-course-table]").getByRole("table");
+    await expect(table.getByRole("row").filter({ hasText: "Aintree Golf Centre" })).toHaveCount(1);
+    await expect(page).toHaveURL(/view=table/);
+    await page.reload({ waitUntil: "commit" });
+    await expectPageReady(page, /Courses/i);
+    await expect(search).toHaveValue("Aintree");
+    await expect(table).toBeVisible();
+    await expect(page.locator("[data-course-library]")).toHaveAttribute(
+      "data-course-library-hydrated",
+      "true",
     );
-
-    const courseTable = page.locator('table[data-workbench-export-table="courses"]');
-    const courseHead = courseTable.locator('th[data-column="course"]');
-    const holesHead = courseTable.locator('th[data-column="holes"]');
-
-    await page.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /Mapped holes/i, true);
-    await page.keyboard.press("Escape");
-    await expect(holesHead).toBeVisible();
-
-    await expect(courseHead).toHaveAttribute("aria-sort", "ascending");
-    await holesHead.getByRole("link", { name: /Sort courses by Mapped holes/i }).click();
-    await expect(page).toHaveURL(/\/courses\?tab=patterns&sort=holes&dir=desc/);
-    await expect(holesHead).toHaveAttribute("aria-sort", "descending");
-    await expect(courseHead).toHaveAttribute("aria-sort", "none");
-    const visibleMappedHoles = await courseTable
-      .locator('tbody tr td[data-column="holes"]')
-      .evaluateAll((cells) =>
-        cells
-          .map((cell) => Number(cell.textContent?.trim()))
-          .filter((value) => Number.isFinite(value)),
-      );
-    expect(visibleMappedHoles).toEqual([...visibleMappedHoles].sort((left, right) => right - left));
-
-    await page.getByRole("button", { name: /Saved views/i }).click();
-    await expect(page.getByRole("menuitem", { name: /Mapped courses/i })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: /Course data cleanup/i })).toBeVisible();
-    await page.keyboard.press("Escape");
-
-    await page.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /Mapped holes/i, false);
-    await expect(page.locator('th[data-column="holes"]')).toBeHidden();
-    await page.keyboard.press("Escape");
-
-    const mappedCourseHref = await courseTable.locator("tbody tr").evaluateAll((rows) => {
-      for (const row of rows) {
-        const mappedHoles = Number(
-          row.querySelector('[data-column="holes"]')?.textContent?.trim() ?? "",
-        );
-        const href = (
-          row.querySelector('a[href$="/holes"]') as HTMLAnchorElement | null
-        )?.getAttribute("href");
-
-        if (Number.isFinite(mappedHoles) && mappedHoles > 0 && href) {
-          return href;
-        }
-      }
-
-      return "";
+    await page.getByRole("button", { name: "Favourite Aintree Golf Centre", exact: true }).click();
+    const savedFavourite = page.getByRole("button", {
+      name: "Remove Aintree Golf Centre from favourites",
+      exact: true,
     });
-    expect(mappedCourseHref).toBeTruthy();
+    await expect(savedFavourite).toHaveAttribute("aria-pressed", "true");
+    await page.reload({ waitUntil: "commit" });
+    await expectPageReady(page, /Courses/i);
+    await expect(savedFavourite).toHaveAttribute("aria-pressed", "true");
+    await savedFavourite.click();
+    await expect(
+      page.getByRole("button", { name: "Favourite Aintree Golf Centre", exact: true }),
+    ).toHaveAttribute("aria-pressed", "false");
+    await page.getByRole("radio", { name: "Grid view", exact: true }).click();
+    await expect(page.locator("[data-course-grid]")).toBeVisible();
+    await expect(page.locator("[data-course-table]")).toHaveCount(0);
+    const mappedCourseHref = "/courses/4de11156-16fd-4a36-84e0-fadda53456b0/holes";
 
     await gotoAppRoute(page, mappedCourseHref as string);
     await expectPageReady(page, /Geometry preview/i);
     await expectNoAiRail(page, /AI course rail/i);
     await expect(page.locator('[data-workbench-scope="course-holes"]')).toBeVisible();
+    const courseEditorTabs = page.getByRole("tablist", {
+      name: "Course editor sections",
+      exact: true,
+    });
+    await courseEditorTabs.getByRole("tab", { name: "Holes", exact: true }).click();
     await expect(page.locator('[data-workbench-scope="courses"]')).toBeVisible();
     await expect(page.locator("[data-main-table-target='true']").first()).toHaveAttribute(
       "aria-label",
@@ -1279,6 +1350,7 @@ test.describe("desktop workbench", () => {
       "/courses",
     );
     await expect(holeBreadcrumb.locator('[aria-current="page"]')).toHaveText(/Hole management/i);
+    await courseEditorTabs.getByRole("tab", { name: "Mapping", exact: true }).click();
     const geometryRegion = page.getByRole("region", {
       name: /Course geometry preview chart accessibility/i,
     });
@@ -1287,7 +1359,7 @@ test.describe("desktop workbench", () => {
       geometryRegion.getByRole("link", { name: /Explain Course geometry preview chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await geometryRegion
-      .locator("summary", { hasText: /View Course geometry preview chart data table/i })
+      .getByRole("button", { name: /View Course geometry preview chart data table/i })
       .click();
     await expect(
       geometryRegion.getByRole("table", { name: /Course geometry preview chart data table/i }),
@@ -1297,6 +1369,7 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, patternHref);
     await expectPageReady(page, /shot pattern/i);
     await expect(page.locator('[data-workbench-scope="course-shot-pattern"]')).toBeVisible();
+    await page.getByText("Hole and club evidence", { exact: true }).click();
     await expect(page.locator('[data-workbench-scope="shot-pattern-setup"]')).toBeVisible();
     await expectNoAiRail(page, /AI course rail/i);
     await expect(
@@ -1313,21 +1386,18 @@ test.describe("desktop workbench", () => {
       coursePatternRegion.getByRole("link", { name: /Explain Course shot pattern chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await coursePatternRegion
-      .locator("summary", { hasText: /View Course shot pattern chart data table/i })
+      .getByRole("button", { name: /View Course shot pattern chart data table/i })
       .click();
     await expect(
       coursePatternRegion.getByRole("table", { name: /Course shot pattern chart data table/i }),
     ).toBeVisible();
 
-    await gotoAppRoute(page, "/courses?tab=patterns&sort=holes&dir=desc");
-    await expectPageReady(page, /AI course rail/i);
-
-    const [download] = await Promise.all([
-      page.waitForEvent("download"),
-      page.getByRole("button", { name: /^Export$/i }).click(),
-    ]);
-    expect(download.suggestedFilename()).toBe("forekinghell-courses-view.csv");
-    await expect(page.getByRole("button", { name: /Exported/i })).toBeVisible();
+    await gotoAppRoute(page, "/courses?q=Aintree&view=table");
+    await expectPageReady(page, /Courses/i);
+    await expect(page.locator("[data-course-table]")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Search courses", exact: true })).toHaveValue(
+      "Aintree",
+    );
   });
 
   test("course record course and detail pages use desktop command workbench scopes", async ({
@@ -1338,7 +1408,7 @@ test.describe("desktop workbench", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
 
     await gotoAppRoute(page, "/course-records");
-    await expectPageReady(page, /AI course records rail/i);
+    await expectPageReady(page, /Course records|Course record boards/i);
     const courseRecordsHref = await page
       .locator('a[href^="/courses/"][href$="/records"]')
       .evaluateAll((links) =>
@@ -1349,11 +1419,13 @@ test.describe("desktop workbench", () => {
     expect(courseRecordsHref).toBeTruthy();
 
     await gotoAppRoute(page, courseRecordsHref as string);
-    await expectAppText(page, /Course champion|Course record table/i, 45_000);
-    await expect(page.locator('div[data-workbench-scope="course-records-course"]')).toBeVisible();
+    await expectAppText(page, /Course record boards/i, 45_000);
+    await expect(
+      page.getByRole("region", { name: "Course categories", exact: true }),
+    ).toBeVisible();
     await expectNoAiRail(page, /AI course rail/i);
     await expect(
-      page.getByRole("table", { name: /Course-specific record board table/i }),
+      page.getByRole("region", { name: "Course category table", exact: true }),
     ).toBeVisible();
     await expectNoHorizontalOverflow(page, "course record course board");
     await expectNoCrampedWorkbenchText(page, "course-records-course", "course record course board");
@@ -1368,8 +1440,8 @@ test.describe("desktop workbench", () => {
     expect(recordDetailHref).toBeTruthy();
 
     await gotoAppRoute(page, recordDetailHref as string);
-    await expectAppText(page, /Honours board|Verified board/i, 45_000);
-    await expect(page.locator('div[data-workbench-scope="course-record-detail"]')).toBeVisible();
+    await expectAppText(page, /Required proof|Ranked leader/i, 45_000);
+    await expect(page.locator('[data-workbench-scope="course-record-detail"]')).toBeVisible();
     await expectNoAiRail(page, /AI course records rail/i);
     await expect(
       page.getByRole("table", { name: /Course record leaderboard table/i }),
@@ -1384,55 +1456,11 @@ test.describe("desktop workbench", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/bag");
     await expectPageReady(page, /Bag|Gapping/i);
+    await page.getByRole("button", { name: /Full gapping evidence/i }).click();
     await expect(page.getByRole("table", { name: /Full bag gapping table/i })).toBeVisible({
       timeout: 45_000,
     });
     await expectNoAiRail(page, /AI bag rail/i);
-    const bagPatternRegion = page
-      .getByRole("region", { name: /shot pattern chart accessibility/i })
-      .filter({ visible: true })
-      .first();
-    await expect(bagPatternRegion).toBeVisible();
-    await expect(
-      bagPatternRegion.getByRole("link", { name: /Explain .* shot pattern chart/i }),
-    ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
-    await bagPatternRegion
-      .locator("summary", { hasText: /View .* shot pattern chart data table/i })
-      .click();
-    await expect(
-      bagPatternRegion.getByRole("table", { name: /shot pattern chart data table/i }),
-    ).toBeVisible();
-
-    const facePathRegion = page
-      .getByRole("region", { name: /face\/path delivery chart accessibility/i })
-      .filter({ visible: true })
-      .first();
-    await expect(facePathRegion).toBeVisible();
-    await expect(
-      facePathRegion.getByRole("link", { name: /Explain .* face\/path delivery chart/i }),
-    ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
-    await facePathRegion
-      .locator("summary", { hasText: /View .* face\/path delivery chart data table/i })
-      .click();
-    await expect(
-      facePathRegion.getByRole("table", { name: /face\/path delivery chart data table/i }),
-    ).toBeVisible();
-
-    const clubDispersionRegion = page
-      .getByRole("region", { name: /dispersion chart accessibility/i })
-      .filter({ visible: true })
-      .first();
-    await expect(clubDispersionRegion).toBeVisible();
-    await expect(
-      clubDispersionRegion.getByRole("link", { name: /Explain .* dispersion chart/i }),
-    ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
-    await clubDispersionRegion
-      .locator("summary", { hasText: /View .* dispersion chart data table/i })
-      .click();
-    await expect(
-      clubDispersionRegion.getByRole("table", { name: /dispersion chart data table/i }),
-    ).toBeVisible();
-
     const gappingTable = page.locator("[data-bag-gapping-table]");
     await expect(gappingTable.getByText("Full gapping table")).toBeVisible();
 
@@ -1460,42 +1488,55 @@ test.describe("desktop workbench", () => {
     ]);
     expect(download.suggestedFilename()).toBe("forekinghell-bag-gapping-view.csv");
     await expect(gappingTable.getByRole("button", { name: /Exported/i })).toBeVisible();
+    await page.getByRole("tab", { name: "Scoring", exact: true }).click();
+    await page.getByRole("button", { name: /Scoring supporting evidence/i }).click();
+    const bagPatternRegion = page
+      .getByRole("region", { name: /shot pattern chart accessibility/i })
+      .filter({ visible: true })
+      .first();
+    await expect(bagPatternRegion).toBeVisible();
+    await expect(
+      bagPatternRegion.getByRole("link", { name: /Explain .* shot pattern chart/i }),
+    ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
+    await bagPatternRegion
+      .getByRole("button", { name: /View .* shot pattern chart data table/i })
+      .click();
+    await expect(
+      bagPatternRegion.getByRole("table", { name: /shot pattern chart data table/i }),
+    ).toBeVisible();
   });
 
-  test("progress bag movement table supports saved views, columns and export", async ({ page }) => {
+  test("progress sections expose measured history and preserve the selected view", async ({
+    page,
+  }) => {
     skipWhenNoDesktopAuth();
-
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/progress");
-    await expectPageReady(page, /Bag progress|Progress/i);
+    await expectPageReady(page, /Your current evidence, goals and training history/i);
     await expectNoAiRail(page, /AI progress rail/i);
-
-    const progressTable = page.locator('[data-workbench-scope="progress-bag-movement"]');
-    await expect(progressTable.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
+    await expect(page.locator("[data-progress-tabs]")).toHaveAttribute("data-ready", "true");
     await expect(
-      progressTable.getByRole("region", { name: "Progress bag movement table" }),
+      page.getByRole("heading", { name: "What changed in the last seven days", exact: true }),
     ).toBeVisible();
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "Progress bag movement table",
+    const tabs = page.getByRole("tablist", { name: "Progress sections", exact: true });
+    for (const [label, key] of [
+      ["Goals", "goals"],
+      ["Load", "load"],
+      ["Timeline", "timeline"],
+    ]) {
+      const tab = tabs.getByRole("tab", { name: label, exact: true });
+      await Promise.all([page.waitForURL(new RegExp(`tab=${key}`)), tab.click()]);
+      await expect(tab).toHaveAttribute("aria-selected", "true");
+      await expect(page.getByRole("tabpanel", { name: label, exact: true })).toBeVisible();
+      await expectNoHorizontalOverflow(page, `Progress ${label}`);
+    }
+    await page.reload({ waitUntil: "commit" });
+    await expectPageReady(page, /Your current evidence, goals and training history/i);
+    await expect(tabs.getByRole("tab", { name: "Timeline", exact: true })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
-
-    await progressTable.getByRole("button", { name: /Saved views/i }).click();
-    await expect(page.getByRole("menuitem", { name: /Clubs needing work/i })).toBeVisible();
-    await page.keyboard.press("Escape");
-
-    await progressTable.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /^Clean shots$/i, false);
-    await expect(progressTable.locator('th[data-column="clean-shots"]')).toBeHidden();
-    await page.keyboard.press("Escape");
-
-    const [download] = await Promise.all([
-      page.waitForEvent("download"),
-      progressTable.getByRole("button", { name: /^Export$/i }).click(),
-    ]);
-    expect(download.suggestedFilename()).toBe("forekinghell-progress-bag-movement.csv");
-    await expect(progressTable.getByRole("button", { name: /Exported/i })).toBeVisible();
-    await expectNoHorizontalOverflow(page, "progress bag movement table");
+    await expect(page.getByRole("tabpanel", { name: "Timeline", exact: true })).toBeVisible();
   });
 
   test("club analytics charts expose local explain and data fallbacks", async ({ page }) => {
@@ -1506,14 +1547,16 @@ test.describe("desktop workbench", () => {
     await expectPageReady(page, /Bag|Gapping/i);
     await expectNoAiRail(page, /AI bag rail/i);
 
-    const analyticsHref = await page
-      .locator('a[href^="/bag/"][href$="/analytics"]')
+    await page.getByRole("tab", { name: "Clubs", exact: true }).click();
+    const clubHref = await page
+      .locator('a[href^="/bag/"]')
+      .filter({ hasNotText: "Best" })
       .first()
       .getAttribute("href");
-    expect(analyticsHref).toBeTruthy();
+    expect(clubHref).toMatch(/^\/bag\/[a-f0-9-]{36}$/);
 
-    await gotoAppRoute(page, analyticsHref as string);
-    await expectPageReady(page, /AI club rail/i);
+    await gotoAppRoute(page, `${clubHref}/analytics`);
+    await expectPageReady(page, /analytics/i);
 
     const clubBreadcrumb = page.getByRole("navigation", { name: /Breadcrumb/i });
     await expect(clubBreadcrumb.getByRole("link", { name: /Bag/i })).toHaveAttribute(
@@ -1535,7 +1578,7 @@ test.describe("desktop workbench", () => {
       shotCloudRegion.getByRole("link", { name: /Explain Shot cloud chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await shotCloudRegion
-      .locator("summary", { hasText: /View Shot cloud chart data table/i })
+      .getByRole("button", { name: /View Shot cloud chart data table/i })
       .click();
     await expect(
       shotCloudRegion.getByRole("table", { name: /Shot cloud chart data table/i }),
@@ -1549,7 +1592,7 @@ test.describe("desktop workbench", () => {
       distanceRegion.getByRole("link", { name: /Explain Distance profile chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await distanceRegion
-      .locator("summary", { hasText: /View Distance profile chart data table/i })
+      .getByRole("button", { name: /View Distance profile chart data table/i })
       .click();
     await expect(
       distanceRegion.getByRole("table", { name: /Distance profile chart data table/i }),
@@ -1563,7 +1606,7 @@ test.describe("desktop workbench", () => {
       launchRegion.getByRole("link", { name: /Explain Launch window chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await launchRegion
-      .locator("summary", { hasText: /View Launch window chart data table/i })
+      .getByRole("button", { name: /View Launch window chart data table/i })
       .click();
     await expect(
       launchRegion.getByRole("table", { name: /Launch window chart data table/i }),
@@ -1605,12 +1648,13 @@ test.describe("desktop workbench", () => {
       dispersionRegion.getByRole("link", { name: /Explain .* dispersion map chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await dispersionRegion
-      .locator("summary", { hasText: /View .* dispersion map chart data table/i })
+      .getByRole("button", { name: /View .* dispersion map chart data table/i })
       .click();
     await expect(
       dispersionRegion.getByRole("table", { name: /dispersion map chart data table/i }),
     ).toBeVisible();
 
+    await page.getByRole("tab", { name: "Trajectory", exact: true }).click();
     const trajectoryRegion = page.getByRole("region", {
       name: /Club trajectory chart accessibility/i,
     });
@@ -1619,7 +1663,7 @@ test.describe("desktop workbench", () => {
       trajectoryRegion.getByRole("link", { name: /Explain Club trajectory chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await trajectoryRegion
-      .locator("summary", { hasText: /View Club trajectory chart data table/i })
+      .getByRole("button", { name: /View Club trajectory chart data table/i })
       .click();
     await expect(
       trajectoryRegion.getByRole("table", { name: /Club trajectory chart data table/i }),
@@ -1631,8 +1675,12 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/bag/longest");
-    await expectPageReady(page, /Longest shot simulator/i);
-    await expect(page.locator('[data-workbench-scope="longest-shots-route"]')).toBeVisible();
+    await expectPageReady(page, /Best shots by club/i);
+    await page
+      .locator("summary")
+      .filter({ hasText: "Explore the illustrative shot replay" })
+      .click();
+
     await expectNoAiRail(page, /AI bag rail/i);
 
     const longestRegion = page.getByRole("region", {
@@ -1643,7 +1691,7 @@ test.describe("desktop workbench", () => {
       longestRegion.getByRole("link", { name: /Explain Longest shots chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await longestRegion
-      .locator("summary", { hasText: /View Longest shots chart data table/i })
+      .getByRole("button", { name: /View Longest shots chart data table/i })
       .click();
     await expect(
       longestRegion.getByRole("table", { name: /Longest shots chart data table/i }),
@@ -1657,7 +1705,7 @@ test.describe("desktop workbench", () => {
       flightRegion.getByRole("link", { name: /Explain Flight profile chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await flightRegion
-      .locator("summary", { hasText: /View Flight profile chart data table/i })
+      .getByRole("button", { name: /View Flight profile chart data table/i })
       .click();
     await expect(
       flightRegion.getByRole("table", { name: /Flight profile chart data table/i }),
@@ -1681,6 +1729,7 @@ test.describe("desktop workbench", () => {
     await expectNoAiRail(page, /AI compare rail/i);
     await expect(page.locator("main").getByText(/AI .* workbench/i)).toHaveCount(0);
 
+    await page.getByRole("button", { name: "Inspect evidence", exact: true }).click();
     const periodRegion = page.getByRole("region", {
       name: /Compare period trend chart accessibility/i,
     });
@@ -1689,12 +1738,15 @@ test.describe("desktop workbench", () => {
       periodRegion.getByRole("link", { name: /Explain Compare period trend chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await periodRegion
-      .locator("summary", { hasText: /View Compare period trend chart data table/i })
+      .getByRole("button", { name: /View Compare period trend chart data table/i })
       .click();
     await expect(
       periodRegion.getByRole("table", { name: /Compare period trend chart data table/i }),
     ).toBeVisible();
 
+    await page.keyboard.press("Escape");
+    await page.getByRole("tab", { name: "Clubs", exact: true }).click();
+    await page.getByRole("button", { name: "Inspect evidence", exact: true }).click();
     const radarRegion = page.getByRole("region", {
       name: /Compare radar chart accessibility/i,
     });
@@ -1702,9 +1754,7 @@ test.describe("desktop workbench", () => {
     await expect(
       radarRegion.getByRole("link", { name: /Explain Compare radar chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
-    await radarRegion
-      .locator("summary", { hasText: /View Compare radar chart data table/i })
-      .click();
+    await radarRegion.getByRole("button", { name: /View Compare radar chart data table/i }).click();
     await expect(
       radarRegion.getByRole("table", { name: /Compare radar chart data table/i }),
     ).toBeVisible();
@@ -1717,7 +1767,7 @@ test.describe("desktop workbench", () => {
       dispersionRegion.getByRole("link", { name: /Explain Club dispersion chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await dispersionRegion
-      .locator("summary", { hasText: /View Club dispersion chart data table/i })
+      .getByRole("button", { name: /View Club dispersion chart data table/i })
       .click();
     await expect(
       dispersionRegion.getByRole("table", { name: /Club dispersion chart data table/i }),
@@ -1730,7 +1780,7 @@ test.describe("desktop workbench", () => {
     skipWhenNoDesktopAuth();
 
     await page.setViewportSize({ width: 1440, height: 900 });
-    await gotoAppRoute(page, "/leaderboard?tab=monthly");
+    await gotoAppRoute(page, "/leaderboard?tab=friends&period=monthly");
     await expectPageReady(page, /Leaderboard/i);
 
     await expectNoAiRail(page, /AI leaderboard rail/i);
@@ -1740,15 +1790,15 @@ test.describe("desktop workbench", () => {
     );
 
     await page.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /Monthly shots/i, true);
+    await setMenuItemCheckbox(page, /^Result$/i, true);
     await page.keyboard.press("Escape");
-    await page.getByRole("link", { name: /Sort leaderboard players by Monthly shots/i }).click();
-    await expect(page.locator('th[data-column="monthly-shots"]')).toHaveAttribute(
+    await page.getByRole("link", { name: /Sort leaderboard players by Monthly XP/i }).click();
+    await expect(page.locator('th[data-column="result"]')).toHaveAttribute(
       "aria-sort",
       "descending",
     );
     const monthlyShotValues = await page
-      .locator('tbody tr td[data-column="monthly-shots"]')
+      .locator('tbody tr td[data-column="result"]')
       .evaluateAll((cells) =>
         cells
           .map((cell) => Number(cell.textContent?.trim()))
@@ -1762,8 +1812,8 @@ test.describe("desktop workbench", () => {
     await page.keyboard.press("Escape");
 
     await page.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /Monthly shots/i, false);
-    await expect(page.locator('th[data-column="monthly-shots"]')).toBeHidden();
+    await setMenuItemCheckbox(page, /^Result$/i, false);
+    await expect(page.locator('th[data-column="result"]')).toBeHidden();
     await page.keyboard.press("Escape");
 
     const [playerDownload] = await Promise.all([
@@ -1824,244 +1874,176 @@ test.describe("desktop workbench", () => {
 
     await gotoAppRoute(page, "/challenges");
     await expectPageReady(page, /Challenges/i);
-    await expect(page.getByRole("table", { name: /Challenge board table/i })).toBeVisible({
-      timeout: 45_000,
-    });
-    const challengeHref = await page
-      .locator('a[href^="/challenges/"]')
-      .evaluateAll((links) =>
-        links
-          .map((link) => link.getAttribute("href") ?? "")
-          .find((href) => /^\/challenges\/[^/?#]+$/.test(href) && href !== "/challenges/new"),
-      );
-    expect(challengeHref).toBeTruthy();
+    await expect(
+      page.getByRole("heading", { name: "Playwright private measured challenge", exact: true }),
+    ).toBeVisible();
+    const competition = fixtureCleanup.get(page);
+    expect(competition?.challengeId).toBeTruthy();
+    const challengeHref = `/challenges/${competition!.challengeId}`;
+    await expect(page.locator(`a[href="${challengeHref}"]`)).toBeVisible();
 
     await gotoAppRoute(page, challengeHref as string);
-    await expectAppText(page, /Challenge command board/i, 45_000);
-    await expect(page.locator('[data-workbench-scope="challenge-detail"]')).toBeVisible();
-    await expect(page.locator('[data-workbench-scope="challenge-leaderboard"]')).toBeVisible();
-    await expect(page.locator('[data-workbench-scope="challenge-attempts"]')).toBeVisible();
+    await expectAppText(page, /Playwright private measured challenge/i, 45_000);
+    await expect(page.getByRole("tablist")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Standings|Leaderboard|Challenge board/i }),
+    ).toBeVisible();
     await expectNoAiRail(page, /AI challenge rail/i);
     await expect(page.getByRole("table", { name: /Challenge leaderboard table/i })).toBeVisible();
+    await page.getByRole("tab", { name: "Attempts", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Qualifying attempt ledger", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("tabpanel", { name: "Attempts", exact: true })).toContainText(
+      "No qualifying attempts yet",
+    );
 
     await gotoAppRoute(page, "/tournaments");
     await expectPageReady(page, /Tournaments/i);
-    const tournamentHref = await page
-      .locator('a[href^="/tournaments/"]')
-      .evaluateAll((links) =>
-        links
-          .map((link) => link.getAttribute("href") ?? "")
-          .find(
-            (href) =>
-              /^\/tournaments\/[^/?#]+$/.test(href) &&
-              href !== "/tournaments/new" &&
-              !href.includes("/leaderboard") &&
-              !href.includes("/rounds") &&
-              !href.includes("/rules") &&
-              !href.includes("/submit"),
-          ),
-      );
-    expect(tournamentHref).toBeTruthy();
+    expect(competition?.tournamentId).toBeTruthy();
+    const tournamentHref = `/tournaments/${competition!.tournamentId}`;
+    await expect(page.locator(`a[href="${tournamentHref}"]`).first()).toBeVisible();
 
     await gotoAppRoute(page, tournamentHref as string);
-    await expectAppText(page, /Submit round|Tournament standings|Podium/i, 45_000);
-    await expect(page.locator('[data-workbench-scope="tournament-detail"]')).toBeVisible();
-    await expect(page.locator('[data-workbench-scope="tournament-standings"]')).toBeVisible();
+    await expectAppText(page, /Playwright private tournament/i, 45_000);
+    await expect(page.getByRole("heading", { name: "Event standings", exact: true })).toBeVisible();
     await expectNoAiRail(page, /AI tournament rail/i);
-    await expect(page.getByRole("table", { name: /Tournament standings table/i })).toBeVisible();
+    await expect(page.getByRole("table", { name: /Tournament leaderboard/i })).toBeVisible();
   });
 
-  test("feed activity ledger supports saved views, columns, export and semantic rails", async ({
+  test("clubhouse filters, search and CSV preserve the visible activity scope", async ({
     page,
   }) => {
     skipWhenNoDesktopAuth();
-
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/feed");
-    await expectPageReady(page, /Feed/i);
-    await expect(page.locator('[data-workbench-scope="feed"]')).toBeVisible();
-    await expectNoAiRail(page, /AI feed rail/i);
-
-    await expect(
-      page.getByRole("complementary", { name: /Feed profile shortcuts/i }),
-    ).toBeVisible();
-    const insightRail = page.getByRole("complementary", { name: /Feed social insight rail/i });
-    await expect(insightRail).toBeVisible();
-    await expect(insightRail.getByText(/Network pulse/i)).toBeVisible();
-    await expect(insightRail.getByText(/Privacy state/i)).toBeVisible();
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "Feed activity ledger table",
-    );
-
-    const ledger = page.locator('[data-workbench-scope="feed-activity"]');
-    await expect(ledger.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
-
-    await ledger.getByRole("button", { name: /Saved views/i }).click();
-    await expect(page.getByRole("menuitem", { name: /Friends Friend activity/i })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: /PBs Personal-best/i })).toBeVisible();
-    await page.keyboard.press("Escape");
-
-    await ledger.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /^Privacy$/i, false);
-    await expect(ledger.locator('th[data-column="privacy"]')).toBeHidden();
-    await page.keyboard.press("Escape");
-
+    await expectPageReady(page, /Clubhouse/i);
+    await expect(page.locator("[data-feed-workspace]")).toBeVisible();
+    await page.getByRole("button", { name: /^Filters/ }).click();
+    const filters = page.getByRole("dialog", { name: "Filter clubhouse activity" });
+    await filters.getByLabel("Activity scope").selectOption("all");
+    await Promise.all([
+      page.waitForURL(/filter=all/),
+      filters.getByRole("button", { name: "Apply filters" }).click(),
+    ]);
+    const search = page.getByRole("textbox", { name: "Search activity" });
+    await search.fill("playwright-no-matching-activity");
+    await Promise.all([
+      page.waitForURL(/q=playwright-no-matching-activity/),
+      page.getByRole("button", { name: "Search", exact: true }).click(),
+    ]);
+    await page.reload();
+    await expect(search).toHaveValue("playwright-no-matching-activity");
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      ledger.getByRole("button", { name: /^Export$/i }).click(),
+      page.getByRole("link", { name: /Export this page.*as CSV/ }).click(),
     ]);
     expect(download.suggestedFilename()).toBe("forekinghell-feed-activity-all.csv");
-    await expect(ledger.getByRole("button", { name: /Exported/i })).toBeVisible();
-    await expectNoHorizontalOverflow(page, "feed activity ledger");
-    await expectNoCrampedWorkbenchText(page, "feed", "feed activity ledger");
+    const downloadPath = await download.path();
+    expect(downloadPath).toBeTruthy();
+    expect(readFileSync(downloadPath!, "utf8").split("\n")[0].replaceAll('"', "")).toContain(
+      "Activity,Golfer,Type,Metric,Proof,Privacy,Engagement,Date,Action",
+    );
+    await expectNoHorizontalOverflow(page, "clubhouse activity");
   });
 
-  test("friends manager supports saved views, columns, export and semantic rails", async ({
-    page,
-  }) => {
+  test("friends directory preserves selected sections and golfer search", async ({ page }) => {
     skipWhenNoDesktopAuth();
-
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/friends");
-    await expectPageReady(page, /Friend manager/i);
-    await expectNoAiRail(page, /AI friend rail/i);
-
-    await expect(page.getByRole("complementary", { name: /Friend invite rail/i })).toBeVisible();
-    await expect(page.getByRole("complementary", { name: /Friend discovery rail/i })).toBeVisible();
-    await expect(page.getByRole("complementary", { name: /Friend safety rail/i })).toBeVisible();
-    await expect(page.getByLabel(/Search public profiles by username/i)).toBeVisible();
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "Friend graph table",
-    );
-
-    const manager = page.locator('[data-workbench-scope="friend-graph"]');
-    await expect(manager.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
-
-    await manager.getByRole("button", { name: /Saved views/i }).click();
-    await expect(page.getByRole("menuitem", { name: /Incoming requests/i })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: /Blocked users/i })).toBeVisible();
-    await page.keyboard.press("Escape");
-
-    await manager.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /Home course/i, false);
-    await expect(manager.locator('th[data-column="home-course"]')).toBeHidden();
-    await page.keyboard.press("Escape");
-
-    const [download] = await Promise.all([
-      page.waitForEvent("download"),
-      manager.getByRole("button", { name: /^Export$/i }).click(),
+    await expectPageReady(page, /Friends/i);
+    await expect(page.locator("[data-friends-workspace]")).toBeVisible();
+    const tabs = page.getByRole("tablist", { name: "Friend sections" });
+    for (const [label, value] of [
+      ["Discover", "discover"],
+      ["Incoming", "incoming"],
+      ["Sent", "sent"],
+      ["Blocked", "blocked"],
+      ["Friends", "friends"],
+    ]) {
+      const tab = tabs.getByRole("tab", { name: new RegExp(`^${label}`) });
+      await Promise.all([page.waitForURL(new RegExp(`tab=${value}`)), tab.click()]);
+      await expect(tab).toHaveAttribute("aria-selected", "true");
+      await expect(page.getByRole("table")).toBeVisible();
+    }
+    const search = page.getByRole("textbox", { name: "Search golfers by username or name" });
+    await search.fill("playwright-no-matching-golfer");
+    await Promise.all([
+      page.waitForURL(/q=playwright-no-matching-golfer/),
+      page.getByRole("button", { name: "Search", exact: true }).click(),
     ]);
-    expect(download.suggestedFilename()).toBe("forekinghell-friend-graph.csv");
-    await expect(manager.getByRole("button", { name: /Exported/i })).toBeVisible();
+    await page.reload();
+    await expect(search).toHaveValue("playwright-no-matching-golfer");
+    await expectNoHorizontalOverflow(page, "friends directory");
   });
 
-  test("groups board supports saved views, columns, export and semantic rails", async ({
-    page,
-  }) => {
+  test("groups directory and private creation retain membership evidence", async ({ page }) => {
     skipWhenNoDesktopAuth();
-
+    test.skip(
+      !hasAuthBypass || useAuthStorage,
+      "Private creation uses an isolated local test owner.",
+    );
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/groups");
-    await expectPageReady(page, /Group board/i);
-    await expectNoAiRail(page, /AI group rail/i);
-
-    await expect(page.locator('[data-workbench-scope="groups"]')).toBeVisible();
-    await expect(page.getByRole("complementary", { name: /Group operations rail/i })).toBeVisible();
-    await expect(
-      page.getByRole("complementary", { name: /Group activity digest rail/i }),
-    ).toBeVisible();
-    await expect(page.getByRole("navigation", { name: /Group board views/i })).toBeVisible();
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "Group board table",
+    await expectPageReady(page, /Groups/i);
+    await expect(page.locator("[data-groups-workspace]")).toBeVisible();
+    const tabs = page.getByRole("tablist", { name: "Group directory sections" });
+    for (const [label, value] of [
+      ["Discover", "discover"],
+      ["Invitations", "invites"],
+      ["My groups", "mine"],
+    ]) {
+      const tab = tabs.getByRole("tab", { name: new RegExp(`^${label}`, "i") });
+      await Promise.all([page.waitForURL(new RegExp(`tab=${value}`)), tab.click()]);
+      await expect(tab).toHaveAttribute("aria-selected", "true");
+    }
+    await page.getByRole("button", { name: "Create group", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Create a group" });
+    const name = `Playwright private ${Date.now()}`;
+    await dialog.getByLabel("Name", { exact: true }).fill(name);
+    await dialog.getByLabel("Visibility").selectOption("private");
+    await dialog.getByRole("button", { name: "Review group", exact: true }).click();
+    await expect(dialog.getByRole("region", { name: "Review group" })).toContainText(
+      "No other members will be invited.",
     );
-
-    const board = page.locator('[data-workbench-scope="group-board"]');
-    await expect(board.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
-
-    await board.getByRole("button", { name: /Saved views/i }).click();
-    await expect(page.getByRole("menuitem", { name: /Challenge groups/i })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: /Create group/i })).toBeVisible();
-    await page.keyboard.press("Escape");
-
-    await board.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /^Posts$/i, false);
-    await expect(board.locator('th[data-column="posts"]')).toBeHidden();
-    await page.keyboard.press("Escape");
-
-    const [download] = await Promise.all([
-      page.waitForEvent("download"),
-      board.getByRole("button", { name: /^Export$/i }).click(),
+    await Promise.all([
+      page.waitForURL(/\/groups\/[^?]+$/),
+      dialog.getByRole("button", { name: "Confirm creation" }).click(),
     ]);
-    expect(download.suggestedFilename()).toBe("forekinghell-groups-active.csv");
-    await expect(board.getByRole("button", { name: /Exported/i })).toBeVisible();
-
-    const groupDetailHref = await board.locator('a[href^="/groups/"]').first().getAttribute("href");
-    expect(groupDetailHref).toBeTruthy();
-
-    await gotoAppRoute(page, groupDetailHref as string);
-    await expectPageReady(page, /Group operations board/i);
-    await expectNoAiRail(page, /AI group rail/i);
-    await expect(page.locator('[data-workbench-scope="group-detail"]')).toBeVisible();
-    await expect(page.locator('[data-workbench-scope="group-members"]')).toBeVisible();
-    await expect(page.locator('[data-workbench-scope="group-challenges"]')).toBeVisible();
-    await expect(page.locator("[data-main-table-target='true']").first()).toHaveAttribute(
-      "aria-label",
-      "Group member roster table",
-    );
-    const groupBreadcrumb = page.getByRole("navigation", { name: /Breadcrumb/i });
-    await expect(groupBreadcrumb.getByRole("link", { name: /Groups/i })).toHaveAttribute(
-      "href",
-      "/groups",
-    );
-    await expect(groupBreadcrumb.locator('[aria-current="page"]')).toHaveText(/Group detail/i);
+    await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
+    await page.getByRole("tab", { name: "Members" }).click();
+    await expect(page.getByRole("region", { name: "Group member roster" })).toBeVisible();
+    await expectNoHorizontalOverflow(page, "private group");
   });
 
-  test("profile editor exposes desktop preview rails and privacy form", async ({ page }) => {
+  test("profile sections and privacy editor preserve a draft without saving", async ({ page }) => {
     skipWhenNoDesktopAuth();
-
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/profile");
-    await expectPageReady(page, /Profile/i);
-    await expectNoAiRail(page, /AI profile rail/i);
-
-    const profileWorkbench = page.locator('[data-workbench-scope="profile"]');
-    await expect(profileWorkbench).toBeVisible();
-    await expect(
-      page.getByRole("complementary", { name: /Profile completion rail/i }),
-    ).toBeVisible();
-    await expect(page.getByRole("complementary", { name: /Profile invite rail/i })).toBeVisible();
-    await expect(page.getByRole("form", { name: /Identity and privacy settings/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Public view/i })).toBeVisible();
-    await expect(profileWorkbench.getByText(/Public sees/i)).toBeVisible();
-    const profileEvidence = profileWorkbench.locator('[data-workbench-scope="profile-evidence"]');
-    await expect(profileEvidence).toBeVisible();
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "Profile evidence ledger table",
-    );
-    await expect(
-      profileEvidence.locator('table[data-workbench-export-table="profile-evidence-ledger"]'),
-    ).toBeVisible();
-
-    await profileEvidence.getByRole("button", { name: /Saved views/i }).click();
-    await expect(page.getByRole("menuitem", { name: /Course records/i })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: /Privacy settings/i })).toBeVisible();
+    await expectPageReady(page, /Golf identity/i);
+    await expect(page.locator("[data-profile-identity-page]")).toBeVisible();
+    const tabs = page.getByRole("tablist", { name: "Profile sections" });
+    for (const label of ["Achievements", "Records", "Sharing", "Overview"]) {
+      const tab = tabs.getByRole("tab", { name: label, exact: true });
+      await tab.click();
+      await expect(tab).toHaveAttribute("aria-selected", "true");
+      await expect(page).toHaveURL(new RegExp(`#${label.toLowerCase()}$`));
+    }
+    const trigger = page.getByRole("button", { name: "Edit profile", exact: true });
+    await trigger.click();
+    const dialog = page.getByRole("dialog", { name: "Edit profile", exact: true });
+    await expect(dialog.getByRole("form", { name: "Edit profile and privacy" })).toBeVisible();
+    const name = dialog.locator('input[name="displayName"]');
+    await name.fill("Unsaved browser draft");
+    await expect(dialog.getByRole("button", { name: "Save profile", exact: true })).toBeVisible();
+    await dialog.getByRole("button", { name: "Close", exact: true }).click();
+    await expect(dialog).toBeHidden();
+    await expect(trigger).toBeFocused();
+    await trigger.click();
+    await expect(name).toHaveValue("Unsaved browser draft");
     await page.keyboard.press("Escape");
-
-    await profileEvidence.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /^Proof$/i, false);
-    await expect(profileEvidence.locator('th[data-column="proof"]')).toBeHidden();
-    await page.keyboard.press("Escape");
-
-    const [download] = await Promise.all([
-      page.waitForEvent("download"),
-      profileEvidence.getByRole("button", { name: /^Export$/i }).click(),
-    ]);
-    expect(download.suggestedFilename()).toMatch(/^forekinghell-profile-[a-z0-9-]+-evidence\.csv$/);
-    await expect(page.getByRole("button", { name: /Save profile/i })).toBeVisible();
+    await expect(dialog).toBeHidden();
+    await expectNoHorizontalOverflow(page, "profile identity");
   });
 
   test("public profile exposes privacy-aware activity and bag workbenches", async ({ page }) => {
@@ -2071,16 +2053,19 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/profile");
     await expectPageReady(page, /Profile/i);
 
-    const publicProfileHref = await page
-      .getByRole("link", { name: /Public view/i })
-      .getAttribute("href");
+    await page.getByRole("button", { name: "Share profile", exact: true }).first().click();
+    const share = page.getByRole("dialog", { name: /^Share @/ });
+    const profileUrl = await share
+      .getByRole("textbox", { name: "Exact profile link" })
+      .inputValue();
+    const publicProfileHref = new URL(profileUrl).pathname;
     expect(publicProfileHref).toBeTruthy();
 
     await gotoAppRoute(page, publicProfileHref as string);
     await expectPageReady(page, /Visible activity ledger/i);
     await expectNoAiRail(page, /AI profile rail/i);
 
-    await expect(page.locator('[data-workbench-scope="public-profile"]')).toBeVisible();
+    await expect(page.locator("[data-public-profile-workspace]")).toBeVisible();
     await expect(
       page.getByRole("complementary", { name: /Public profile stats rail/i }),
     ).toBeVisible();
@@ -2111,7 +2096,7 @@ test.describe("desktop workbench", () => {
     const bagComparison = page.locator('[data-workbench-scope="profile-bag-comparison"]');
     await expect(bagComparison.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
     await expect(
-      page.getByRole("table", { name: /Profile visible bag comparison table/i }),
+      page.getByRole("table", { name: /Permitted stock bag summaries only/i }),
     ).toBeVisible();
   });
 
@@ -2120,7 +2105,7 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/rounds");
-    await expectAppText(page, /AI round rail/i, 45_000);
+    await expectAppText(page, /Round history|Rounds/i, 45_000);
 
     const roundHref = await page
       .locator('a[href^="/rounds/"]')
@@ -2134,48 +2119,49 @@ test.describe("desktop workbench", () => {
 
     expect(roundHref).toBeTruthy();
     await gotoAppRoute(page, roundHref as string);
-    await expectAppText(page, /AI round rail/i, 45_000);
+    await expectAppText(page, /Aintree|Round review/i, 45_000);
 
-    const roundBreadcrumb = page.getByRole("navigation", { name: /Breadcrumb/i });
-    await expect(roundBreadcrumb.getByRole("link", { name: /Rounds/i })).toHaveAttribute(
-      "href",
-      "/rounds",
-    );
-    await expect(roundBreadcrumb.locator('[aria-current="page"]')).toHaveText(/Round review/i);
-    await expectNoAiRail(page, /AI round rail/i);
-    await expect(page.getByRole("button", { name: /Open AI assistant for Rounds/i })).toBeVisible();
-    await expect(page.locator("#scorecard")).toBeVisible();
-    await expect(page.locator("#course-link")).toBeVisible();
-    await expect(page.getByRole("link", { name: /Scorecard/i }).first()).toBeVisible();
-    const scorecardRegion = page
-      .getByRole("region", {
-        name: /Course scorecard chart accessibility/i,
-      })
-      .first();
-    await expect(scorecardRegion).toBeVisible();
     await expect(
-      scorecardRegion.getByRole("link", { name: /Explain Course scorecard chart/i }),
-    ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
-    await scorecardRegion
-      .locator("summary", { hasText: /View Course scorecard chart data table/i })
-      .click();
+      page.getByRole("main").getByRole("link", { name: "Rounds", exact: true }),
+    ).toHaveAttribute("href", "/rounds");
     await expect(
-      scorecardRegion.getByRole("table", { name: /Course scorecard chart data table/i }),
+      page.getByRole("region", { name: "Round learning review", exact: true }),
     ).toBeVisible();
+    await expectNoAiRail(page, /AI round rail/i);
+    const tabs = page.getByRole("tablist", { name: "Round review sections", exact: true });
+    await tabs.getByRole("tab", { name: "Scorecard", exact: true }).click();
+    await expect(page).toHaveURL(/view=scorecard/);
+    const scorecard = page.locator("[data-digital-scorecard]").getByRole("table");
+    await expect(scorecard).toBeVisible();
+    await expect(scorecard.getByRole("columnheader", { name: "Score", exact: true })).toBeVisible();
+    expect(await scorecard.getByRole("row").count()).toBeGreaterThanOrEqual(10);
+    await tabs.getByRole("tab", { name: "Corrections", exact: true }).click();
+    await expect(page).toHaveURL(/view=corrections/);
+    await expect(page.locator("#scorecard")).toBeVisible();
+    await page.locator("#scorecard summary").first().click();
+    await expect(
+      page.locator("#scorecard").getByLabel("Score", { exact: true }).first(),
+    ).toHaveValue(/\d+/);
+    await tabs.getByRole("tab", { name: "Map", exact: true }).click();
+    await expect(page).toHaveURL(/view=map/);
     const roundMapRegion = page.getByRole("region", {
       name: /Round shot map chart accessibility/i,
     });
     await expect(roundMapRegion).toBeVisible();
-    await expect(
-      roundMapRegion.getByRole("link", { name: /Explain Round shot map chart/i }),
-    ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await roundMapRegion
-      .locator("summary", { hasText: /View Round shot map chart data table/i })
+      .getByRole("button", { name: /View Round shot map chart data table/i })
       .click();
     await expect(
       roundMapRegion.getByRole("table", { name: /Round shot map chart data table/i }),
     ).toBeVisible();
-
+    await tabs.getByRole("tab", { name: "Evidence", exact: true }).click();
+    await expect(page).toHaveURL(/view=evidence/);
+    await expect(page.locator("[data-round-evidence-summary]")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "What supports this review", exact: true }),
+    ).toBeVisible();
+    await tabs.getByRole("tab", { name: "Corrections", exact: true }).click();
+    await expect(page).toHaveURL(/view=corrections/);
     const shotCorrections = page.locator("#shots");
     await expect(shotCorrections).toBeVisible();
     await shotCorrections.locator("summary").click();
@@ -2228,296 +2214,118 @@ test.describe("desktop workbench", () => {
     await expect(sharedSessions.getByRole("button", { name: /Exported/i })).toBeVisible();
   });
 
-  test("admin users console table supports saved views, columns and export", async ({ page }) => {
+  test("admin accounts preserve filter order, visible columns, details and CSV", async ({
+    page,
+  }) => {
     skipWhenNoDesktopAuth();
-
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/admin/users");
-    await expectAppText(page, /Users and access/i, 45_000);
-
-    await expect(page.locator('div[data-workbench-scope="admin-users"]')).toBeVisible();
-    await expectNoAiRail(page, /AI admin rail/i);
-    await expect(page.getByRole("table", { name: /Admin user accounts/i })).toBeVisible();
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "Admin user accounts table",
-    );
-    await expect(page.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
-    const deactivateButtons = page.getByRole("button", { name: /^Deactivate$/i });
-    if ((await deactivateButtons.count()) > 0) {
-      await expect(deactivateButtons.first()).toHaveAttribute("data-confirm-submit", "true");
-      await expect(deactivateButtons.first()).toHaveAttribute(
-        "data-confirm-message",
-        /Deactivate admin access/i,
-      );
-      await deactivateButtons.first().click();
-      const confirmDialog = page.getByRole("dialog", { name: /Confirm action/i });
-      await expect(confirmDialog).toBeVisible();
-      await expect(confirmDialog).toContainText(/Deactivate admin access/i);
-      await expect(confirmDialog).toContainText(/writes an audit entry/i);
-      await confirmDialog.getByRole("button", { name: /^Cancel$/i }).click();
-      await expect(confirmDialog).toBeHidden();
-    }
-
-    await page.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /^Activity$/i, true);
-    await page.keyboard.press("Escape");
+    await expectAppText(page, /Account management/i, 45_000);
+    const accounts = page.locator('[data-workbench-scope="admin-users"]');
+    await expect(accounts.getByRole("region", { name: "Admin user accounts table" })).toBeVisible();
+    await page.getByRole("button", { name: /^Filters and order/ }).click();
+    const filters = page.getByRole("dialog", { name: "Account filters" });
+    await filters.getByRole("combobox", { name: "Admin role", exact: true }).selectOption("owner");
+    await filters
+      .getByRole("combobox", { name: "Order", exact: true })
+      .selectOption("activity_desc");
     await Promise.all([
-      page.waitForURL((url) => {
-        return url.pathname === "/admin/users" && url.searchParams.get("sort") === "activity";
-      }),
-      page.getByRole("link", { name: /Sort admin users by Activity/i }).click(),
+      page.waitForURL(/order=activity_desc/),
+      filters.getByRole("button", { name: "Apply filters", exact: true }).click(),
     ]);
-    await expect(page.locator('th[data-column="activity"]')).toHaveAttribute(
+    await expect(page).toHaveURL(/role=owner/);
+    await expect(accounts.locator('th[data-column="activity"]')).toHaveAttribute(
       "aria-sort",
       "descending",
     );
-    const activityValues = await page
-      .locator('tbody tr td[data-column="activity"]')
-      .evaluateAll((cells) =>
-        cells.map((cell) => {
-          const values = [...(cell.textContent ?? "").matchAll(/\d+/g)].map((match) =>
-            Number(match[0]),
-          );
-          return values.reduce((total, value) => total + value, 0);
-        }),
-      );
-    expect(activityValues).toEqual([...activityValues].sort((left, right) => right - left));
-
-    await page.getByRole("button", { name: /Saved views/i }).click();
-    await expect(page.getByRole("menuitem", { name: /Owner\/operator review/i })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: /Lifetime entitlement audit/i })).toBeVisible();
+    await accounts
+      .getByRole("button", { name: /^Account details for/ })
+      .first()
+      .click();
+    const detail = page.getByRole("dialog");
+    await expect(detail).toContainText("Account ID");
+    await expect(detail).toContainText(
+      "Activity counts are recorded totals, not last-seen status.",
+    );
     await page.keyboard.press("Escape");
-
-    await page.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /^Activity$/i, false);
-    await expect(page.locator('th[data-column="activity"]')).toBeHidden();
+    await accounts.getByRole("button", { name: /Columns/ }).click();
+    await setMenuItemCheckbox(page, "Email", false);
+    await expect(accounts.locator('th[data-column="email"]')).toBeHidden();
     await page.keyboard.press("Escape");
-
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("button", { name: /^Export$/i }).click(),
+      accounts.getByRole("button", { name: /^Export$/ }).click(),
     ]);
-    expect(download.suggestedFilename()).toBe("forekinghell-admin-users-view.csv");
-    await expect(page.getByRole("button", { name: /Exported/i })).toBeVisible();
+    expect(download.suggestedFilename()).toBe("admin-users-filtered.csv");
+    await page.reload();
+    await expect(page).toHaveURL(/order=activity_desc/);
+    await expectNoHorizontalOverflow(page, "admin accounts");
   });
 
-  test("admin billing and challenge console tables support saved views, columns and export", async ({
+  test("admin billing ledgers retain filtered entitlement evidence and exports", async ({
     page,
   }) => {
     skipWhenNoDesktopAuth();
-
     await page.setViewportSize({ width: 1440, height: 900 });
-
     await gotoAppRoute(page, "/admin/billing");
     await expectAppText(page, /Billing and entitlements/i, 45_000);
-    await expectNoAiRail(page, /AI admin rail/i);
-    const billingWorkbench = page.locator('div[data-workbench-scope="admin-billing"]');
-
-    await expect(billingWorkbench).toBeVisible();
-    await expect(billingWorkbench.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "Subscriptions table",
-    );
-    await expect(page.getByRole("table", { name: /Admin subscription rows/i })).toBeVisible();
-
-    await billingWorkbench.getByRole("link", { name: /Sort admin billing by User/i }).click();
-    await expect(billingWorkbench.locator('th[data-column="user"]')).toHaveAttribute(
-      "aria-sort",
-      "ascending",
-    );
-    const billingNames = await billingWorkbench
-      .locator('tbody tr td[data-column="user"] p.font-medium')
-      .evaluateAll((names) => names.map((name) => name.textContent?.trim() ?? ""));
-    expect(billingNames).toEqual(
-      [...billingNames].sort((left, right) => left.localeCompare(right)),
-    );
-
-    await billingWorkbench.getByRole("button", { name: /Saved views/i }).click();
-    await expect(page.getByRole("menuitem", { name: /Active subscriptions/i })).toBeVisible();
+    const subscriptions = page.getByRole("region", { name: "Subscriptions", exact: true });
+    const entitlements = page.getByRole("region", { name: "Current entitlements", exact: true });
+    await expect(subscriptions).toContainText("Saved provider status does not by itself describe");
+    await expect(
+      entitlements.getByRole("region", { name: "Current entitlements table" }),
+    ).toBeVisible();
+    await entitlements
+      .getByRole("textbox", { name: "Search current entitlements" })
+      .fill("lifetime");
+    await expect(entitlements.getByRole("table")).toContainText(/Lifetime Full/i);
+    await entitlements.getByRole("button", { name: /Columns/ }).click();
+    await setMenuItemCheckbox(page, "Email", false);
+    await expect(entitlements.locator('th[data-column="email"]')).toBeHidden();
     await page.keyboard.press("Escape");
-
-    await billingWorkbench.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /^Renews$/i, false);
-    await expect(billingWorkbench.locator('th[data-column="renews"]')).toBeHidden();
-    await page.keyboard.press("Escape");
-
-    const [billingDownload] = await Promise.all([
+    const [download] = await Promise.all([
       page.waitForEvent("download"),
-      billingWorkbench.getByRole("button", { name: /^Export$/i }).click(),
+      entitlements.getByRole("button", { name: /^Export$/ }).click(),
     ]);
-    expect(billingDownload.suggestedFilename()).toBe("forekinghell-admin-billing-view.csv");
-
+    expect(download.suggestedFilename()).toBe("admin-billing-entitlements-filtered.csv");
+    await page.reload();
+    await expect(
+      entitlements.getByRole("textbox", { name: "Search current entitlements" }),
+    ).toHaveValue("lifetime");
     await gotoAppRoute(page, "/admin/challenges");
-    await expectAppText(page, /Challenges and tournaments/i, 45_000);
-    await expectNoAiRail(page, /AI admin rail/i);
-    const challengeWorkbench = page.locator('div[data-workbench-scope="admin-challenges"]');
-
-    await expect(challengeWorkbench).toBeVisible();
-    await expect(challengeWorkbench.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "Challenge boards table",
-    );
-    await expect(page.getByRole("table", { name: /Admin challenge boards/i })).toBeVisible();
-
-    await challengeWorkbench.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /^Participation$/i, true);
-    await page.keyboard.press("Escape");
-    await challengeWorkbench
-      .getByRole("link", { name: /Sort admin challenges by Participation/i })
-      .click();
-    await expect(challengeWorkbench.locator('th[data-column="participation"]')).toHaveAttribute(
-      "aria-sort",
-      "descending",
-    );
-    const challengeParticipationValues = await challengeWorkbench
-      .locator('tbody tr td[data-column="participation"]')
-      .evaluateAll((cells) =>
-        cells.map((cell) => {
-          const values = [...(cell.textContent ?? "").matchAll(/\d+/g)].map((match) =>
-            Number(match[0]),
-          );
-          return values.reduce((total, value) => total + value, 0);
-        }),
-      );
-    expect(challengeParticipationValues).toEqual(
-      [...challengeParticipationValues].sort((left, right) => right - left),
-    );
-
-    await challengeWorkbench.getByRole("button", { name: /Saved views/i }).click();
-    await expect(page.getByRole("menuitem", { name: /Open challenge boards/i })).toBeVisible();
-    await page.keyboard.press("Escape");
-
-    await challengeWorkbench.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /^Participation$/i, false);
-    await expect(challengeWorkbench.locator('th[data-column="participation"]')).toBeHidden();
-    await page.keyboard.press("Escape");
-
-    const [challengeDownload] = await Promise.all([
-      page.waitForEvent("download"),
-      challengeWorkbench.getByRole("button", { name: /^Export$/i }).click(),
-    ]);
-    expect(challengeDownload.suggestedFilename()).toBe("forekinghell-admin-challenges-view.csv");
+    await expectAppText(page, /Challenge operations|Challenge/i, 45_000);
+    await expect(page.locator('[data-workbench-scope="admin-challenge-boards"]')).toBeVisible();
+    await expectNoHorizontalOverflow(page, "admin billing and challenges");
   });
 
-  test("admin moderation console queues support saved views, columns and export", async ({
-    page,
-  }) => {
+  test("admin moderation keeps report and event filter scopes separate", async ({ page }) => {
     skipWhenNoDesktopAuth();
-
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, "/admin/moderation");
     await expectAppText(page, /Moderation queue/i, 45_000);
-
-    await expect(page.locator('[data-workbench-scope="admin-moderation"]')).toBeVisible();
-    await expectNoAiRail(page, /AI admin rail/i);
-    const reportsWorkbench = page.locator('[data-workbench-scope="admin-moderation-reports"]');
-    const eventsWorkbench = page.locator('[data-workbench-scope="admin-moderation-events"]');
-
-    await expect(reportsWorkbench.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
-    await expect(eventsWorkbench.locator("[data-desktop-workbench-toolbar]")).toBeVisible();
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "User reports table",
-    );
-    await expect(page.getByRole("table", { name: /Admin user reports/i })).toBeVisible();
-    await expect(page.getByRole("table", { name: /Admin moderation events/i })).toBeVisible();
-    await expect(
-      reportsWorkbench.getByRole("button", { name: /Resolve selected reports/i }),
-    ).toBeVisible();
-    const resolveReportsButton = reportsWorkbench.getByRole("button", {
-      name: /Resolve selected reports/i,
-    });
-    await expect(resolveReportsButton).toHaveAttribute(
-      "data-confirm-message",
-      /Select at least one report before running this bulk action|Resolve the selected open reports/i,
-    );
-    await expect(
-      eventsWorkbench.getByRole("button", { name: /Resolve selected events/i }),
-    ).toBeVisible();
-    const resolveEventsButton = eventsWorkbench.getByRole("button", {
-      name: /Resolve selected events/i,
-    });
-    await expect(resolveEventsButton).toHaveAttribute(
-      "data-confirm-message",
-      /Select at least one event before running this bulk action|Resolve the selected open moderation events/i,
-    );
-
-    await reportsWorkbench.getByRole("link", { name: /Sort admin reports by Reason/i }).click();
-    await expect(reportsWorkbench.locator('th[data-column="reason"]')).toHaveAttribute(
-      "aria-sort",
-      "ascending",
-    );
-    const reportReasons = await reportsWorkbench
-      .locator('tbody tr td[data-column="reason"]')
-      .evaluateAll((cells) =>
-        cells
-          .map((cell) => cell.textContent?.trim() ?? "")
-          .filter((value) => value && value !== "No reports yet."),
-      );
-    expect(reportReasons).toEqual(
-      [...reportReasons].sort((left, right) => left.localeCompare(right)),
-    );
-
-    await eventsWorkbench
-      .getByRole("link", { name: /Sort admin moderation events by Event/i })
-      .click();
-    await expect(eventsWorkbench.locator('th[data-column="event"]')).toHaveAttribute(
-      "aria-sort",
-      "ascending",
-    );
-    const eventNames = await eventsWorkbench
-      .locator('tbody tr td[data-column="event"] > p:first-child')
-      .evaluateAll((cells) =>
-        cells
-          .map((cell) => cell.textContent?.trim() ?? "")
-          .filter((value) => value && value !== "No moderation events yet."),
-      );
-    expect(eventNames).toEqual([...eventNames].sort((left, right) => left.localeCompare(right)));
-
-    const reportSelection = reportsWorkbench.locator(
-      'input[type="checkbox"][name="reportId"]:not([disabled])',
-    );
-    if ((await reportSelection.count()) > 0) {
-      await reportSelection.first().check();
-      await expect(reportSelection.first()).toBeChecked();
+    for (const [title, kind] of [
+      ["User reports", "report"],
+      ["Moderation events", "event"],
+    ]) {
+      const queue = page.getByRole("region", { name: title, exact: true });
+      await expect(queue).toBeVisible();
+      await queue
+        .getByRole("textbox", { name: `Search ${kind}s`, exact: true })
+        .fill("playwright-no-match");
+      await expect(queue.getByRole("status")).toHaveText(/0 results.*0 selected/);
+      await expect(
+        queue.getByRole("button", { name: "Select visible open records" }),
+      ).toBeDisabled();
+      await queue.getByRole("button", { name: /^Filters/ }).click();
+      const filters = page.getByRole("dialog", {
+        name: kind === "report" ? "Report filters" : "Event filters",
+      });
+      await expect(filters).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(filters).toBeHidden();
     }
-
-    const eventSelection = eventsWorkbench.locator(
-      'input[type="checkbox"][name="eventId"]:not([disabled])',
-    );
-    if ((await eventSelection.count()) > 0) {
-      await eventSelection.first().check();
-      await expect(eventSelection.first()).toBeChecked();
-    }
-
-    await reportsWorkbench.getByRole("button", { name: /Saved views/i }).click();
-    await expect(page.getByRole("menuitem", { name: /Open safety work/i })).toBeVisible();
-    await page.keyboard.press("Escape");
-
-    await reportsWorkbench.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /^Target$/i, false);
-    await expect(reportsWorkbench.locator('th[data-column="target"]')).toBeHidden();
-    await page.keyboard.press("Escape");
-
-    const [reportsDownload] = await Promise.all([
-      page.waitForEvent("download"),
-      reportsWorkbench.getByRole("button", { name: /^Export$/i }).click(),
-    ]);
-    expect(reportsDownload.suggestedFilename()).toBe("forekinghell-admin-reports-view.csv");
-
-    await eventsWorkbench.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /^Reason$/i, false);
-    await expect(eventsWorkbench.locator('th[data-column="reason"]')).toBeHidden();
-    await page.keyboard.press("Escape");
-
-    const [eventsDownload] = await Promise.all([
-      page.waitForEvent("download"),
-      eventsWorkbench.getByRole("button", { name: /^Export$/i }).click(),
-    ]);
-    expect(eventsDownload.suggestedFilename()).toBe("forekinghell-admin-events-view.csv");
+    await expect(page.getByRole("heading", { name: "Moderation audit history" })).toBeVisible();
+    await expectNoHorizontalOverflow(page, "moderation queues");
   });
 
   test("data chat accepts desktop prompt handoffs", async ({ page }) => {
@@ -2527,29 +2335,22 @@ test.describe("desktop workbench", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await gotoAppRoute(page, `/data-chat?prompt=${encodeURIComponent(prompt)}`);
-    await expectPageReady(page, /AI data rail/i);
+    await expectPageReady(page, /Data Chat|Ask LM World Tour/i);
 
-    const desktopPanel = page.locator('[data-data-chat-panel="desktop"]');
-
-    await expectNoAiRail(page, /AI data rail/i);
-    await expect(
-      page.getByRole("button", { name: /Open AI assistant for Data Chat/i }),
-    ).toBeVisible();
-    await expect(desktopPanel.locator("#desktop-data-chat-question")).toHaveValue(prompt);
-    await expect(desktopPanel.locator("[data-initial-data-chat-prompt]")).toBeVisible();
-    await expect(
-      desktopPanel.getByRole("region", { name: "Saved Data Chat answers", exact: true }),
-    ).toBeVisible();
-    await expect(desktopPanel.locator("[data-performance-report-builder]")).toBeVisible();
-    await expect(desktopPanel.getByLabel(/Editable performance report preview/i)).toHaveValue(
-      /LM World Tour Performance Report/,
-    );
-
-    const [reportDownload] = await Promise.all([
-      page.waitForEvent("download"),
-      desktopPanel.getByRole("button", { name: /Export .md/i }).click(),
-    ]);
-    expect(reportDownload.suggestedFilename()).toBe("lm-world-tour-performance-report.md");
+    const panel = page.locator('[data-data-chat-panel="responsive"]');
+    const question = panel.getByRole("textbox", { name: "Ask about your golf data", exact: true });
+    await expect(question).toHaveValue(prompt);
+    await expect(panel.getByText("Prompt ready:", { exact: true })).toBeVisible();
+    await expect(panel.getByRole("complementary", { name: "Evidence context" })).toBeVisible();
+    await panel.getByRole("button", { name: /^Saved answers, / }).click();
+    const saved = page.getByRole("dialog", { name: "Saved answers", exact: true });
+    await expect(saved).toBeVisible();
+    await expect(saved).toContainText(/No saved answers|Saved answers/i);
+    await page.keyboard.press("Escape");
+    await expect(question).toHaveValue(prompt);
+    await panel.getByRole("button", { name: "New conversation", exact: true }).click();
+    await expect(question).toHaveValue("");
+    await expectNoHorizontalOverflow(page, "Data Chat prompt and evidence");
   });
 
   test("priority pages expose contextual AI controls without full-width desktop prompt slabs", async ({
@@ -2561,7 +2362,11 @@ test.describe("desktop workbench", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
 
     await gotoAppRoute(page, "/dashboard");
-    await expectAppText(page, /Quick answers/i, 45_000);
+    await expectAppText(
+      page,
+      /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+      45_000,
+    );
     await expectNoAiRail(page, /AI performance rail/i);
     await expect(page.getByText(/AI performance workbench/i)).toBeHidden();
     await expect(
@@ -2575,7 +2380,9 @@ test.describe("desktop workbench", () => {
 
     await gotoAppRoute(page, "/today");
     await expectPageReady(page, /Best scoring read|Practice usefulness/i);
-    await expectNoAiRail(page, /AI latest-practice rail/i);
+    await expect(
+      page.getByRole("complementary", { name: /AI latest-practice rail/i }),
+    ).toBeVisible();
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Latest Practice/i }),
     ).toBeVisible();
@@ -2586,17 +2393,17 @@ test.describe("desktop workbench", () => {
     await expect(
       page.getByRole("region", { name: /Today trajectory chart accessibility/i }),
     ).toBeVisible();
-    await page.locator("summary", { hasText: /View Today dispersion chart data table/i }).click();
+    await page.getByRole("button", { name: /View Today dispersion chart data table/i }).click();
     await expect(
       page.getByRole("table", { name: /Today dispersion chart data table/i }),
     ).toBeVisible();
-    await page.locator("summary", { hasText: /View Today trajectory chart data table/i }).click();
+    await page.getByRole("button", { name: /View Today trajectory chart data table/i }).click();
     await expect(
       page.getByRole("table", { name: /Today trajectory chart data table/i }),
     ).toBeVisible();
 
     await gotoAppRoute(page, "/practice");
-    await expectPageReady(page, /Practice Planner/i);
+    await expectPageReady(page, /Practice/i);
     await expectNoAiRail(page, /AI practice rail/i);
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Practice Planner/i }),
@@ -2608,6 +2415,7 @@ test.describe("desktop workbench", () => {
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Speed Centre/i }),
     ).toHaveCount(0);
+    await page.getByRole("tab", { name: "Evidence & projections", exact: true }).click();
     await expect(
       page.getByRole("region", { name: /Speed trend chart accessibility/i }),
     ).toBeVisible();
@@ -2616,7 +2424,7 @@ test.describe("desktop workbench", () => {
         .getByRole("region", { name: /Speed trend chart accessibility/i })
         .getByRole("link", { name: /Explain Speed trend chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
-    await page.locator("summary", { hasText: /View Speed trend chart data table/i }).click();
+    await page.getByRole("button", { name: /View Speed trend chart data table/i }).click();
     await expect(page.getByRole("table", { name: /Speed trend chart data table/i })).toBeVisible();
 
     await gotoAppRoute(page, "/stats/training-over-time");
@@ -2626,28 +2434,28 @@ test.describe("desktop workbench", () => {
       page.getByRole("button", { name: /Open AI assistant for Training Load/i }),
     ).toHaveCount(0);
     await expect(
-      page.getByRole("region", { name: /Training Status chart accessibility/i }),
+      page.getByRole("region", { name: /Training over time chart accessibility/i }),
     ).toBeVisible();
     await expect(
       page
-        .getByRole("region", { name: /Training Status chart accessibility/i })
-        .getByRole("link", { name: /Explain Training Status chart/i }),
-    ).toHaveAttribute("href", /\/data-chat\?prompt=.*Training%20Status/i);
-    await expect(
-      page.getByRole("region", { name: /Daily swing load chart accessibility/i }),
-    ).toBeVisible();
-    await expect(
-      page
-        .getByRole("region", { name: /Daily swing load chart accessibility/i })
-        .getByRole("link", { name: /Explain Daily swing load chart/i }),
+        .getByRole("region", { name: /Training over time chart accessibility/i })
+        .getByRole("link", { name: /Explain Training over time chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
-    await page.locator("summary", { hasText: /View Training Status chart data table/i }).click();
     await expect(
-      page.getByRole("table", { name: /Training Status chart data table/i }),
+      page.getByRole("region", { name: /Training load bars chart accessibility/i }),
     ).toBeVisible();
-    await page.locator("summary", { hasText: /View Daily swing load chart data table/i }).click();
     await expect(
-      page.getByRole("table", { name: /Daily swing load chart data table/i }),
+      page
+        .getByRole("region", { name: /Training load bars chart accessibility/i })
+        .getByRole("link", { name: /Explain Training load bars chart/i }),
+    ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
+    await page.getByRole("button", { name: /View Training over time chart data table/i }).click();
+    await expect(
+      page.getByRole("table", { name: /Training over time chart data table/i }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: /View Training load bars chart data table/i }).click();
+    await expect(
+      page.getByRole("table", { name: /Training load bars chart data table/i }),
     ).toBeVisible();
 
     await gotoAppRoute(page, "/equipment");
@@ -2677,6 +2485,7 @@ test.describe("desktop workbench", () => {
     const rapsodoSessionsTable = page.locator(
       'table[data-workbench-export-table="rapsodo-sessions"]',
     );
+    await page.getByText("Remote session table and export", { exact: true }).click();
     await expect(rapsodoSessionsTable).toBeVisible();
     await page.getByRole("button", { name: /Columns/i }).click();
     await setMenuItemCheckbox(page, /^Shots$/i, false);
@@ -2691,7 +2500,9 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/providers");
     await expectPageReady(page, /Providers/i);
     await expectNoAiRail(page, /AI provider rail/i);
+    await page.getByRole("tab", { name: "Diagnostics", exact: true }).click();
     await expect(page.getByText(/Provider import health/i).first()).toBeVisible();
+    await page.getByRole("tab", { name: "Connections", exact: true }).click();
     await expect(
       page
         .getByText(/live\/current/i)
@@ -2715,14 +2526,14 @@ test.describe("desktop workbench", () => {
     ).toHaveCount(0);
 
     await gotoAppRoute(page, "/courses");
-    await expectPageReady(page, /AI course rail/i);
+    await expectPageReady(page, /Courses|Course library/i);
     await expectNoAiRail(page, /AI course rail/i);
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Courses/i }),
     ).toBeVisible();
 
     await gotoAppRoute(page, "/course-records");
-    await expectAppText(page, /AI course records rail/i, 45_000);
+    await expectAppText(page, /Course record boards/i, 45_000);
     await expectNoAiRail(page, /AI course records rail/i);
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Courses/i }),
@@ -2732,7 +2543,7 @@ test.describe("desktop workbench", () => {
       { path: "/tournaments", ready: /Tournaments/i, rail: /AI tournament rail/i },
       { path: "/challenges", ready: /Challenges/i, rail: /AI challenge rail/i },
       { path: "/leaderboard", ready: /Leaderboard/i, rail: /AI leaderboard rail/i },
-      { path: "/feed", ready: /Feed/i, rail: /AI feed rail/i },
+      { path: "/feed", ready: /Clubhouse/i, rail: /AI feed rail/i },
       { path: "/friends", ready: /Friends/i, rail: /AI friend rail/i },
       { path: "/groups", ready: /Groups/i, rail: /AI group rail/i },
       { path: "/profile", ready: /Profile/i, rail: /AI profile rail/i },
@@ -2748,23 +2559,18 @@ test.describe("desktop workbench", () => {
     }
 
     await gotoAppRoute(page, "/progress");
-    await expectPageReady(page, /Bag progress|Overall progress/i);
+    await expectPageReady(page, /Progress|What changed/i);
     await expectNoAiRail(page, /AI progress rail/i);
     await expect(page.getByText(/AI progress workbench/i)).toBeHidden();
-    const progressTrendRegion = page.getByRole("region", {
-      name: /Progress trends chart accessibility/i,
-    });
-    await expect(progressTrendRegion).toBeVisible();
+    const progressComparison = page.getByRole("region", { name: "Club comparison", exact: true });
+    await expect(progressComparison).toBeVisible();
+    await expect(progressComparison.getByRole("searchbox", { name: "Search clubs" })).toBeVisible();
     await expect(
-      progressTrendRegion.getByRole("link", { name: /Explain Progress trends chart/i }),
-    ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
-    await page.locator("summary", { hasText: /View Progress trends chart data table/i }).click();
-    await expect(
-      progressTrendRegion.getByRole("table", { name: /Progress trends chart data table/i }),
+      progressComparison.getByRole("button", { name: /Comparison measure$/ }),
     ).toBeVisible();
 
     await gotoAppRoute(page, "/strokes-gained");
-    await expectPageReady(page, /AI strokes-gained rail/i);
+    await expectPageReady(page, /Strokes gained/i);
     await expectNoAiRail(page, /AI strokes-gained rail/i);
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Progress/i }),
@@ -2778,7 +2584,7 @@ test.describe("desktop workbench", () => {
         .getByRole("link", { name: /Explain Strokes gained waterfall chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await page
-      .locator("summary", { hasText: /View Strokes gained waterfall chart data table/i })
+      .getByRole("button", { name: /View Strokes gained waterfall chart data table/i })
       .click();
     await expect(
       page.getByRole("table", { name: /Strokes gained waterfall chart data table/i }),
@@ -2789,7 +2595,7 @@ test.describe("desktop workbench", () => {
     await expectNoAiRail(page, /AI compare rail/i);
 
     await gotoAppRoute(page, "/rounds");
-    await expectPageReady(page, /AI round rail/i);
+    await expectPageReady(page, /Round history|Rounds/i);
     await expectNoAiRail(page, /AI round rail/i);
     await expect(page.getByRole("button", { name: /Open AI assistant for Rounds/i })).toBeVisible();
 
@@ -2798,12 +2604,14 @@ test.describe("desktop workbench", () => {
     await expectNoAiRail(page, /AI bag rail/i);
 
     await gotoAppRoute(page, "/coach");
-    await expectPageReady(page, /AI coach rail/i);
-    await expectNoAiRail(page, /AI coach rail/i);
+    await expectPageReady(page, /Coach|Build a measured baseline/i);
+    await expectNoAiRail(page, /Coach|Build a measured baseline/i);
     await expect(page.getByRole("button", { name: /Open AI assistant for Coach/i })).toBeVisible();
   });
 
-  test("dense AI rails defer until large desktop workspaces stay readable", async ({ page }) => {
+  test("dense workspaces keep supporting rails readable at each desktop width", async ({
+    page,
+  }) => {
     skipWhenNoDesktopAuth();
     test.setTimeout(180_000);
 
@@ -2818,7 +2626,7 @@ test.describe("desktop workbench", () => {
       {
         path: "/progress",
         scope: "progress",
-        ready: /Bag progress|Overall progress/i,
+        ready: /Progress|What changed/i,
         rail: /AI progress rail/i,
         railWidth: 2200,
       },
@@ -2845,7 +2653,11 @@ test.describe("desktop workbench", () => {
         await gotoAppRoute(page, route.path);
         await expectAppText(page, route.ready, 45_000);
         await expectDenseRouteReady(page, route.scope);
-        await expectNoAiRail(page, route.rail);
+        if (route.path === "/today") {
+          await expect(page.getByRole("complementary", { name: route.rail })).toBeVisible();
+        } else {
+          await expectNoAiRail(page, route.rail);
+        }
         await expectNoHorizontalOverflow(page, `2048 ${route.path}`);
         await expectNoCrampedWorkbenchText(page, route.scope, `2048 ${route.path}`);
       }
@@ -2854,15 +2666,17 @@ test.describe("desktop workbench", () => {
       await gotoAppRoute(page, route.path);
       await expectAppText(page, route.ready, 45_000);
       await expectDenseRouteReady(page, route.scope);
-      await expect(page.getByRole("complementary", { name: route.rail })).toBeVisible();
+      if (route.path === "/compare") {
+        await expect(page.getByRole("complementary", { name: route.rail })).toBeVisible();
+      } else {
+        await expectNoAiRail(page, route.rail);
+      }
       await expectNoHorizontalOverflow(page, `${route.railWidth} ${route.path}`);
       await expectNoCrampedWorkbenchText(page, route.scope, `${route.railWidth} ${route.path}`);
     }
   });
 
-  test("dashboard and latest practice keep laptop workspaces readable without AI rails", async ({
-    page,
-  }) => {
+  test("dashboard and latest practice keep laptop workspaces readable", async ({ page }) => {
     skipWhenNoDesktopAuth();
     test.setTimeout(120_000);
 
@@ -2870,7 +2684,8 @@ test.describe("desktop workbench", () => {
       {
         path: "/dashboard",
         scope: "dashboard",
-        ready: /Quick answers/i,
+        ready:
+          /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
         rail: /AI performance rail/i,
       },
       {
@@ -2890,21 +2705,29 @@ test.describe("desktop workbench", () => {
       for (const route of routes) {
         await gotoAppRoute(page, route.path);
         await expectAppText(page, route.ready, 45_000);
-        await expectNoAiRail(page, route.rail);
+        if (route.path === "/today") {
+          await expect(page.getByRole("complementary", { name: route.rail })).toBeVisible();
+        } else {
+          await expectNoAiRail(page, route.rail);
+        }
         await expectNoHorizontalOverflow(page, `${viewport.label} ${route.path}`);
         await expectNoCrampedWorkbenchText(page, route.scope, `${viewport.label} ${route.path}`);
       }
     }
   });
 
-  test("latest practice rail waits for wide desktop and stays readable", async ({ page }) => {
+  test("latest practice analysis rail stays readable at laptop and wide desktop sizes", async ({
+    page,
+  }) => {
     skipWhenNoDesktopAuth();
     test.setTimeout(90_000);
 
     await page.setViewportSize({ width: 1536, height: 900 });
     await gotoAppRoute(page, "/today");
     await expectAppText(page, /Best scoring read|Practice usefulness/i, 45_000);
-    await expectNoAiRail(page, /AI latest-practice rail/i);
+    await expect(
+      page.getByRole("complementary", { name: /AI latest-practice rail/i }),
+    ).toBeVisible();
     await expectNoHorizontalOverflow(page, "1536 /today");
     await expectNoCrampedWorkbenchText(page, "today", "1536 /today");
 
@@ -2925,9 +2748,13 @@ test.describe("desktop workbench", () => {
     await page.setViewportSize({ width: 1024, height: 768 });
 
     const routes = [
-      { path: "/dashboard", ready: /Quick answers/i },
+      {
+        path: "/dashboard",
+        ready:
+          /Your saved golf evidence and next useful action|Latest saved evidence|Your latest round/i,
+      },
       { path: "/today", ready: /Best scoring read|Practice usefulness/i },
-      { path: "/progress", ready: /Bag progress|Overall progress/i },
+      { path: "/progress", ready: /Progress|What changed/i },
       { path: "/practice", ready: /Practice Planner/i },
       { path: "/speed", ready: /Speed Centre|Speed/i },
       { path: "/stats/training-over-time", ready: /Training Load/i },
@@ -2941,7 +2768,7 @@ test.describe("desktop workbench", () => {
       { path: "/tournaments", ready: /Tournaments/i },
       { path: "/challenges", ready: /Challenges/i },
       { path: "/leaderboard", ready: /Leaderboard/i },
-      { path: "/feed", ready: /Feed/i },
+      { path: "/feed", ready: /Clubhouse/i },
       { path: "/friends", ready: /Friends/i },
       { path: "/groups", ready: /Groups/i },
       { path: "/profile", ready: /Profile/i },
@@ -2949,7 +2776,7 @@ test.describe("desktop workbench", () => {
       { path: "/import", ready: /Import/i },
       { path: "/rapsodo", ready: /Rapsodo/i },
       { path: "/providers", ready: /Providers/i },
-      { path: "/data-chat", ready: /AI data rail|Ask LM World Tour/i },
+      { path: "/data-chat", ready: /Data Chat|Ask LM World Tour/i },
     ];
 
     for (const route of routes) {
@@ -3024,43 +2851,43 @@ test.describe("desktop workbench", () => {
     await expectNoAiRail(page, /AI training rail/i);
 
     const trendRegion = page.getByRole("region", {
-      name: /Training Status chart accessibility/i,
+      name: /Training over time chart accessibility/i,
     });
     await expect(trendRegion).toBeVisible();
-    await expect(trendRegion.locator('[data-chart-summary="Training Status"]')).toContainText(
-      /Latest .*Golf Form|No Training Status chart data/i,
+    await expect(trendRegion.locator('[data-chart-summary="Training over time"]')).toContainText(
+      /Golf Form|Training over time|days/i,
     );
     await expect(
-      trendRegion.getByRole("link", { name: /Explain Training Status chart/i }),
+      trendRegion.getByRole("link", { name: /Explain Training over time chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await trendRegion
-      .locator("summary", { hasText: /View Training Status chart data table/i })
+      .getByRole("button", { name: /View Training over time chart data table/i })
       .click();
     await expect(
-      trendRegion.getByRole("table", { name: /Training Status chart data table/i }),
+      trendRegion.getByRole("table", { name: /Training over time chart data table/i }),
     ).toBeVisible();
 
     const loadRegion = page.getByRole("region", {
-      name: /Daily swing load chart accessibility/i,
+      name: /Training load bars chart accessibility/i,
     });
     await expect(loadRegion).toBeVisible();
-    await expect(loadRegion.locator('[data-chart-summary="Daily swing load"]')).toContainText(
-      /active days|no logged swing load|No Daily swing load chart data/i,
+    await expect(loadRegion.locator('[data-chart-summary="Training load bars"]')).toContainText(
+      /load|days/i,
     );
     await expect(
-      loadRegion.getByRole("link", { name: /Explain Daily swing load chart/i }),
+      loadRegion.getByRole("link", { name: /Explain Training load bars chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await loadRegion
-      .locator("summary", { hasText: /View Daily swing load chart data table/i })
+      .getByRole("button", { name: /View Training load bars chart data table/i })
       .click();
     await expect(
-      loadRegion.getByRole("table", { name: /Daily swing load chart data table/i }),
+      loadRegion.getByRole("table", { name: /Training load bars chart data table/i }),
     ).toBeVisible();
 
     await expectNoHorizontalOverflow(page, "training load chart accessibility");
   });
 
-  test("platform, simulator, safety and admin pages use selective desktop rails", async ({
+  test("platform, simulator, safety and admin pages expose evidence and usable registers", async ({
     page,
   }) => {
     skipWhenNoDesktopAuth();
@@ -3074,6 +2901,7 @@ test.describe("desktop workbench", () => {
     await expect(
       page.getByRole("button", { name: /Open AI assistant for Performance Lab/i }),
     ).toHaveCount(0);
+    await page.getByRole("tab", { name: "Gapping", exact: true }).click();
     const simulatorMatrixRegion = page.getByRole("region", {
       name: /Simulator gapping matrix chart accessibility/i,
     });
@@ -3082,7 +2910,7 @@ test.describe("desktop workbench", () => {
       simulatorMatrixRegion.getByRole("link", { name: /Explain Simulator gapping matrix chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await simulatorMatrixRegion
-      .locator("summary", { hasText: /View Simulator gapping matrix chart data table/i })
+      .getByRole("button", { name: /View Simulator gapping matrix chart data table/i })
       .click();
     await expect(
       simulatorMatrixRegion.getByRole("table", {
@@ -3096,6 +2924,7 @@ test.describe("desktop workbench", () => {
     await expect(page.getByRole("button", { name: /Open AI assistant for Handicap/i })).toHaveCount(
       0,
     );
+    await page.getByRole("tab", { name: "Eligible-round trend", exact: true }).click();
     const handicapTrendRegion = page
       .getByRole("region", { name: /Handicap trend chart accessibility/i })
       .filter({ visible: true });
@@ -3104,7 +2933,7 @@ test.describe("desktop workbench", () => {
       handicapTrendRegion.getByRole("link", { name: /Explain Handicap trend chart/i }),
     ).toHaveAttribute("href", /visible%20ForeKingHell%20chart%20summary/i);
     await handicapTrendRegion
-      .locator("summary", { hasText: /View Handicap trend chart data table/i })
+      .getByRole("button", { name: /View Handicap trend chart data table/i })
       .click();
     await expect(
       handicapTrendRegion.getByRole("table", { name: /Handicap trend chart data table/i }),
@@ -3121,78 +2950,82 @@ test.describe("desktop workbench", () => {
     await gotoAppRoute(page, "/social-intelligence");
     await expectAppText(page, /Recaps & Safety/i, 45_000);
     await expectNoAiRail(page, /AI safety rail/i);
-    await expect(page.getByRole("button", { name: /Submit report/i })).toHaveAttribute(
-      "data-confirm-message",
-      /Submit this social report/i,
-    );
+    await page.getByRole("button", { name: "Report content", exact: true }).click();
+    const reportContent = page.getByRole("dialog", { name: "Report content", exact: true });
+    await expect(
+      reportContent.getByRole("button", { name: "Review request", exact: true }),
+    ).toBeVisible();
+    await expect(
+      reportContent.getByRole("button", { name: "Confirm report", exact: true }),
+    ).toHaveCount(0);
+    await page.keyboard.press("Escape");
 
     await gotoAppRoute(page, "/admin");
     await expectAppText(page, /Operating pages|Admin/i, 45_000);
     await expectNoAiRail(page, /AI admin rail/i);
 
     await gotoAppRoute(page, "/admin/system-checks");
-    await expectAppText(page, /Provider status and platform checks/i, 45_000);
+    await expectAppText(page, /System health console/i, 45_000);
     await expectNoAiRail(page, /AI admin rail/i);
-    await expect(page.getByRole("link", { name: /Open provider console/i })).toHaveAttribute(
-      "href",
-      "/providers#provider-health",
-    );
-    await expect(page.getByRole("link", { name: /Review provider jobs/i })).toHaveAttribute(
-      "href",
-      "/providers#provider-jobs",
-    );
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "Admin system checks table",
-    );
     await expect(
-      page.locator('table[data-workbench-export-table="admin-system-checks"]'),
+      page.getByRole("region", { name: "Read-only live probes", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("region", { name: "Service summary", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Health register table", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator('table[data-workbench-export-table="admin-system-health"]'),
     ).toBeVisible();
     await page.getByRole("button", { name: /Columns/i }).click();
-    await setMenuItemCheckbox(page, /Impact/i, false);
-    await expect(page.locator('th[data-column="impact"]')).toBeHidden();
+    await setMenuItemCheckbox(page, /Evidence/i, false);
+    await expect(page.locator('th[data-column="evidence"]')).toBeHidden();
     await page.keyboard.press("Escape");
     const [systemChecksDownload] = await Promise.all([
       page.waitForEvent("download"),
       page.getByRole("button", { name: /^Export$/i }).click(),
     ]);
-    expect(systemChecksDownload.suggestedFilename()).toBe("forekinghell-admin-system-checks.csv");
+    expect(systemChecksDownload.suggestedFilename()).toBe("admin-system-health-filtered.csv");
 
     await page.setViewportSize({ width: 2200, height: 1100 });
     await gotoAppRoute(page, "/admin");
-    await expectAppText(page, /AI admin rail/i, 45_000);
-    await expect(page.getByRole("complementary", { name: /AI admin rail/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Generate admin report/i }).first()).toBeVisible();
+    await expectAppText(page, /Operations console/i, 45_000);
+    await expectNoAiRail(page, /AI admin rail/i);
+    await expect(page.getByRole("link", { name: /^System checks/ }).first()).toBeVisible();
     await page.setViewportSize({ width: 1440, height: 900 });
 
     await gotoAppRoute(page, "/partners");
     await expectAppText(page, /Sponsors and partner offers/i, 45_000);
-    await expect(page.getByText(/Campaign, asset and plan requirements/i)).toBeVisible();
-    await expect(page.getByText("Plan requirements", { exact: true })).toBeVisible();
-    await expect(page.locator("[data-main-table-target='true']")).toHaveAttribute(
-      "aria-label",
-      "Sponsor pipeline table",
-    );
+    const sponsors = page.getByRole("region", { name: "Sponsor pipeline", exact: true });
+    await expect(sponsors).toBeVisible();
+    await expect(sponsors.getByRole("button", { name: "Saved views", exact: true })).toBeVisible();
     await expect(
-      page.locator('table[data-workbench-export-table="partner-sponsors"]'),
+      sponsors.getByRole("table", { name: "Sponsor pipeline ordered by name", exact: true }),
     ).toBeVisible();
+    await sponsors.getByRole("combobox", { name: "Ownership", exact: true }).selectOption("owned");
+    await expect(sponsors).toContainText("No sponsors match this view.");
     await expectNoAiRail(page, /AI partner rail/i);
 
     await gotoAppRoute(page, "/admin/users");
-    await expectAppText(page, /Users and access/i, 45_000);
-    await expect(page.getByRole("table", { name: /Admin user accounts/i })).toBeVisible();
+    await expectAppText(page, /Account management/i, 45_000);
+    await expect(
+      page.getByRole("region", { name: "Admin user accounts table", exact: true }),
+    ).toBeVisible();
 
     await gotoAppRoute(page, "/admin/billing");
     await expectAppText(page, /Billing and entitlements/i, 45_000);
-    await expect(page.getByRole("table", { name: /Admin subscription rows/i })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Subscriptions", exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Current entitlements", exact: true }),
+    ).toBeVisible();
 
     await gotoAppRoute(page, "/admin/moderation");
     await expectAppText(page, /Moderation queue/i, 45_000);
-    await expect(page.getByText("User reports", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "User reports", exact: true })).toBeVisible();
 
     await gotoAppRoute(page, "/admin/challenges");
     await expectAppText(page, /Challenges and tournaments/i, 45_000);
-    await expect(page.getByRole("table", { name: /Admin challenge boards/i })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Challenge boards", exact: true })).toBeVisible();
   });
 });
 
@@ -3264,11 +3097,12 @@ async function gotoAppRoute(page: Page, path: string) {
   }
 
   await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => {});
+  await expect(page.locator('[data-command-centre-ready="true"]')).toHaveCount(1);
 }
 
 async function expectAppText(page: Page, expectedText: RegExp | string, timeout = 10_000) {
   try {
-    await expect(page.locator("body")).toContainText(expectedText, { timeout });
+    await expect(page.getByRole("main")).toContainText(expectedText, { timeout });
   } catch (error) {
     if (page.isClosed()) {
       throw error;
@@ -3276,7 +3110,7 @@ async function expectAppText(page: Page, expectedText: RegExp | string, timeout 
 
     await page.reload({ waitUntil: "commit", timeout: 45_000 });
     await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => {});
-    await expect(page.locator("body")).toContainText(expectedText, { timeout });
+    await expect(page.getByRole("main")).toContainText(expectedText, { timeout });
   }
   await expect(page).not.toHaveURL(/\/login(?:\?|$)/);
 }
@@ -3324,6 +3158,7 @@ async function waitForHref(
 
 async function expectDenseRouteReady(page: Page, scope: string) {
   if (scope === "bag") {
+    await page.getByRole("button", { name: /Full gapping evidence/i }).click();
     await expect(page.getByRole("table", { name: /Full bag gapping table/i })).toBeVisible({
       timeout: 45_000,
     });
@@ -3331,14 +3166,15 @@ async function expectDenseRouteReady(page: Page, scope: string) {
   }
 
   if (scope === "progress") {
-    await expect(
-      page.getByRole("region", { name: /Progress trends chart accessibility/i }),
-    ).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByRole("region", { name: "Club comparison", exact: true })).toBeVisible({
+      timeout: 45_000,
+    });
     return;
   }
 
   if (scope === "compare") {
-    await expect(page.locator('[data-workbench-scope="club-comparison-metrics"]')).toBeVisible({
+    await page.getByRole("tab", { name: "Clubs", exact: true }).click();
+    await expect(page.locator('[data-workbench-scope="comparison-clubs"]')).toBeVisible({
       timeout: 45_000,
     });
   }
@@ -3399,7 +3235,8 @@ function collectHydrationWarnings(page: Page) {
     const isRadixModalAccessibilityMutation =
       text.includes('data-aria-hidden="true"') && text.includes('aria-hidden="true"');
     if (
-      /hydrated|hydration|server rendered HTML/i.test(text) &&
+      (message.type() === "warning" || message.type() === "error") &&
+      /hydration|server rendered HTML|a tree hydrated/i.test(text) &&
       !isRadixModalAccessibilityMutation
     ) {
       warnings.push(text);

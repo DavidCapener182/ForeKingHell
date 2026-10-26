@@ -49,6 +49,7 @@ for (const surface of ["companion"] as const) {
         surface === "companion" ? { width: 390, height: 844 } : { width: 1440, height: 900 },
       );
       await page.goto(`/surface/${surface}?next=%2Fimport%3Fsource%3Dcsv`);
+      await expect(page.locator("#companion-csv-file")).toBeEnabled();
       await page
         .locator("#companion-csv-file")
         .setInputFiles({ name: fileName, mimeType: "text/csv", buffer: Buffer.from(csv) });

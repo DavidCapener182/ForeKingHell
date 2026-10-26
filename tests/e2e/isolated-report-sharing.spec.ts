@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { grantFixturePlan } from "../support/paid-fixture";
 
 test.use({ actionTimeout: 15000 });
 
@@ -43,6 +44,7 @@ for (const surface of ["workbench", "companion"]) {
         userId = (
           await sql`insert into fkh_users(name) values('Synthetic report browser owner') returning id`
         )[0].id;
+        await grantFixturePlan(sql, [userId!]);
         const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
         const token = [
           encode({ alg: "none" }),

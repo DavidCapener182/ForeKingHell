@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { grantFixturePlan } from "../support/paid-fixture";
 test("Assigned player workspace preserves scope through search, details and draft fields", async ({
   page,
   context,
@@ -26,6 +27,7 @@ test("Assigned player workspace preserves scope through search, details and draf
       await db`insert into fkh_users(name) values('UI coach'),('UI player Alpha'),('UI player Beta') returning id,name`;
     ids.push(...people.map((person) => person.id));
     const coach = people[0].id;
+    await grantFixturePlan(db, [coach]);
     const alpha = people[1].id;
     const beta = people[2].id;
     await db`insert into fkh_account_memberships(owner_user_id,member_user_id,role) values(${alpha},${coach},'coach'),(${beta},${coach},'coach')`;

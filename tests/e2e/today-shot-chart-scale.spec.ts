@@ -37,6 +37,7 @@ test.beforeAll(async () => {
             contents: `
               const reject = () => { throw new Error("This chart fixture must not mutate shots"); };
               export const correctShotClubAction = reject;
+              export const correctShotsClubAction = reject;
               export const deleteShotsAction = reject;
               export const excludeShotAction = reject;
               export const restoreShotAction = reject;

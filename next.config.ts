@@ -21,6 +21,8 @@ const contentSecurityPolicyReportOnly = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // The development badge overlaps the mobile tab bar during browser tests.
+  ...(process.env.PLAYWRIGHT_DISABLE_DEV_INDICATORS === "1" ? { devIndicators: false } : {}),
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   ...(process.env.NODE_ENV === "development" && allowedDevOrigins.length > 0
     ? { allowedDevOrigins }

@@ -1,4 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
+import { prepareFlightPathFixture } from "./flight-path-fixture";
+const fixtureCleanup = new WeakMap<Page, () => Promise<void>>();
+test.beforeEach(async ({ page }, info) => {
+  fixtureCleanup.set(
+    page,
+    await prepareFlightPathFixture(page, String(info.project.use.baseURL), true),
+  );
+});
+test.afterEach(async ({ page }) => {
+  await fixtureCleanup.get(page)?.();
+});
 
 import { expectPageReady, skipWhenNoAuth } from "./helpers";
 
@@ -10,9 +21,10 @@ test.describe("Driver Speed Development", () => {
     test.setTimeout(180_000);
 
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto("/speed", { waitUntil: "domcontentloaded" });
-    await expectPageReady(page, /Driver Speed Development/i);
+    await page.goto("/surface/workbench?next=%2Fspeed", { waitUntil: "domcontentloaded" });
+    await expectPageReady(page, /Speed Centre|Speed/i);
 
+    await page.getByRole("tab", { name: "Driver development", exact: true }).click();
     const programme = page.locator("[data-driver-speed-development]");
     await expect(programme).toBeVisible();
     await expect(programme.locator("[data-speed-project-readiness]")).toBeVisible();
@@ -26,7 +38,7 @@ test.describe("Driver Speed Development", () => {
     await expectNoHorizontalOverflow(page, "Speed Centre");
 
     await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
-    await expectPageReady(page, /Dashboard|Today/i);
+    await expectPageReady(page, /Dashboard|Today|Home/i);
     const dashboardCard = page.locator("[data-dashboard-speed-development]");
     await expect(dashboardCard).toBeVisible();
     await expect(dashboardCard).toContainText("Next physical target");
@@ -44,7 +56,9 @@ test.describe("Driver Speed Development", () => {
     });
     await expectPageReady(page, /Practice Planner/i);
     await expect(page.getByText("Speed warm-up", { exact: true })).toBeVisible();
-    await expect(page.getByText("Speed Block 2", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Controlled speed baseline", exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("Driver transfer", { exact: true })).toBeVisible();
     await expectNoHorizontalOverflow(page, "Speed Practice workbench");
   });

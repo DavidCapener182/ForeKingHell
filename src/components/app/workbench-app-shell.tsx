@@ -673,7 +673,15 @@ function ProfileDropdown({
             {profile?.avatarUrl ? (
               <ProfileDropdownAvatarImage src={profile.avatarUrl} />
             ) : (
-              <AvatarFallback>{profileInitials}</AvatarFallback>
+              <AvatarFallback
+                className={
+                  isTopbar
+                    ? undefined
+                    : "bg-sidebar-accent text-sidebar-accent-foreground ring-1 ring-sidebar-border"
+                }
+              >
+                {profileInitials}
+              </AvatarFallback>
             )}
           </Avatar>
           <span

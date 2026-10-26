@@ -1,9 +1,7 @@
-import { registerLocalPaidPersona } from "./local-paid-persona";
 import { expect, test } from "@playwright/test";
 
 import { authStorageState, expectPageReady, hasAuthenticatedE2e, skipWhenNoAuth } from "./helpers";
-
-const withFlightPathFixture = registerLocalPaidPersona();
+import { prepareFlightPathFixture } from "./flight-path-fixture";
 
 test.describe("accessible mobile interactions", () => {
   test.skip(!hasAuthenticatedE2e, "Set PLAYWRIGHT_AUTH_STATE to run mobile interaction checks.");
@@ -17,7 +15,7 @@ test.describe("accessible mobile interactions", () => {
   test("primary tabs expose current state, 44px targets and a visible keyboard focus ring", async ({
     page,
   }) => {
-    await openCompanionRoute(page, "/today", /Home/i);
+    await openCompanionRoute(page, "/today", /Today|Home/i);
 
     const navigation = page.getByRole("navigation", { name: "Mobile primary" });
     const destinations = navigation.locator(".ios-tab-item");
@@ -78,7 +76,7 @@ test.describe("accessible mobile interactions", () => {
   }) => {
     // At 200% browser zoom a 1280px display exposes roughly a 640 CSS-pixel layout viewport.
     await page.setViewportSize({ width: 640, height: 720 });
-    await openCompanionRoute(page, "/today", /Home/i);
+    await openCompanionRoute(page, "/today", /Today|Home/i);
 
     await expect(page.getByRole("main")).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Mobile primary" })).toBeVisible();
@@ -92,11 +90,11 @@ test.describe("accessible mobile interactions", () => {
 
   test("flight paths expose a labelled visual and plain-language non-chart summary", async ({
     page,
+    baseURL,
   }) => {
-    await withFlightPathFixture(async (sessionId) => {
-      await page.goto(
-        `/surface/workbench?next=${encodeURIComponent(`/analyse/session-impact${sessionId ? `?sessionId=${sessionId}` : ""}`)}`,
-      );
+    const cleanup = await prepareFlightPathFixture(page, baseURL!);
+    try {
+      await page.goto(`/surface/workbench?next=${encodeURIComponent("/analyse/session-impact")}`);
       await expectPageReady(page, /Session impact/i);
 
       const chart = page.getByRole("img", { name: /Top-down summary of .* shot paths/i });
@@ -106,7 +104,9 @@ test.describe("accessible mobile interactions", () => {
       await expect(page.locator("[data-flight-path-summary]")).toContainText(
         /left|right|centred on the target line/i,
       );
-    });
+    } finally {
+      await cleanup();
+    }
   });
 });
 

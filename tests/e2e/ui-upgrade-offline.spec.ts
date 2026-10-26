@@ -81,7 +81,7 @@ test("Offline resources show only owned copies and preserve local round context"
     await expect(page.getByText(/2 clubs/)).toHaveCount(0);
     await expect(
       page.getByRole("navigation", { name: "Mobile primary — saved content" }).getByRole("button"),
-    ).toHaveCount(5);
+    ).toHaveCount(4);
     await page.getByRole("button", { name: "Find saved resources", exact: true }).click();
     await page.getByRole("searchbox", { name: "Search saved resources" }).fill("Synthetic");
     await expect(

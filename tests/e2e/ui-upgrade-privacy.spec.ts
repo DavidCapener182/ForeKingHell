@@ -17,7 +17,9 @@ test("Data notice exposes full factual sections and practical controls", async (
   ]) {
     await page.setViewportSize({ width, height });
     await page.goto("/privacy", { waitUntil: "domcontentloaded", timeout: 90000 });
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("LM World Tour data notice");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "LM World Tour privacy policy",
+    );
     for (const name of [
       "Data stored",
       "Account scope and sharing",

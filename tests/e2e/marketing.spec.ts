@@ -21,10 +21,16 @@ async function expectInteractiveCourseTwin(
   const section = page.locator("#course-twin");
   await section.scrollIntoViewIfNeeded();
 
-  if (!supportsWebGl) {
-    await expect(section.locator("[data-course-twin-fallback]")).toBeVisible();
+  if (viewport.width < 768 || !supportsWebGl) {
+    await section.getByRole("button", { name: "Explore the example plan" }).click();
+    const dialog = page.getByRole("dialog", { name: "Course Twin example plan" });
+    await expect(dialog.locator("[data-course-twin-fallback]")).toBeVisible();
+    await expect(dialog.getByText("Expected carry (modelled)", { exact: true })).toBeVisible();
+    await expect(section.locator("[data-course-twin-runtime]")).toHaveCount(0);
+    await page.keyboard.press("Escape");
     return;
   }
+  await section.getByRole("button", { name: "Launch interactive example" }).click();
 
   const runtime = section.locator("[data-course-twin-runtime]");
   await expect(runtime).toBeVisible({ timeout: 30_000 });
@@ -54,14 +60,19 @@ test.describe("public product landing", () => {
     );
   });
 
-  test("shows the product journey, CTAs, sample tour and FAQ without sign-in", async ({ page }) => {
+  test("shows the product journey, CTAs, product screens and FAQ without sign-in", async ({
+    page,
+  }) => {
     const errors: string[] = [];
     page.on("console", (message) => {
       if (message.type() === "error") errors.push(message.text());
     });
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /Turn every measured shot/i })).toBeVisible();
-    if ((page.viewportSize()?.width ?? 1024) < 1024) {
+    await expect(
+      page.getByRole("heading", { name: /Stop guessing.*Start knowing/i }),
+    ).toBeVisible();
+    // The public header switches to its menu at the 1100px CSS breakpoint.
+    if ((page.viewportSize()?.width ?? 1024) <= 1100) {
       await expect(page.getByRole("button", { name: "Open navigation" })).toBeVisible();
     } else {
       await expect(
@@ -72,12 +83,16 @@ test.describe("public product landing", () => {
       "href",
       /next=%2Fwelcome/,
     );
-    await page.getByRole("link", { name: "Explore the sample tour" }).click();
-    await expect(page.getByRole("heading", { name: /See the decision chain/i })).toBeVisible();
-    await page.getByRole("radio", { name: "7 Iron" }).click();
-    await page.getByRole("radio", { name: "Raw shots" }).click();
-    await page.getByRole("button", { name: "Continue" }).click();
-    await page.getByRole("button", { name: /Which launch monitors are supported/i }).click();
+    await page.getByRole("link", { name: /See the system/ }).click();
+    await expect(page.locator("#promise-title")).toHaveText(/Your numbers should do more/);
+    const screens = page.locator("#product-screens");
+    await screens.scrollIntoViewIfNeeded();
+    await expect(screens.getByRole("heading", { level: 3 })).toHaveCount(3);
+    await page.locator("#faq").scrollIntoViewIfNeeded();
+    await page
+      .locator("#faq summary")
+      .filter({ hasText: "Which launch monitors are supported?" })
+      .click();
     await expect(page.getByText(/Rapsodo CSV import is available/)).toBeVisible();
     expect(
       await page
@@ -86,7 +101,10 @@ test.describe("public product landing", () => {
           (images) =>
             images.filter(
               (image): image is HTMLImageElement =>
-                image instanceof HTMLImageElement && image.complete && image.naturalWidth === 0,
+                image instanceof HTMLImageElement &&
+                image.currentSrc !== "" &&
+                image.complete &&
+                image.naturalWidth === 0,
             ).length,
         ),
     ).toBe(0);
@@ -115,225 +133,91 @@ test.describe("public product landing", () => {
   test("keeps all public content available with reduced motion", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /One connected loop/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /A mobile golf workspace/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Your numbers should do more/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /See the decision chain in the product/i }),
+    ).toBeVisible();
   });
 
-  test("keeps compact carousel keyboard and direct-scroll state stable", async ({
-    browserName,
-    page,
-  }, testInfo) => {
-    test.skip(
-      browserName !== "chromium" || testInfo.project.name !== "chromium",
-      "The compact carousel interaction contract runs once in base Chromium.",
-    );
-
+  test("keeps compact product screens readable through keyboard scrolling", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.goto("/");
-
-    const tour = page.locator("#sample-tour");
-    const rail = tour.getByRole("region", { name: "Sample tour chapters" });
-    const status = tour.getByRole("status");
-    await rail.scrollIntoViewIfNeeded();
-    await expect(rail).toBeVisible();
-    await status.evaluate((element) => {
-      const observedWindow = window as Window & { __tourStepChanges?: string[] };
-      observedWindow.__tourStepChanges = [];
-      new MutationObserver(() => {
-        observedWindow.__tourStepChanges?.push(element.textContent?.trim() ?? "");
-      }).observe(element, { childList: true, characterData: true, subtree: true });
-    });
-
-    await rail.focus();
-    await page.keyboard.press("ArrowRight");
-    await expect(status).toHaveText("2 / 5");
-    await expect(rail.getByRole("group", { name: "2 of 5: Dispersion" })).toHaveAttribute(
-      "aria-current",
-      "step",
-    );
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () => (window as Window & { __tourStepChanges?: string[] }).__tourStepChanges ?? [],
-        ),
-      )
-      .toEqual(["2 / 5"]);
-
-    await page.evaluate(() => {
-      (window as Window & { __tourStepChanges?: string[] }).__tourStepChanges = [];
-    });
+    const screens = page.locator("#product-screens");
+    await screens.scrollIntoViewIfNeeded();
+    const images = screens.getByRole("img", { name: /LM World Tour/ });
+    await expect(images).toHaveCount(3);
+    for (const image of await images.all()) {
+      await image.scrollIntoViewIfNeeded();
+      await expect(image).toBeVisible();
+      const bounds = await image.boundingBox();
+      expect(bounds!.width).toBeLessThanOrEqual(390);
+    }
     await page.keyboard.press("End");
-    await expect(status).toHaveText("5 / 5");
-    await expect(rail.getByRole("group", { name: "5 of 5: Course plan" })).toHaveAttribute(
-      "aria-current",
-      "step",
-    );
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () => (window as Window & { __tourStepChanges?: string[] }).__tourStepChanges ?? [],
-        ),
-      )
-      .toEqual(["5 / 5"]);
-
-    await page.evaluate(() => {
-      (window as Window & { __tourStepChanges?: string[] }).__tourStepChanges = [];
-    });
-    await rail.evaluate((element) => {
-      const cards = Array.from(element.querySelectorAll<HTMLElement>("[data-tour-swipe-card]"));
-      element.scrollTo({
-        left: cards[2].offsetLeft - cards[0].offsetLeft,
-        behavior: "auto",
-      });
-    });
-    await expect(status).toHaveText("3 / 5");
-    await expect(rail.getByRole("group", { name: "3 of 5: Club trust" })).toHaveAttribute(
-      "aria-current",
-      "step",
-    );
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () => (window as Window & { __tourStepChanges?: string[] }).__tourStepChanges ?? [],
-        ),
-      )
-      .toEqual(["3 / 5"]);
+    await expect(page.locator("footer[data-mobile-cta-stop]")).toBeInViewport();
   });
 
-  test("uses immediate compact carousel navigation with reduced motion", async ({
-    browserName,
-    page,
-  }, testInfo) => {
-    test.skip(
-      browserName !== "chromium" || testInfo.project.name !== "chromium",
-      "The reduced-motion carousel contract runs once in base Chromium.",
-    );
-
+  test("keeps reduced-motion practice stages readable without animation", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
-
-    const tour = page.locator("#sample-tour");
-    const rail = tour.getByRole("region", { name: "Sample tour chapters" });
-    const status = tour.getByRole("status");
-    await rail.scrollIntoViewIfNeeded();
-    await rail.evaluate((element) => {
-      const observedWindow = window as Window & { __tourScrollBehaviors?: ScrollBehavior[] };
-      const originalScrollTo = element.scrollTo.bind(element);
-      observedWindow.__tourScrollBehaviors = [];
-      Object.defineProperty(element, "scrollTo", {
-        configurable: true,
-        value(options: ScrollToOptions) {
-          observedWindow.__tourScrollBehaviors?.push(options.behavior ?? "auto");
-          originalScrollTo(options);
-        },
-      });
-    });
-
-    await rail.focus();
-    await page.keyboard.press("End");
-    await expect(status).toHaveText("5 / 5");
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () =>
-            (window as Window & { __tourScrollBehaviors?: ScrollBehavior[] })
-              .__tourScrollBehaviors ?? [],
-        ),
-      )
-      .toEqual(["auto"]);
-    await expect(rail).toHaveCSS("scroll-behavior", "auto");
+    const practice = page.locator("#practice");
+    await practice.scrollIntoViewIfNeeded();
+    const stages = practice.locator("[data-practice-step]");
+    await expect(stages).toHaveCount(4);
+    for (const stage of await stages.all()) {
+      await expect(stage).toBeVisible();
+      await expect(stage).toHaveCSS("opacity", "1");
+    }
+    await expect(practice.getByRole("article", { name: "Today's practice plan" })).toBeVisible();
   });
 
-  test("keeps the compact CTA clear of the footer at the exact breakpoint", async ({
-    browserName,
-    page,
-  }, testInfo) => {
-    test.skip(
-      browserName !== "chromium" || testInfo.project.name !== "chromium",
-      "The compact CTA geometry contract runs once in base Chromium.",
-    );
-
+  test("keeps the compact CTA clear of the footer at the exact breakpoint", async ({ page }) => {
     await page.setViewportSize({ width: 767, height: 900 });
     await page.goto("/");
-    const dock = page.locator("[data-mobile-sticky-cta]");
+    await page.getByRole("button", { name: "Essential only", exact: true }).click();
+    await expect(page.getByRole("region", { name: "Cookies & privacy" })).toBeHidden();
+    await page.locator("#how-it-works").evaluate((element) =>
+      window.scrollTo({
+        top: window.scrollY + element.getBoundingClientRect().top + 200,
+        behavior: "instant",
+      }),
+    );
+    const dock = page.locator("[data-mobile-cta]");
     await expect(dock).toBeVisible();
-
-    const initialDock = await dock.evaluate((element) => element.getBoundingClientRect().toJSON());
-    expect(Math.abs(initialDock.bottom - 900)).toBeLessThanOrEqual(1);
-
-    const footer = page.locator("footer");
-    await footer.scrollIntoViewIfNeeded();
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    const bottomGeometry = await page.evaluate(() => {
-      const dockElement = document.querySelector<HTMLElement>("[data-mobile-sticky-cta]");
-      const footerElement = document.querySelector<HTMLElement>("footer");
-      const lastFooterChild = footerElement?.lastElementChild;
-      if (!dockElement || !(lastFooterChild instanceof HTMLElement)) return null;
-      return {
-        dockTop: dockElement.getBoundingClientRect().top,
-        dockBottom: dockElement.getBoundingClientRect().bottom,
-        footerContentBottom: lastFooterChild.getBoundingClientRect().bottom,
-      };
-    });
-    expect(bottomGeometry).not.toBeNull();
-    expect(bottomGeometry!.dockBottom).toBeCloseTo(900, 0);
-    expect(bottomGeometry!.footerContentBottom).toBeLessThanOrEqual(bottomGeometry!.dockTop);
-
-    const mobileTour = page.getByRole("region", { name: "Sample tour chapters" });
-    await expect(mobileTour).toBeVisible();
-    await page.setViewportSize({ width: 768, height: 900 });
+    await expect
+      .poll(async () => (await dock.boundingBox())!.y + (await dock.boundingBox())!.height)
+      .toBeCloseTo(900, 0);
+    await expect(dock.getByRole("link", { name: /Join the beta/ })).toHaveAttribute(
+      "href",
+      /next=%2Fwelcome/,
+    );
+    await page.locator("footer[data-mobile-cta-stop]").scrollIntoViewIfNeeded();
     await expect(dock).toBeHidden();
-    await expect(mobileTour).toBeHidden();
-    await expect(page.getByRole("tablist", { name: "Sample tour chapters" })).toBeVisible();
+    await page.setViewportSize({ width: 768, height: 900 });
+    await page.locator("#how-it-works").evaluate((element) =>
+      window.scrollTo({
+        top: window.scrollY + element.getBoundingClientRect().top + 200,
+        behavior: "instant",
+      }),
+    );
+    await expect(dock).toBeHidden();
   });
 
-  test("uses composited scroll zoom without changing the document scroll model", async ({
+  test("uses composited hero motion without changing the document scroll model", async ({
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.goto("/");
-
-    const stage = page.locator(
-      '[aria-label="Example LM World Tour product screens using demo data"]',
+    const hero = page.locator('section[aria-labelledby="hero-title"]');
+    const art = hero.locator("[data-hero-layer]").first();
+    const before = await art.evaluate((element) => getComputedStyle(element).transform);
+    await page.evaluate(() =>
+      window.scrollTo({ top: Math.round(innerHeight * 0.45), behavior: "instant" }),
     );
-    await expect(stage).toBeVisible();
-    const rangeArt = stage.getByAltText(/Golfer using a launch monitor/i);
-    const before = await rangeArt.evaluate((element) => getComputedStyle(element).transform);
-    const usesCompactLayout = (page.viewportSize()?.width ?? 1024) <= 767;
-    const supportsViewTimeline = await page.evaluate(() =>
-      CSS.supports("animation-timeline: view()"),
-    );
-    if (usesCompactLayout) {
-      expect(await rangeArt.evaluate((element) => getComputedStyle(element).animationName)).toBe(
-        "none",
-      );
-    } else if (supportsViewTimeline) {
-      expect(
-        await rangeArt.evaluate((element) => getComputedStyle(element).animationName),
-      ).toContain("marketing-hero-range-zoom");
-    } else {
-      await expect(stage).toHaveAttribute("data-composited-scroll-zoom", "true");
-    }
-
-    if (usesCompactLayout) {
-      await page.evaluate(() => window.scrollTo({ top: Math.round(window.innerHeight * 0.45) }));
-    } else {
-      await stage.evaluate((element) => {
-        const rect = element.getBoundingClientRect();
-        const stageCentre = window.scrollY + rect.top + rect.height / 2;
-        window.scrollTo({ top: Math.max(0, Math.round(stageCentre - window.innerHeight / 2)) });
-      });
-    }
-    await page.waitForTimeout(120);
-    const after = await rangeArt.evaluate((element) => getComputedStyle(element).transform);
-
-    if (usesCompactLayout) {
-      expect(after).toBe(before);
-    } else {
-      expect(after).not.toBe(before);
-    }
+    await expect
+      .poll(() => art.evaluate((element) => getComputedStyle(element).transform))
+      .not.toBe(before);
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
     await expect(page.locator("#how-it-works")).toBeAttached();
   });
 });
@@ -406,7 +290,7 @@ test.describe("public landing responsive and Course Twin verification", () => {
     expect(desktopFont).not.toContain("SF Pro Text");
   });
 
-  test("runs the same interactive WebGL Course Twin on mobile and desktop", async ({
+  test("offers a readable mobile plan and an explicitly launched desktop WebGL twin", async ({
     browserName,
     page,
   }, testInfo) => {
@@ -433,7 +317,12 @@ test.describe("public landing responsive and Course Twin verification", () => {
     await page.goto("/");
     const section = page.locator("#course-twin");
     await section.scrollIntoViewIfNeeded();
-    await expect(section.locator("[data-course-twin-fallback]")).toBeVisible();
+    await section.getByRole("button", { name: "Explore the example plan" }).click();
+    await expect(
+      page
+        .getByRole("dialog", { name: "Course Twin example plan" })
+        .locator("[data-course-twin-fallback]"),
+    ).toBeVisible();
     await expect(section.locator("[data-course-twin-runtime]")).toHaveCount(0);
   });
 
@@ -466,7 +355,12 @@ test.describe("public landing responsive and Course Twin verification", () => {
     await page.goto("/");
     const section = page.locator("#course-twin");
     await section.scrollIntoViewIfNeeded();
-    await expect(section.locator("[data-course-twin-fallback]")).toBeVisible();
+    await section.getByRole("button", { name: "Explore the example plan" }).click();
+    await expect(
+      page
+        .getByRole("dialog", { name: "Course Twin example plan" })
+        .locator("[data-course-twin-fallback]"),
+    ).toBeVisible();
     await expect(section.locator("[data-course-twin-runtime]")).toHaveCount(0);
   });
 });
@@ -476,9 +370,11 @@ test.describe("public landing without JavaScript", () => {
 
   test("keeps the product story and join path readable", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /Turn every measured shot/i })).toBeVisible();
     await expect(
-      page.getByText("Original import evidence remains traceable.", { exact: true }).first(),
+      page.getByRole("heading", { name: /Stop guessing.*Start knowing/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Keep the original shot evidence.", { exact: true }).first(),
     ).toBeVisible();
     await expect(page.getByRole("link", { name: "Join the beta" }).first()).toHaveAttribute(
       "href",

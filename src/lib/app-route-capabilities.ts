@@ -175,6 +175,8 @@ const companionExceptions = ["/profile", "/groups", "/courses/strategy"] as cons
 const summaryOnlyPrefixes = ["/coach", "/leaderboard", "/achievements"] as const;
 
 export function isDesktopOnlyCompanionPath(pathname: string) {
+  // Profile sharing loads an authenticated image, not a companion page.
+  if (/^\/friends\/qr\/[^/]+$/.test(pathname)) return false;
   if (/^\/courses\/[^/]+\/records\/[^/]+$/.test(pathname)) return false;
   if (/^\/course-records\/[^/]+$/.test(pathname)) return false;
   if (/^\/courses\/[^/]+(?:\/(?:holes|shot-pattern|records|tournaments))?$/.test(pathname))

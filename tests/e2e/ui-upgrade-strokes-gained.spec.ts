@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
+import { grantFixturePlan } from "../support/paid-fixture";
 test("Strokes gained filters and event proof work on both surfaces", async ({
   page,
   context,
@@ -23,6 +24,7 @@ test("Strokes gained filters and event proof work on both surfaces", async ({
   try {
     const [user] = await db`insert into fkh_users(name) values('UI impact isolated') returning id`;
     owner = user.id;
+    await grantFixturePlan(db, [owner!]);
     const [session] =
       await db`insert into fkh_sessions(user_id,source,type,date,file_name,raw_csv_text) values(${owner!},'rapsodo','range','2026-09-01','Impact synthetic session','synthetic') returning id`;
     const [club] =

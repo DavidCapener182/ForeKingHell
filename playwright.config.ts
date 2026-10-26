@@ -39,6 +39,7 @@ const desktopViewportProjects = [
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  globalSetup: "./tests/e2e/global-setup.ts",
   snapshotPathTemplate: "{testDir}/{testFilePath}-snapshots/{arg}-{projectName}{ext}",
   timeout: 45_000,
   expect: {
@@ -145,13 +146,14 @@ export default defineConfig({
     : {
         command: useProductionServer
           ? `npm run start -- --port ${port}`
-          : `npm run dev -- --webpack --port ${port}`,
+          : `npm run dev -- --turbopack --disable-source-maps --port ${port}`,
         url: `${baseURL}/login`,
         reuseExistingServer: useProductionServer ? false : !process.env.CI,
         timeout: 120_000,
         env: {
           ...process.env,
           ...productionServerEnvironment,
+          PLAYWRIGHT_DISABLE_DEV_INDICATORS: "1",
           DATABASE_POOL_MAX: process.env.DATABASE_POOL_MAX ?? "5",
           NODE_OPTIONS: process.env.NODE_OPTIONS ?? "--max-old-space-size=12288",
         },

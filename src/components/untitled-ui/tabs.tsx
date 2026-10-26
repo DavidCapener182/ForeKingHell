@@ -70,6 +70,9 @@ export function UntitledTabs({
           const tab = (event.target as HTMLElement).closest<HTMLElement>('[role="tab"]');
           if (tab) revealTab(event.currentTarget, tab);
         }}
+        role="region"
+        aria-label={`${label} tabs`}
+        tabIndex={0}
       >
         <div {...tabListProps} ref={list} className={styles.list}>
           {items.map((item) => (
