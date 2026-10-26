@@ -10,11 +10,11 @@ The newer main atomic bulk shot correction, historical club filter, chronologica
 
 ## Validation before publication
 
-- Full unit suite: **3,426 passed**, 219 skipped. Opt-in feature database cases were run explicitly below; other skipped integrations are not claimed as verified.
+- Full unit suite: **3,428 passed**, 219 skipped. Opt-in feature database cases were run explicitly below; other skipped integrations are not claimed as verified.
 - Disposable PostgreSQL 17.10: all **63 migrations** applied from zero; **23 feature tests** passed, covering quotas, ownership, RLS, concurrent reservations, trial lifecycle and recovery.
 - Separate pre-0062 database: **62 migrations**, **1 staged rollout test** passed. Billing/imports continue without the optional tables; first-import eligibility survives in the existing server-managed usage ledger.
 - Pro feature browser flows: **9 passed**, Chromium/Firefox/mobile WebKit, using synthetic local personas and disposable data.
-- Core companion, accessibility and responsive shared progress browser checks: **6 passed** on Chromium.
+- Core companion, accessibility and responsive shared progress browser checks: **6 passed** on Chromium. Public sign-in smoke: **7 passed**, one live-auth-only case skipped, with an unavailable database to match its CI job.
 - Formatting, lint, TypeScript, migration consistency, full production build and route JavaScript budgets passed.
 - Dependency audit: no high/critical findings; no force or legacy peer bypass. The expired historical exception is not needed for these results.
 - Lint compatibility: installed adapter source/package and unchanged Next caller hash verified; 234 directory fixtures and 35 real Next rule cases remain covered. Exact historical secret-scan fingerprints were independently verified.
@@ -24,6 +24,8 @@ An initial attempt to run local synthetic-persona browser tests against a produc
 ## Trial review findings
 
 First-import eligibility is now durably recorded before migration 0062 and hydrated once its table exists. Stale sessionless reservations are reconciled against paginated Stripe Checkout metadata while holding the reservation lock: existing open sessions are recovered, confirmed absent/expired sessions can rotate, and completed/ambiguous/unavailable/incomplete evidence blocks another checkout. No live Stripe transaction was performed.
+
+Review follow-up: personal-data export now avoids querying the optional trial/round-plan tables before migration, with unit coverage for both storage states and real pre-migration export acceptance. The public authentication CI job disables the synthetic persona/catalogue setup because that job has no database service; anonymous sign-in coverage remains intact.
 
 ## Production database boundary
 
