@@ -1,17 +1,19 @@
-const offlineSections = ["today", "sessions", "practice", "play", "bag"] as const;
+import { findRouteMetadata } from "@/components/app/route-metadata";
 
-function sectionForPath(pathname: string) {
-  if (pathname === "/progress" || pathname.startsWith("/progress/")) return "sessions";
-  return offlineSections.find(
-    (section) => pathname === `/${section}` || pathname.startsWith(`/${section}/`),
-  );
-}
+// Saved destinations outlive changes to which sections are shown as primary tabs.
+const savedSections = [
+  { section: "today", href: "/today", group: "today" },
+  { section: "sessions", href: "/sessions", group: "review" },
+  { section: "practice", href: "/practice", group: "practice" },
+  { section: "play", href: "/play", group: "strategy" },
+  { section: "bag", href: "/bag", group: "bag" },
+];
 
 /** The worker returns an offline document at the failed request URL, not just /offline. */
 export function offlineDestination(url: URL) {
   const explicit = url.pathname === "/offline" ? url.searchParams.get("section") : null;
-  const selected = offlineSections.find((section) => section === explicit);
-  if (selected) return { section: selected, target: `/${selected}` };
+  const selected = savedSections.find((item) => item.section === explicit);
+  if (selected) return { section: selected.section, target: selected.href };
   let targetUrl = url;
   if (url.pathname === "/surface/companion") {
     const next = url.searchParams.get("next");
@@ -20,9 +22,10 @@ export function offlineDestination(url: URL) {
       if (candidate.origin === url.origin) targetUrl = candidate;
     }
   }
-  const section = sectionForPath(targetUrl.pathname);
+  const group = findRouteMetadata(targetUrl.pathname)?.mobilePrimaryGroup;
+  const item = savedSections.find((candidate) => candidate.group === group);
   return {
-    section: section ?? "today",
-    target: section ? `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}` : "/today",
+    section: item?.section ?? "today",
+    target: item ? `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}` : "/today",
   };
 }

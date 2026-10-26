@@ -297,7 +297,7 @@ describe("production readiness gate", () => {
     expect(mobileNavSource).toContain("Find a page or tool");
     expect(mobileNavSource).toContain("Open full desktop site");
     expect(mobileMoreGroups.flatMap((group) => group.items.map((item) => item.href))).toEqual(
-      expect.arrayContaining(["/settings", "/privacy", "/profile"]),
+      expect.arrayContaining(["/practice", "/settings", "/privacy", "/profile"]),
     );
     expect(mobileNavSource).not.toContain('className="ios-drawer-group grid grid-cols-3');
     expect(mobileNavSource).toContain("focus-aaa");

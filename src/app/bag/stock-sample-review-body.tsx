@@ -56,8 +56,8 @@ export function StockSampleReviewBody({
         }}
         options={[
           { value: "all", label: "All loaded shots" },
-          { value: "used", label: "Used in best stock" },
-          { value: "excluded", label: "Not used in best stock" },
+          { value: "used", label: "Used in stock carry" },
+          { value: "excluded", label: "Not used in stock carry" },
         ]}
       />
       <Button
@@ -80,7 +80,7 @@ export function StockSampleReviewBody({
             {row.carry === null ? "Carry unavailable" : `${row.carry.toFixed(1)} yd carry`}
           </h3>
           <p className="text-sm">
-            {row.used ? "Used in best-stock sample" : "Not used in best-stock sample"}
+            {row.used ? "Used in stock-carry sample" : "Not used in stock-carry sample"}
           </p>
           <ShotEvidenceSheet
             shotId={row.id}
