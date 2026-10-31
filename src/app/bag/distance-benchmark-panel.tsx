@@ -1333,7 +1333,7 @@ function BenchmarkScaleLabels({ labels }: { labels: string[] }) {
               className={`absolute top-0 whitespace-normal [overflow-wrap:anywhere] ${alignmentClass} ${index === 0 ? "w-[12.5%] text-left" : index === labels.length - 1 ? "w-[12.5%] text-right" : "w-1/4 text-center"}`}
               style={{ left: `${position}%` }}
             >
-              <span className="block">{benchmarkScaleShortLabel(label)}</span>
+              <span className="block">{benchmarkScaleShortLabel(label)}</span>{" "}
               <span className="block">{label.slice(label.indexOf(" ") + 1)}</span>
             </span>
           );
