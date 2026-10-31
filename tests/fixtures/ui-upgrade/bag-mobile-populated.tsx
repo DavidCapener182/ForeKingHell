@@ -64,6 +64,41 @@ const benchmarks = buildClubBenchmarkRows(
     },
   })),
 );
+// Exercise provenance, mixed measurement, missing and zero values without live records.
+if (new URLSearchParams(location.search).has("benchmark-edge-cases")) {
+  benchmarks.forEach((row, index) => {
+    row.reviewedShotCount = row.savedShotCount;
+    row.metrics =
+      index === 2
+        ? {
+            clubSpeedMph: null,
+            ballSpeedMph: null,
+            smashFactor: null,
+            maxHeightYd: null,
+            landAngleDeg: null,
+          }
+        : { ...row.metrics, ...(index === 4 ? { maxHeightYd: 0 } : {}) };
+    row.metricEvidence = Object.fromEntries(
+      ["clubSpeedMph", "ballSpeedMph", "smashFactor", "maxHeightYd", "landAngleDeg"].map(
+        (metric) => [
+          metric,
+          {
+            validCount:
+              index === 2 ? 0 : metric === "maxHeightYd" ? 1 : metric === "clubSpeedMph" ? 29 : 30,
+            selectedCount: 30,
+            measuredCount:
+              index === 2 ? 0 : metric === "clubSpeedMph" ? 10 : metric === "maxHeightYd" ? 1 : 30,
+            estimatedCount: index !== 2 && metric === "clubSpeedMph" ? 19 : 0,
+            excludedNumericCount:
+              index === 2 ? 30 : metric === "maxHeightYd" ? 29 : metric === "clubSpeedMph" ? 1 : 0,
+            shotIds: [],
+            method: "synthetic layout fixture",
+          },
+        ],
+      ),
+    );
+  });
+}
 const quickClubs = clubs.map((club) => mobileQuickBagClub(club, club.shots));
 const intelligence = buildPerformanceIntelligence(
   clubs.flatMap((club) =>

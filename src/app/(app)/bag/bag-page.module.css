@@ -75,3 +75,28 @@
     font-weight: 600;
   }
 }
+
+/* Bag readouts must use the active theme instead of legacy light-only fills. */
+.desktopSurface :global(.premium-rail-card),
+.desktopSurface :global(.trust-indicator) {
+  border-color: var(--surface-border);
+  background: linear-gradient(180deg, var(--surface-strong), var(--surface));
+  color: var(--foreground);
+}
+
+@media (max-width: 639px) {
+  /* Full labels and evidence need separate lines on a phone. */
+  .desktopSurface :global(.trust-indicator) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+
+  .desktopSurface :global(.trust-indicator > span) {
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    text-align: left;
+  }
+}
