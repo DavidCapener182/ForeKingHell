@@ -121,10 +121,20 @@ test("benchmark explanations and evidence stay inside their cells", async ({ pag
       body: '<!doctype html><html lang="en" data-theme="clubhouse"><head><title>Synthetic populated Bag regression</title></head><body style="margin:0"><div id="root"></div></body></html>',
     }),
   );
-  for (const width of [390, 768, 1280, 1795, 2048]) {
+  for (const { width, theme } of [
+    { width: 320, theme: "dark" },
+    { width: 390, theme: "dark" },
+    { width: 430, theme: "clubhouse" },
+    { width: 390, theme: "range-night" },
+    ...[768, 1280, 1795, 2048].map((width) => ({ width, theme: "clubhouse" })),
+    { width: 2048, theme: "dark" },
+  ]) {
     await page.setViewportSize({ width, height: 1000 });
-    await page.goto("https://bag-mobile.fixture/bag?tab=evidence");
+    await page.goto("https://bag-mobile.fixture/bag?tab=evidence&benchmark-edge-cases=1");
     await page.addStyleTag({ content: css.css });
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+    }, theme);
     await page.addStyleTag({ content: "body { font-family: system-ui, sans-serif; }" });
     for (const file of bundle.outputFiles.filter((f) => f.path.endsWith(".css")))
       await page.addStyleTag({ content: file.text });
@@ -140,11 +150,74 @@ test("benchmark explanations and evidence stay inside their cells", async ({ pag
         .getByRole("tab", { name: metric, exact: true });
       await metricTab.click();
       if (width < 640) {
-        if (metric === "Best 30 avg")
-          await page.screenshot({
-            path: `output/bag-benchmark-text/mobile-${width}.png`,
-            fullPage: true,
+        const carousel = page.locator("[data-mobile-benchmark-carousel]:visible").first();
+        const visibleCard = carousel.locator('[data-slot="carousel-item"]').first();
+        const clipped = await visibleCard
+          .locator(".trust-indicator > span")
+          .evaluateAll((spans) =>
+            spans
+              .filter(
+                (span) =>
+                  span.scrollWidth > span.clientWidth + 1 ||
+                  getComputedStyle(span).whiteSpace === "nowrap",
+              )
+              .map((span) => span.textContent),
+          );
+        expect(
+          clipped,
+          `${theme} ${width} ${metric}: mobile labels and values must be readable`,
+        ).toEqual([]);
+        const contrastFailures = await page
+          .locator(".trust-indicator:visible, .premium-rail-card:visible")
+          .evaluateAll((surfaces) => {
+            const rgb = (color: string) =>
+              color
+                .match(/[\d.]+/g)!
+                .slice(0, 3)
+                .map(Number);
+            const luminance = (color: number[]) =>
+              color
+                .map((v) => {
+                  const c = v / 255;
+                  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+                })
+                .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+            return surfaces.flatMap((surface) => {
+              const style = getComputedStyle(surface);
+              const fills = [...style.backgroundImage.matchAll(/rgba?\([^)]+\)/g)].map((match) =>
+                luminance(rgb(match[0])),
+              );
+              return [
+                ...surface.querySelectorAll<HTMLElement>(
+                  ".text-muted-foreground, .text-foreground, :scope > span",
+                ),
+              ]
+                .filter((node) => node.textContent?.trim())
+                .flatMap((node) => {
+                  const foreground = luminance(rgb(getComputedStyle(node).color));
+                  const ratios = fills.map(
+                    (background) =>
+                      (Math.max(foreground, background) + 0.05) /
+                      (Math.min(foreground, background) + 0.05),
+                  );
+                  return ratios.some((ratio) => ratio < 4.5)
+                    ? [node.textContent?.slice(0, 80)]
+                    : [];
+                });
+            });
           });
+        expect(
+          contrastFailures,
+          `${theme} ${metric}: mobile readout text must have readable contrast`,
+        ).toEqual([]);
+        if (metric === "Height")
+          await page
+            .locator(".premium-rail-card:visible")
+            .last()
+            .screenshot({ path: `output/bag-benchmark-text/${theme}-summary-${width}.png` });
+        await visibleCard.screenshot({
+          path: `output/bag-benchmark-text/${theme}-${metric}-${width}.png`,
+        });
         await expect(
           page.locator("[data-mobile-benchmark-carousel]:visible").first(),
         ).toBeVisible();
@@ -186,8 +259,65 @@ test("benchmark explanations and evidence stay inside their cells", async ({ pag
       await scroll.evaluate((element) => {
         element.scrollLeft = 0;
       });
-      if (metric === "Best 30 avg")
-        await table.screenshot({ path: `output/bag-benchmark-text/carry-${width}.png` });
+      const rows = await table
+        .locator("tbody tr")
+        .evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height));
+      expect(
+        Math.max(...rows),
+        `${width} ${metric}: closed evidence must stay compact`,
+      ).toBeLessThan(180);
+      const tickCollisions = await table
+        .locator('[data-column="benchmark-band"], [data-column="metric-band"]')
+        .evaluateAll((cells) =>
+          cells.flatMap((cell) => {
+            const ticks = [...cell.querySelectorAll("[data-benchmark-tick]")].map((tick) =>
+              tick.getBoundingClientRect(),
+            );
+            return ticks.some((tick, i) => i > 0 && tick.left < ticks[i - 1].right - 1)
+              ? [cell.textContent]
+              : [];
+          }),
+        );
+      expect(tickCollisions, `${width} ${metric}: scale labels must remain separate`).toEqual([]);
+      const overflowingTicks = await table
+        .locator("[data-benchmark-tick]")
+        .evaluateAll((ticks) =>
+          ticks
+            .filter(
+              (tick) => tick.getBoundingClientRect().height > tick.parentElement!.clientHeight + 1,
+            )
+            .map((tick) => tick.textContent),
+        );
+      expect(overflowingTicks, `${width} ${metric}: labels must fit within the legend`).toEqual([]);
+      await table.screenshot({ path: `output/bag-benchmark-text/${theme}-${metric}-${width}.png` });
+      if (metric === "Height" || metric === "Club speed") {
+        const disclosure = table.locator("details[data-benchmark-evidence-details]").first();
+        await disclosure.locator("summary").focus();
+        await disclosure.locator("summary").press("Enter");
+        await expect(disclosure.locator("p")).toContainText("excluded from this metric comparison");
+        await expect(disclosure.locator("p")).toBeVisible();
+        if (width === 2048 && theme === "clubhouse")
+          await disclosure.screenshot({
+            path: `output/bag-benchmark-text/${metric}-provenance-expanded.png`,
+          });
+        await disclosure.locator("summary").click();
+        if (width === 2048 && theme === "clubhouse") {
+          const pendingDownload = page.waitForEvent("download");
+          await page.getByRole("button", { name: "Export", exact: true }).click();
+          const download = await pendingDownload;
+          const csv = readFileSync((await download.path())!, "utf8");
+          expect(csv).toContain("excluded from this metric comparison.");
+          expect(csv).not.toContain("excluded · details");
+        }
+      }
+      if (metric === "Height") {
+        await expect(
+          table.locator('tbody td[data-column="current-value"]').filter({ hasText: /^0 yd$/ }),
+        ).toHaveCount(1);
+        await expect(
+          table.locator('tbody td[data-column="current-value"]').filter({ hasText: /^--$/ }),
+        ).toHaveCount(1);
+      }
     }
   }
   expect(errors).toEqual([]);

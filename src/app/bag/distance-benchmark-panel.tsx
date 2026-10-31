@@ -163,8 +163,8 @@ const COMPARISON_METRICS = METRICS.filter((metric) => metric.key !== "carryYd");
 const PEER_TAB_VALUE = "peers";
 const BENCHMARK_TAB_VALUES = [...METRICS.map((metric) => metric.key), PEER_TAB_VALUE];
 const BENCHMARK_TAB_WIDTH_REM = 8;
-const BENCHMARK_TABLE_CLASS = "min-w-[1400px] table-fixed";
-const BENCHMARK_TABLE_COLUMN_WIDTHS = ["6%", "13%", "9%", "9%", "18%", "27%", "10%", "8%"];
+const BENCHMARK_TABLE_CLASS = "min-w-[1600px] table-fixed";
+const BENCHMARK_TABLE_COLUMN_WIDTHS = ["6%", "12%", "9%", "8%", "15%", "24%", "10%", "16%"];
 const PEER_METRIC_KEYS: ClubBenchmarkMetricKey[] = [
   "carryYd",
   "clubSpeedMph",
@@ -719,9 +719,7 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
                 <TableHead data-column="next">Next</TableHead>
                 <TableHead data-column="benchmark-band">Benchmark band</TableHead>
                 <TableHead data-column="tour-anchor">Tour anchor</TableHead>
-                <TableHead data-column="sample" className="text-right">
-                  Evidence
-                </TableHead>
+                <TableHead data-column="sample">Evidence</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -769,7 +767,7 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
                   </TableCell>
                   <TableCell
                     data-column="sample"
-                    className="whitespace-normal text-right leading-5 [overflow-wrap:anywhere]"
+                    className="whitespace-normal text-left leading-5 [overflow-wrap:anywhere]"
                   >
                     <span className="block font-medium">{row.sampleSize} used</span>
                     <span className="block text-xs text-muted-foreground">
@@ -918,9 +916,7 @@ function LevelMetricContent({
                 <TableHead data-column="metric-target">{metricTargetLabel(metric)}</TableHead>
                 <TableHead data-column="metric-band">{metricBandLabel(metric)}</TableHead>
                 <TableHead data-column="tour-anchor">Tour anchor</TableHead>
-                <TableHead data-column="sample" className="text-right">
-                  Evidence
-                </TableHead>
+                <TableHead data-column="sample">Evidence</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -970,12 +966,19 @@ function LevelMetricContent({
                   </TableCell>
                   <TableCell
                     data-column="sample"
-                    className="whitespace-normal text-right leading-5 [overflow-wrap:anywhere]"
+                    data-workbench-export-value={[
+                      metricCoverageText(comparison.row, metric.key),
+                      metricEvidenceExplanation(comparison.row, metric.key),
+                      benchmarkSavedEvidenceText(comparison.row),
+                    ]
+                      .filter(Boolean)
+                      .join("\n")}
+                    className="whitespace-normal text-left leading-5 [overflow-wrap:anywhere]"
                   >
                     <span className="block font-medium">
                       {metricCoverageText(comparison.row, metric.key)}
                     </span>
-                    <MetricEvidenceDisclosure row={comparison.row} metric={metric.key} />
+                    <MetricEvidenceDisclosure row={comparison.row} metric={metric.key} compact />
                     <span className="block text-xs text-muted-foreground">
                       {benchmarkSavedEvidenceText(comparison.row)}
                     </span>
@@ -1313,7 +1316,7 @@ function BenchmarkScaleLabels({ labels }: { labels: string[] }) {
           </span>
         ))}
       </div>
-      <div className="relative hidden h-4 text-[10px] leading-4 text-muted-foreground sm:block">
+      <div className="relative hidden h-10 text-[10px] leading-3 text-muted-foreground sm:block">
         {labels.map((label, index) => {
           const position = (index / Math.max(1, labels.length - 1)) * 100;
           const alignmentClass =
@@ -1326,10 +1329,12 @@ function BenchmarkScaleLabels({ labels }: { labels: string[] }) {
           return (
             <span
               key={`${label}-${index}`}
-              className={`absolute top-0 whitespace-nowrap ${alignmentClass}`}
+              data-benchmark-tick
+              className={`absolute top-0 whitespace-normal [overflow-wrap:anywhere] ${alignmentClass} ${index === 0 ? "w-[12.5%] text-left" : index === labels.length - 1 ? "w-[12.5%] text-right" : "w-1/4 text-center"}`}
               style={{ left: `${position}%` }}
             >
-              {label}
+              <span className="block">{benchmarkScaleShortLabel(label)}</span>
+              <span className="block">{label.slice(label.indexOf(" ") + 1)}</span>
             </span>
           );
         })}
@@ -1969,22 +1974,50 @@ function metricMissingText(row: ClubBenchmarkRow, metric: MetricDefinition) {
 function MetricEvidenceDisclosure({
   row,
   metric,
+  compact = false,
 }: {
   row: ClubBenchmarkRow;
   metric: ClubBenchmarkMetricKey;
+  compact?: boolean;
 }) {
   const excludedCount = row.metricEvidence?.[metric]?.excludedNumericCount ?? 0;
   if (excludedCount === 0) {
     return null;
   }
 
-  return (
+  const explanation = (
     <p className="mt-1 text-xs leading-5 text-muted-foreground">
-      {metric === "maxHeightYd"
-        ? "Stored height excluded: units or provenance do not support comparison."
-        : "Stored readings excluded: metric provenance does not support comparison."}{" "}
-      {excludedCount} numeric {excludedCount === 1 ? "reading" : "readings"} excluded from this
-      metric comparison.
+      {metricEvidenceExplanation(row, metric)}
     </p>
   );
+
+  return compact ? (
+    <details
+      className="mt-1 text-xs font-normal text-muted-foreground"
+      data-benchmark-evidence-details
+    >
+      <summary
+        className="focus-aaa cursor-pointer rounded-sm leading-5 underline-offset-4 hover:underline"
+        onKeyDown={(event) => {
+          // Keep table-row shortcuts from consuming native disclosure activation.
+          if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+        }}
+      >
+        {excludedCount} excluded · details
+      </summary>
+      {explanation}
+    </details>
+  ) : (
+    explanation
+  );
+}
+
+function metricEvidenceExplanation(row: ClubBenchmarkRow, metric: ClubBenchmarkMetricKey) {
+  const excludedCount = row.metricEvidence?.[metric]?.excludedNumericCount ?? 0;
+  if (excludedCount === 0) return null;
+  const reason =
+    metric === "maxHeightYd"
+      ? "Stored height excluded: units or provenance do not support comparison."
+      : "Stored readings excluded: metric provenance does not support comparison.";
+  return `${reason} ${excludedCount} numeric ${excludedCount === 1 ? "reading" : "readings"} excluded from this metric comparison.`;
 }

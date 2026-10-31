@@ -711,7 +711,9 @@ function tableToCsv(table: HTMLTableElement) {
         (cell) => getComputedStyle(cell).display !== "none",
       );
 
-      return cells.map((cell) => csvCell(cell.innerText)).join(",");
+      return cells
+        .map((cell) => csvCell(cell.dataset.workbenchExportValue ?? cell.innerText))
+        .join(",");
     })
     .join("\n");
 }
