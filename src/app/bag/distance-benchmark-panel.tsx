@@ -751,17 +751,26 @@ function CarryBenchmarkContent({ rows }: { rows: ClubBenchmarkRow[] }) {
                   <TableCell data-column="level">
                     <BenchmarkBadge row={row} />
                   </TableCell>
-                  <TableCell data-column="next" className="text-sm text-muted-foreground">
+                  <TableCell
+                    data-column="next"
+                    className="whitespace-normal text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]"
+                  >
                     <span className="block">{benchmarkNextText(row)}</span>
                     <span className="block text-xs">{benchmarkAdvanceText(row)}</span>
                   </TableCell>
                   <TableCell data-column="benchmark-band">
                     <BenchmarkMeter row={row} />
                   </TableCell>
-                  <TableCell data-column="tour-anchor" className="text-sm text-muted-foreground">
+                  <TableCell
+                    data-column="tour-anchor"
+                    className="whitespace-normal text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]"
+                  >
                     {tourAnchorText(row, CARRY_METRIC)}
                   </TableCell>
-                  <TableCell data-column="sample" className="text-right">
+                  <TableCell
+                    data-column="sample"
+                    className="whitespace-normal text-right leading-5 [overflow-wrap:anywhere]"
+                  >
                     <span className="block font-medium">{row.sampleSize} used</span>
                     <span className="block text-xs text-muted-foreground">
                       {benchmarkSavedEvidenceText(row)}
@@ -944,16 +953,25 @@ function LevelMetricContent({
                   <TableCell data-column="metric-level">
                     <MetricLevelBadge comparison={comparison} metric={metric} />
                   </TableCell>
-                  <TableCell data-column="metric-target" className="text-sm text-muted-foreground">
+                  <TableCell
+                    data-column="metric-target"
+                    className="whitespace-normal text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]"
+                  >
                     {metricNextText(comparison, metric)}
                   </TableCell>
                   <TableCell data-column="metric-band">
                     <MetricLevelMeter comparison={comparison} metric={metric} />
                   </TableCell>
-                  <TableCell data-column="tour-anchor" className="text-sm text-muted-foreground">
+                  <TableCell
+                    data-column="tour-anchor"
+                    className="whitespace-normal text-sm leading-5 text-muted-foreground [overflow-wrap:anywhere]"
+                  >
                     {comparison.tourAnchorLabel}
                   </TableCell>
-                  <TableCell data-column="sample" className="text-right">
+                  <TableCell
+                    data-column="sample"
+                    className="whitespace-normal text-right leading-5 [overflow-wrap:anywhere]"
+                  >
                     <span className="block font-medium">
                       {metricCoverageText(comparison.row, metric.key)}
                     </span>
