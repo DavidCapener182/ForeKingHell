@@ -66,7 +66,8 @@ describe("latest practice desktop dashboard", () => {
     expect(primaryAnswerSource).toContain("Why this recommendation?");
     expect(primaryAnswerSource).toContain("evidenceOpen ? evidenceContent : null");
     expect(companionSource).toContain("getTodayPracticeData({");
-    expect(companionSource).toContain("practiceOnly: true");
+    expect(companionSource).toContain("practiceOnly: false");
+    expect(source).toContain("practiceOnly: false");
     expect(companionSource).toContain('scope: "day"');
     expect(companionSource).toContain("const latestShots = latestData?.rawShots ?? []");
     expect(companionSource).toContain("preferredClub={recommendation.clubType}");
