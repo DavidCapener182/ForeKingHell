@@ -150,7 +150,7 @@ describe("mobile post-practice review", () => {
     expect(getTodayPracticeData).toHaveBeenCalledWith({
       date: undefined,
       scope: "day",
-      practiceOnly: true,
+      practiceOnly: false,
     });
     expect(html).toContain("Practice complete · Today");
     expect(html).toContain("data-today-progress-report");
@@ -253,7 +253,7 @@ describe("mobile post-practice review", () => {
     expect(getTodayPracticeData).toHaveBeenCalledWith({
       date: "2026-09-05",
       scope: "day",
-      practiceOnly: true,
+      practiceOnly: false,
     });
     expect(getTodayProgressHistory).toHaveBeenCalledWith({ beforeDateKey: "2026-09-05" });
     expect(html).toContain("Practice review · Saturday, 5 September 2026");

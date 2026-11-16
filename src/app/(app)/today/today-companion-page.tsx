@@ -90,7 +90,7 @@ export default async function TodayCompanionPage({
       sessionId: sessionParam && sessionParam !== "all" ? sessionParam : undefined,
       club: clubParam,
       scope: sessionParam && sessionParam !== "all" ? "session" : "day",
-      practiceOnly: true,
+      practiceOnly: false,
     }).catch(() => null),
   ]);
   const recommendation = buildTodayRecommendation(context);
@@ -336,6 +336,7 @@ export default async function TodayCompanionPage({
                           key={reviewPatternPoints.map((point) => point.id).join(",")}
                           points={reviewPatternPoints}
                           defaultToAllClubs
+                          defaultToAllShots
                           details={shotDetails}
                           correctionClubs={correctionClubs}
                         />
@@ -423,6 +424,7 @@ export default async function TodayCompanionPage({
                   <MobileShotPatternCharts
                     points={evidencePatternPoints}
                     defaultToAllClubs
+                    defaultToAllShots
                     details={shotDetails}
                     correctionClubs={correctionClubs}
                   />

@@ -300,7 +300,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
       date: first(params.date),
       sessionId: normaliseAllValue(first(params.session)),
       club: requestedClub,
-      practiceOnly: true,
+      practiceOnly: false,
     }),
     socialLoaded ? getChallengesPageData() : Promise.resolve(null),
     getPracticePlannerContext(userId, { compactTraining: true, includeSpeed: false }),
@@ -368,7 +368,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const shotDatabaseHref = shotDatabaseLink(data);
   const chartShots = toChartShots(selectedReviewShots, chartShotDetails);
   const chartClubStatuses = toChartClubStatuses(selectedReviewComparisons);
-  const chartPatternInsight = shotPatternInsight(selectedReviewComparisons);
+  const chartPatternInsight = shotPatternInsight(data.clubComparisons);
   const clubSort = parseClubSort(first(params.clubSort));
   const sortedClubComparisons = sortClubComparisons(selectedReviewComparisons, clubSort);
   const activeFilterChips = buildTodayFilterChips(data);
@@ -483,7 +483,10 @@ function TodayDesktopDashboard({
   handicapSource: string;
   recentActivity: TodayHomeActivity[];
 }) {
-  const hasShots = data.shots.length > 0;
+  const hasShots = data.rawShots.length > 0;
+  const importedShotCount = integerFormatter.format(data.rawShots.length);
+  const selectedSessionId =
+    data.filters.sessionId || (data.sessions.length === 1 ? data.sessions[0].id : "");
 
   return (
     <div
@@ -544,14 +547,18 @@ function TodayDesktopDashboard({
           title={hasShots ? chartPatternInsight : "Your next measured pattern starts here"}
           description={
             hasShots
-              ? `${data.dateLabel} · ${integerFormatter.format(data.shots.length)} trusted shots · ${selectedClubLabel(data)}`
+              ? `${data.dateLabel} · ${integerFormatter.format(data.shots.length)} trusted · ${importedShotCount} imported · ${selectedClubLabel(data)}`
               : "Import a launch-monitor session to reveal dispersion, carry consistency and the next club pattern."
           }
           action={
-            data.sessions[0]?.id ? (
+            hasShots ? (
               <Button asChild variant="ghost" className="px-0 text-primary">
-                <Link href={`/sessions/${data.sessions[0].id}`} prefetch={false}>
-                  Open session <ArrowRight className="size-4" />
+                <Link
+                  href={selectedSessionId ? `/sessions/${selectedSessionId}` : shotDatabaseHref}
+                  prefetch={false}
+                >
+                  {selectedSessionId ? "Open session" : "Open shots"}{" "}
+                  <ArrowRight className="size-4" />
                 </Link>
               </Button>
             ) : null
@@ -1351,11 +1358,11 @@ function TodayDesktopFilterBar({
   return (
     <div id="today-review-controls" className={`scroll-mt-28 ${className}`}>
       <DataToolbar
-        resultLabel={`${integerFormatter.format(data.shots.length)} ${reviewMode === "clean" ? "trusted" : "imported"} shots`}
+        resultLabel={`${integerFormatter.format(reviewShots(data, reviewMode).length)} ${reviewMode === "clean" ? "trusted" : "imported"} shots`}
         filters={
           <form className="grid min-w-0 flex-1 gap-2 md:grid-cols-[minmax(150px,190px)_minmax(220px,1fr)_minmax(150px,220px)_auto_auto] md:items-end">
             <input type="hidden" name="view" value="practice" />
-            <input type="hidden" name="evidence" value={reviewMode === "raw" ? "raw" : ""} />
+            <input type="hidden" name="evidence" value={reviewMode === "clean" ? "trusted" : ""} />
             <TodayScopeFields data={data} />
             <Button type="submit" className="h-9 rounded-lg">
               Apply
@@ -3816,8 +3823,8 @@ function todayReviewModeHref(data: TodayPracticeData, sort: ClubSort, mode: Prac
   if (sort !== "bag") {
     params.set("clubSort", sort);
   }
-  if (mode === "raw") {
-    params.set("evidence", "raw");
+  if (mode === "clean") {
+    params.set("evidence", "trusted");
   }
 
   return `/today?${params.toString()}#today-review-controls`;
@@ -3886,7 +3893,7 @@ function parseClubSort(value: string): ClubSort {
 }
 
 function parsePracticeReviewMode(value: string): PracticeReviewMode {
-  return value === "raw" ? "raw" : "clean";
+  return value === "trusted" ? "clean" : "raw";
 }
 
 function sortClubComparisons(comparisons: ClubDayComparison[], sort: ClubSort) {
