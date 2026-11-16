@@ -177,6 +177,9 @@ export function TodayShotCharts({
       }));
   }, [selectedClub, shots, showOutliers]);
   const selectedShot = visibleShots.find((shot) => shot.id === selectedShotId) ?? null;
+  const longestTotalShot = visibleShots.reduce<ChartPoint | null>((best, shot) => {
+    return isNumber(shot.totalYd) && shot.totalYd > (best?.totalYd ?? 0) ? shot : best;
+  }, null);
   const visibleClubCount =
     selectedClub === "all" ? clubGroups.length : visibleShots.length > 0 ? 1 : 0;
   const dispersionSummary = buildDispersionChartSummary(visibleShots);
@@ -197,10 +200,21 @@ export function TodayShotCharts({
           <div>
             <CardTitle>Shot patterns</CardTitle>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>{visibleShots.length} shots</span>
-            <span>/</span>
-            <span>{visibleClubCount} clubs</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            {longestTotalShot ? (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="h-auto p-0"
+                onClick={() => setSelectedShotId(longestTotalShot.id)}
+              >
+                Longest total · {formatNullable(longestTotalShot.totalYd)}
+              </Button>
+            ) : null}
+            <span>
+              {visibleShots.length} shots / {visibleClubCount} clubs
+            </span>
           </div>
         </div>
       </CardHeader>
@@ -354,7 +368,7 @@ export function TodayShotCharts({
               label: `${shot.clubLabel} · Shot ${shot.shotNumber ?? "unavailable"} · ${shot.carryYd === null ? "carry unavailable" : `${numberFormatter.format(shot.carryYd)} yd carry`}`,
             })),
           ]}
-          description="Select here or tap a plotted shot to inspect the same source record."
+          description="The charts use carry distance. Select a shot to see its carry and total."
         />
         <div
           className={cn(

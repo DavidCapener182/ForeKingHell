@@ -61,6 +61,34 @@ beforeEach(() => {
 });
 
 describe("explicit session evidence scope", () => {
+  it("defaults Today to the latest measured date even when it contains only round shots", async () => {
+    const dateQuery = query([{ dateKey: "2026-08-22" }]);
+    const roundShots = ["round", "real_round", "simulator", "simulated_course"].map(
+      (sessionType) => ({
+        ...neighbouringShot,
+        id: `${sessionType}-shot`,
+        sessionId: `${sessionType}-session`,
+        sessionType,
+        reviewStatus: "suggested_exclusion",
+      }),
+    );
+    const select = vi
+      .fn()
+      .mockReturnValueOnce(dateQuery)
+      .mockReturnValueOnce(query(roundShots))
+      .mockReturnValue(query([]));
+    vi.mocked(getDb).mockReturnValue({ select } as unknown as ReturnType<typeof getDb>);
+
+    const data = await getTodayPracticeData({ practiceOnly: false });
+    expect(data.dateKey).toBe("2026-08-22");
+    expect(data.rawShots.map((shot) => shot.id)).toEqual(roundShots.map((shot) => shot.id));
+    expect(data.shots).toEqual([]);
+    expect(data.sessions).toHaveLength(4);
+    expect(new PgDialect().sqlToQuery(dateQuery.where.mock.calls[0][0]!).sql).not.toContain(
+      "not in",
+    );
+  });
+
   it("preserves an owned club scope with no shots and a zero-shot filter option", async () => {
     const ownedClub = query([{ type: "driver" }]);
     const select = vi

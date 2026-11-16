@@ -59,6 +59,7 @@ export function MobileShotPatternCharts({
   preferredClub,
   compact = false,
   defaultToAllClubs = false,
+  defaultToAllShots = false,
   layout = "mobile",
   details = [],
   correctionClubs = [],
@@ -67,6 +68,7 @@ export function MobileShotPatternCharts({
   preferredClub?: string | null;
   compact?: boolean;
   defaultToAllClubs?: boolean;
+  defaultToAllShots?: boolean;
   layout?: "mobile" | "desktop";
   details?: ShotMasterDetailRow[];
   correctionClubs?: Array<{ value: string; label: string }>;
@@ -81,7 +83,7 @@ export function MobileShotPatternCharts({
   const [club, setClub] = useState(() =>
     defaultToAllClubs && clubs.length > 1 ? "all" : defaultShotPatternClub(clubs, preferredClub),
   );
-  const [trustedOnly, setTrustedOnly] = useState(true);
+  const [trustedOnly, setTrustedOnly] = useState(!defaultToAllShots);
   const [selectedShot, setSelectedShot] = useState<ShotPatternPoint | null>(null);
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {

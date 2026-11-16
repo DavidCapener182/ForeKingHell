@@ -261,6 +261,7 @@ export async function getTodayPracticeData(
   const userId = await requireCurrentUserId();
   const requestedDate = filters.date;
   const hasExplicitDate = validDateKey(requestedDate);
+  const practiceOnly = filters.practiceOnly ?? (!hasExplicitDate && !filters.sessionId);
   let dateKey = hasExplicitDate ? requestedDate : localDateKey(new Date());
 
   if (!hasExplicitDate && filters.sessionId) {
@@ -270,13 +271,10 @@ export async function getTodayPracticeData(
       dateKey = sessionDateKey;
     }
   } else if (!hasExplicitDate) {
-    dateKey = (await findDefaultPracticeDateKey(db, userId, dateKey)) ?? dateKey;
+    dateKey = (await findDefaultPracticeDateKey(db, userId, dateKey, practiceOnly)) ?? dateKey;
   }
 
   const bounds = dayBounds(dateKey);
-  const practiceOnly = filters.practiceOnly ?? (!hasExplicitDate && !filters.sessionId);
-  // Filter before deriving sessions, counts, comparisons and charts so a round in progress
-  // cannot become part of a completed-practice review. Other review routes retain all types.
   const allTodayRows = toShotRows(await fetchPracticeRowsForBounds(db, userId, bounds)).filter(
     (shot) => !practiceOnly || !isRoundSessionType(shot.sessionType),
   );
@@ -434,12 +432,11 @@ async function findDefaultPracticeDateKey(
   db: ReturnType<typeof getDb>,
   userId: string,
   currentDateKey: string,
+  practiceOnly: boolean,
 ) {
   const practiceDateKey = sql<string>`to_char(${shots.shotAt} at time zone 'Europe/London', 'YYYY-MM-DD')`;
 
-  // A saved practice day remains the review after midnight, even with few shots or
-  // every shot excluded from scoring. Empty uploads, rounds and future days cannot
-  // replace it; club filters and verdict sample thresholds do not change its date.
+  // Keep the latest day with saved evidence even if no shots are eligible for scoring.
   const [practiceDay] = await db
     .select({ dateKey: practiceDateKey })
     .from(shots)
@@ -450,7 +447,7 @@ async function findDefaultPracticeDateKey(
         eq(shots.userId, userId),
         eq(sessions.userId, userId),
         eq(clubs.userId, userId),
-        notInArray(sessions.type, [...roundSessionTypes]),
+        practiceOnly ? notInArray(sessions.type, [...roundSessionTypes]) : undefined,
         lt(shots.shotAt, dayBounds(currentDateKey).end),
       ),
     )

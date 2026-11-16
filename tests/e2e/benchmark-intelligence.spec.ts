@@ -11,6 +11,8 @@ test("synthetic benchmark intelligence: modes, honest cohorts, keyboard and resp
   test.skip(info.project.name !== "chromium", "Explicit four-width Chromium acceptance matrix");
   test.setTimeout(180000);
   page.setDefaultTimeout(10000);
+  // The synthetic sessions are dated in October 2026, so relative ranges need the same clock.
+  await page.clock.setFixedTime(new Date("2026-10-18T12:00:00Z"));
   const bundle = await build({
     entryPoints: ["tests/fixtures/ui-upgrade/benchmark-intelligence.tsx"],
     bundle: true,
