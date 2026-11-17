@@ -29,7 +29,7 @@ The original Today layout opened with club selectors, metric tabs and comparison
 | --- | --- |
 | Desktop Today | A dated recap presents the measured takeaway, imported and included shot counts, and links to the longest eligible carry and closest eligible shot to the target line when available. The next practice plan, course and goal sit alongside it on wider screens. |
 | Phone Today | A stationary practice card leads into a next action. The evidence drawer, offline queue status and retry remain accessible. |
-| Detailed analysis | Club trends, Shot patterns and Practice review open independently. Links retain the date, club and session selection. History and shot-detail queries run for the relevant views. |
+| Detailed analysis | Dispersion and ball flight appear beneath the recap. Chart controls open on demand. Club trends and Practice review have dedicated views. Links retain the date, club and session selection. Historical club comparisons are requested when Club trends opens. |
 | Rounds | An in-progress round can be resumed. When the latest activity is a scored round, its score comes first. The golfer can expand the scorecard and round statistics. |
 | Finding answers | Search recognises questions such as “am I improving”, “what changed between sessions” and “how far do I hit each club”. Mobile Quick Bag gives a next step when full-swing evidence is limited and presents one offline snapshot notice. |
 

@@ -154,7 +154,7 @@ describe("mobile post-practice review", () => {
     });
     expect(html).toContain("Practice complete · Today");
     expect(html).not.toContain("data-today-progress-report");
-    expect(html).not.toContain("Interactive shot patterns");
+    expect(html).toContain("Interactive shot patterns");
     expect(html).toContain("Next practice");
     expect(getTodayProgressHistory).not.toHaveBeenCalled();
     const analysis = renderToStaticMarkup(
@@ -197,7 +197,7 @@ describe("mobile post-practice review", () => {
     expect(getTodayPracticeData).toHaveBeenCalledTimes(1);
     expect(html).toContain("Your latest practice");
     expect(html).toContain("Sunday, 6 September 2026");
-    expect(html).toContain("Shot patterns");
+    expect(html).toContain("Dispersion &amp; ball flight");
     expect(html).toContain("Next practice");
     expect(html).not.toContain("Practice complete · Today");
     expect(html).not.toContain("For your next session");
@@ -237,7 +237,7 @@ describe("mobile post-practice review", () => {
       await TodayCompanionPage({ searchParams: Promise.resolve({ panel: "trends" }) }),
     );
     expect(trends).toContain("Practice comparison couldn’t load");
-    expect(html).toContain("Shot patterns");
+    expect(html).toContain("Dispersion &amp; ball flight");
     expect(html).toContain("Practice complete · Today");
   });
 
@@ -261,7 +261,7 @@ describe("mobile post-practice review", () => {
     expect(getTodayProgressHistory).toHaveBeenCalledWith({ beforeDateKey: "2026-09-05" });
     expect(html).toContain("Practice review · Saturday, 5 September 2026");
     expect(html).not.toContain("Practice complete · Today");
-    expect(html).toContain("Shot patterns");
+    expect(html).toContain("Dispersion &amp; ball flight");
   });
 
   it("does not present yesterday or a future day as practice completed today", () => {

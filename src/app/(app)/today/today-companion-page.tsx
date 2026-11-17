@@ -164,7 +164,7 @@ export default async function TodayCompanionPage({
 
   const change = buildMobileTodayChange(latestData);
   const [shotDetails, clubOptions, progressHistory] = await Promise.all([
-    panel === "patterns" || panel === "analysis"
+    panel !== "trends"
       ? getTodayShotDetailRows({ userId, shotIds: latestShots.map((shot) => shot.id) })
       : Promise.resolve([]),
     getDb()
@@ -364,8 +364,9 @@ export default async function TodayCompanionPage({
             ) : null}
           </>
         ) : null}
-        {panel === "patterns" ? (
-          <MobileSection title="Shot patterns">
+        {panel === "patterns" || panel === "home" ? (
+          <section id="today-shot-patterns" className="grid scroll-mt-20 gap-3">
+            <h2 className="text-xl font-semibold">Dispersion &amp; ball flight</h2>
             {evidencePatternPoints.length ? (
               <MobileShotPatternCharts
                 points={evidencePatternPoints}
@@ -377,8 +378,17 @@ export default async function TodayCompanionPage({
             ) : (
               <p>No measured shot coordinates in this selection.</p>
             )}
-            <BestShotsEntry />
-          </MobileSection>
+            {panel === "patterns" ? (
+              <BestShotsEntry />
+            ) : (
+              <Link
+                className="inline-flex min-h-11 items-center text-sm font-semibold text-primary"
+                href={todayPanelHref(params, "patterns")}
+              >
+                More shot details and club records
+              </Link>
+            )}
+          </section>
         ) : null}
         {panel === "analysis" ? (
           <TodayWorkspaceTabs

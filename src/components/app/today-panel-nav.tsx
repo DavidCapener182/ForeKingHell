@@ -1,5 +1,14 @@
 import Link from "next/link";
+import { CalendarDays, ChartNoAxesCombined, ClipboardList, ScanLine } from "lucide-react";
 import { todayPanelHref, todayPanels, type TodayPanel } from "@/lib/today-panels";
+import styles from "./today-panel-nav.module.css";
+
+const views = {
+  home: { icon: CalendarDays, detail: "Latest practice and next steps" },
+  patterns: { icon: ScanLine, detail: "Shot landings and trajectories" },
+  trends: { icon: ChartNoAxesCombined, detail: "Compare clubs over time" },
+  analysis: { icon: ClipboardList, detail: "Verdict, drills and shot evidence" },
+};
 
 export function TodayPanelNav({
   params,
@@ -9,21 +18,26 @@ export function TodayPanelNav({
   selected: TodayPanel;
 }) {
   return (
-    <nav
-      aria-label="Practice views"
-      className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-card p-1 sm:flex sm:w-fit"
-    >
-      {(Object.keys(todayPanels) as TodayPanel[]).map((panel) => (
-        <Link
-          key={panel}
-          href={todayPanelHref(params, panel)}
-          prefetch={false}
-          aria-current={selected === panel ? "page" : undefined}
-          className={`flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-semibold ${selected === panel ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-        >
-          {todayPanels[panel]}
-        </Link>
-      ))}
+    <nav aria-label="Practice views" className={styles.nav}>
+      {(Object.keys(views) as TodayPanel[]).map((panel) => {
+        const { icon: Icon, detail } = views[panel];
+        return (
+          <Link
+            key={panel}
+            href={todayPanelHref(params, panel)}
+            aria-current={selected === panel ? "page" : undefined}
+            aria-label={todayPanels[panel]}
+            prefetch={false}
+            className={styles.link}
+          >
+            <Icon size={19} aria-hidden />
+            <span>
+              <strong>{todayPanels[panel]}</strong>
+              <small>{detail}</small>
+            </span>
+          </Link>
+        );
+      })}
     </nav>
   );
 }

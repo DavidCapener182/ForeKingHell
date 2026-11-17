@@ -135,9 +135,9 @@ describe("latest practice desktop dashboard", () => {
     expect(source).toContain("<TodayWorkspaceTabs");
     expect(tabsSource).toContain("<UntitledTabs");
     for (const [id, label] of [
-      ["overview", "Overview"],
-      ["practice", "Practice"],
-      ["evidence", "Evidence"],
+      ["overview", "Session verdict"],
+      ["practice", "Practice plan"],
+      ["evidence", "Shot evidence"],
       ["data-quality", "Data quality"],
     ]) {
       expect(tabsSource).toContain(`{ id: "${id}", label: "${label}" }`);

@@ -358,7 +358,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Search
   const selectedReviewComparisons = reviewComparisons(data, reviewMode);
   const selectedReviewShots = reviewShots(data, reviewMode);
   const chartShotDetails =
-    panel === "patterns"
+    panel === "home" || panel === "patterns"
       ? await getTodayShotDetailRows({
           userId,
           shotIds: selectedReviewShots.map((shot) => shot.id),
@@ -570,12 +570,16 @@ function TodayDesktopDashboard({
           </details>
         </>
       ) : null}
-      {panel === "patterns" ? (
+      {panel === "home" || panel === "patterns" ? (
         <>
-          <section className="grid gap-4" aria-labelledby="latest-performance-heading">
+          <section
+            id="today-shot-patterns"
+            className="grid scroll-mt-20 gap-3"
+            aria-labelledby="latest-performance-heading"
+          >
             <EditorialSectionHeading
               eyebrow="Latest performance"
-              title={hasShots ? chartPatternInsight : "Your next measured pattern starts here"}
+              title="Dispersion & ball flight"
               description={
                 hasShots
                   ? `${data.dateLabel} · ${integerFormatter.format(data.shots.length)} trusted · ${importedShotCount} imported · ${selectedClubLabel(data)}`
@@ -595,7 +599,7 @@ function TodayDesktopDashboard({
                 ) : null
               }
             />
-            <TodayDataQuality shots={data.rawShots} compact />
+
             {hasShots ? (
               <TodayShotCharts
                 correctionClubs={correctionClubs}
@@ -615,8 +619,9 @@ function TodayDesktopDashboard({
               </Card>
             )}
           </section>
+          {panel === "patterns" ? <TodayDataQuality shots={data.rawShots} compact /> : null}
 
-          {data.rawShots.some((shot) => shot.clubType === "driver") ? (
+          {panel === "patterns" && data.rawShots.some((shot) => shot.clubType === "driver") ? (
             <details className="rounded-xl border border-border bg-card p-3">
               <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">
                 Driver development · {data.dateLabel}
@@ -625,7 +630,16 @@ function TodayDesktopDashboard({
             </details>
           ) : null}
 
-          <BestShotsEntry />
+          {panel === "patterns" ? (
+            <BestShotsEntry />
+          ) : (
+            <Link
+              href={todayPanelHref(params, "patterns")}
+              className="inline-flex min-h-11 w-fit items-center gap-2 font-semibold text-primary"
+            >
+              More shot details and club records <ArrowRight className="size-4" aria-hidden />
+            </Link>
+          )}
         </>
       ) : null}
       {panel === "home" ? (

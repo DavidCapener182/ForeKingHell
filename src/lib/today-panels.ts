@@ -3,7 +3,7 @@ type TodayParams = Record<string, string | string[] | undefined>;
 export const todayPanels = {
   home: "Summary",
   trends: "Club trends",
-  patterns: "Shot patterns",
+  patterns: "Dispersion & ball flight",
   analysis: "Practice review",
 } as const;
 export type TodayPanel = keyof typeof todayPanels;

@@ -219,162 +219,176 @@ export function TodayShotCharts({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Alert className="border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-success-foreground)]">
-          <Check className="size-4" aria-hidden />
-          <AlertDescription className="font-medium">
-            Pattern detected: {patternInsight}
-          </AlertDescription>
-        </Alert>
+        <details className="rounded-lg border border-border">
+          <summary className="min-h-11 cursor-pointer px-3 py-2.5 text-sm font-semibold">
+            Chart controls ·{" "}
+            {selectedClub === "all"
+              ? "All clubs"
+              : (clubGroups.find((group) => group.clubType === selectedClub)?.clubLabel ??
+                selectedClub)}{" "}
+            · {trajectoryView === "shots" ? "Individual shots" : "Club averages"}
+          </summary>
+          <div className="space-y-4 border-t border-border p-3">
+            <Alert className="border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-success-foreground)]">
+              <Check className="size-4" aria-hidden />
+              <AlertDescription className="font-medium">
+                Pattern detected: {patternInsight}
+              </AlertDescription>
+            </Alert>
 
-        <ToggleGroup
-          type="single"
-          value={selectedClub}
-          onValueChange={(value) => {
-            if (!value) return;
-            setSelectedClub(value);
-            setSelectedShotId(null);
-          }}
-          variant="outline"
-          aria-label="Shot chart club filters"
-          className="-mx-1 w-auto justify-start overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
-        >
-          <ToggleGroupItem
-            value="all"
-            className="min-h-9 shrink-0 gap-2 rounded-lg px-3 text-sm font-semibold"
-          >
-            {selectedClub === "all" ? <Check className="size-3.5" /> : null}
-            All clubs
-            <span
-              className={cn(
-                "text-xs",
-                selectedClub === "all" ? "text-primary-foreground/75" : "text-muted-foreground",
-              )}
+            <ToggleGroup
+              type="single"
+              value={selectedClub}
+              onValueChange={(value) => {
+                if (!value) return;
+                setSelectedClub(value);
+                setSelectedShotId(null);
+              }}
+              variant="outline"
+              aria-label="Shot chart club filters"
+              className="-mx-1 w-auto justify-start overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
             >
-              {shots.length}
-            </span>
-          </ToggleGroupItem>
-          {clubGroups.map((club) => {
-            const selected = selectedClub === club.clubType;
-            const status = statusByClub.get(club.clubType);
-
-            return (
               <ToggleGroupItem
-                key={club.clubType}
-                value={club.clubType}
+                value="all"
                 className="min-h-9 shrink-0 gap-2 rounded-lg px-3 text-sm font-semibold"
               >
-                {selected ? <Check className="size-3.5" /> : null}
-                <span
-                  className="size-2.5 rounded-full"
-                  style={{ backgroundColor: club.color }}
-                  aria-hidden
-                />
-                <span>{club.clubLabel}</span>
+                {selectedClub === "all" ? <Check className="size-3.5" /> : null}
+                All clubs
                 <span
                   className={cn(
                     "text-xs",
-                    selected ? "text-primary-foreground/75" : "text-muted-foreground",
+                    selectedClub === "all" ? "text-primary-foreground/75" : "text-muted-foreground",
                   )}
                 >
-                  {club.shotCount}
+                  {shots.length}
                 </span>
-                {status ? (
-                  <span
-                    title={
-                      status.verdict === "new"
-                        ? "Not enough shots in this practice or its earlier baseline for a fair comparison."
-                        : status.verdict === "mixed"
-                          ? `No clear overall change versus earlier practice. ${status.summary}`
-                          : status.summary
-                    }
-                    className={cn(
-                      "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                      selected
-                        ? "bg-primary-foreground/15 text-primary-foreground"
-                        : statusPillClass(status.verdict),
-                    )}
-                  >
-                    {verdictLabel(status.verdict)}
-                  </span>
-                ) : null}
               </ToggleGroupItem>
-            );
-          })}
-        </ToggleGroup>
+              {clubGroups.map((club) => {
+                const selected = selectedClub === club.clubType;
+                const status = statusByClub.get(club.clubType);
 
-        {selectedClub !== "all" && statusByClub.get(selectedClub) ? (
-          <p className="text-sm text-muted-foreground" role="status">
-            <strong className="font-medium text-foreground">
-              Compared with earlier practice:{" "}
-            </strong>
-            {statusByClub.get(selectedClub)!.verdict === "mixed" ? "No clear overall change. " : ""}
-            {statusByClub.get(selectedClub)!.summary}
-          </p>
-        ) : null}
+                return (
+                  <ToggleGroupItem
+                    key={club.clubType}
+                    value={club.clubType}
+                    className="min-h-9 shrink-0 gap-2 rounded-lg px-3 text-sm font-semibold"
+                  >
+                    {selected ? <Check className="size-3.5" /> : null}
+                    <span
+                      className="size-2.5 rounded-full"
+                      style={{ backgroundColor: club.color }}
+                      aria-hidden
+                    />
+                    <span>{club.clubLabel}</span>
+                    <span
+                      className={cn(
+                        "text-xs",
+                        selected ? "text-primary-foreground/75" : "text-muted-foreground",
+                      )}
+                    >
+                      {club.shotCount}
+                    </span>
+                    {status ? (
+                      <span
+                        title={
+                          status.verdict === "new"
+                            ? "Not enough shots in this practice or its earlier baseline for a fair comparison."
+                            : status.verdict === "mixed"
+                              ? `No clear overall change versus earlier practice. ${status.summary}`
+                              : status.summary
+                        }
+                        className={cn(
+                          "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                          selected
+                            ? "bg-primary-foreground/15 text-primary-foreground"
+                            : statusPillClass(status.verdict),
+                        )}
+                      >
+                        {verdictLabel(status.verdict)}
+                      </span>
+                    ) : null}
+                  </ToggleGroupItem>
+                );
+              })}
+            </ToggleGroup>
 
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="font-medium text-muted-foreground">Trajectory</span>
-          <ToggleGroup
-            type="single"
-            value={trajectoryView}
-            onValueChange={(value) => value && setTrajectoryView(value as TrajectoryView)}
-            variant="outline"
-            size="sm"
-            spacing={0}
-            aria-label="Trajectory detail"
-          >
-            <ToggleGroupItem value="averages">Club averages</ToggleGroupItem>
-            <ToggleGroupItem value="shots">
-              <Eye className="size-3.5" />
-              Individual shots
-            </ToggleGroupItem>
-          </ToggleGroup>
-          {selectedClub !== "all" ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSelectedClub("all");
-                setSelectedShotId(null);
-              }}
-            >
-              Show all clubs
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            aria-pressed={showOutliers}
-            variant={showOutliers ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => {
-              setShowOutliers((value) => !value);
-              setSelectedShotId(null);
-            }}
-          >
-            {showOutliers ? "Hide outliers" : "Show outliers"}
-          </Button>
-        </div>
+            {selectedClub !== "all" && statusByClub.get(selectedClub) ? (
+              <p className="text-sm text-muted-foreground" role="status">
+                <strong className="font-medium text-foreground">
+                  Compared with earlier practice:{" "}
+                </strong>
+                {statusByClub.get(selectedClub)!.verdict === "mixed"
+                  ? "No clear overall change. "
+                  : ""}
+                {statusByClub.get(selectedClub)!.summary}
+              </p>
+            ) : null}
 
-        <UntitledSelect
-          label="Inspect a shot"
-          name="today-selected-shot"
-          value={selectedShot?.id ?? ""}
-          onValueChange={setSelectedShotId}
-          options={[
-            { value: "", label: "Choose a measured shot" },
-            ...visibleShots.map((shot) => ({
-              value: shot.id,
-              label: `${shot.clubLabel} · Shot ${shot.shotNumber ?? "unavailable"} · ${shot.carryYd === null ? "carry unavailable" : `${numberFormatter.format(shot.carryYd)} yd carry`}`,
-            })),
-          ]}
-          description="The charts use carry distance. Select a shot to see its carry and total."
-        />
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-medium text-muted-foreground">Trajectory</span>
+              <ToggleGroup
+                type="single"
+                value={trajectoryView}
+                onValueChange={(value) => value && setTrajectoryView(value as TrajectoryView)}
+                variant="outline"
+                size="sm"
+                spacing={0}
+                aria-label="Trajectory detail"
+              >
+                <ToggleGroupItem value="averages">Club averages</ToggleGroupItem>
+                <ToggleGroupItem value="shots">
+                  <Eye className="size-3.5" />
+                  Individual shots
+                </ToggleGroupItem>
+              </ToggleGroup>
+              {selectedClub !== "all" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedClub("all");
+                    setSelectedShotId(null);
+                  }}
+                >
+                  Show all clubs
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                aria-pressed={showOutliers}
+                variant={showOutliers ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setShowOutliers((value) => !value);
+                  setSelectedShotId(null);
+                }}
+              >
+                {showOutliers ? "Hide outliers" : "Show outliers"}
+              </Button>
+            </div>
+
+            <UntitledSelect
+              label="Inspect a shot"
+              name="today-selected-shot"
+              value={selectedShot?.id ?? ""}
+              onValueChange={setSelectedShotId}
+              options={[
+                { value: "", label: "Choose a measured shot" },
+                ...visibleShots.map((shot) => ({
+                  value: shot.id,
+                  label: `${shot.clubLabel} · Shot ${shot.shotNumber ?? "unavailable"} · ${shot.carryYd === null ? "carry unavailable" : `${numberFormatter.format(shot.carryYd)} yd carry`}`,
+                })),
+              ]}
+              description="The charts use carry distance. Select a shot to see its carry and total."
+            />
+          </div>
+        </details>
         <div
           className={cn(
             "grid items-start gap-4",
             variant === "editorial"
-              ? "xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]"
+              ? "lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]"
               : "lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]",
           )}
         >
@@ -414,7 +428,7 @@ export function TodayShotCharts({
             </Suspense>
           ) : (
             <ChartPanel
-              title="Trajectory"
+              title="Ball flight · Trajectory"
               detail={
                 trajectoryView === "averages"
                   ? "Club average ball flights with dynamic apex scale."
