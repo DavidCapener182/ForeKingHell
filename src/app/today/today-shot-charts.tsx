@@ -965,8 +965,20 @@ function DispersionChart({
         width={xScale(centerZone) - xScale(-centerZone)}
         height={plotHeight}
         fill="#ecfdf5"
-        opacity={0.72}
+        fillOpacity={0.16}
       />
+      {[-centerZone, centerZone].map((edge) => (
+        <line
+          key={edge}
+          x1={xScale(edge)}
+          x2={xScale(edge)}
+          y1={padding.top}
+          y2={height - padding.bottom}
+          stroke="var(--mobile-chart-target)"
+          opacity=".55"
+          strokeDasharray="4 5"
+        />
+      ))}
       <text
         x={xScale(-maxSide * 0.72)}
         y={18}
@@ -1020,7 +1032,7 @@ function DispersionChart({
             y2={height - padding.bottom}
             stroke={tick === 0 ? "#111827" : "#e5e7eb"}
             strokeDasharray={tick === 0 ? undefined : "4 4"}
-            opacity={tick === 0 ? 0.5 : 1}
+            strokeWidth={tick === 0 ? 1.75 : 1}
           />
           <text
             x={xScale(tick)}

@@ -103,8 +103,8 @@ export function CoursePlotBackdrop({
             stroke="#98b78b"
             strokeWidth="3"
           />
-          <path d="M175 32V13" stroke="#425c44" strokeWidth="1.6" />
-          <path d="M176 13l13 4-13 4Z" fill="#faf8e9" />
+          <path d="M170 32V13" stroke="#425c44" strokeWidth="1.6" />
+          <path d="M170 13l13 4-13 4Z" fill="#faf8e9" />
         </>
       ) : (
         <>

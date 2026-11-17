@@ -469,8 +469,20 @@ function MobileDispersionVisual({
           width={x(corridor) - x(-corridor)}
           height={plotHeight}
           fill="var(--mobile-chart-corridor)"
-          opacity={0.72}
+          fillOpacity={0.16}
         />
+        {[-corridor, corridor].map((edge) => (
+          <line
+            key={edge}
+            x1={x(edge)}
+            x2={x(edge)}
+            y1={frame.top}
+            y2={height - frame.bottom}
+            stroke="var(--mobile-chart-target)"
+            opacity=".55"
+            strokeDasharray="4 5"
+          />
+        ))}
         {hasTrustedZone ? (
           <rect
             clipPath={`url(#${plotClipId})`}

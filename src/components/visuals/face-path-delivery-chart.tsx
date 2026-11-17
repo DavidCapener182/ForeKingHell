@@ -31,7 +31,7 @@ export default function ClubDeliveryChart({
       : [],
   );
   const scale = Math.min(
-    118 / Math.max(1, ...landings.map((row) => row.carry)),
+    170 / Math.max(1, ...landings.map((row) => row.carry)),
     124 / Math.max(1, ...landings.map((row) => Math.abs(row.side))),
   );
   const delta = faceAngle !== null && clubPath !== null ? faceAngle - clubPath : null;
@@ -62,17 +62,17 @@ export default function ClubDeliveryChart({
                 ", face " +
                 formatSignedDegrees(faceAngle)
           }
-          viewBox="0 0 300 162"
-          className="h-44 w-full"
+          viewBox="0 0 300 224"
+          className="mx-auto block h-auto max-h-80 w-full"
         >
           <line
             x1="150"
             y1="26"
             x2="150"
-            y2="148"
+            y2="218"
             stroke="currentColor"
-            opacity=".45"
-            strokeDasharray="4 4"
+            opacity=".85"
+            strokeDasharray="2 3"
           />
           <text x="150" y="16" textAnchor="middle" fill="currentColor" fontSize="11">
             Target · 0°
@@ -82,7 +82,7 @@ export default function ClubDeliveryChart({
               <circle
                 key={i}
                 cx={150 + row.side * scale}
-                cy={148 - row.carry * scale}
+                cy={202 - row.carry * scale}
                 r="3"
                 fill="var(--delivery-face, #111827)"
                 opacity=".7"
@@ -96,28 +96,37 @@ export default function ClubDeliveryChart({
             <>
               {clubPath !== null && (
                 <g
-                  transform={`rotate(${clubPath} 150 148)`}
+                  transform={`rotate(${clubPath} 150 202)`}
                   stroke="var(--delivery-path, #B91C1C)"
                   fill="none"
                   strokeWidth="2.5"
                 >
-                  <path d="M150 148V30m-4 7 4-7 4 7" />
+                  <path d="M150 202V30m-4 7 4-7 4 7" />
                 </g>
               )}
               {faceAngle !== null && (
                 <g
-                  transform={`rotate(${faceAngle} 150 148)`}
+                  transform={`rotate(${faceAngle} 150 202)`}
                   stroke="var(--delivery-face, #111827)"
                   fill="none"
                   strokeWidth="2.5"
                 >
-                  <path d="M150 148V59" strokeDasharray="5 3" />
-                  <path d="m146 64 4-7 4 7" />
+                  <path d="M150 202V68" strokeDasharray="5 3" />
+                  <path d="m146 73 4-7 4 7" />
                 </g>
               )}
               {delta !== null && (
-                <g transform="translate(215 60)">
-                  <text x="24" y="-7" textAnchor="middle" fill="currentColor" fontSize="9">
+                <g transform="translate(211 98)">
+                  <rect
+                    x="-19"
+                    y="-21"
+                    width="94"
+                    height="108"
+                    rx="6"
+                    fill="var(--card)"
+                    stroke="var(--border)"
+                  />
+                  <text x="27" y="-7" textAnchor="middle" fill="currentColor" fontSize="10">
                     Illustrative flight
                   </text>
                   <path
@@ -131,7 +140,7 @@ export default function ClubDeliveryChart({
               )}
             </>
           )}
-          <circle cx="150" cy="148" r="4" fill="var(--card)" stroke="currentColor" />
+          <circle cx="150" cy="202" r="4" fill="var(--card)" stroke="currentColor" />
         </svg>
       </div>
       <figcaption className="text-xs leading-5 text-muted-foreground">
@@ -145,15 +154,16 @@ export default function ClubDeliveryChart({
         ) : (
           <>
             <span className="mr-4 inline-flex items-center gap-2">
-              <i className="w-5 border-t-2 border-[var(--delivery-path)]" />
+              <i className="w-5 border-t-2 border-[var(--delivery-path,#B91C1C)]" />
               Club path
             </span>
             <span className="inline-flex items-center gap-2">
-              <i className="w-5 border-t-2 border-dashed border-[var(--delivery-face)]" />
+              <i className="w-5 border-t-2 border-dashed border-[var(--delivery-face,#111827)]" />
               Clubface
             </span>
             <span className="block">
-              Arrows use true angles. The flight sketch shows a possible shape only.
+              Viewed from above, with the target straight ahead. Arrows use true angles. The flight
+              sketch shows a possible shape only.
             </span>
           </>
         )}
