@@ -320,64 +320,69 @@ export function TodayClubTrends({
               </TabsList>
             </div>
             <TabsContent value={metricKey} className="contents">
-              <div className="grid min-w-0 gap-3 md:grid-cols-2">
-                {club && (
-                  <label className="grid min-w-0 gap-1 text-sm">
-                    Comparable series
-                    <select
-                      aria-label="Comparable series"
-                      className={`${controlClass} w-full`}
-                      value={club.id}
-                      onChange={(e) => update({ cpSeries: e.target.value, cpSession: null })}
-                    >
-                      {clubs
-                        .filter((c) => c.clubId === club.clubId)
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {provenance(c)}
-                          </option>
+              <details className="rounded-lg border px-3" open={selection.unavailable || undefined}>
+                <summary className="cursor-pointer py-3 text-sm font-semibold">
+                  Change comparison session or data source
+                </summary>
+                <div className="grid min-w-0 gap-3 pb-3 md:grid-cols-2">
+                  {club && (
+                    <label className="grid min-w-0 gap-1 text-sm">
+                      Comparable series
+                      <select
+                        aria-label="Comparable series"
+                        className={`${controlClass} w-full`}
+                        value={club.id}
+                        onChange={(e) => update({ cpSeries: e.target.value, cpSession: null })}
+                      >
+                        {clubs
+                          .filter((c) => c.clubId === club.clubId)
+                          .map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {provenance(c)}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  )}
+                  {club && (
+                    <label className="grid min-w-0 gap-1 text-sm">
+                      Comparison upload
+                      <select
+                        aria-label="Comparison upload"
+                        className={`${controlClass} w-full`}
+                        value={sessionId ?? ""}
+                        onChange={(e) => update({ cpSession: e.target.value })}
+                      >
+                        {selection.unavailable && (
+                          <option value={sessionId}>Requested upload unavailable</option>
+                        )}
+                        {club.points
+                          .filter((p) => mode === "dashboard" || p.current)
+                          .map((p) => (
+                            <option key={p.sessionId} value={p.sessionId}>
+                              {p.date} · {p.fileName ?? "Upload"} · {p.sessionId.slice(0, 8)}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  )}
+                  {metric.clubEvidence && (
+                    <label className="grid min-w-0 gap-1 text-sm">
+                      Club data evidence
+                      <select
+                        aria-label="Club data evidence"
+                        className={`${controlClass} w-full`}
+                        value={evidence}
+                        onChange={(e) => update({ cpEvidence: e.target.value })}
+                      >
+                        {evidenceClasses.map((trust) => (
+                          <option key={trust}>{trust}</option>
                         ))}
-                    </select>
-                  </label>
-                )}
-                {club && (
-                  <label className="grid min-w-0 gap-1 text-sm">
-                    Comparison upload
-                    <select
-                      aria-label="Comparison upload"
-                      className={`${controlClass} w-full`}
-                      value={sessionId ?? ""}
-                      onChange={(e) => update({ cpSession: e.target.value })}
-                    >
-                      {selection.unavailable && (
-                        <option value={sessionId}>Requested upload unavailable</option>
-                      )}
-                      {club.points
-                        .filter((p) => mode === "dashboard" || p.current)
-                        .map((p) => (
-                          <option key={p.sessionId} value={p.sessionId}>
-                            {p.date} · {p.fileName ?? "Upload"} · {p.sessionId.slice(0, 8)}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-                )}
-                {metric.clubEvidence && (
-                  <label className="grid min-w-0 gap-1 text-sm">
-                    Club data evidence
-                    <select
-                      aria-label="Club data evidence"
-                      className={`${controlClass} w-full`}
-                      value={evidence}
-                      onChange={(e) => update({ cpEvidence: e.target.value })}
-                    >
-                      {evidenceClasses.map((trust) => (
-                        <option key={trust}>{trust}</option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </div>
+                      </select>
+                    </label>
+                  )}
+                </div>
+              </details>
               {comparison && !selection.unavailable ? (
                 <>
                   <p className="text-xs text-muted-foreground">

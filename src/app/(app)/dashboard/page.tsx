@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { todayPlanAction } from "@/lib/mobile-today-briefing";
 import { getTodayRound } from "@/lib/today-round-data";
 import { TodayRoundView } from "../today/today-round-view";
 import type { ReactNode } from "react";
@@ -90,16 +91,17 @@ export default async function DashboardPage() {
     ? `/practice?planId=${currentPlan.id}`
     : `/practice?${practiceQuery}`;
   const hasEvidence = data.stats.shotCount > 0;
+  const planAction = todayPlanAction(currentPlan);
   const actionHref = latestActivityRound
     ? `/rounds/${latestActivityRound.session.id}`
     : hasEvidence
-      ? practiceHref
+      ? (planAction?.href ?? practiceHref)
       : "/import";
   const actionLabel = latestActivityRound
     ? "Review latest round"
     : hasEvidence
       ? currentPlan
-        ? "Open saved practice"
+        ? (planAction?.label ?? "Open saved practice")
         : "Build focused practice"
       : "Import first session";
   const readyCourses = courseRows.filter((course) => course.holes > 0 && course.tees > 0);
@@ -174,7 +176,7 @@ export default async function DashboardPage() {
   const sections = [
     ["practice", "Practice"],
     ["driver-speed", "Driver & speed"],
-    ["club-progress", "Changes"],
+    ["club-progress", "Club trends"],
     ["delivery", "Club delivery"],
     ["readiness", "Round readiness"],
     ["current-work", "Current work"],
@@ -185,49 +187,120 @@ export default async function DashboardPage() {
         <PageHeader
           title="Dashboard"
           description={
-            latestActivityRound
-              ? "Your latest round, followed by your practice and progress."
-              : latest
-                ? `Latest saved evidence: ${latest.fileName} · ${formatDate(latest.date)}`
-                : "Your saved golf evidence and next useful action."
+            latest
+              ? `Last session · ${formatDate(latest.date)}`
+              : "Your practice, bag and scoring history"
           }
-          actions={
-            <Button asChild className="min-h-11">
+        />
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+          <section
+            aria-labelledby="dashboard-focus"
+            className="flex flex-col justify-center rounded-2xl border border-primary/20 bg-primary/5 p-5 sm:p-7"
+          >
+            <p className="text-sm font-semibold text-primary">
+              {latestActivityRound
+                ? "Latest round"
+                : currentPlan
+                  ? "Your practice plan"
+                  : "Practice focus"}
+            </p>
+            <h2
+              id="dashboard-focus"
+              className="mt-2 text-balance text-3xl font-semibold tracking-tight sm:text-4xl"
+            >
+              {latestActivityRound
+                ? (data.latestRound?.courseName ?? "Review your latest round")
+                : (currentPlan?.title ??
+                  (focus
+                    ? `${focus.clubName} · ${focus.issueLabel}`
+                    : "Build your first club distances"))}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              {latestActivityRound
+                ? "Open your scorecard to review each hole."
+                : currentPlan
+                  ? [
+                      `${currentPlan.timeMinutes} minutes`,
+                      currentPlan.focusClubs.join(", "),
+                      currentPlan.status.replaceAll("_", " "),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : (focus?.reason ??
+                    "Import your launch-monitor shots to see how far each club carries.")}
+            </p>
+            <Button asChild className="mt-5 min-h-11 self-start">
               <Link href={actionHref}>
                 {actionLabel}
                 <ArrowRight aria-hidden className="size-4" />
               </Link>
             </Button>
-          }
-        />
-        <details className="rounded-xl border bg-card px-4">
-          <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">
-            Jump to a dashboard section
-          </summary>
-          <nav aria-label="Dashboard sections" className="flex flex-wrap gap-2 pb-3">
-            {sections.map(([id, label]) => (
-              <a
-                key={id}
-                href={`#${id}`}
-                className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
-              >
-                {label}
-              </a>
-            ))}
-            <Link
-              href="/progress"
-              className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium"
+          </section>
+          <section aria-labelledby="dashboard-carry" className="rounded-2xl border bg-card p-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 id="dashboard-carry" className="text-xl font-semibold">
+                Stock carry by club
+              </h2>
+              <Link href="/bag" className="text-sm font-medium underline underline-offset-4">
+                Full bag
+              </Link>
+            </div>
+            {data.carryLadder.length ? (
+              <>
+                <p className="my-2 text-sm text-muted-foreground">
+                  Median full-swing carry in yards · longest {Math.min(5, data.carryLadder.length)}{" "}
+                  measured clubs
+                </p>
+                <ul>
+                  {data.carryLadder.slice(0, 5).map((club) => (
+                    <li key={club.id}>
+                      <Link
+                        href={`/bag/${club.id}/analytics`}
+                        className="grid min-h-11 grid-cols-[5rem_1fr_4.5rem] items-center gap-2 rounded px-1 hover:bg-muted focus-visible:outline-ring"
+                        aria-label={`${club.label}, ${numberFormatter.format(club.carry)} yards, ${club.sampleSize} stock shots. Open club analytics`}
+                      >
+                        <span className="text-sm font-semibold">{club.label}</span>
+                        <span
+                          aria-hidden="true"
+                          className="h-2 overflow-hidden rounded-full bg-muted"
+                        >
+                          <span
+                            className="block h-full rounded-full bg-primary"
+                            style={{ width: `${(100 * club.carry) / data.carryLadder[0].carry}%` }}
+                          />
+                        </span>
+                        <span className="text-right text-sm font-semibold tabular-nums">
+                          {numberFormatter.format(club.carry)} yd
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p className="mt-4 text-sm leading-6">
+                Your distances appear here once a saved club has a measured full swing.{" "}
+                <Link href="/import" className="underline">
+                  Import shots
+                </Link>
+              </p>
+            )}
+          </section>
+        </div>
+        <nav
+          aria-label="Dashboard sections"
+          className="flex flex-wrap gap-x-4 gap-y-1 border-y py-1"
+        >
+          {sections.map(([id, label]) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              className="inline-flex min-h-11 items-center text-sm font-medium underline decoration-border underline-offset-4 hover:decoration-primary focus-visible:outline-ring"
             >
-              Full Progress
-            </Link>
-            <Link
-              href="/shots"
-              className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium"
-            >
-              Shot data
-            </Link>
-          </nav>
-        </details>
+              {label}
+            </a>
+          ))}
+        </nav>
         {metrics.length > 0 && (
           <dl className="grid min-w-0 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-2 lg:grid-cols-4">
             {metrics.map((metric) => (
@@ -240,7 +313,13 @@ export default async function DashboardPage() {
                     href={metric.href}
                     className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline"
                   >
-                    Review {metric.label.toLowerCase()}
+                    {metric.pin === "clubs"
+                      ? "Open bag"
+                      : metric.pin === "sessions"
+                        ? "Browse sessions"
+                        : metric.pin === "handicap"
+                          ? "See scoring history"
+                          : "Browse shots"}
                   </Link>
                 </dd>
               </div>
@@ -291,10 +370,10 @@ export default async function DashboardPage() {
           ) : null}
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <Button asChild className="min-h-11">
-              <Link href={hasEvidence ? practiceHref : "/import"}>
+              <Link href={hasEvidence ? (planAction?.href ?? practiceHref) : "/import"}>
                 {hasEvidence
                   ? currentPlan
-                    ? "Open saved practice"
+                    ? (planAction?.label ?? "Open saved practice")
                     : "Build focused practice"
                   : "Import first session"}
               </Link>
