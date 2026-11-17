@@ -722,7 +722,6 @@
     transform 180ms var(--cinema-ease);
 }
 
-.heroSignal header,
 .practicePrescription header,
 .dispersionFeature header {
   display: flex;
@@ -731,7 +730,6 @@
   gap: 1rem;
 }
 
-.heroSignal header span,
 .practicePrescription header span,
 .rangeCaption,
 .twinPhotoCaption span,
@@ -746,34 +744,29 @@
   width: 1rem;
 }
 
-.heroProofMark {
-  display: grid;
-  width: 1rem;
-  height: 1rem;
-  place-items: center;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  font-size: 0.62rem;
-  font-weight: 900;
-}
-
-.heroSignal > strong {
+.heroBagPreview {
   display: block;
-  margin-top: 0.9rem;
-  font-family: var(--font-display-source), sans-serif;
-  font-size: clamp(1.45rem, 2vw, 2rem);
-  line-height: 0.95;
-  text-transform: uppercase;
+  width: 100%;
+  height: clamp(3rem, 9vh, 6rem);
+  object-fit: cover;
+  object-position: top;
+  border-radius: 0.45rem;
 }
 
 .heroSignal > div {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-top: 1rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid color-mix(in oklch, var(--cinema-cream) 20%, transparent);
-  font-size: 0.7rem;
+  padding-top: 0.7rem;
+  font-size: 0.95rem;
+}
+.heroSignal:is(:hover, :focus-visible) {
+  border-color: var(--cinema-cream);
+}
+.heroSignal:focus-visible {
+  outline: 3px solid var(--cinema-cream);
+  outline-offset: 3px;
 }
 
 .heroForeground {

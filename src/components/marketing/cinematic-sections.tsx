@@ -241,6 +241,7 @@ export function ProductScreensShowcase() {
         {productScreens.map((screen, index) => (
           <article
             className={cinematic.productScreenCard}
+            id={`preview-${screen.eyebrow.toLowerCase().replaceAll(" ", "-")}`}
             key={screen.eyebrow}
             data-immersive={index === 0 ? "true" : "false"}
             data-scroll-pause={index === 0 ? `product-${screen.number}` : undefined}
