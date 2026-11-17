@@ -69,7 +69,9 @@ test("shared progress on real fixture routes: both Today surfaces and Dashboard"
         const panel = page.locator("[data-club-progress]");
         await expect(panel).toBeVisible({ timeout: 60000 });
         await expect(panel).not.toContainText("Retired");
-        await expect(page.locator("main h2").first()).toHaveText("Am I improving?");
+        await expect(panel.getByRole("heading", { name: "Am I improving?" })).toHaveText(
+          "Am I improving?",
+        );
         await expect(panel.locator("[data-progress-cards]")).toContainText(
           "Previous reading unavailable",
         );

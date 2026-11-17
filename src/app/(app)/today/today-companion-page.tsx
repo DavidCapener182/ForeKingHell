@@ -1,3 +1,5 @@
+import { TodayPanelNav } from "@/components/app/today-panel-nav";
+import { selectedTodayPanel, todayPanelHref } from "@/lib/today-panels";
 import { TodayClubTrendsPanel } from "@/components/app/today-club-trends-panel";
 import { currentBagClubs } from "@/lib/club-format";
 import { getTodayRound } from "@/lib/today-round-data";
@@ -74,7 +76,8 @@ export default async function TodayCompanionPage({
 
   const userId = await requireCurrentUserId();
   const now = new Date();
-  const params = await searchParams;
+  const params = (await searchParams) ?? {};
+  const panel = selectedTodayPanel(params);
   const latestRound = await getTodayRound(userId, params ?? {});
   const dateParam = Array.isArray(params?.date) ? params.date[0] : params?.date;
   const sessionParam = Array.isArray(params?.session) ? params.session[0] : params?.session;
@@ -135,7 +138,17 @@ export default async function TodayCompanionPage({
           href: `/practice?intent=confidence&club=${encodeURIComponent(recommendation.clubType ?? "")}&time=${recommendation.minutes}&source=today`,
         }
       : recommendationState;
-  const mainState = review?.state ?? nextPracticeState;
+  const nextAction = resolveTodayPrimaryState({
+    currentPlan,
+    activeRound,
+    recommendation,
+    latestData: null,
+  });
+  const mainState = review
+    ? { ...review.state, href: todayPanelHref(params, "analysis") + "#today-practice-review" }
+    : nextAction.status === "Low"
+      ? nextPracticeState
+      : nextAction;
   const reviewPatternPoints =
     review && latestData
       ? buildShotPatternPoints(
@@ -151,7 +164,9 @@ export default async function TodayCompanionPage({
 
   const change = buildMobileTodayChange(latestData);
   const [shotDetails, clubOptions, progressHistory] = await Promise.all([
-    getTodayShotDetailRows({ userId, shotIds: latestShots.map((shot) => shot.id) }),
+    panel === "patterns" || panel === "analysis"
+      ? getTodayShotDetailRows({ userId, shotIds: latestShots.map((shot) => shot.id) })
+      : Promise.resolve([]),
     getDb()
       .select({
         value: clubs.id,
@@ -162,18 +177,19 @@ export default async function TodayCompanionPage({
       })
       .from(clubs)
       .where(eq(clubs.userId, userId)),
-    latestData?.rawShots.length
+    panel === "trends" && latestData?.rawShots.length
       ? getTodayProgressHistory({ beforeDateKey: latestData.dateKey }).catch(() => null)
       : Promise.resolve([]),
   ]);
-  const progress = latestData?.rawShots.length
-    ? buildTodayProgress({
-        dateKey: latestData.dateKey,
-        rawShots: latestData.rawShots,
-        previousDays: progressHistory ?? [],
-        scope: "day",
-      })
-    : null;
+  const progress =
+    panel === "trends" && latestData?.rawShots.length
+      ? buildTodayProgress({
+          dateKey: latestData.dateKey,
+          rawShots: latestData.rawShots,
+          previousDays: progressHistory ?? [],
+          scope: "day",
+        })
+      : null;
   const correctionClubs = currentBagClubs(clubOptions).map((club) => ({
     value: club.value,
     label: [formatCompanionClubType(club.type), club.brand, club.model].filter(Boolean).join(" "),
@@ -182,304 +198,362 @@ export default async function TodayCompanionPage({
     <PageShell>
       <MobileAppShell className="gap-6" data-today-companion>
         <MobileTodayGreeting initialNow={now.toISOString()} />
-        <Button asChild variant="outline" className="min-h-11 w-fit">
-          <Link href="/practice">Next practice</Link>
-        </Button>
-        {activeRound ? (
-          <Link
-            className="inline-flex min-h-11 items-center text-sm font-medium underline"
-            href={`/rounds/${activeRound.id}`}
-          >
-            Continue round · {activeRound.courseName ?? "Round in progress"}
-          </Link>
-        ) : null}
-        <TodayClubTrendsPanel
-          selectedShots={
-            clubParam && clubParam !== "all"
-              ? latestShots.filter(
-                  (s) => s.clubType === clubParam.trim().toLowerCase() || s.clubId === clubParam,
-                )
-              : latestShots
-          }
-        />
-        <details className="rounded-2xl border p-4">
-          <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">
-            Practice-day overview · daily aggregate
-          </summary>
-          <MobileHomeOverview
-            shotCount={latestShots.length}
-            sessionCount={latestData?.sessions.length ?? 0}
-            dateLabel={latestData?.dateLabel ?? null}
-            focusLabel={currentPlan?.title ?? recommendation.clubLabel ?? null}
-            progressHeadline={progress?.headline ?? null}
-            progressSummary={progress?.summary ?? null}
-            best={
-              progress?.practice.longest
-                ? `${progress.practice.longest.club}: ${Math.round(progress.practice.longest.value)} yd longest carry`
-                : null
-            }
-            needsWork={progress?.setbacks[0]?.text ?? null}
-            improved={progress?.improvements[0]?.text ?? null}
-            recentDays={(progress?.recentTrend.days ?? []).map((day) => ({
-              dateKey: day.dateKey,
-              shotCount: day.shotCount,
-            }))}
-          />
-        </details>
-        {latestRound ? <TodayRoundView round={latestRound} /> : null}
-        {latestRound ? (
-          <div id="today-practice-progress" className="scroll-mt-24 border-t border-border pt-5">
-            <h2 className="text-xl font-semibold">Practice & progress</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {latestData?.rawShots.length
-                ? `Your latest measured practice · ${latestData.dateLabel}`
-                : "No measured practice recorded yet."}
-            </p>
-          </div>
-        ) : null}
-        {!latestData ? (
-          <Alert>
-            <AlertTitle>Today’s review couldn’t load</AlertTitle>
-            <AlertDescription>
-              Reload Today to try again, or <Link href="/sessions">open your saved sessions</Link>.
-            </AlertDescription>
-          </Alert>
-        ) : null}
-        <TodayPrimaryAnswer
-          reviewContext={reviewContext}
-          highlights={buildTodayHighlights(latestData)}
-          compact={Boolean(review)}
-          accountId={userId}
-          serverState={mainState}
-          evidenceDate={
-            latestData
-              ? new Intl.DateTimeFormat("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                  timeZone: "Europe/London",
-                }).format(new Date(`${latestData.dateKey}T12:00:00Z`))
-              : undefined
-          }
-          evidenceContent={
-            <div className="grid gap-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Evidence used
-              </p>
-              <ul className="grid gap-2 text-sm leading-5 text-foreground">
-                <li>
-                  {selectedDate ? "Selected measured practice day" : "Latest measured practice day"}{" "}
-                  · {latestData?.dateLabel ?? context.latestPractice.dateLabel}
-                </li>
-                <li>
-                  {latestShots.length} measured shots across{" "}
-                  {uploadLabel(latestData?.sessions.length ?? 0)}
-                </li>
-                <li>
-                  Comparisons use trusted full shots; chips, recovery shots and excluded readings
-                  are left out.
-                </li>
-                <li>Training load · {context.trainingLoad.statusLabel}</li>
-              </ul>
-              {!review && patternPoints.length ? (
-                <MobileShotPatternCharts
-                  points={patternPoints}
-                  preferredClub={recommendation.clubType}
-                  compact
-                />
-              ) : null}
-              <p className="text-xs leading-5 text-muted-foreground">
-                {review
-                  ? "Open any session for its full review, or explore this practice’s club comparisons and shot patterns below."
-                  : "Recommendations use measured golf evidence. Completing a practice activity manually does not count as measured success."}
-              </p>
-            </div>
-          }
-          facts={
-            review
-              ? [{ label: "Evidence", value: review.summary }]
-              : [
-                  { label: "Session", value: `${recommendation.minutes} min` },
-                  {
-                    label: "Club",
-                    value: recommendation.clubType
-                      ? formatCompanionClubType(recommendation.clubType)
-                      : recommendation.clubLabel,
-                  },
-                  { label: "Evidence", value: compactEvidenceLabel(recommendation.evidenceLabel) },
-                ]
-          }
-        />
-
-        {progress ? (
-          <details className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
-            <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">
-              Practice-day comparison · {latestData?.dateLabel ?? "Latest evidence"}
-            </summary>
-            <div className="pt-3">
-              <TodayProgressReport report={progress} historyError={progressHistory === null} />
-            </div>
-          </details>
-        ) : null}
-
-        <TodayWorkspaceTabs
-          panels={{
-            overview: (
-              <div className="grid gap-5">
-                {" "}
-                {review ? (
-                  <MobileTodayPracticeReview
-                    review={review}
-                    pattern={
-                      reviewPatternPoints.length ? (
-                        <MobileShotPatternCharts
-                          key={reviewPatternPoints.map((point) => point.id).join(",")}
-                          points={reviewPatternPoints}
-                          defaultToAllClubs
-                          defaultToAllShots
-                          details={shotDetails}
-                          correctionClubs={correctionClubs}
-                        />
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          No measured coordinates are available for a shot pattern. Your session
-                          reviews remain available above.
-                        </p>
-                      )
-                    }
-                  />
-                ) : null}
-                <BestShotsEntry />
-                {latestShots.some((shot) => shot.clubType === "driver") ? (
-                  <details className="rounded-xl border border-border bg-card p-3">
-                    <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">
-                      Driver development · {latestData?.dateLabel}
-                    </summary>
-                    <DriverDevelopmentPanel date={latestData?.dateKey} variant="signal" />
-                  </details>
-                ) : null}
+        {panel === "home" ? (
+          <>
+            {activeRound ? (
+              <Link
+                className="inline-flex min-h-11 items-center text-sm font-medium underline"
+                href={`/rounds/${activeRound.id}`}
+              >
+                Continue round · {activeRound.courseName ?? "Round in progress"}
+              </Link>
+            ) : null}
+            {latestRound ? <TodayRoundView round={latestRound} /> : null}
+            {latestRound ? (
+              <div
+                id="today-practice-progress"
+                className="scroll-mt-24 border-t border-border pt-5"
+              >
+                <h2 className="text-xl font-semibold">Practice & progress</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {latestData?.rawShots.length
+                    ? `Your latest measured practice · ${latestData.dateLabel}`
+                    : "No measured practice recorded yet."}
+                </p>
               </div>
-            ),
-            practice: (
-              <div className="grid gap-5">
-                {" "}
-                <MobileTodayActivities
-                  accountId={userId}
-                  plan={
-                    currentPlan
-                      ? { id: currentPlan.id, title: currentPlan.title, status: currentPlan.status }
-                      : null
-                  }
-                  round={
-                    activeRound ? { id: activeRound.id, courseName: activeRound.courseName } : null
-                  }
-                />
-                {change && !review ? (
-                  <MobileSection
-                    title="What changed"
-                    action={
-                      <Link
-                        href="/progress"
-                        className="inline-flex min-h-11 items-center text-sm font-semibold text-primary"
-                      >
-                        All progress
-                      </Link>
-                    }
-                  >
-                    <MobileTodayChangeDetail change={change} />
-                  </MobileSection>
-                ) : null}
-                {review ? (
-                  <MobileSection title="For your next practice">
-                    <MobileGroupedList>
-                      <MobileListRow
-                        label={
-                          recommendation.confidence === "Low"
-                            ? recommendation.clubType
-                              ? `${formatCompanionClubType(recommendation.clubType)} baseline`
-                              : "Build your baseline"
-                            : recommendation.title
-                        }
-                        detail={`${recommendation.minutes} minutes · ${compactEvidenceLabel(recommendation.evidenceLabel)} · ${recommendation.confidence.toLowerCase()} confidence`}
-                        href={nextPracticeState.href}
-                        icon={Target}
-                      />
-                    </MobileGroupedList>
-                  </MobileSection>
-                ) : null}
-                {!review ? (
-                  <Button asChild className="min-h-12">
-                    <Link href={nextPracticeState.href}>{nextPracticeState.action}</Link>
-                  </Button>
-                ) : null}
-              </div>
-            ),
-            evidence: (
-              <div className="grid gap-4">
-                <h2 className="text-lg font-semibold">
-                  Shot evidence · {latestData?.dateLabel ?? "No measured session"}
-                </h2>
-                <TodayDataQuality shots={latestShots} compact />
-                {evidencePatternPoints.length ? (
-                  <MobileShotPatternCharts
-                    points={evidencePatternPoints}
-                    defaultToAllClubs
-                    defaultToAllShots
-                    details={shotDetails}
-                    correctionClubs={correctionClubs}
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No measured coordinates are available. Saved session evidence remains accessible
-                    below.
+            ) : null}
+            {!latestData ? (
+              <Alert>
+                <AlertTitle>Today’s review couldn’t load</AlertTitle>
+                <AlertDescription>
+                  Reload Today to try again, or{" "}
+                  <Link href="/sessions">open your saved sessions</Link>.
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            <TodayPrimaryAnswer
+              reviewContext={reviewContext}
+              compact={Boolean(review)}
+              accountId={userId}
+              serverState={mainState}
+              evidenceDate={
+                latestData
+                  ? new Intl.DateTimeFormat("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      timeZone: "Europe/London",
+                    }).format(new Date(`${latestData.dateKey}T12:00:00Z`))
+                  : undefined
+              }
+              evidenceContent={
+                <div className="grid gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    Evidence used
                   </p>
-                )}
-                <MobileGroupedList label="Source sessions">
-                  {latestData?.sessions.map((session) => (
+                  <ul className="grid gap-2 text-sm leading-5 text-foreground">
+                    <li>
+                      {selectedDate
+                        ? "Selected measured practice day"
+                        : "Latest measured practice day"}{" "}
+                      · {latestData?.dateLabel ?? context.latestPractice.dateLabel}
+                    </li>
+                    <li>
+                      {latestShots.length} measured shots across{" "}
+                      {uploadLabel(latestData?.sessions.length ?? 0)}
+                    </li>
+                    <li>
+                      Comparisons use trusted full shots; chips, recovery shots and excluded
+                      readings are left out.
+                    </li>
+                    <li>Training load · {context.trainingLoad.statusLabel}</li>
+                  </ul>
+                  {!review && patternPoints.length ? (
+                    <MobileShotPatternCharts
+                      points={patternPoints}
+                      preferredClub={recommendation.clubType}
+                      compact
+                    />
+                  ) : null}
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    {review
+                      ? "Open any session for its full review, or explore this practice’s club comparisons and shot patterns below."
+                      : "Recommendations use measured golf evidence. Completing a practice activity manually does not count as measured success."}
+                  </p>
+                </div>
+              }
+              facts={
+                review
+                  ? [{ label: "Evidence", value: review.summary }]
+                  : [
+                      { label: "Session", value: `${recommendation.minutes} min` },
+                      {
+                        label: "Club",
+                        value: recommendation.clubType
+                          ? formatCompanionClubType(recommendation.clubType)
+                          : recommendation.clubLabel,
+                      },
+                      {
+                        label: "Evidence",
+                        value: compactEvidenceLabel(recommendation.evidenceLabel),
+                      },
+                    ]
+              }
+            />
+
+            {review && nextAction.action !== "Continue round" ? (
+              <Link
+                href={nextAction.href}
+                className="flex min-h-14 items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3"
+              >
+                <span>
+                  <span className="block text-xs text-muted-foreground">Next practice</span>
+                  <strong className="text-base">{nextAction.title}</strong>
+                </span>
+                <Target aria-hidden className="size-5 shrink-0 text-primary" />
+              </Link>
+            ) : null}
+          </>
+        ) : null}
+        <TodayPanelNav params={params} selected={panel} />
+        {panel === "trends" ? (
+          <>
+            <TodayClubTrendsPanel
+              selectedShots={
+                clubParam && clubParam !== "all"
+                  ? latestShots.filter(
+                      (s) =>
+                        s.clubType === clubParam.trim().toLowerCase() || s.clubId === clubParam,
+                    )
+                  : latestShots
+              }
+            />
+            <details className="rounded-2xl border p-4">
+              <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">
+                Practice-day overview · daily aggregate
+              </summary>
+              <MobileHomeOverview
+                shotCount={latestShots.length}
+                sessionCount={latestData?.sessions.length ?? 0}
+                dateLabel={latestData?.dateLabel ?? null}
+                focusLabel={currentPlan?.title ?? recommendation.clubLabel ?? null}
+                progressHeadline={progress?.headline ?? null}
+                progressSummary={progress?.summary ?? null}
+                best={
+                  progress?.practice.longest
+                    ? `${progress.practice.longest.club}: ${Math.round(progress.practice.longest.value)} yd longest carry`
+                    : null
+                }
+                needsWork={progress?.setbacks[0]?.text ?? null}
+                improved={progress?.improvements[0]?.text ?? null}
+                recentDays={(progress?.recentTrend.days ?? []).map((day) => ({
+                  dateKey: day.dateKey,
+                  shotCount: day.shotCount,
+                }))}
+              />
+            </details>
+            {progress ? (
+              <details className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm">
+                <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold">
+                  Practice-day comparison · {latestData?.dateLabel ?? "Latest evidence"}
+                </summary>
+                <div className="pt-3">
+                  <TodayProgressReport report={progress} historyError={progressHistory === null} />
+                </div>
+              </details>
+            ) : null}
+          </>
+        ) : null}
+        {panel === "patterns" ? (
+          <MobileSection title="Shot patterns">
+            {evidencePatternPoints.length ? (
+              <MobileShotPatternCharts
+                points={evidencePatternPoints}
+                defaultToAllClubs
+                defaultToAllShots
+                details={shotDetails}
+                correctionClubs={correctionClubs}
+              />
+            ) : (
+              <p>No measured shot coordinates in this selection.</p>
+            )}
+            <BestShotsEntry />
+          </MobileSection>
+        ) : null}
+        {panel === "analysis" ? (
+          <TodayWorkspaceTabs
+            panels={{
+              overview: (
+                <div className="grid gap-5">
+                  {" "}
+                  {review ? (
+                    <MobileTodayPracticeReview
+                      review={review}
+                      pattern={
+                        reviewPatternPoints.length ? (
+                          <MobileShotPatternCharts
+                            key={reviewPatternPoints.map((point) => point.id).join(",")}
+                            points={reviewPatternPoints}
+                            defaultToAllClubs
+                            defaultToAllShots
+                            details={shotDetails}
+                            correctionClubs={correctionClubs}
+                          />
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            No measured coordinates are available for a shot pattern. Your session
+                            reviews remain available above.
+                          </p>
+                        )
+                      }
+                    />
+                  ) : null}
+                  {buildTodayHighlights(latestData).map((item) => (
                     <MobileListRow
-                      key={session.id}
-                      label={session.label}
-                      detail={`${session.type} · ${session.shotCount} shots`}
-                      href={`/sessions/${session.id}`}
+                      key={item.id}
+                      label={item.label}
+                      detail={item.value}
+                      href={item.href}
                     />
                   ))}
-                </MobileGroupedList>
-              </div>
-            ),
-            "data-quality": (
-              <div className="grid gap-4">
-                <TodayDataQuality shots={latestShots} />
-                <dl className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-4">
-                  {[
-                    ["Saved rows", latestData?.dataCleaning.importedShotCount],
-                    ["Clean analysis", latestData?.dataCleaning.cleanShotCount],
-                    ["Excluded from analysis", latestData?.dataCleaning.excludedShotCount],
-                  ].map(([label, value]) => (
-                    <div key={label}>
-                      <dt className="text-xs text-muted-foreground">{label}</dt>
-                      <dd className="mt-1 font-semibold">{value ?? "Unavailable"}</dd>
-                    </div>
-                  ))}
-                </dl>
-                <p className="text-sm text-muted-foreground">
-                  Excluded rows remain saved. Keep, restore or change a club from the selected
-                  shot’s review.
-                </p>
-                <Button asChild variant="outline" className="min-h-11">
-                  <Link
-                    href={`/shots${latestData?.sessions[0]?.id ? `?sessionId=${encodeURIComponent(latestData.sessions[0].id)}` : ""}`}
-                  >
-                    Open saved shot rows
-                  </Link>
-                </Button>
-              </div>
-            ),
-          }}
-        />
-        {recent.length ? (
+                  <BestShotsEntry />
+                  {latestShots.some((shot) => shot.clubType === "driver") ? (
+                    <details className="rounded-xl border border-border bg-card p-3">
+                      <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold">
+                        Driver development · {latestData?.dateLabel}
+                      </summary>
+                      <DriverDevelopmentPanel date={latestData?.dateKey} variant="signal" />
+                    </details>
+                  ) : null}
+                </div>
+              ),
+              practice: (
+                <div className="grid gap-5">
+                  {" "}
+                  <MobileTodayActivities
+                    accountId={userId}
+                    plan={
+                      currentPlan
+                        ? {
+                            id: currentPlan.id,
+                            title: currentPlan.title,
+                            status: currentPlan.status,
+                          }
+                        : null
+                    }
+                    round={
+                      activeRound
+                        ? { id: activeRound.id, courseName: activeRound.courseName }
+                        : null
+                    }
+                  />
+                  {change && !review ? (
+                    <MobileSection
+                      title="What changed"
+                      action={
+                        <Link
+                          href="/progress"
+                          className="inline-flex min-h-11 items-center text-sm font-semibold text-primary"
+                        >
+                          All progress
+                        </Link>
+                      }
+                    >
+                      <MobileTodayChangeDetail change={change} />
+                    </MobileSection>
+                  ) : null}
+                  {review ? (
+                    <MobileSection title="For your next practice">
+                      <MobileGroupedList>
+                        <MobileListRow
+                          label={
+                            recommendation.confidence === "Low"
+                              ? recommendation.clubType
+                                ? `${formatCompanionClubType(recommendation.clubType)} baseline`
+                                : "Build your baseline"
+                              : recommendation.title
+                          }
+                          detail={`${recommendation.minutes} minutes · ${compactEvidenceLabel(recommendation.evidenceLabel)} · ${recommendation.confidence.toLowerCase()} confidence`}
+                          href={nextPracticeState.href}
+                          icon={Target}
+                        />
+                      </MobileGroupedList>
+                    </MobileSection>
+                  ) : null}
+                  {!review ? (
+                    <Button asChild className="min-h-12">
+                      <Link href={nextPracticeState.href}>{nextPracticeState.action}</Link>
+                    </Button>
+                  ) : null}
+                </div>
+              ),
+              evidence: (
+                <div className="grid gap-4">
+                  <h2 className="text-lg font-semibold">
+                    Shot evidence · {latestData?.dateLabel ?? "No measured session"}
+                  </h2>
+                  <TodayDataQuality shots={latestShots} compact />
+                  {evidencePatternPoints.length ? (
+                    <MobileShotPatternCharts
+                      points={evidencePatternPoints}
+                      defaultToAllClubs
+                      defaultToAllShots
+                      details={shotDetails}
+                      correctionClubs={correctionClubs}
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No measured coordinates are available. Saved session evidence remains
+                      accessible below.
+                    </p>
+                  )}
+                  <MobileGroupedList label="Source sessions">
+                    {latestData?.sessions.map((session) => (
+                      <MobileListRow
+                        key={session.id}
+                        label={session.label}
+                        detail={`${session.type} · ${session.shotCount} shots`}
+                        href={`/sessions/${session.id}`}
+                      />
+                    ))}
+                  </MobileGroupedList>
+                </div>
+              ),
+              "data-quality": (
+                <div className="grid gap-4">
+                  <TodayDataQuality shots={latestShots} />
+                  <dl className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-4">
+                    {[
+                      ["Saved rows", latestData?.dataCleaning.importedShotCount],
+                      ["Clean analysis", latestData?.dataCleaning.cleanShotCount],
+                      ["Excluded from analysis", latestData?.dataCleaning.excludedShotCount],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <dt className="text-xs text-muted-foreground">{label}</dt>
+                        <dd className="mt-1 font-semibold">{value ?? "Unavailable"}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <p className="text-sm text-muted-foreground">
+                    Excluded rows remain saved. Keep, restore or change a club from the selected
+                    shot’s review.
+                  </p>
+                  <Button asChild variant="outline" className="min-h-11">
+                    <Link
+                      href={`/shots${latestData?.sessions[0]?.id ? `?sessionId=${encodeURIComponent(latestData.sessions[0].id)}` : ""}`}
+                    >
+                      Open saved shot rows
+                    </Link>
+                  </Button>
+                </div>
+              ),
+            }}
+          />
+        ) : null}
+        {panel === "home" && recent.length ? (
           <MobileSection title="Recent">
             <MobileGroupedList>
-              {recent.map((item) => (
+              {recent.slice(0, 3).map((item) => (
                 <MobileListRow
                   key={item.id}
                   label={item.title}
@@ -502,7 +576,7 @@ export default async function TodayCompanionPage({
           </MobileSection>
         ) : null}
 
-        {confidenceWarning ? (
+        {panel === "home" && confidenceWarning ? (
           <Alert>
             <ShieldAlert aria-hidden />
             <AlertTitle>{confidenceWarningTitle(confidenceWarning)}</AlertTitle>

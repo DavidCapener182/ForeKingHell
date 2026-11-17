@@ -46,7 +46,7 @@ test("progress preserves round resume and shot correction with refreshed evidenc
     try {
       for (const surface of ["workbench", "companion"]) {
         await page.goto(`/surface/${surface}?next=%2Ftoday`);
-        await expect(page.locator("main h2").first()).toHaveText("Am I improving?");
+        await expect(page.getByRole("link", { name: "Club trends", exact: true })).toBeVisible();
         const resume = page.getByRole("link", { name: /^Continue round/ });
         await expect(resume).toHaveAttribute("href", `/rounds/${round.id}`);
         await resume.click();

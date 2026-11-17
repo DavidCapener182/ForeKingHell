@@ -48,11 +48,11 @@ describe("latest practice desktop dashboard", () => {
     expect(primaryAnswerSource).toContain("data-today-sync-state");
     expect(primaryAnswerSource).not.toContain("<Progress");
     expect(primaryAnswerSource).toContain('new Event("fkh-offline-retry-requested")');
-    expect(loadingSource).toContain("Loading shared club progress");
-    expect(loadingSource).toContain("Loading latest shot pattern");
+    expect(loadingSource).toContain("Loading your practice summary");
+    expect(loadingSource).toContain("Loading your next steps");
     expect(loadingSource.match(/role="status"/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
     expect(loadingSource.match(/aria-busy="true"/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
-    expect(loadingSource).toContain("aspect-[82/43]");
+    expect(loadingSource).toContain("h-20 w-full");
     expect(primaryAnswerSource).toContain("Retry sync");
     expect(primaryAnswerSource).toContain(
       'role={syncState.status === "Needs attention" ? "alert" : "status"}',
@@ -119,7 +119,7 @@ describe("latest practice desktop dashboard", () => {
 
   it("uses the optional desktop AI rail for latest practice evidence", () => {
     expect(source).toContain("DesktopInsightRail");
-    expect(source).toContain('title="AI latest-practice rail"');
+    expect(source).toContain('title="Practice insights"');
     expect(source).toContain("data-full-session-analysis");
     expect(source).toContain("todayInsightMetrics(data, linkedPracticePlan)");
     expect(source).toContain("todayInsightEvidence(data, linkedPracticePlan)");
@@ -152,21 +152,16 @@ describe("latest practice desktop dashboard", () => {
     expect(source).not.toContain("TodayBentoItem");
   });
 
-  it("orders the desktop home as answer, performance, context, next up, then activity", () => {
-    const answer = source.indexOf("<TodayDecisionHero");
-    const performance = source.indexOf('eyebrow="Latest performance"');
-    const context = source.indexOf('eyebrow="Today’s context"');
-    const nextUp = source.indexOf("<TodayNextUp");
-    const activity = source.indexOf("<TodayActivityTimeline");
-
-    expect(answer).toBeGreaterThan(0);
-    expect(performance).toBeGreaterThan(answer);
-    expect(context).toBeGreaterThan(performance);
-    expect(nextUp).toBeGreaterThan(context);
-    expect(activity).toBeGreaterThan(nextUp);
+  it("pairs the recap with next practice and leaves charts in their own views", () => {
+    const hero = source.indexOf("<TodayDecisionHero");
+    const plan = source.indexOf("<TodayNextUp");
+    const nav = source.indexOf("<TodayPanelNav");
+    expect(hero).toBeGreaterThan(0);
+    expect(plan).toBeGreaterThan(hero);
+    expect(nav).toBeGreaterThan(plan);
+    expect(source.indexOf("<TodayClubTrendsPanel")).toBeGreaterThan(nav);
+    expect(source).not.toContain("<HighlightCarousel");
     expect(source).toContain('variant="editorial"');
-    expect(source).toContain("<ButtonGroup");
-    expect(source).toContain("<Progress");
   });
 
   it("keeps the focused practice workflow available inside its desktop tab", () => {

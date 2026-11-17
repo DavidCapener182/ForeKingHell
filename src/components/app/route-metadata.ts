@@ -196,10 +196,14 @@ const baseAppRouteMetadata = [
   meta("compare", "/compare", "Compare", "Compare", "Analyse", "review", GitCompareArrows, [
     "comparison",
     "session compare",
+    "what changed between sessions",
+    "compare two practices",
     "change",
   ]),
   meta("progress", "/progress", "Progress", "Progress", "Analyse", "review", LineChart, [
     "improvement",
+    "am I improving",
+    "how has my game changed over time",
     "trends",
   ]),
   meta(
@@ -251,6 +255,8 @@ const baseAppRouteMetadata = [
   meta("quick-bag", "/quick-bag", "Quick Bag", "Quick Bag", "Improve", "bag", Target, [
     "trusted carry",
     "club number",
+    "how far do I hit each club",
+    "which club for this distance",
     "target distance",
   ]),
   meta(
