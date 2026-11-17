@@ -163,7 +163,9 @@ describe("surface-specific import centre", () => {
     expect(importForm).toContain("<SaveChecklistCard");
     expect(importForm).toContain("<ShotPreview");
     expect(importForm).toContain("data-import-configuration");
-    expect(importForm).toContain('<div className="grid gap-5 xl:grid-cols-2">');
+    expect(importForm).toContain(
+      'uploadedFiles.length ? "grid gap-5 xl:grid-cols-2" : "grid gap-5"',
+    );
     expect(importForm).not.toMatch(
       /<Card[^>]*>[\s\S]{0,900}<UploadDropzone[\s\S]{0,1500}<SessionSettings/,
     );

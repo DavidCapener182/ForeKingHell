@@ -279,6 +279,7 @@ export function WorkbenchAppShell({
             {desktopNavGroups.map((group) => (
               <SidebarGroup key={group.label} className={cn(isCompactSidebar && "p-1")}>
                 <NavigationSection
+                  key={group.items.find((item) => item.isActive(pathname))?.href ?? group.label}
                   label={group.label}
                   iconMode={sidebarDensity === "icon"}
                   activeLabel={group.items.find((item) => item.isActive(pathname))?.label}

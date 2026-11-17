@@ -84,7 +84,7 @@ describe("public homepage mobile design source contract", () => {
     expect(cinematicCssSource).toContain("min-height: 100svh;");
     expect(heroSource).toContain("Stop guessing.");
     expect(heroSource).toContain("Start knowing.");
-    expect(heroSource).toContain("Turn measured shots into a trusted bag");
+    expect(heroSource).toContain("Import your launch-monitor shots");
     expect(mobileShowcaseSource).toContain("Today, Practice, Strategy, Review and Bag");
     expect(mobileShowcaseSource).toContain("Today · Demo data");
     expect(mobileShowcaseSource).not.toContain("Home, Sessions, Analyse, Practice and More");

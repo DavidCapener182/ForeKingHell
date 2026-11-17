@@ -84,6 +84,7 @@ describe("application navigation hierarchy", () => {
       "Bag",
       "Insights",
       "Data",
+      "Community",
       "Settings",
     ]);
     expect(adminGroups.map((group) => group.label)).toEqual([
@@ -95,6 +96,7 @@ describe("application navigation hierarchy", () => {
       "Bag",
       "Insights",
       "Data",
+      "Community",
       "Settings",
       "Admin",
     ]);

@@ -117,14 +117,15 @@ export function MobileNav({
       return groups;
     }
 
+    const terms = normalizedQuery.split(/\s+/);
     return groups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) =>
-          `${group.label} ${item.label} ${item.href} ${item.searchKeywords?.join(" ") ?? ""}`
-            .toLowerCase()
-            .includes(normalizedQuery),
-        ),
+        items: group.items.filter((item) => {
+          const searchable =
+            `${group.label} ${item.label} ${item.href} ${item.searchKeywords?.join(" ") ?? ""}`.toLowerCase();
+          return terms.every((term) => searchable.includes(term));
+        }),
       }))
       .filter((group) => group.items.length > 0);
   }, [groups, normalizedQuery]);
@@ -179,7 +180,13 @@ export function MobileNav({
               : "grid-cols-[minmax(0,1fr)_auto]",
           )}
         >
-          <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+          <Sheet
+            open={moreOpen}
+            onOpenChange={(open) => {
+              setMoreOpen(open);
+              if (!open) setQuery("");
+            }}
+          >
             {backNavigation ? (
               <Button
                 asChild
@@ -212,7 +219,7 @@ export function MobileNav({
                   >
                     {profileLabel.slice(0, 1).toUpperCase()}
                   </span>
-                  <span className="truncate text-xs font-semibold">{profileLabel}</span>
+                  <span className="truncate text-sm font-semibold">More tools</span>
                 </Button>
               </SheetTrigger>
             )}
@@ -376,7 +383,7 @@ export function MobileNav({
             <Button
               asChild
               variant="ghost"
-              className="ios-nav-button focus-aaa min-h-9 justify-self-end rounded-full border border-border px-3 text-[0.65rem] font-bold"
+              className="ios-nav-button focus-aaa min-h-11 justify-self-end rounded-full border border-border px-3 text-sm font-bold"
             >
               <Link href="/import" aria-label="Import launch-monitor data">
                 <span aria-hidden>+ Import</span>

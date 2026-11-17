@@ -74,19 +74,8 @@ const desktopAreaDefinitions = [
     ids: ["analyse", "session-impact", "progress", "strokes-gained", "data-chat"],
   },
   { label: "Data", ids: ["import", "rapsodo", "providers"] },
-  {
-    label: "Settings",
-    ids: [
-      "settings",
-      "notifications",
-      "profile",
-      "billing",
-      "friends",
-      "feed",
-      "social-intelligence",
-      "groups",
-    ],
-  },
+  { label: "Community", ids: ["friends", "groups", "feed", "social-intelligence"] },
+  { label: "Settings", ids: ["settings", "notifications", "profile", "billing"] },
 ] as const;
 
 const adminIds = [

@@ -137,8 +137,8 @@ export function HeroProductStage() {
       </div>
       <div className={cinematic.heroCopy} data-hero-layer data-hero-depth="2">
         <p>
-          Turn measured shots into a trusted bag, a focused practice job and a smarter plan for the
-          course.
+          Import your launch-monitor shots to see how far each club carries, what to practise next
+          and which club to take on the course.
         </p>
         <div className={cinematic.heroActions} data-mobile-cta-origin>
           <Link

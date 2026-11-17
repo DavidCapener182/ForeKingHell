@@ -19,6 +19,7 @@ describe("product brief acceptance", () => {
       "Bag",
       "Insights",
       "Data",
+      "Community",
       "Settings",
       "Admin",
     ]);

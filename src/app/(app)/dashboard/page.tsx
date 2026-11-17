@@ -133,7 +133,7 @@ export default async function DashboardPage() {
       label: "Scoring handicap",
       value: formatHandicapValue(data.stats.combinedHandicap.value),
       detail: formatHandicapTrend(data.stats.combinedHandicap),
-      href: "/rounds",
+      href: "/handicap",
     },
   ].filter((metric) =>
     data.dashboardPins.includes(metric.pin as (typeof data.dashboardPins)[number]),
@@ -200,6 +200,53 @@ export default async function DashboardPage() {
             </Button>
           }
         />
+        <details className="rounded-xl border bg-card px-4">
+          <summary className="min-h-11 cursor-pointer py-3 text-sm font-medium">
+            Jump to a dashboard section
+          </summary>
+          <nav aria-label="Dashboard sections" className="flex flex-wrap gap-2 pb-3">
+            {sections.map(([id, label]) => (
+              <a
+                key={id}
+                href={`#${id}`}
+                className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                {label}
+              </a>
+            ))}
+            <Link
+              href="/progress"
+              className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium"
+            >
+              Full Progress
+            </Link>
+            <Link
+              href="/shots"
+              className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium"
+            >
+              Shot data
+            </Link>
+          </nav>
+        </details>
+        {metrics.length > 0 && (
+          <dl className="grid min-w-0 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-2 lg:grid-cols-4">
+            {metrics.map((metric) => (
+              <div key={metric.pin} className="min-w-0 bg-card p-4">
+                <dt className="text-sm text-muted-foreground">{metric.label}</dt>
+                <dd className="mt-1 text-2xl font-semibold tabular-nums">{metric.value}</dd>
+                <dd className="text-sm leading-6 text-muted-foreground">{metric.detail}</dd>
+                <dd>
+                  <Link
+                    href={metric.href}
+                    className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline"
+                  >
+                    Review {metric.label.toLowerCase()}
+                  </Link>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        )}
         <TodayClubTrendsPanel mode="dashboard" />
         {latestActivityRound ? <TodayRoundView round={latestActivityRound} /> : null}
         {latestActivityRound ? (
@@ -262,46 +309,7 @@ export default async function DashboardPage() {
             ) : null}
           </div>
         </section>
-        <nav aria-label="Dashboard sections" className="flex flex-wrap gap-2">
-          {sections.map(([id, label]) => (
-            <a
-              key={id}
-              href={`#${id}`}
-              className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
-            >
-              {label}
-            </a>
-          ))}
-          <Link
-            href="/progress"
-            className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium"
-          >
-            Full Progress
-          </Link>
-          <Link
-            href="/shots"
-            className="inline-flex min-h-11 items-center rounded-lg border px-3 text-sm font-medium"
-          >
-            Shot data
-          </Link>
-        </nav>
-        <dl className="grid min-w-0 divide-y rounded-xl border bg-card sm:grid-cols-2 lg:grid-cols-4">
-          {metrics.map((metric) => (
-            <div key={metric.pin} className="min-w-0 p-4">
-              <dt className="text-sm text-muted-foreground">{metric.label}</dt>
-              <dd className="mt-1 text-2xl font-semibold tabular-nums">{metric.value}</dd>
-              <dd className="text-sm leading-6 text-muted-foreground">{metric.detail}</dd>
-              <dd>
-                <Link
-                  href={metric.href}
-                  className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline"
-                >
-                  Review {metric.label.toLowerCase()}
-                </Link>
-              </dd>
-            </div>
-          ))}
-        </dl>
+
         <section
           id="driver-speed"
           className="grid scroll-mt-24 gap-3"
