@@ -64,14 +64,10 @@ describe("dashboard desktop source", () => {
     expect(source).toContain("focus-visible:outline-ring");
   });
 
-  it("keeps the face-path target readout legible across semantic themes", () => {
-    const targetReadout =
-      facePathChartSource.match(/\{targetWindow \? \([\s\S]*?function angleTargetState/)?.[0] ?? "";
-
-    expect(targetReadout).toContain("text-foreground");
-    expect(targetReadout).toContain("--status-success-foreground");
-    expect(targetReadout).toContain("--status-warning-foreground");
-    expect(targetReadout).not.toMatch(/text-\[#[0-9a-f]{3,8}\]/i);
+  it("provides distinct observed and illustrative views", () => {
+    expect(facePathChartSource).toContain("Observed carry");
+    expect(facePathChartSource).toContain("Illustrative flight");
+    expect(facePathSelectorSource).not.toContain("benchmarkDeliveryTargetWindow");
   });
 
   it("uses a labelled shared club selector around the specialist delivery chart", () => {

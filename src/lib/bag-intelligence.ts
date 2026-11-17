@@ -1,3 +1,4 @@
+import { deliveryObservation, type DeliveryObservation } from "@/lib/club-delivery";
 import { clubSortValue, formatClubType } from "@/lib/club-format";
 import { isEstimatedClubData } from "@/lib/club-analytics";
 import { calculateFaceToPathDeg, resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
@@ -16,6 +17,8 @@ export type BagIntelligenceShot = {
   sideCarryYd: number | null;
   launchDirectionDeg?: number | null;
   clubPathDeg?: number | null;
+  sourceRawJson?: unknown;
+  spinAxis?: number | null;
   faceAngleDeg?: number | null;
   clubDataEstType?: string | null;
   shotCategory?: string | null;
@@ -105,6 +108,8 @@ export type PathTrendPoint = {
 };
 
 export type PathTrendClubSummary = {
+  delivery: DeliveryObservation[];
+  cohortLabel: string;
   clubId: string;
   clubType: string;
   label: string;
@@ -400,6 +405,13 @@ export function buildPathTrendTracking(clubs: BagIntelligenceClub[]): PathTrendT
         sampleSize: shotsForMonth.length,
       };
     });
+
+  const priority = clubSummaries.find((item) => item.clubId === club.id);
+  const latestMonth = points.at(-1)?.monthKey;
+  if (priority && latestMonth) {
+    priority.delivery = grouped.get(latestMonth)!.map(deliveryObservation);
+    priority.cohortLabel = latestMonth;
+  }
 
   const first = points.find((point) => isNumber(point.pathDeg));
   const latest = [...points].reverse().find((point) => isNumber(point.pathDeg));
@@ -1029,6 +1041,8 @@ function buildPathClubSummary(club: BagIntelligenceClub): PathTrendClubSummary |
   const pattern = classifyFacePathPattern(pathDeg, faceToPathProxyDeg);
 
   return {
+    delivery: shots.map(deliveryObservation),
+    cohortLabel: "Recent eligible shots",
     clubId: club.id,
     clubType: club.type,
     label: formatClubType(club.type),

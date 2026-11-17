@@ -1,12 +1,13 @@
 "use client";
 
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useState } from "react";
 
-import {
-  FacePathDeliveryChart,
+import ClubDeliveryChart, {
   formatSignedDegrees,
-  type FacePathDeliveryDatum,
 } from "@/components/visuals/face-path-delivery-chart";
+import { deliverySummary, deliveryTendency, targetSide } from "@/lib/club-delivery";
+import { DeliveryAssessment } from "./delivery-assessment";
+import type { Handedness } from "@/lib/units";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,16 +22,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import type { PathTrendTracking } from "@/lib/bag-intelligence";
-import { getClubDistanceBenchmark, type ClubBenchmarkLevelKey } from "@/lib/club-benchmarks";
 import { cn } from "@/lib/utils";
-
-type DeliveryClubOption = FacePathDeliveryDatum & {
-  clubId: string;
-  clubType: string;
-  sampleSize: number;
-  patternCode: string;
-  isPriorityClub: boolean;
-};
 
 export function FacePathClubSelector({
   pathTrend,
@@ -43,13 +35,16 @@ export function FacePathClubSelector({
   className?: string;
   compact?: boolean;
 }) {
-  const clubs = useMemo(() => buildDeliveryClubOptions(pathTrend), [pathTrend]);
+  const clubs = [...pathTrend.clubs].sort(
+    (a, b) =>
+      Number(b.clubId === pathTrend.clubId) - Number(a.clubId === pathTrend.clubId) ||
+      b.delivery.length - a.delivery.length,
+  );
+  const [hand, setHand] = useState<Handedness>("right");
   const [selectedClubId, setSelectedClubId] = useState(clubs[0]?.clubId ?? "");
   const selected = clubs.find((club) => club.clubId === selectedClubId) ?? clubs[0] ?? null;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const targetWindow = selected ? benchmarkDeliveryTargetWindow(selected.clubType) : null;
-
   if (!selected) {
     return (
       <div
@@ -63,6 +58,8 @@ export function FacePathClubSelector({
     );
   }
 
+  const stats = deliverySummary(selected.delivery);
+  const tendency = deliveryTendency(stats.face, stats.delta, hand);
   return (
     <div
       className={cn(
@@ -84,7 +81,7 @@ export function FacePathClubSelector({
                 Club delivery
               </p>
               <Badge variant="secondary">
-                {selected.isPriorityClub ? "Priority read" : "Club read"}
+                {selected.clubId === pathTrend.clubId ? "Priority read" : "Club read"}
               </Badge>
             </div>
             <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -94,110 +91,128 @@ export function FacePathClubSelector({
                   compact ? "text-[20px] leading-6" : "text-[22px] leading-7",
                 )}
               >
-                {selected.patternLabel}
+                {tendency.label}
               </p>
               <p className="text-sm leading-5 text-muted-foreground">
-                {selected.label} · {selected.sampleSize} measured shots
+                {selected.label} · {selected.delivery.length} shots · {selected.cohortLabel}
               </p>
             </div>
           </div>
 
-          <div className="hidden lg:block">
+          <div className="grid items-end gap-2 sm:grid-cols-2">
+            <div className="hidden lg:block">
+              <UntitledSelect
+                label="Selected club"
+                name="deliveryClub"
+                value={selected.clubId}
+                onValueChange={setSelectedClubId}
+                options={clubs.map((club) => ({
+                  value: club.clubId,
+                  label: `${club.label} · ${club.delivery.length} shots`,
+                }))}
+              />
+            </div>
+            <div className="lg:hidden">
+              <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" className="min-h-11 w-full justify-between">
+                    {selected.label}
+                    <span>Change club</span>
+                  </Button>
+                </SheetTrigger>
+                <SheetContent
+                  side="bottom"
+                  className="max-h-[85dvh] overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]"
+                  showCloseButton={false}
+                >
+                  <SheetHeader>
+                    <SheetTitle>Choose a club</SheetTitle>
+                    <SheetDescription>
+                      Update the chart, measurements and diagnosis together.
+                    </SheetDescription>
+                  </SheetHeader>
+                  <div className="grid gap-2 px-4">
+                    <UntitledTextField
+                      label="Search clubs"
+                      name="deliverySearch"
+                      type="search"
+                      value={search}
+                      onValueChange={setSearch}
+                    />
+                    {clubs
+                      .filter((club) => club.label.toLowerCase().includes(search.toLowerCase()))
+                      .map((club) => (
+                        <Button
+                          key={club.clubId}
+                          variant={club.clubId === selected.clubId ? "default" : "outline"}
+                          aria-pressed={club.clubId === selected.clubId}
+                          className="h-auto min-h-11 justify-between whitespace-normal text-left"
+                          onClick={() => {
+                            setSelectedClubId(club.clubId);
+                            setPickerOpen(false);
+                          }}
+                        >
+                          <span>{club.label}</span>
+                          <span>{club.delivery.length} shots</span>
+                        </Button>
+                      ))}
+                    {!clubs.some((club) =>
+                      club.label.toLowerCase().includes(search.toLowerCase()),
+                    ) ? (
+                      <p role="status" className="py-4 text-sm">
+                        No matching clubs. Clear the search to see every club.
+                      </p>
+                    ) : null}
+                    <SheetClose asChild>
+                      <Button variant="outline" className="min-h-11">
+                        Close
+                      </Button>
+                    </SheetClose>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+
             <UntitledSelect
-              label="Selected club"
-              name="deliveryClub"
-              value={selected.clubId}
-              onValueChange={setSelectedClubId}
-              options={clubs.map((club) => ({
-                value: club.clubId,
-                label: `${club.label} · ${club.sampleSize} shots`,
-              }))}
+              label="Playing hand"
+              name="deliveryHand"
+              value={hand}
+              onValueChange={(value) => setHand(value === "left" ? "left" : "right")}
+              options={[
+                { value: "right", label: "Right-handed" },
+                { value: "left", label: "Left-handed" },
+              ]}
             />
           </div>
-          <div className="lg:hidden">
-            <Sheet open={pickerOpen} onOpenChange={setPickerOpen}>
-              <SheetTrigger asChild>
-                <Button variant="outline" className="min-h-11 w-full justify-between">
-                  {selected.label}
-                  <span>Change club</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="bottom"
-                className="max-h-[85dvh] overflow-y-auto pb-[max(1rem,env(safe-area-inset-bottom))]"
-                showCloseButton={false}
-              >
-                <SheetHeader>
-                  <SheetTitle>Choose a club</SheetTitle>
-                  <SheetDescription>
-                    Update the chart, measurements and diagnosis together.
-                  </SheetDescription>
-                </SheetHeader>
-                <div className="grid gap-2 px-4">
-                  <UntitledTextField
-                    label="Search clubs"
-                    name="deliverySearch"
-                    type="search"
-                    value={search}
-                    onValueChange={setSearch}
-                  />
-                  {clubs
-                    .filter((club) => club.label.toLowerCase().includes(search.toLowerCase()))
-                    .map((club) => (
-                      <Button
-                        key={club.clubId}
-                        variant={club.clubId === selected.clubId ? "default" : "outline"}
-                        aria-pressed={club.clubId === selected.clubId}
-                        className="h-auto min-h-11 justify-between whitespace-normal text-left"
-                        onClick={() => {
-                          setSelectedClubId(club.clubId);
-                          setPickerOpen(false);
-                        }}
-                      >
-                        <span>{club.label}</span>
-                        <span>{club.sampleSize} shots</span>
-                      </Button>
-                    ))}
-                  {!clubs.some((club) =>
-                    club.label.toLowerCase().includes(search.toLowerCase()),
-                  ) ? (
-                    <p role="status" className="py-4 text-sm">
-                      No matching clubs. Clear the search to see every club.
-                    </p>
-                  ) : null}
-                  <SheetClose asChild>
-                    <Button variant="outline" className="min-h-11">
-                      Close
-                    </Button>
-                  </SheetClose>
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
-
-          <DeliveryAngles club={selected} />
+          <DeliveryAngles stats={stats} reference={tendency.reference} />
           {action ? <div className="pt-1 2xl:mt-auto">{action}</div> : null}
         </div>
 
-        <FacePathDeliveryChart
-          datum={selected}
-          idPrefix={`dashboard-${selected.clubId}`}
-          compact={compact}
-          chartClassName="bg-background"
-          showAccessibleFallback
-          showMetricPills={false}
-          targetWindow={targetWindow ?? undefined}
-        />
+        <div key={selected.clubId} className="grid min-w-0 gap-3">
+          <ClubDeliveryChart
+            clubName={selected.label}
+            clubPath={stats.path}
+            faceAngle={stats.face}
+            rows={selected.delivery}
+          />
+        </div>
       </div>
+      <DeliveryAssessment key={selected.clubId} club={selected} stats={stats} hand={hand} />
     </div>
   );
 }
 
-function DeliveryAngles({ club }: { club: DeliveryClubOption }) {
+function DeliveryAngles({
+  stats,
+  reference,
+}: {
+  stats: ReturnType<typeof deliverySummary>;
+  reference: string;
+}) {
   const readings = [
-    { label: "Club path", value: club.pathDeg, reference: "against the target line" },
-    { label: "Club face", value: club.faceDeg, reference: "against the target line" },
-    { label: "Face to path", value: club.faceToPathDeg, reference: "relative to the swing path" },
+    { label: "Club path", value: stats.path, reference: targetSide(stats.path) },
+    { label: "Face angle", value: stats.face, reference: targetSide(stats.face) },
+    { label: "Face-to-path", value: stats.delta, reference },
   ];
   const extent = Math.max(5, ...readings.map(({ value }) => Math.ceil(Math.abs(value ?? 0))));
   return (
@@ -232,156 +247,13 @@ function DeliveryAngles({ club }: { club: DeliveryClubOption }) {
           ))}
         </dl>
         <p className="mt-2 text-xs text-muted-foreground">
-          Centre line is 0°. Each scale runs from −{extent}° to +{extent}°. Face readings may be
-          estimated from launch direction.
+          Centre line is 0°. Each scale runs from −{extent}° to +{extent}°. Averages use{" "}
+          {stats.deltas.length
+            ? stats.deltas.length + " paired face and path readings"
+            : "available path readings"}
+          .
         </p>
       </CardContent>
     </Card>
   );
-}
-
-function buildDeliveryClubOptions(pathTrend: PathTrendTracking): DeliveryClubOption[] {
-  const latestPoint =
-    [...pathTrend.points].reverse().find((point) => point.pathDeg !== null) ?? null;
-  const latestShot = pathTrend.recentShots[0] ?? null;
-  const priorityClubId = pathTrend.clubId;
-  const summaries = pathTrend.clubs;
-
-  return summaries
-    .map((club) => {
-      const isPriorityClub = Boolean(priorityClubId && club.clubId === priorityClubId);
-      const pathDeg = isPriorityClub
-        ? (latestPoint?.pathDeg ?? latestShot?.pathDeg ?? club.pathDeg)
-        : club.pathDeg;
-      const faceDeg = isPriorityClub
-        ? (latestPoint?.faceDeg ?? latestShot?.faceDeg ?? club.faceDeg)
-        : club.faceDeg;
-      const faceToPathDeg = isPriorityClub
-        ? (latestPoint?.faceToPathProxyDeg ??
-          latestShot?.faceToPathProxyDeg ??
-          club.faceToPathProxyDeg)
-        : club.faceToPathProxyDeg;
-      const patternLabel = isPriorityClub
-        ? (latestPoint?.patternLabel ?? latestShot?.patternLabel ?? club.patternLabel)
-        : club.patternLabel;
-      const patternCode = isPriorityClub
-        ? (latestPoint?.patternCode ?? latestShot?.patternCode ?? club.patternCode)
-        : club.patternCode;
-      const sampleSize = isPriorityClub
-        ? (latestPoint?.sampleSize ?? pathTrend.recentShots.length ?? club.sampleSize)
-        : club.sampleSize;
-
-      return {
-        clubId: club.clubId,
-        clubType: club.clubType,
-        label: club.label,
-        patternLabel,
-        patternCode,
-        pathDeg,
-        faceDeg,
-        faceToPathDeg,
-        sampleSize,
-        isPriorityClub,
-      };
-    })
-    .sort((left, right) => {
-      if (left.isPriorityClub) {
-        return -1;
-      }
-
-      if (right.isPriorityClub) {
-        return 1;
-      }
-
-      return right.sampleSize - left.sampleSize;
-    });
-}
-
-function benchmarkDeliveryTargetWindow(clubType: string) {
-  const benchmark = getClubDistanceBenchmark(clubType);
-
-  if (!benchmark) {
-    return null;
-  }
-
-  const targetLevel = deliveryTargetLevel(benchmark.clubType);
-  const benchmarkLevel = benchmark.levels.find((level) => level.key === targetLevel);
-  const labelPrefix = benchmarkLevel?.shortLabel ?? "Good";
-
-  if (benchmark.clubType === "driver") {
-    return {
-      path: { label: `${labelPrefix} path`, min: 2, max: 5 },
-      face: { label: `${labelPrefix} face`, min: 3, max: 5 },
-    };
-  }
-
-  const centre = deliveryWindowCentre(benchmark.clubType);
-  const radius = deliveryWindowRadius(targetLevel, benchmark.clubType);
-
-  return {
-    path: {
-      label: `${labelPrefix} path`,
-      min: roundOne(centre.path - radius.path),
-      max: roundOne(centre.path + radius.path),
-    },
-    face: {
-      label: `${labelPrefix} face`,
-      min: roundOne(centre.face - radius.face),
-      max: roundOne(centre.face + radius.face),
-    },
-  };
-}
-
-function deliveryTargetLevel(clubType: string): ClubBenchmarkLevelKey {
-  if (isScoringClub(clubType)) {
-    return "advanced";
-  }
-
-  return "good";
-}
-
-function deliveryWindowCentre(clubType: string) {
-  if (/^[1-9][wh]$/.test(clubType) || clubType === "hybrid") {
-    return { path: 1.5, face: 1.5 };
-  }
-
-  return { path: 0, face: 0 };
-}
-
-function deliveryWindowRadius(level: ClubBenchmarkLevelKey, clubType: string) {
-  const base =
-    level === "tour"
-      ? { path: 1, face: 1 }
-      : level === "advanced"
-        ? { path: 2, face: 2 }
-        : level === "good"
-          ? { path: 3, face: 3 }
-          : level === "average"
-            ? { path: 4.5, face: 4.5 }
-            : { path: 6, face: 6 };
-
-  if (/^[1-9][wh]$/.test(clubType) || clubType === "hybrid") {
-    return { path: Math.max(2, base.path - 0.5), face: Math.max(2, base.face - 0.5) };
-  }
-
-  return base;
-}
-
-function isScoringClub(clubType: string) {
-  if (
-    clubType === "pw" ||
-    clubType === "gw" ||
-    clubType === "aw" ||
-    clubType === "sw" ||
-    clubType === "lw"
-  ) {
-    return true;
-  }
-
-  const iron = clubType.match(/^([1-9])i$/);
-  return iron ? Number(iron[1]) >= 8 : false;
-}
-
-function roundOne(value: number) {
-  return Math.round(value * 10) / 10;
 }

@@ -80,7 +80,7 @@ function startPattern(value: number | null) {
   return value === null || Math.abs(value) < 1.5 ? null : value < 0 ? "pull" : "push";
 }
 
-function curvePattern(spinAxis: number | null, handedness: Handedness) {
+export function curvePattern(spinAxis: number | null, handedness: Handedness) {
   if (spinAxis === null || Math.abs(spinAxis) < 3) return null;
   const curvesLeft = spinAxis < 0;
   const draws = handedness === "right" ? curvesLeft : !curvesLeft;

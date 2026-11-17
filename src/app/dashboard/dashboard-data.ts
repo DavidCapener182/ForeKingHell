@@ -162,6 +162,8 @@ export async function getDashboardData() {
         ballSpeedMph: shots.ballSpeedMph,
         launchAngleDeg: shots.launchAngleDeg,
         launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
+        sourceRawJson: shots.sourceRawJson,
+        spinAxis: directionalMetricSql(shots.spinAxis),
         clubPathDeg: directionalMetricSql(shots.clubPathDeg),
         faceAngleDeg: directionalMetricSql(shots.faceAngleDeg),
         clubDataEstType: shots.clubDataEstType,
