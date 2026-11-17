@@ -146,14 +146,14 @@ export default async function DashboardPage() {
       id: `plan-${currentPlan.id}`,
       title: currentPlan.title,
       description: `${currentPlan.timeMinutes} minutes · ${currentPlan.focusClubs.join(", ") || "Full bag"}`,
-      status: currentPlan.status,
+      status: currentPlan.status.replaceAll("_", " "),
       kind: "practice",
       href: practiceHref,
     });
   if (latest)
     work.push({
       id: latest.id,
-      title: latest.fileName,
+      title: "Latest saved session",
       timestamp: formatDate(latest.date),
       description: `${latest.shotCount} measured shots`,
       status: "Saved session",
@@ -358,7 +358,7 @@ export default async function DashboardPage() {
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {currentPlan
-              ? `${currentPlan.timeMinutes} minutes · ${currentPlan.focusClubs.join(", ") || "Full bag"}. Follow the saved targets, then upload your shots to review the result against this plan.`
+              ? `${currentPlan.timeMinutes} minutes · ${currentPlan.focusClubs.join(", ") || "Full bag"}. Status: ${currentPlan.status.replaceAll("_", " ")}.`
               : (focus?.reason ??
                 "Import a session, confirm the clubs and review its quality before choosing a measured target.")}
           </p>
@@ -433,7 +433,7 @@ export default async function DashboardPage() {
               {
                 label: "Recent evidence",
                 value: latest
-                  ? `${latest.fileName} · ${formatDate(latest.date)} · ${latest.shotCount} shots`
+                  ? `${formatDate(latest.date)} · ${latest.shotCount} shots`
                   : "No saved session yet",
                 href: latest ? `/sessions/${latest.id}` : "/import",
                 action: latest ? "Review latest session" : "Import a session",
@@ -519,7 +519,7 @@ function DashboardSpeedDevelopmentCard({ development }: { development: SpeedDeve
 
   return (
     <Card className="overflow-hidden" data-dashboard-speed-development>
-      <CardHeader className="flex-row flex-wrap items-start justify-between gap-4 border-b bg-muted/20 px-4 py-4">
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4 border-b bg-muted/20 px-4 py-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <CardTitle className="text-xl">{development.project.label}</CardTitle>

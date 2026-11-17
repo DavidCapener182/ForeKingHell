@@ -7,6 +7,7 @@ import {
   formatSignedDegrees,
   type FacePathDeliveryDatum,
 } from "@/components/visuals/face-path-delivery-chart";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UntitledSelect, UntitledTextField } from "@/components/untitled-ui/form-controls";
@@ -72,11 +73,11 @@ export function FacePathClubSelector({
     >
       <div
         className={cn(
-          "grid 2xl:grid-cols-[minmax(220px,0.72fr)_minmax(360px,1.28fr)] 2xl:items-stretch",
+          "grid items-start xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]",
           compact ? "gap-2" : "gap-3",
         )}
       >
-        <div className="grid h-full gap-2">
+        <div className="grid content-start gap-4">
           <div>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-bold uppercase tracking-normal text-primary">
@@ -174,25 +175,7 @@ export function FacePathClubSelector({
             </Sheet>
           </div>
 
-          <div className="grid gap-2 text-sm sm:grid-cols-3">
-            <MetricPill label="Path" value={formatSignedDegrees(selected.pathDeg)} />
-            <MetricPill label="Face" value={formatSignedDegrees(selected.faceDeg)} />
-            <MetricPill
-              label="Face to path"
-              value={formatSignedDegrees(selected.faceToPathDeg)}
-              tone="green"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/45 px-3 py-2 text-xs leading-5 text-muted-foreground 2xl:block 2xl:space-y-1">
-            <span className="font-medium text-foreground">
-              {selected.faceToPathDeg === null
-                ? "Face-to-path needs face angle or launch-direction rows."
-                : `${selected.label} face is ${formatSignedDegrees(selected.faceToPathDeg)} relative to path.`}
-            </span>
-            <span className="block">{selected.patternCode} pattern classification</span>
-          </div>
-
+          <DeliveryAngles club={selected} />
           {action ? <div className="pt-1 2xl:mt-auto">{action}</div> : null}
         </div>
 
@@ -202,7 +185,7 @@ export function FacePathClubSelector({
           compact={compact}
           chartClassName="bg-background"
           showAccessibleFallback
-          showMetricPills={!compact}
+          showMetricPills={false}
           targetWindow={targetWindow ?? undefined}
         />
       </div>
@@ -210,24 +193,50 @@ export function FacePathClubSelector({
   );
 }
 
-function MetricPill({
-  label,
-  value,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  tone?: "default" | "green";
-}) {
+function DeliveryAngles({ club }: { club: DeliveryClubOption }) {
+  const readings = [
+    { label: "Club path", value: club.pathDeg, reference: "against the target line" },
+    { label: "Club face", value: club.faceDeg, reference: "against the target line" },
+    { label: "Face to path", value: club.faceToPathDeg, reference: "relative to the swing path" },
+  ];
+  const extent = Math.max(5, ...readings.map(({ value }) => Math.ceil(Math.abs(value ?? 0))));
   return (
-    <span
-      className={cn(
-        "rounded-full bg-muted px-2.5 py-1.5 text-foreground",
-        tone === "green" ? "text-primary" : null,
-      )}
-    >
-      {label} {value}
-    </span>
+    <Card className="gap-0 py-0 shadow-none">
+      <CardContent className="p-4">
+        <dl className="divide-y">
+          {readings.map(({ label, value, reference }) => (
+            <div
+              key={label}
+              className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(4rem,1fr)_4rem] items-center gap-3 py-3"
+            >
+              <dt className="min-w-0">
+                <span className="block font-semibold">{label}</span>
+                <span className="block text-xs leading-5 text-muted-foreground">{reference}</span>
+              </dt>
+              <dd className="relative h-2 rounded-sm bg-muted" aria-hidden="true">
+                <span className="absolute inset-y-[-3px] left-1/2 w-px bg-foreground/60" />
+                {value !== null && (
+                  <span
+                    className="absolute inset-y-0 rounded-sm bg-primary"
+                    style={{
+                      left: `${50 + (Math.min(0, value) / extent) * 50}%`,
+                      width: `${(Math.abs(value) / extent) * 50}%`,
+                    }}
+                  />
+                )}
+              </dd>
+              <dd className="text-right text-lg font-semibold tabular-nums">
+                {value === null ? "—" : formatSignedDegrees(value).replace(" deg", "°")}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Centre line is 0°. Each scale runs from −{extent}° to +{extent}°. Face readings may be
+          estimated from launch direction.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 

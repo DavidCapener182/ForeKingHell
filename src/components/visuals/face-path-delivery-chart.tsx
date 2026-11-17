@@ -136,6 +136,7 @@ export function FacePathDeliveryChart({
               y1={faceLine.y1}
               x2={faceLine.x2}
               y2={faceLine.y2}
+              strokeDasharray="6 3"
               markerEnd={`url(#${faceArrowId})`}
               stroke="var(--delivery-face, #111827)"
               strokeLinecap="round"
@@ -153,6 +154,21 @@ export function FacePathDeliveryChart({
         </svg>
       </div>
 
+      {!showMetricPills && (
+        <p className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-2">
+            <span aria-hidden="true" className="w-6 border-t-2 border-[var(--delivery-path)]" />
+            Club path
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="w-6 border-t-2 border-dashed border-[var(--delivery-face)]"
+            />
+            Club face
+          </span>
+        </p>
+      )}
       {showMetricPills ? (
         <div className="grid gap-2 text-[11px] font-bold leading-4 md:grid-cols-3">
           <span
