@@ -1,3 +1,4 @@
+import { TodayPracticePhoto } from "@/components/app/today-practice-photo";
 import { TodayPanelNav } from "@/components/app/today-panel-nav";
 import { selectedTodayPanel, todayPanelHref } from "@/lib/today-panels";
 import { TodayClubTrendsPanel } from "@/components/app/today-club-trends-panel";
@@ -823,36 +824,33 @@ function TodayDecisionHero({
       aria-labelledby="practice-brief-title"
       className="overflow-hidden rounded-2xl border border-border bg-card"
     >
-      <div
-        className="bg-[#0c3025] bg-cover bg-right px-6 py-7 text-white sm:px-8 sm:py-8"
-        style={{
-          backgroundImage:
-            "linear-gradient(90deg, rgba(8,38,28,.98) 0%, rgba(8,38,28,.92) 48%, rgba(8,38,28,.48) 100%), url('/assets/landing/practice-range.avif')",
-        }}
-      >
-        <p className="text-sm font-medium text-white/85">
-          {hasReview ? data.dateLabel : state.eyebrow}
-        </p>
-        <h2
-          id="practice-brief-title"
-          className="mt-2 max-w-3xl text-balance text-3xl font-semibold tracking-tight sm:text-4xl"
-        >
-          {state.title}
-        </h2>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/90">{state.reason}</p>
-        <Link
-          className="mt-5 inline-flex min-h-11 items-center gap-3 rounded-lg bg-white px-4 text-sm font-semibold text-[#103a2a] hover:bg-[#ecf2e8]"
-          href={hasReview ? reviewHref : state.href}
-        >
-          {hasReview ? "Review this practice" : state.action}
-          <ArrowRight className="size-4" aria-hidden />
-        </Link>
+      <div className="grid overflow-hidden bg-[#103427] text-white sm:grid-cols-[minmax(0,1.65fr)_minmax(9rem,1fr)]">
+        <div className="order-2 px-6 py-7 sm:order-none sm:px-7 sm:py-8">
+          <p className="border-l-2 border-[#c8e87c] pl-3 text-sm font-medium text-white/90">
+            {hasReview ? data.dateLabel : state.eyebrow}
+          </p>
+          <h2
+            id="practice-brief-title"
+            className="mt-4 text-balance text-4xl font-semibold leading-[1.03] tracking-tight xl:text-[2.8rem]"
+          >
+            {state.title}
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/90">{state.reason}</p>
+          <Link
+            className="mt-5 inline-flex min-h-11 items-center gap-3 rounded-lg bg-white px-4 text-sm font-semibold text-[#103a2a] hover:bg-[#ecf2e8]"
+            href={hasReview ? reviewHref : state.href}
+          >
+            {hasReview ? "Review this practice" : state.action}
+            <ArrowRight className="size-4" aria-hidden />
+          </Link>
+        </div>
+        <TodayPracticePhoto />
       </div>
       {hasReview ? (
         <div className="grid gap-px bg-border sm:grid-cols-3">
           <div className="bg-card px-6 py-4">
             <p className="text-sm text-muted-foreground">Practice volume</p>
-            <p className="mt-1 text-xl font-semibold">{data.rawShots.length} shots</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums">{data.rawShots.length} shots</p>
             <p className="text-sm text-muted-foreground">
               {data.shots.length} included in analysis
             </p>
@@ -860,7 +858,7 @@ function TodayDecisionHero({
           {highlights.map((item) => (
             <Link key={item.id} href={item.href} className="bg-card px-6 py-4 hover:bg-muted">
               <p className="text-sm text-muted-foreground">{item.label}</p>
-              <p className="mt-1 flex items-center gap-2 text-xl font-semibold">
+              <p className="mt-1 flex items-center gap-2 text-2xl font-semibold tabular-nums">
                 {item.value}
                 <ArrowRight className="size-4" aria-hidden />
               </p>
@@ -972,7 +970,7 @@ function TodayNextUp({
           title={currentPlan?.title ?? recommendation.title}
           detail={
             currentPlan
-              ? `${currentPlan.timeMinutes} min · ${practicePlanStatusLabel(currentPlan.status)}`
+              ? `${currentPlan.timeMinutes} min`
               : `${recommendation.minutes} min · ${recommendation.evidenceLabel}`
           }
           href={

@@ -19,7 +19,7 @@ export function TodayPanelNav({
           href={todayPanelHref(params, panel)}
           prefetch={false}
           aria-current={selected === panel ? "page" : undefined}
-          className="flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-semibold text-muted-foreground hover:bg-muted aria-[current=page]:bg-primary aria-[current=page]:text-primary-foreground"
+          className={`flex min-h-11 items-center justify-center rounded-lg px-4 text-sm font-semibold ${selected === panel ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
         >
           {todayPanels[panel]}
         </Link>

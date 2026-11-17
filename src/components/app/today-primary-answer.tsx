@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
+import { TodayPracticePhoto } from "./today-practice-photo";
 import { ArrowRight, RefreshCw, Target, ChevronRight, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import styles from "./mobile-companion.module.css";
@@ -137,6 +138,9 @@ export function TodayPrimaryAnswer({
             : "Today's focus"
         }
       >
+        <div className="-mx-[var(--mobile-space-large)] -mt-[var(--mobile-space-large)] grid h-28">
+          <TodayPracticePhoto />
+        </div>
         <div className={styles.focusHeading}>
           <p className={styles.focusEyebrow}>
             {isRecommendation ? "For your next session" : serverState.eyebrow}
