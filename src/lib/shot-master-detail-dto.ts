@@ -1,4 +1,10 @@
-import { assessFlightEvidence, type SessionDataConfidence } from "@/lib/session-data-confidence";
+import { deliveryObservation } from "./club-delivery";
+import { isEstimatedClubData } from "./club-analytics";
+import {
+  directionIsUsable,
+  assessFlightEvidence,
+  type SessionDataConfidence,
+} from "@/lib/session-data-confidence";
 import type { ShotMasterDetailRow } from "@/app/shots/shots-master-detail-table";
 import { formatClubIdentityLabel, formatClubType } from "@/lib/club-format";
 import { isPermanentShotDeletionRestricted } from "@/lib/shot-deletion";
@@ -92,6 +98,10 @@ export function buildShotMasterDetailDto(shot: ShotMasterDetailSource): ShotMast
   });
 
   return {
+    delivery:
+      directionIsUsable(shot.dataConfidence, shot.id) && !isEstimatedClubData(shot.clubDataEstType)
+        ? deliveryObservation(shot)
+        : undefined,
     flightEvidence: assessFlightEvidence(shot),
     id: shot.id,
     sessionId: shot.sessionId,

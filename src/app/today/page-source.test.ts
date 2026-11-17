@@ -373,7 +373,12 @@ describe("latest practice desktop dashboard", () => {
   it("keeps decorative dispersion ellipses out of the accessibility tree", () => {
     expect(chartsSource).not.toContain('aria-label="Approximate 80 percent dispersion ellipse"');
     expect(chartsSource).not.toContain('aria-label="Approximate 50 percent dispersion ellipse"');
-    expect(chartsSource.match(/<ellipse[\s\S]*?aria-hidden="true"/g)).toHaveLength(2);
+    expect(chartsSource).toContain("<LandingContours");
+    const contours = readFileSync(
+      join(process.cwd(), "src/components/visuals/landing-contours.tsx"),
+      "utf8",
+    );
+    expect(contours).toContain('aria-hidden="true"');
   });
 
   it("uses semantic shadcn filters and summary chrome around the preserved chart palette", () => {

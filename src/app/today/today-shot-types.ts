@@ -1,6 +1,8 @@
 import type { ShotMasterDetailRow } from "@/app/shots/shots-master-detail-table";
 
 export type TodayChartShot = {
+  shotAt?: string | null;
+  alignmentFlagged?: boolean;
   id: string;
   clubType: string;
   clubLabel: string;

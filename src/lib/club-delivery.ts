@@ -1,6 +1,7 @@
 import { finiteNumbers, mean, median, percentile } from "@/lib/analysis-statistics";
 import type { BagIntelligenceShot } from "@/lib/bag-intelligence";
 import { calculateFaceToPathDeg, resolveClubFaceAngleDeg } from "@/lib/club-face-angle";
+import { assessFlightEvidence } from "@/lib/session-data-confidence";
 import { normaliseSourceRawJson } from "@/lib/source-raw-json";
 import { curvePattern } from "@/lib/shot-pattern-classifier";
 import { lateralDirection, type Handedness } from "@/lib/units";
@@ -27,17 +28,33 @@ export function deliveryObservation(shot: BagIntelligenceShot) {
       : "unverified";
   }
   const faceStatus = status("faceAngleDeg", face);
+  const legacyFace = assessFlightEvidence({
+    ...shot,
+    id: shot.id ?? undefined,
+    sourceRawJson: raw,
+  }).faceSource;
   const source =
     face === null
       ? "missing"
-      : shot.faceAngleDeg == null || ["estimated", "derived", "reconstructed"].includes(faceStatus)
+      : shot.faceAngleDeg == null ||
+          (faceStatus === "unverified" && legacyFace === "modelled") ||
+          ["estimated", "derived", "reconstructed"].includes(faceStatus)
         ? "estimated"
         : faceStatus === "measured"
           ? "measured"
-          : "unverified";
+          : legacyFace === "source_reported"
+            ? "source-reported"
+            : "unverified";
   const impact = Object.entries(raw)
     .find(([header]) => /^(strike|impact)[ _-]?location$/i.test(header.trim()))?.[1]
     ?.trim();
+  // TrackMan exports retain these signed measurements in the original millimetres.
+  const contact = ["Impact Offset (mm)", "Impact Height (mm)"].flatMap((header, i) => {
+    const value = raw[header]?.trim();
+    return value && Number.isFinite(Number(value))
+      ? [(i === 0 ? "offset " : "height ") + value + " mm"]
+      : [];
+  });
   // A numeric MLM2PRO CSV spin field alone does not confirm tracked spin.
   const spinConfirmed =
     metadata?.spinAxisDeg?.source !== "rapsodo-csv" ||
@@ -49,7 +66,7 @@ export function deliveryObservation(shot: BagIntelligenceShot) {
     strike:
       impact && /^(heel|toe|centre|center|high|low)([ -](heel|toe|centre|center))?$/i.test(impact)
         ? impact.toLowerCase()
-        : null,
+        : contact.join(", ") || null,
     pathMeasured: status("pathDeg", shot.clubPathDeg) === "measured",
     id: shot.id ?? null,
     path: shot.clubPathDeg ?? null,

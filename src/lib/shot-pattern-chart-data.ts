@@ -1,3 +1,4 @@
+import { mean } from "./analysis-statistics";
 import { directionIsUsable, type SessionDataConfidence } from "@/lib/session-data-confidence";
 import { bigMissOfflineLimitYd } from "@/lib/today-club-scoring";
 
@@ -20,6 +21,7 @@ export type ShotPatternInput = {
 };
 
 export type ShotPatternPoint = {
+  alignmentFlagged?: boolean;
   id: string;
   clubType: string;
   clubLabel: string;
@@ -60,6 +62,7 @@ export function buildShotPatternPoints(
   options: { trustedShotIds?: ReadonlySet<string> } = {},
 ): ShotPatternPoint[] {
   return shots.map((shot) => ({
+    alignmentFlagged: !directionIsUsable(shot.dataConfidence, shot.id),
     id: shot.id,
     clubType: shot.clubType,
     clubLabel: shot.clubLabel?.trim() || formatClubLabel(shot.clubType),
@@ -143,10 +146,13 @@ export function shotPatternConfidence(points: ShotPatternPoint[]) {
   } as const;
 }
 
-export function summarizeShotPattern(points: ShotPatternPoint[]) {
+export function summarizeShotPattern(points: ShotPatternPoint[], targetHalfWidth?: number) {
   const landing = points.filter(
     (point): point is ShotPatternPoint & { carryYd: number; sideCarryYd: number } =>
-      point.carryYd !== null && point.sideCarryYd !== null,
+      !point.alignmentFlagged &&
+      point.carryYd !== null &&
+      point.carryYd >= 0 &&
+      point.sideCarryYd !== null,
   );
   const sides = landing.map((point) => point.sideCarryYd).sort(numberAscending);
   const carries = landing.map((point) => point.carryYd).sort(numberAscending);
@@ -157,9 +163,10 @@ export function summarizeShotPattern(points: ShotPatternPoint[]) {
   const carryLowYd = percentile(carries, 0.1);
   const carryHighYd = percentile(carries, 0.9);
   const representativeClub = landing[0]?.clubType ?? "club";
-  const corridorYd = bigMissOfflineLimitYd(representativeClub);
+  const corridorYd = targetHalfWidth ?? bigMissOfflineLimitYd(representativeClub);
   const insideCorridor = landing.filter(
-    (point) => Math.abs(point.sideCarryYd) <= bigMissOfflineLimitYd(point.clubType),
+    (point) =>
+      Math.abs(point.sideCarryYd) <= (targetHalfWidth ?? bigMissOfflineLimitYd(point.clubType)),
   ).length;
   const left = landing.filter((point) => point.sideCarryYd < -5).length;
   const central = landing.filter((point) => Math.abs(point.sideCarryYd) <= 5).length;
@@ -174,6 +181,8 @@ export function summarizeShotPattern(points: ShotPatternPoint[]) {
     sideHighYd,
     carryLowYd,
     carryHighYd,
+    signedMiss: mean(sides),
+    absoluteMiss: mean(sides.map(Math.abs)),
     insideCorridor,
     corridorYd,
     left,

@@ -148,7 +148,7 @@ export function DeliveryAssessment({
   const finishes = finiteNumbers(rows.map((r) => r.side));
   const axes = finiteNumbers(rows.map((r) => r.axis));
   const countSource = (source: string) => rows.filter((r) => r.source === source).length;
-  const provenance = ["measured", "estimated", "unverified", "missing"]
+  const provenance = ["measured", "source-reported", "estimated", "unverified", "missing"]
     .filter((source) => countSource(source))
     .map((source) => countSource(source) + " " + source)
     .join(" · ");

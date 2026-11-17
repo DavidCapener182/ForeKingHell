@@ -73,6 +73,7 @@ import {
 import { TodayWorkspaceTabs } from "@/app/today/today-workspace-tabs";
 import { TodayDataQuality } from "@/app/today/today-data-quality";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { directionIsUsable } from "@/lib/session-data-confidence";
 import type { TodayChartClubStatus, TodayChartShot } from "@/app/today/today-shot-charts";
 import { LazyTodayShotCharts as TodayShotCharts } from "@/app/today/lazy-today-shot-charts";
 import { findRelevantChallenge } from "@/lib/challenge-relevance";
@@ -603,6 +604,8 @@ function TodayDesktopDashboard({
             {hasShots ? (
               <TodayShotCharts
                 correctionClubs={correctionClubs}
+                importedCount={data.rawShots.length}
+                eligibleCount={data.shots.length}
                 shots={chartShots}
                 clubStatuses={chartClubStatuses}
                 patternInsight={chartPatternInsight}
@@ -3939,6 +3942,8 @@ function toChartShots(
     apexFt: shot.apexFt,
     launchAngleDeg: shot.launchAngleDeg,
     ballSpeedMph: shot.ballSpeedMph,
+    shotAt: shot.shotAt.toISOString(),
+    alignmentFlagged: !directionIsUsable(shot.dataConfidence, shot.id),
     detail: detailsById.get(shot.id) ?? null,
   }));
 }
