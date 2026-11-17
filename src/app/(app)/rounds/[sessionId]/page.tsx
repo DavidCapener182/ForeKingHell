@@ -369,7 +369,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
             scope="round-detail"
             rail={
               <DesktopInsightRail
-                title="AI round rail"
+                title="Ask about this round"
                 description="Scorecard, map, proof and shot-link context stay visible while reviewing or correcting this round."
                 metrics={[
                   {
@@ -500,7 +500,7 @@ export default async function RoundDetailPage({ params, searchParams }: PageProp
               ) : round.mapAutoImport ? (
                 <MobileCollapsible
                   title="Course map"
-                  description="Automatic course geometry status."
+                  description="Check whether the course map is ready."
                 >
                   <Card id="map" className="premium-card scroll-mt-28">
                     <CardHeader>

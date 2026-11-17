@@ -57,7 +57,9 @@ export default async function GroupsPage({ searchParams }: GroupsPageProps) {
         />
         <section className="grid gap-4" aria-labelledby="group-directory-heading">
           <p className="text-sm text-muted-foreground">
-            Showing up to 80 recent accessible groups and 40 pending invitations.
+            {data.mine.length} groups joined · {data.discoverable.length} available to discover ·{" "}
+            {data.invites.length} pending invitations. Showing up to 80 recent accessible groups and
+            40 pending invitations.
           </p>
           {params?.invite && !data.invitePreview ? (
             <p role="status">

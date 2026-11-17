@@ -15,7 +15,9 @@ describe("Analyse hub", () => {
     expect(source).toContain("ConnectedMetricBar");
     expect(source).toContain("AnalyseProvenancePanel");
     expect(source).toContain("AppCommandContentTrigger");
-    expect(source).toContain("Choose a measured question, then inspect the records behind it.");
+    expect(source).toContain(
+      "Compare two sessions, see where shots landed or check which readings counted.",
+    );
     expect(source).toContain("Understand what changed");
     expect(source).toContain("Find your real dispersion and miss");
     expect(source).toContain("See how environment changes your numbers");

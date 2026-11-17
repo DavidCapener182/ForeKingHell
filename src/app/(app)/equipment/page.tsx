@@ -161,7 +161,7 @@ export default async function EquipmentPage({ searchParams }: EquipmentPageProps
         <PageHeader
           eyebrow={<StatusPill tone="sky">Equipment centre</StatusPill>}
           title="Equipment"
-          description="Manage your active setup, retain dated changes and review measured evidence separately from projected fit."
+          description="Check what’s in the bag, record a setup change and compare shots before and after."
           actions={
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="outline">
@@ -612,7 +612,7 @@ function ClubIntelligenceSection({ profiles }: { profiles: ClubProfile[] }) {
     <DataPanel id="clubs">
       <SectionHeader
         title="Club intelligence"
-        description="Each club now shows its course number, confidence and current miss instead of just brand and model."
+        description="Compare each club’s playing distance, confidence and usual miss."
         action={<TrendingUp className="size-5 text-primary" />}
       />
       <CardContent className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-4 pt-4 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-4 lg:grid-cols-3 xl:grid-cols-4">
@@ -819,7 +819,7 @@ function ClubHistorySection({
     <DataPanel>
       <SectionHeader
         title="Club history"
-        description="Retired clubs become the story of what changed, not a dead inventory list."
+        description="Review a retired club and the shots saved with its setup."
         action={<Archive className="size-5 text-muted-foreground" />}
       />
       <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

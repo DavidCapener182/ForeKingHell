@@ -45,7 +45,7 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
       <div className="grid min-w-0 gap-5 pb-28">
         <PageHeader
           title="Account invitation"
-          description={`${owner} has invited you to their account.`}
+          description={`${owner} has invited you to their golf account with ${invite.role} access.`}
           actions={
             <Button asChild variant="outline">
               <Link href="/settings?section=sharing" prefetch={false}>

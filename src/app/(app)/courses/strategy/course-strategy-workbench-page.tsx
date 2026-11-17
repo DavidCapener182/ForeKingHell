@@ -326,7 +326,7 @@ export default async function CourseStrategyPage({
             />
             <ReviewStep
               icon={Sparkles}
-              title="Continue the improvement loop"
+              title="Review progress after the round"
               detail="Track whether the recommended practice changes the next comparable session."
               href="/progress"
               action="Open Progress"

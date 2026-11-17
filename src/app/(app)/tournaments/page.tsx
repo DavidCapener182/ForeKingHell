@@ -56,7 +56,7 @@ export default async function TournamentsPage({
     <PageShell>
       <PageHeader
         title="Tournaments"
-        description="Find an event and inspect its format, dates and entry state."
+        description={`${events.length} ${tab} ${events.length === 1 ? "event" : "events"} in this selection.`}
         actions={
           <Button asChild variant="outline">
             <Link href="/course-records">Course records</Link>

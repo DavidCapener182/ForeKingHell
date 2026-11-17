@@ -1083,7 +1083,7 @@ export function ImportForm({
         ) : null}
         {parseError ? (
           <Alert variant="destructive">
-            <AlertTitle>Could not parse files</AlertTitle>
+            <AlertTitle>Could not read the selected files</AlertTitle>
             <AlertDescription>{parseError}</AlertDescription>
             <ul className="mt-3 space-y-2">
               {parseFailures.map((file) => (

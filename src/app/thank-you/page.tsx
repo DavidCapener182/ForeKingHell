@@ -19,7 +19,7 @@ export default async function ThankYouPage({
   return (
     <PublicDocument
       title="Thank you. Check your email."
-      description="The secure link is your next step. Opening this page does not sign you in or complete account creation."
+      description="Open the secure link in your inbox to continue signing in."
     >
       <section>
         <h2>Open your secure link</h2>

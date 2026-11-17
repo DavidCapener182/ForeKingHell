@@ -116,7 +116,7 @@ function GroupOverview({ data }: { data: GroupDetailData }) {
       aria-label="Group overview"
     >
       <Card className="p-5 sm:p-6">
-        <SectionEyebrow icon={<Users className="size-4" />} label="The crew" />
+        <SectionEyebrow icon={<Users className="size-4" />} label="Group members" />
         <h2 className="text-xl font-semibold tracking-normal">About this group</h2>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
           {data.group.description ?? "This group has not added a description yet."}

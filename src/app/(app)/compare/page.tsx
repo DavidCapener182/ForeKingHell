@@ -132,7 +132,7 @@ async function ComparePage({ searchParams }: { searchParams: SearchParams }) {
           railBreakpoint="wide"
           rail={
             <DesktopInsightRail
-              title="AI compare rail"
+              title="Ask about this comparison"
               description="Progress, club and player comparison context stays available while reviewing side-by-side evidence."
               metrics={[
                 {

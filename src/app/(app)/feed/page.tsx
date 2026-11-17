@@ -51,7 +51,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
             <PageHeader
               eyebrow={<Badge variant="secondary">Golf activity network</Badge>}
               title="Clubhouse"
-              description="Rounds, practice, personal bests and milestones from your golf circle — strictly in time order."
+              description="Rounds, practice and personal bests from your golf circle, newest first."
             />
 
             <Card id="create-feed-post" className="scroll-mt-28 py-0 shadow-sm">

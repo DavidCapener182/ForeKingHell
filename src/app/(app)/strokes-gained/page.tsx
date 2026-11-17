@@ -239,7 +239,7 @@ async function StrokesGainedPage({ searchParams }: { searchParams: SearchParams 
         scope="strokes-gained"
         rail={
           <DesktopInsightRail
-            title="AI strokes-gained rail"
+            title="Ask about strokes gained"
             description="Phase leaks, calculated sample and shot-event evidence stay visible while reviewing the board."
             metrics={[
               {
@@ -797,7 +797,7 @@ function CategoryBreakdown({
     <DataPanel>
       <SectionHeader
         title="Category breakdown"
-        description="Where mapped shot events are gaining or losing value against the expected-strokes baseline."
+        description="See which parts of your game gained or lost strokes against the selected benchmark."
         action={<BarChart3 className="size-5 text-[var(--status-success-foreground)]" />}
       />
       <CardContent className="grid gap-3 p-4">

@@ -62,7 +62,7 @@ export default async function AdminSystemChecksPage({
         <AdminNav active="/admin/system-checks" />
         <PageHeader
           title="System health console"
-          description="Review recorded operational evidence and see which services still need live verification."
+          description="Check the latest recorded result for each service and see which checks are still outstanding."
         />
         <p className="text-sm text-muted-foreground">
           Snapshot loaded: {formatDateTime(new Date())}. This timestamp describes the database

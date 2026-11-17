@@ -428,7 +428,7 @@ function GeneralSettings({ profile, companion }: { profile: SettingsProfile; com
       <DesktopSettingsDisclosure companion={companion}>
         <SettingsGroup
           title="Dashboard shortcuts"
-          description="Choose the areas kept close at hand on your desktop dashboard."
+          description="Choose which figures appear on Dashboard."
         >
           <div className="grid sm:grid-cols-2">
             {dashboardPinOptions.map((pin) => (
@@ -530,7 +530,7 @@ function PrivacySettingsSection({
       </SettingsGroup>
       <SettingsGroup
         title="Current access"
-        description="A quick readback of who can reach account-level data."
+        description="Check who has access to your golf account."
       >
         <SettingsValueRow
           label="Shared by you"

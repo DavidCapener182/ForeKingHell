@@ -179,8 +179,8 @@ async function ClubAnalyticsPage({ params }: PageProps) {
         scope="club-analytics"
         rail={
           <DesktopInsightRail
-            title="AI club rail"
-            description="Explain this club's stock number, trust, misses, delivery and practice focus from the visible analytics."
+            title="Ask about this club"
+            description="Explore this club’s stock carry, usual miss and next drill."
             metrics={[
               {
                 label: "Sample",

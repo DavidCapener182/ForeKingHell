@@ -17,7 +17,7 @@ export default async function ChallengesPage({
     <PageShell>
       <PageHeader
         title="Challenges"
-        description="Choose a measured target, inspect its rules and follow qualifying results."
+        description="Choose a challenge to see its target, which shots qualify and who leads."
       />
       <ChallengeWorkspace
         challenges={data.challenges}

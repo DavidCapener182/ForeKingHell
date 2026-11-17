@@ -128,7 +128,7 @@ async function CourseShotPatternContent({ courseId }: { courseId: string }) {
             <StatusPill tone={hasMappedHoles ? "green" : "amber"}>On-course tool</StatusPill>
           }
           title={`${setup.course.name} shot pattern`}
-          description="Project your real club dispersion over the selected hole before choosing a line."
+          description="Choose a club and aim point to see where your measured shots would land on this hole."
           metrics={[
             {
               label: "Mapped holes",

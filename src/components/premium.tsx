@@ -45,7 +45,7 @@ export function MobileCompactPageHeader({
             {title}
           </h1>
           {description && !metricLabel && !action ? (
-            <p className="mt-1 line-clamp-1 text-sm leading-5 text-muted-foreground">
+            <p className="mt-1 text-pretty text-sm leading-5 text-muted-foreground">
               {description}
             </p>
           ) : null}
@@ -66,9 +66,11 @@ export function MobileCompactPageHeader({
               <p className="truncate text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 {metricLabel}
               </p>
-              <p className="mt-0.5 truncate text-xl font-semibold tracking-normal">{metricValue}</p>
+              <p className="mt-0.5 break-words text-xl font-semibold tracking-normal">
+                {metricValue}
+              </p>
               {metricDetail ? (
-                <p className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">
+                <p className="mt-0.5 break-words text-sm leading-5 text-muted-foreground">
                   {metricDetail}
                 </p>
               ) : null}
@@ -343,7 +345,7 @@ export function MobileCompanionHero({
                 {metricValue}
               </p>
               {metricDetail ? (
-                <p className="mt-0.5 truncate text-xs leading-4 text-muted-foreground">
+                <p className="mt-0.5 break-words text-sm leading-5 text-muted-foreground">
                   {metricDetail}
                 </p>
               ) : null}

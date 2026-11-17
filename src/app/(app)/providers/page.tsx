@@ -276,8 +276,8 @@ export default async function ProvidersPage({ searchParams }: ProvidersPageProps
                   ) : (
                     <AppEmptyState
                       icon={<Cable className="size-5" />}
-                      title="No provider connections"
-                      description="Connect R-Cloud or import a measured file to create provider evidence."
+                      title="No launch monitors connected"
+                      description="Connect R-Cloud or import a launch-monitor file to see sessions here."
                       primaryAction={
                         <Button asChild>
                           <Link href="/rapsodo">Connect R-Cloud</Link>

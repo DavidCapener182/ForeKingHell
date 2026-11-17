@@ -36,8 +36,7 @@ export default async function RapsodoCompanionPage({
         <MobileTopBar title="Rapsodo R-Cloud" />
         {validPlanId ? (
           <p className="rounded-xl bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
-            Review the upload as a possible match for {plan?.title}. Results depend on the saved
-            evidence.
+            Check whether this upload matches your practice plan, {plan?.title}.
           </p>
         ) : null}
         <RapsodoCompanionClient initialStatus={initialStatus} practicePlanId={validPlanId} />

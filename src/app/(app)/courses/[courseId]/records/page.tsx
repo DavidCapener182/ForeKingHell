@@ -54,7 +54,7 @@ export default async function CourseRecordsForCoursePage({
     <PageShell>
       <PageHeader
         title={data.course.name}
-        description="Course record boards. Category, tee, format, period and proof requirements stay separate; submissions are checked against the exact board."
+        description="Choose a record to see the qualifying tee, format, dates and proof required."
         actions={
           <Button asChild variant="outline">
             <Link href="/course-records">All record boards</Link>

@@ -327,7 +327,7 @@ function ManualRoundSubmitForm({ data }: { data: TournamentDetailData }) {
       <div>
         <p className="text-sm font-semibold">Manual scorecard</p>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          Use this when the matching saved round has not appeared yet.
+          Enter a scorecard here if your saved round is missing.
         </p>
       </div>
       <TournamentSubmissionForm
@@ -617,7 +617,7 @@ function nextRoundDetail(data: TournamentDetailData) {
   if (tournamentStatus(data.tournament) === "Completed") {
     return data.viewerSubmissions.length === data.tournament.roundCount
       ? "Every required round has a saved submission."
-      : `The event is closed with ${data.viewerSubmissions.length}/${data.tournament.roundCount} round{data.tournament.roundCount === 1 ? "" : "s"} submitted.`;
+      : `The event is closed with ${data.viewerSubmissions.length}/${data.tournament.roundCount} round${data.tournament.roundCount === 1 ? "" : "s"} submitted.`;
   }
   if (!data.viewerEntered) return "Enter the tournament before a round can be submitted.";
   if (!data.nextRoundNumber) return "Every required round has been submitted.";

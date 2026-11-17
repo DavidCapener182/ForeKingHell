@@ -261,7 +261,7 @@ export default async function SpeedSessionPage({ params, searchParams }: PagePro
                         <EmptyState
                           icon={<Gauge className="size-5" aria-hidden="true" />}
                           title="No individual swings"
-                          description="This session only has summary numbers. Paste the swing readings below to rebuild detail."
+                          description="Paste individual swing readings to see how your speed changed through this session."
                         />
                       ) : (
                         <>

@@ -16,7 +16,7 @@ export default async function QuickBagPage() {
         <PageHeader
           title="Quick Bag"
           eyebrow="On-course reference"
-          description="Enter an exact target or find a club. Check the measured range and confidence before choosing."
+          description={`Enter your target distance to find a measured carry range. ${clubs.length} clubs in your bag.`}
         />
         <QuickBagClient
           clubs={clubs}

@@ -241,7 +241,7 @@ export default async function HandicapPage({
                     <DataPanel>
                       <SectionHeader
                         title="Readout"
-                        description="What the current scorecards are saying."
+                        description="See which eligible scores contribute to your estimate."
                         action={
                           <Info className="size-5 text-[var(--status-information-foreground)]" />
                         }

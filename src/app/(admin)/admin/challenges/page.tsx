@@ -12,7 +12,7 @@ export default async function AdminChallengesPage() {
         <AdminNav active="/admin/challenges" />
         <PageHeader
           title="Challenges and tournaments"
-          description="Inspect competition participation and manage the supported challenge templates."
+          description="Review participation and manage challenge templates."
         />
         <p className="text-sm text-muted-foreground">
           Database snapshot: {formatDateTime(new Date())}. Board totals describe the newest 80

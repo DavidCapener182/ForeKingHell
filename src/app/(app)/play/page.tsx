@@ -645,7 +645,7 @@ function DesktopPreRoundCommandCentre({
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
                 Strategy summary
               </p>
-              <h2 className="mt-1 text-xl font-semibold">The opening brief</h2>
+              <h2 className="mt-1 text-xl font-semibold">First-hole strategy</h2>
             </div>
           </CardHeader>
           <CardContent className="grid gap-3">
@@ -665,7 +665,7 @@ function DesktopPreRoundCommandCentre({
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
                 Key holes
               </p>
-              <h2 className="mt-1 text-xl font-semibold">Longest mapped decisions</h2>
+              <h2 className="mt-1 text-xl font-semibold">Longest mapped holes</h2>
             </div>
           </CardHeader>
           <CardContent>
@@ -1127,7 +1127,7 @@ function MobilePlanningBrief({
       </p>
       <details>
         <summary className="min-h-11 cursor-pointer content-center font-medium">
-          Longest mapped decisions · {keyHoles.length}
+          Longest mapped holes · {keyHoles.length}
         </summary>
         {keyHoles.length ? (
           keyHoles.map((hole) => (

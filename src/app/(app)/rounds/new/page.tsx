@@ -116,7 +116,7 @@ export default async function NewRoundPage({
           <PageHeader
             eyebrow={<StatusPill tone="green">Real round</StatusPill>}
             title="Add Round"
-            description="Create a scorecard-only real round from an existing course and tee set. It feeds the round history, handicap estimate, and estimated course map."
+            description="Choose the course and tees, then enter your scores. Eligible completed rounds contribute to your handicap estimate."
             visual={
               <PageArtwork
                 variant="fairway"

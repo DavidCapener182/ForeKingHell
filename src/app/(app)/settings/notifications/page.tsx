@@ -86,7 +86,7 @@ export default async function NotificationSettingsPage() {
       <div className="grid min-w-0 gap-5 pb-28">
         <PageHeader
           title="Notifications"
-          description="Choose delivery preferences separately from the categories shown in your in-app notification centre."
+          description="Choose how notifications reach you and which ones appear in the app."
           actions={
             <Button asChild variant="outline">
               <Link href="/settings?section=notifications" prefetch={false}>

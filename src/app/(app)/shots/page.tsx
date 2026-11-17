@@ -214,7 +214,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
     <PageShell contentClassName="gap-4 lg:gap-4">
       <PageHeader
         title="Shots"
-        description="Search measured shots and inspect the evidence behind each number."
+        description={`${integerFormatter.format(totalFilteredShots)} matching shots out of ${integerFormatter.format(stats.shotCount)} saved. Select a shot to see its measurements.`}
         actions={
           <Button asChild>
             <Link href="/import">
@@ -305,7 +305,7 @@ export default async function ShotsPage({ searchParams }: { searchParams: Search
               className="min-h-[34rem]"
               icon={<Database className="size-6" aria-hidden />}
               title="Import your first measured shots"
-              description="The evidence table, saved views, filters and source inspection panel appear after a launch-monitor session is saved."
+              description="Import a session to search your shots by club, date or distance."
               primaryAction={
                 <Button asChild>
                   <Link href="/import">Import shot data</Link>

@@ -138,7 +138,7 @@ export default async function CourseRecordDetailPage({
       </p>
       <section className="grid gap-3 sm:grid-cols-2" aria-label="Verified record summary">
         <div className="rounded-xl border bg-card p-4">
-          <h2 className="font-semibold">Ranked leader</h2>
+          <h2 className="font-semibold">Current leader</h2>
           {leader?.profile ? (
             <>
               <ProfileNameLink
@@ -156,7 +156,7 @@ export default async function CourseRecordDetailPage({
           )}
         </div>
         <div className="rounded-xl border bg-card p-4">
-          <h2 className="font-semibold">Your ranked best</h2>
+          <h2 className="font-semibold">Your best qualifying result</h2>
           {data.viewerResult ? (
             <>
               <p className="mt-2 text-2xl font-semibold">{data.viewerResult.result.scoreLabel}</p>

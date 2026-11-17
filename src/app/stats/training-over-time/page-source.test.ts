@@ -15,7 +15,7 @@ describe("training load page source", () => {
     expect(source).toContain('scope="training-load"');
     expect(source).toContain("TrainingLoadRangeView");
     expect(source).toContain("SpeedReadinessPanel");
-    expect(source).toContain("Review logged golf workload and choose your next session.");
+    expect(source).toContain("activities in this training history.");
     expect(source).not.toContain("DesktopInsightRail");
     expect(source).not.toContain("max-w-6xl");
     expect(source).not.toContain("max-w-7xl");

@@ -1,3 +1,4 @@
+import { StockSampleComparison } from "@/components/app/stock-sample-comparison";
 import { requirePlanUser } from "@/lib/require-plan-access";
 import { ExperimentSelection } from "@/app/equipment/experiments/experiment-selection";
 import { EquipmentInlineForm } from "@/app/equipment/equipment-form-panels";
@@ -161,6 +162,7 @@ async function EquipmentExperimentPage({
           </Alert>
         ) : (
           <>
+            <StockSampleComparison focus={data.focus} baseline={data.baseline} />
             <FairTestWarning />
             <details className="rounded-xl border p-3">
               <summary className="min-h-11 cursor-pointer font-semibold">

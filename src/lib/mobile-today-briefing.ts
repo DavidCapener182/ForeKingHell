@@ -128,6 +128,6 @@ export function todayReviewTakeaway(data: TodayPracticeData) {
   if (!change) return null;
   return {
     title: `${change.clubLabel} carry is ${Math.abs(change.delta)} yd ${change.delta < 0 ? "shorter" : "longer"}`,
-    summary: `Compared with your previous comparable practice: ${change.latest.count} current and ${change.previous.count} earlier carry readings. Review the pattern before changing your target distance.`,
+    summary: `Average carry was ${change.latest.value.toFixed(1)} yd, previously ${change.previous.value.toFixed(1)} yd. Based on ${change.latest.count} current and ${change.previous.count} earlier carry readings.`,
   };
 }

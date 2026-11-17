@@ -79,7 +79,7 @@ async function AnalysisWorkspacePage() {
       <PageHeader
         eyebrow={<StatusPill tone="sky">Evidence operations</StatusPill>}
         title="Analysis workspace"
-        description="Fix weak data, annotate what changed, compare equipment periods and preserve point-in-time evidence."
+        description="Review flagged readings, record a change or save a dated comparison."
         metrics={[
           {
             label: "Open data issues",

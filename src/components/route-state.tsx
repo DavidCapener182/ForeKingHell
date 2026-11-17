@@ -75,7 +75,10 @@ export function RouteNotFoundState({ authenticated = false }: { authenticated?: 
             </h1>
           </CardTitle>
           <CardDescription className="text-[15px] leading-6">
-            That page is missing or the link has changed. Let’s get you back to {BRAND_NAME}.
+            That page is missing or the link has changed.{" "}
+            {authenticated
+              ? "Open your dashboard or find the session in your history."
+              : "Return to the product homepage or sign in to open your golf account."}
           </CardDescription>
         </CardHeader>
         <CardFooter className="flex-wrap justify-center gap-3">

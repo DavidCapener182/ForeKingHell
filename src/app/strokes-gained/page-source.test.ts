@@ -30,7 +30,7 @@ describe("strokes gained desktop workbench", () => {
     expect(layoutBlock).toContain('scope="strokes-gained"');
     expect(layoutBlock).not.toContain("railBreakpoint=");
     expect(layoutBlock).toContain("DesktopInsightRail");
-    expect(layoutBlock).toContain('title="AI strokes-gained rail"');
+    expect(layoutBlock).toContain('title="Ask about strokes gained"');
   });
 
   it("gives the shot-event table saved views, column control, export and accessible metadata", () => {

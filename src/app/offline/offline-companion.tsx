@@ -589,7 +589,7 @@ export function OfflineCompanion() {
         open={moreOpen}
         onOpenChange={setMoreOpen}
         title="Find saved resources"
-        description="Only copies available on this device can open offline. Reconnect for other account tasks."
+        description="Open a saved round, practice plan or bag on this device. Reconnect to load anything else."
       >
         <label className="grid gap-2 text-sm">
           Search saved resources

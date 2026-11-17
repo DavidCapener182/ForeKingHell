@@ -144,7 +144,7 @@ async function ProgressPage() {
       >
         <UntitledPageHeader
           title="Progress"
-          description="Your current evidence, goals and training history."
+          description={`${weeklyEvidence.completedSessionCount} recorded entries in the last seven days, including ${weeklyEvidence.completedRoundCount} real rounds. ${weeklyEvidence.personalBestCount} new personal bests.`}
           actions={
             <div className="flex flex-wrap gap-2">
               <Button asChild variant="outline" className="rounded-full">

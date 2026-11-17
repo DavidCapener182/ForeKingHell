@@ -69,9 +69,7 @@ test("shared progress on real fixture routes: both Today surfaces and Dashboard"
         const panel = page.locator("[data-club-progress]");
         await expect(panel).toBeVisible({ timeout: 60000 });
         await expect(panel).not.toContainText("Retired");
-        await expect(panel.getByRole("heading", { name: "Am I improving?" })).toHaveText(
-          "Am I improving?",
-        );
+        await expect(panel.getByRole("heading", { name: "Club trends" })).toHaveText("Club trends");
         await expect(panel.locator("[data-progress-cards]")).toContainText(
           "Previous reading unavailable",
         );
@@ -125,10 +123,10 @@ test("shared progress on real fixture routes: both Today surfaces and Dashboard"
           "active",
         );
         if (route === "dashboard") {
-          await panel.getByRole("button", { name: "Irons", exact: true }).click();
-          await expect(panel.getByRole("tab", { name: /7i/ })).toHaveAttribute(
-            "data-state",
-            "active",
+          await panel.getByRole("combobox", { name: "Club to compare" }).click();
+          await page.getByRole("option", { name: /7i/ }).click();
+          await expect(panel.getByRole("combobox", { name: "Club to compare" })).toContainText(
+            "7i",
           );
         }
       }

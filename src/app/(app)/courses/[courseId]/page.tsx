@@ -193,7 +193,9 @@ function CourseOverview({
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
               Course readiness
             </p>
-            <CardTitle className="font-display text-2xl">Ready for your next round?</CardTitle>
+            <CardTitle className="font-display text-2xl">
+              Course setup for your next round
+            </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-3">
             <ReadinessCard

@@ -432,7 +432,7 @@ export function DataChatPanel({
                     id={inputId}
                     value={question}
                     onChange={(event) => setQuestion(event.target.value)}
-                    placeholder="Ask a question about your game…"
+                    placeholder="e.g. Which club misses the target most often?"
                     className="min-h-20 resize-none px-4 pt-4 text-[0.95rem] leading-6"
                     maxLength={800}
                     disabled={!isReady}

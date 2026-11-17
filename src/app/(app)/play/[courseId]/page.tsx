@@ -76,7 +76,7 @@ export default async function CourseTwinPage({
         <Button asChild variant="secondary" className="shadow-lg">
           <Link href={`/courses/${courseId}/holes`} prefetch={false}>
             <ArrowLeft className="size-4" />
-            Course
+            Edit hole map
           </Link>
         </Button>
       </div>

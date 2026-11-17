@@ -94,7 +94,7 @@ export default async function CoachWorkspacePage({
         </Button>
         <PageHeader
           title="Coach workspace"
-          description="Review assigned players without account impersonation. Private coach notes stay private; assignments, feedback and evidence requests are explicitly player-visible."
+          description="Review an assigned player’s sessions. Only you can see coach notes. The player can see assignments, feedback and requests."
           actions={
             <Button asChild variant="outline" className="min-h-11">
               <Link href="/coach/reports">
@@ -235,7 +235,7 @@ export default async function CoachWorkspacePage({
                   </CardContent>
                 </Card>
                 <DataWarning
-                  title="Membership is not impersonation"
+                  title="Coach access"
                   detail="This workspace only loads a player whose account has an active coach membership for you. Visibility is stored on every interaction."
                 />
               </section>

@@ -75,7 +75,7 @@ export default async function CompanionSummaryPage({
             <div className="rounded-xl border p-5">
               <dt>No current evidence</dt>
               <dd className="mt-2 text-sm text-muted-foreground">
-                No supporting rows are available for this summary yet.
+                There are no saved measurements for this selection.
               </dd>
             </div>
           )}

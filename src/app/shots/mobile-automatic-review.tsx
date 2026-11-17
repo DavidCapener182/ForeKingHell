@@ -71,7 +71,9 @@ export function MobileAutomaticReview({
     <div className="grid gap-5" data-mobile-automatic-review>
       <PageHeader
         title="Review shots"
-        description="Check the evidence. Keep what represents your game."
+        description={
+          "Open a suggestion to see why the shot was flagged and decide whether to keep it."
+        }
         actions={
           <Button asChild variant="outline">
             <Link href="/shots">All shots</Link>

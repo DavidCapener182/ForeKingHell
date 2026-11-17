@@ -10,7 +10,7 @@ export default async function CourseRecordsPage() {
     <PageShell>
       <PageHeader
         title="Course records"
-        description="Browse public active boards. Each result belongs to its own course, category and period; verified leaders stay separate from pending or manual attempts."
+        description="Choose a course and category to see the verified leader, the qualifying period and the proof required."
         actions={
           <Button asChild variant="outline">
             <Link href="/courses">All courses</Link>

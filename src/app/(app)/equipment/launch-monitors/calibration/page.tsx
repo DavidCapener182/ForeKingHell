@@ -150,7 +150,7 @@ export default async function CalibrationPage({
       <PageHeader
         eyebrow={<StatusPill tone="sky">Launch monitors</StatusPill>}
         title="Calibration"
-        description="Know where your numbers come from. Compare devices, check the conditions and keep every original reading."
+        description="Check how two devices measured the same shots and whether the conditions matched."
         actions={
           <Button asChild variant="outline">
             <Link href="/import">

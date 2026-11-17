@@ -56,7 +56,15 @@ export default async function FriendsPage({ searchParams }: FriendsPageProps) {
             </p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Friends</h1>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Find golfers and manage every connection from one clean directory.
+              {data.friends.length} connected · {data.outgoingRequests.length} requests sent.{" "}
+              {data.incomingRequests.length > 0 && (
+                <Link
+                  className="font-semibold underline underline-offset-4"
+                  href="/friends?tab=incoming"
+                >
+                  Review incoming requests ({data.incomingRequests.length})
+                </Link>
+              )}
             </p>
           </div>
           <FriendInviteDialog username={data.profile.username} profileUrl={profileUrl} />

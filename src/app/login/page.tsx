@@ -118,7 +118,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
                   Sign in or join
                 </h1>
                 <p className="mt-0.5 text-[15px] leading-5 text-[var(--ios-secondary-label)] lg:mt-1 lg:text-sm lg:leading-6 lg:text-slate-600">
-                  Use email and password, Google or a secure email link.
+                  Continue with Google, your password or a sign-in link sent by email.
                 </p>
               </div>
             </div>

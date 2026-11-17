@@ -183,7 +183,7 @@ export default async function SpeedCentrePage({ searchParams }: PageProps) {
         <PageHeader
           eyebrow={<StatusPill tone="sky">Speed Centre</StatusPill>}
           title="Speed"
-          description="Build your speed ceiling, transfer it to the ball, and keep it playable. No-ball training stays separate from driver performance so faster only counts when control survives."
+          description="Compare training speed, ball speed and carry. No-ball training stays separate from driver performance."
           metrics={[
             {
               label: "Playing speed",

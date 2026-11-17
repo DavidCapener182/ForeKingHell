@@ -26,7 +26,7 @@ describe("professional Coach workspace", () => {
     expect(source).toContain("<DispersionVisual");
     expect(source).toContain("<CarryConsistencyVisual");
     expect(source).toContain("<RoundResultVisual");
-    expect(source).toContain("Three signals behind the read");
+    expect(source).toContain("Why this drill?");
     expect(source).not.toContain("CoachSupportingEvidencePanel");
     expect(source).not.toContain("CoachPracticeFeaturePanel");
     expect(source).not.toContain("CoachSocialPrompt");

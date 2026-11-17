@@ -24,7 +24,7 @@ export default async function AdminBillingPage({
         <AdminNav active="/admin/billing" />
         <PageHeader
           title="Billing and entitlements"
-          description="Inspect saved subscription states and app access independently. This overview does not check live provider availability."
+          description="Compare saved subscriptions with current account access. Provider status comes from saved records."
         />
         <p className="text-sm text-muted-foreground">
           Database snapshot: {formatDateTime(new Date())}. Counts below describe the loaded records.

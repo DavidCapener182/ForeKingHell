@@ -52,7 +52,7 @@ describe("challenge detail desktop route", () => {
     expect(source).toContain('mainTableLabel="Challenge leaderboard table"');
     expect(source).toContain('mainTableLabel="Challenge leaderboard table" stickyFirstColumn');
     expect(source).toContain('id: "attempts"');
-    expect(source).toContain("Qualifying attempt ledger");
+    expect(source).toContain("Qualifying attempts");
     expect(source).toContain(
       ".sort((a, b) => a.attempt.attemptedAt.getTime() - b.attempt.attemptedAt.getTime())",
     );

@@ -36,7 +36,11 @@ export default async function SessionsPage({
     <PageShell>
       <PageHeader
         title="History"
-        description="Move through practice, simulator sessions and rounds chronologically. Select any entry for its evidence-led preview."
+        description={
+          total === result.savedTotal
+            ? `${result.savedTotal.toLocaleString("en-GB")} saved activities`
+            : `${total.toLocaleString("en-GB")} of ${result.savedTotal.toLocaleString("en-GB")} activities match your filters`
+        }
         actions={
           <Button asChild className="premium-action min-h-11 rounded-xl">
             <Link href="/import">

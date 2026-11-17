@@ -218,7 +218,7 @@ async function PublicProfileActivityLedger({
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-normal">Visible activity ledger</h2>
+          <h2 className="text-xl font-semibold tracking-normal">Shared activity</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Privacy-filtered activity, proof and engagement for this golfer before opening the card
             stream.
@@ -346,7 +346,7 @@ async function PublicProfileBagComparison({
     >
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-normal">Visible bag comparison</h2>
+          <h2 className="text-xl font-semibold tracking-normal">Shared club distances</h2>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
             Friend or public bag numbers that this profile allows, with enough sample and trust to
             compare responsibly.

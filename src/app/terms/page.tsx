@@ -16,7 +16,39 @@ export default function TermsPage() {
       title="Terms and conditions"
       description="How LM World Tour works, what to expect from the beta, and the responsibilities that come with using your golf account. Updated 14 September 2026."
     >
-      <section>
+      <nav
+        aria-label="Terms sections"
+        className="flex flex-wrap gap-x-5 text-sm font-semibold md:col-span-2"
+      >
+        <a className="inline-flex min-h-11 items-center" href="#using-the-service">
+          Using the service
+        </a>
+        <a className="inline-flex min-h-11 items-center" href="#your-golf-data">
+          Your golf data
+        </a>
+        <a className="inline-flex min-h-11 items-center" href="#evidence-estimates-and-ai">
+          Evidence, estimates and AI
+        </a>
+        <a className="inline-flex min-h-11 items-center" href="#beta-features-and-availability">
+          Beta features and availability
+        </a>
+        <a className="inline-flex min-h-11 items-center" href="#plans-payment-and-cancellation">
+          Plans, payment and cancellation
+        </a>
+        <a className="inline-flex min-h-11 items-center" href="#sharing-and-community-conduct">
+          Sharing and community conduct
+        </a>
+        <a className="inline-flex min-h-11 items-center" href="#account-access-and-closure">
+          Account access and closure
+        </a>
+        <a
+          className="inline-flex min-h-11 items-center"
+          href="#your-rights-and-changes-to-these-terms"
+        >
+          Your rights and changes to these terms
+        </a>
+      </nav>
+      <section id="using-the-service" className="scroll-mt-6">
         <h2>Using the service</h2>
         <p>
           LM World Tour helps you organise launch-monitor evidence, rounds and practice. Use the
@@ -25,7 +57,7 @@ export default function TermsPage() {
           person’s private records or interfere with the service.
         </p>
       </section>
-      <section>
+      <section id="your-golf-data" className="scroll-mt-6">
         <h2>Your golf data</h2>
         <p>
           You keep your rights in the content you upload. You allow us to process it to provide the
@@ -35,7 +67,7 @@ export default function TermsPage() {
           available controls.
         </p>
       </section>
-      <section>
+      <section id="evidence-estimates-and-ai" className="scroll-mt-6">
         <h2>Evidence, estimates and AI</h2>
         <p>
           Measured records, reconstructed course information and modelled outcomes serve different
@@ -44,7 +76,7 @@ export default function TermsPage() {
           The service does not guarantee a handicap, performance result or safe shot.
         </p>
       </section>
-      <section>
+      <section id="beta-features-and-availability" className="scroll-mt-6">
         <h2>Beta features and availability</h2>
         <p>
           Some features and provider integrations are in beta, depend on your plan or are only
@@ -53,7 +85,7 @@ export default function TermsPage() {
           security. Keep a separate copy of important original records.
         </p>
       </section>
-      <section>
+      <section id="plans-payment-and-cancellation" className="scroll-mt-6">
         <h2>Plans, payment and cancellation</h2>
         <p>
           The price, billing interval, included limits and any renewal terms are shown before a paid
@@ -62,7 +94,7 @@ export default function TermsPage() {
           cancellation, refund or other statutory consumer rights.
         </p>
       </section>
-      <section>
+      <section id="sharing-and-community-conduct" className="scroll-mt-6">
         <h2>Sharing and community conduct</h2>
         <p>
           Respect other golfers. Do not publish abusive, misleading or unlawful material,
@@ -70,7 +102,7 @@ export default function TermsPage() {
           tournament features may have additional rules presented when you enter.
         </p>
       </section>
-      <section>
+      <section id="account-access-and-closure" className="scroll-mt-6">
         <h2>Account access and closure</h2>
         <p>
           Access may be restricted to address misuse, security incidents or legal obligations. You
@@ -78,7 +110,7 @@ export default function TermsPage() {
           completion messages carefully: requesting an action and completing it are separate steps.
         </p>
       </section>
-      <section>
+      <section id="your-rights-and-changes-to-these-terms" className="scroll-mt-6">
         <h2>Your rights and changes to these terms</h2>
         <p>
           We remain responsible where the law requires it, including for fraud or liabilities that

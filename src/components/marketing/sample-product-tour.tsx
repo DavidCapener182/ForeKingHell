@@ -181,7 +181,7 @@ export function SampleProductTour() {
       <div className={styles.tourHeading}>
         <div>
           <p className={styles.eyebrow}>Interactive sample tour</p>
-          <h2 id="sample-tour-title">See the decision chain before you sign up.</h2>
+          <h2 id="sample-tour-title">Follow a sample session from shot pattern to course plan.</h2>
         </div>
         <p>Fictional demo data only. Nothing here connects to or changes a real account.</p>
       </div>

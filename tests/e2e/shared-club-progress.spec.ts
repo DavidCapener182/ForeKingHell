@@ -99,15 +99,16 @@ test("shared progress: instant controls, scope, preferences, gaps and responsive
       }
       await panel.getByRole("checkbox", { name: "3-session rolling average" }).check();
       await expect(panel.locator("[data-rolling-path]")).toHaveCount(1);
+      await panel.getByText("Change comparison session or data source", { exact: true }).click();
       await panel.getByLabel("Comparison upload", { exact: true }).selectOption("upload-21");
       await expect(panel.locator("[data-progress-cards]")).toContainText("21 Sept 2026");
+      await panel.getByText(/Compare the whole bag/).click();
       await panel
         .getByLabel("Whole-bag changes")
         .getByRole("button", { name: /Named Iron/ })
         .click();
-      await expect(panel.getByRole("tab", { name: /Named Iron/ })).toHaveAttribute(
-        "data-state",
-        "active",
+      await expect(panel.getByRole("combobox", { name: "Club to compare" })).toContainText(
+        "Named Iron",
       );
       const cards = await panel.locator("[data-progress-cards]").innerText();
       const point = panel.getByLabel("Inspect session points").getByRole("button").first();
