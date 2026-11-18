@@ -1,0 +1,4 @@
+# Nonrecursive tooling glob adapter
+
+Experimental, requires independent review and clean-install toolchain validation.
+New matcher implementation uses exact minimatch 11.0.9 nonrecursive engine. No picomatch regex compiler is included. The scan.js, constants.js and utils.js files retain upstream picomatch 4.0.7 MIT-licensed scanning utilities (LICENSE retained); they do not compile user patterns to RegExp. The adapter is not full picomatch compatibility. Unknown options and regex generation throw. Explicit limits reject excessive pattern count, size, nesting, brace expansion and aggregate pattern/input work. Nested braces and brace ranges must be preexpanded by the existing bounded directory adapter; they are not silently truncated. Negative extglob plus globstar is unsupported and throws. Vite custom assetsInclude requiring makeRe is unsupported and throws. No audit suppression is authorized.
