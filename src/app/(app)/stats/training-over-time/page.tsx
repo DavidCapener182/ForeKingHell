@@ -51,7 +51,7 @@ async function TrainingOverTimePage({ searchParams }: TrainingOverTimePageProps)
             </span>
           }
           title="Training Load"
-          description="Review logged golf workload and choose your next session. Readiness is app guidance, not medical clearance."
+          description={`${data.sessions.length} activities in this training history. Readiness is app guidance, not medical clearance.`}
         />
 
         {saved ? (

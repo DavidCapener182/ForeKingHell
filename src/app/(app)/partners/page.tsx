@@ -12,7 +12,7 @@ export default async function PartnersPage() {
       <div className="grid min-w-0 gap-5 pb-28">
         <PageHeader
           title="Sponsors and partner offers"
-          description="Manage owned sponsors and clearly labelled offers with their actual terms and golf context."
+          description="See partner offers, check their terms and manage your sponsors."
         />
         <dl className="grid gap-3 rounded-xl border p-4 sm:grid-cols-2 xl:grid-cols-4">
           {[

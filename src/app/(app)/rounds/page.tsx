@@ -33,6 +33,9 @@ export default async function RoundsPage() {
     (round) => roundHistoryScore(round.scorecardHoles, round.roundStatus).complete,
   ).length;
 
+  const unfinished = indexRounds.find((round) =>
+    ["in_progress", "active"].includes(round.roundStatus),
+  );
   return (
     <PageShell>
       {surface === "companion" ? (
@@ -88,6 +91,20 @@ export default async function RoundsPage() {
         </header>
       ) : null}
 
+      {unfinished && (
+        <Link
+          href={`/rounds/${unfinished.id}`}
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 p-4"
+        >
+          <span>
+            <span className="block text-sm font-medium">
+              In-progress round · {unfinished.dateLabel}
+            </span>
+            <strong className="text-lg">{unfinished.courseName ?? "Open scorecard"}</strong>
+          </span>
+          <span className="font-semibold underline underline-offset-4">Continue round</span>
+        </Link>
+      )}
       {surface === "companion" ? (
         <RoundsMobileList rounds={indexRounds} />
       ) : (

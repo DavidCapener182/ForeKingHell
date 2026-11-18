@@ -21,8 +21,8 @@
 .title {
   margin: 0;
   font: inherit;
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: clamp(1.65rem, 4cqi, 2.35rem);
+  font-weight: 650;
   line-height: 1.25;
   letter-spacing: -0.025em;
 }
@@ -37,6 +37,7 @@
   font-size: 0.9375rem;
   line-height: 1.5;
   overflow-wrap: anywhere;
+  max-inline-size: 76ch;
 }
 
 .actions {

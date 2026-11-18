@@ -4,9 +4,9 @@ const subscribe = () => () => {};
 import { useSearchParams } from "next/navigation";
 import { UntitledTabs } from "@/components/untitled-ui/tabs";
 export const todaySections = [
-  { id: "overview", label: "Overview" },
-  { id: "practice", label: "Practice" },
-  { id: "evidence", label: "Evidence" },
+  { id: "overview", label: "Session verdict" },
+  { id: "practice", label: "Practice plan" },
+  { id: "evidence", label: "Shot evidence" },
   { id: "data-quality", label: "Data quality" },
 ] as const;
 type TodaySection = (typeof todaySections)[number]["id"];
@@ -23,7 +23,7 @@ export function TodayWorkspaceTabs({ panels }: { panels: Record<TodaySection, Re
   return (
     <div data-today-workspace-tabs data-ready={ready}>
       <UntitledTabs
-        label="Today sections"
+        label="Practice review sections"
         selectedKey={selected}
         keepMounted
         onSelectionChange={(key) => {

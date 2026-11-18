@@ -55,13 +55,8 @@ export function MobileQuickBag({
         {savedAt
           ? `Offline snapshot saved ${formatDate(savedAt, true)}. Reconnect to refresh.`
           : cacheState}
+        {savedAt && legacy ? " Older snapshot. Reopen online to verify." : ""}
       </p>
-      {savedAt ? (
-        <p className="mobile-type-footnote text-muted-foreground" role="status">
-          Offline · saved {formatDate(savedAt, true)}. Reconnect to refresh.
-          {legacy ? " Older snapshot. Reopen online to verify." : ""}
-        </p>
-      ) : null}
       <MobileGroupedList label="Club yardages">
         {sorted.map((club) => {
           const number = mode === "carry" ? club.trustedCarryYd : club.totalYd;
@@ -112,6 +107,12 @@ export function MobileQuickBag({
                     }
                   />
                 </dl>
+                {club.sampleSize < 5 && club.evidenceKind !== "touch" ? (
+                  <p className="text-sm text-muted-foreground">
+                    Limited carry evidence. Record more full swings with this club to check its
+                    playing distance.
+                  </p>
+                ) : null}
                 {accountId ? (
                   <Link
                     className="mobile-type-callout flex min-h-11 items-center text-primary"
@@ -129,7 +130,6 @@ export function MobileQuickBag({
         <p className="text-muted-foreground">Import shots to establish distances.</p>
       ) : (
         <p className="mobile-type-footnote text-muted-foreground" role="status">
-          {savedAt ? "" : cacheState + " "}
           {mode === "total"
             ? "Total varies with ground conditions."
             : "Range: middle half of trusted carries."}

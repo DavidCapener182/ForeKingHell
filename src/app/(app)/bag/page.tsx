@@ -429,7 +429,7 @@ async function BagWorkbenchPage({
             <AppEmptyState
               icon={<Target className="size-5" />}
               title="No clubs imported yet"
-              description="Import Rapsodo CSVs to build the bag map. Trusted distances and gapping evidence will appear here."
+              description="Import a launch-monitor session and match its shots to your clubs to see carry distances and gaps."
               primaryAction={
                 <Button asChild>
                   <Link href="/import">Import club data</Link>
@@ -460,7 +460,7 @@ async function BagWorkbenchPage({
                         </div>
                         <BagSupportingEvidence
                           title="Full gapping evidence"
-                          description="Open the complete club table, target recommendations and speed context only when you need to audit the decision."
+                          description="Compare your club distances and choose a club for a target yardage."
                         >
                           {gappingRows.length > 0 ? <CarryGappingTable rows={gappingRows} /> : null}
                           {speedSummary ? <BagSpeedPotentialPanel summary={speedSummary} /> : null}
@@ -489,7 +489,7 @@ async function BagWorkbenchPage({
                         />
                         <BagSupportingEvidence
                           title="Club supporting tools"
-                          description="Personal bests, target-distance matching and stock-shot filters are grouped behind one review control."
+                          description="Find your longest shot, match a target yardage or filter stock swings."
                         >
                           <PersonalBestSnapshotPanel clubs={bag} />
                           <TargetDistanceSelector
@@ -518,7 +518,7 @@ async function BagWorkbenchPage({
                         <ConfidenceHeatMapPanel heatMaps={confidenceHeatMaps} />
                         <BagSupportingEvidence
                           title="Scoring supporting evidence"
-                          description="Shot-pattern and wedge evidence stays available when you need to audit a scoring-club decision."
+                          description="Check where your approach shots land and how far each wedge swing carries."
                         >
                           <ShotPatternOverlayPanel overlays={shotPatternOverlays} />
                           <WedgeMatrixPanel matrix={wedgeMatrix} />

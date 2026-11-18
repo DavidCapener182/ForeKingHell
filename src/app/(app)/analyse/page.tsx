@@ -42,11 +42,11 @@ async function AnalysePage() {
       <PageShell>
         <PageHeader
           title="Analysis"
-          description="Choose a measured question, then inspect the records behind it."
+          description="Compare two sessions, see where shots landed or check which readings counted."
         />
         <AppEmptyState
           icon={<Database className="size-6" aria-hidden />}
-          title="Import measured evidence to start analysis"
+          title="Import your first practice session"
           description="The Performance Lab waits for trusted launch-monitor evidence before it describes a pattern or recommends a change."
           primaryAction={
             <Button asChild>
@@ -155,7 +155,7 @@ function InsightHero({ data }: { data: AnalyseOverview }) {
         <PageHeader
           className={atmosphere.heroHeading}
           title="Analysis"
-          description="Choose a measured question, then inspect the records behind it."
+          description="Compare two sessions, see where shots landed or check which readings counted."
           actions={
             <Button asChild>
               <Link href={data.insight.shotsHref}>

@@ -1,5 +1,9 @@
 "use client";
 
+import { LandingContours } from "@/components/visuals/landing-contours";
+import { csvCell } from "@/lib/csv";
+import { ShotTimeFilter, allShotTimes, withinShotTime } from "@/components/visuals/shot-time-range";
+import { CoursePlotBackdrop } from "@/components/visuals/course-plot-backdrop";
 import { TodaySelectedShotRail } from "@/app/today/today-selected-shot-rail";
 import type { ShotMasterDetailRow } from "@/app/shots/shots-master-detail-table";
 import { useEffect, useId, useMemo, useState } from "react";
@@ -32,14 +36,13 @@ import {
   defaultShotPatternClub,
   filterShotPatternPoints,
   shotPatternClubs,
-  shotPatternConfidence,
   summarizeShotPattern,
   type ShotPatternPoint,
 } from "@/lib/shot-pattern-chart-data";
 import { buildDispersionScale, carryAxisMax, type DispersionScale } from "@/lib/dispersion-scale";
 import { cn } from "@/lib/utils";
 
-type ChartMode = "dispersion" | "flight";
+type ChartMode = "both" | "dispersion" | "flight";
 type FlightMode = "shots" | "average";
 
 const SharedShotPatternVisual = dynamic(
@@ -74,33 +77,57 @@ export function MobileShotPatternCharts({
   correctionClubs?: Array<{ value: string; label: string }>;
 }) {
   const clubs = useMemo(() => shotPatternClubs(points), [points]);
-  const dispersionScale = useMemo(
+  const baseScale = useMemo(
     () => buildDispersionScale(layout === "mobile" ? points.filter(hasLandingPoint) : points),
     [layout, points],
   );
-  const [mode, setMode] = useState<ChartMode>("dispersion");
+  const [mode, setMode] = useState<ChartMode>("both");
+  const [timeRange, setTimeRange] = useState(allShotTimes);
+  const [course, setCourse] = useState(true);
+  const [corridor, setCorridor] = useState(10);
+  const dispersionScale = {
+    ...baseScale,
+    targetSideYd: corridor,
+    maxCarryYd: Math.max(
+      baseScale.maxCarryYd,
+      carryAxisMax(Math.max(0, ...points.filter(hasFlightPoint).map((p) => p.carryYd))),
+    ),
+  };
+  const apexLimit = niceCeiling(
+    Math.max(30, ...points.filter(hasFlightPoint).map((p) => p.apexFt)),
+    20,
+  );
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [flightMode, setFlightMode] = useState<FlightMode>("shots");
   const [club, setClub] = useState(() =>
     defaultToAllClubs && clubs.length > 1 ? "all" : defaultShotPatternClub(clubs, preferredClub),
   );
   const [trustedOnly, setTrustedOnly] = useState(!defaultToAllShots);
   const [selectedShot, setSelectedShot] = useState<ShotPatternPoint | null>(null);
+  function inspect(point: ShotPatternPoint) {
+    setSelectedShot(point);
+    setFlightMode("shots");
+    setDrawerOpen(true);
+  }
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     const timer = window.setTimeout(() => setHydrated(true), 0);
     return () => window.clearTimeout(timer);
   }, []);
+  const timedPoints = useMemo(
+    () => points.filter((p) => withinShotTime(p.shotAt, timeRange)),
+    [points, timeRange],
+  );
   const selected = useMemo(
-    () => filterShotPatternPoints({ points, club, trustedOnly }),
-    [club, points, trustedOnly],
+    () => filterShotPatternPoints({ points: timedPoints, club, trustedOnly }),
+    [club, timedPoints, trustedOnly],
   );
   const trustedSelection = useMemo(
-    () => filterShotPatternPoints({ points, club, trustedOnly: true }),
-    [club, points],
+    () => filterShotPatternPoints({ points: timedPoints, club, trustedOnly: true }),
+    [club, timedPoints],
   );
-  const hasFlight = selected.some((point) => point.carryYd !== null && point.apexFt !== null);
-  const summary = useMemo(() => summarizeShotPattern(selected), [selected]);
-  const confidence = useMemo(() => shotPatternConfidence(selected), [selected]);
+  const hasFlight = selected.some(hasFlightPoint);
+  const summary = useMemo(() => summarizeShotPattern(selected, corridor), [selected, corridor]);
 
   if (clubs.length === 0) {
     return (
@@ -123,12 +150,41 @@ export function MobileShotPatternCharts({
       data-chart-layout={layout}
       data-mobile-shot-pattern-hydrated={hydrated ? "true" : "false"}
     >
+      {!compact && (
+        <div className="flex flex-wrap items-center gap-2">
+          <MobileSegmentedControl
+            value={course ? "course" : "analysis"}
+            onValueChange={(v) => setCourse(v === "course")}
+            ariaLabel="Plot background"
+            options={[
+              { value: "course", label: "Course" },
+              { value: "analysis", label: "Analysis" },
+            ]}
+          />
+          <label className="text-sm">
+            Target ±{" "}
+            <input
+              type="number"
+              min="1"
+              max={baseScale.maxSideYd}
+              value={corridor}
+              className="w-16 rounded border bg-background p-1"
+              onChange={(e) => {
+                const n = e.target.valueAsNumber;
+                if (n > 0 && n <= baseScale.maxSideYd) setCorridor(n);
+              }}
+            />{" "}
+            yd
+          </label>
+        </div>
+      )}
       {!compact ? (
         <MobileSegmentedControl
           value={mode}
           onValueChange={(value) => setMode(value as ChartMode)}
           ariaLabel="Shot pattern view"
           options={[
+            { value: "both", label: "Both charts" },
             { value: "dispersion", label: "Dispersion" },
             { value: "flight", label: "Flight", disabled: !hasFlight },
           ]}
@@ -140,7 +196,7 @@ export function MobileShotPatternCharts({
         </p>
       ) : null}
 
-      {!compact && mode === "flight" && hasFlight ? (
+      {!compact && mode !== "dispersion" && hasFlight ? (
         <MobileSegmentedControl
           value={flightMode}
           onValueChange={(value) => setFlightMode(value as FlightMode)}
@@ -152,6 +208,9 @@ export function MobileShotPatternCharts({
         />
       ) : null}
 
+      {!compact && points.some((p) => p.shotAt) && (
+        <ShotTimeFilter range={timeRange} onChange={setTimeRange} />
+      )}
       <MobileFilterChipGroup
         value={club}
         onValueChange={setClub}
@@ -168,7 +227,9 @@ export function MobileShotPatternCharts({
       {!compact ? (
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
           <p className="text-xs text-muted-foreground">
-            {confidence.sampleSize} reported landing points · {confidence.label} sample coverage
+            {points.length} source rows · {trustedSelection.length} trusted for selected clubs ·{" "}
+            {selected.filter(hasLandingPoint).length} landings ·{" "}
+            {selected.filter(hasFlightPoint).length} complete flights
           </p>
           <MobileSegmentedControl
             value={trustedOnly ? "trusted" : "all"}
@@ -182,72 +243,104 @@ export function MobileShotPatternCharts({
         </div>
       ) : null}
 
-      {mode === "dispersion" || compact ? (
-        <div
-          className={cn(
-            "overflow-hidden rounded-xl bg-background",
-            layout === "desktop" && "border bg-slate-50/70 p-2 shadow-inner xl:p-4",
-          )}
-        >
-          {layout === "mobile" ? (
-            <MobileShotPatternVisual
-              points={selected}
-              trustedPoints={trustedSelection}
-              dispersionScale={dispersionScale}
-              mode="dispersion"
-              compact={compact}
-              onSelect={setSelectedShot}
-            />
-          ) : (
-            <SharedShotPatternVisual
-              shots={selected}
-              mode="dispersion"
-              dispersionScale={dispersionScale}
-              dispersionLayout="portrait"
-            />
-          )}
-        </div>
-      ) : hasFlight ? (
-        <div
-          className={cn(
-            "overflow-hidden rounded-xl bg-background",
-            layout === "desktop" && "border bg-slate-50/70 p-2 shadow-inner xl:p-4",
-          )}
-        >
-          {layout === "mobile" ? (
-            <MobileShotPatternVisual
-              points={selected}
-              trustedPoints={trustedSelection}
-              dispersionScale={dispersionScale}
-              mode="flight"
-              flightMode={flightMode}
-              onSelect={setSelectedShot}
-            />
-          ) : (
-            <SharedShotPatternVisual
-              shots={selected}
-              mode="trajectory"
-              trajectoryView={flightMode === "average" ? "averages" : "shots"}
-            />
-          )}
-        </div>
-      ) : (
-        <p className="rounded-xl bg-secondary/60 p-4 text-sm text-muted-foreground">
-          Flight is unavailable because this session has no measured apex data.
+      <div
+        className={cn(
+          "grid items-start gap-3",
+          layout === "desktop" && mode === "both" && "lg:grid-cols-2",
+        )}
+      >
+        {mode !== "flight" || compact ? (
+          <div
+            className={cn(
+              "overflow-hidden rounded-xl bg-background",
+              layout === "desktop" && "border bg-slate-50/70 p-2 shadow-inner xl:p-4",
+            )}
+          >
+            {layout === "mobile" ? (
+              <MobileShotPatternVisual
+                points={selected}
+                trustedPoints={trustedSelection}
+                dispersionScale={dispersionScale}
+                mode="dispersion"
+                compact={compact}
+                course={course}
+                apexLimit={apexLimit}
+                selectedId={selectedShot?.id}
+                onSelect={inspect}
+              />
+            ) : (
+              <SharedShotPatternVisual
+                course={course}
+                apexScale={apexLimit}
+                selectedShotId={selectedShot?.id}
+                onSelectShot={(id) => {
+                  const shot = selected.find((s) => s.id === id);
+                  if (shot) inspect(shot);
+                }}
+                shots={selected}
+                mode="dispersion"
+                dispersionScale={dispersionScale}
+                dispersionLayout="portrait"
+              />
+            )}
+          </div>
+        ) : null}
+        {!compact && mode !== "dispersion" && hasFlight ? (
+          <div
+            className={cn(
+              "overflow-hidden rounded-xl bg-background",
+              layout === "desktop" && "border bg-slate-50/70 p-2 shadow-inner xl:p-4",
+            )}
+          >
+            {layout === "mobile" ? (
+              <MobileShotPatternVisual
+                points={selected}
+                trustedPoints={trustedSelection}
+                dispersionScale={dispersionScale}
+                mode="flight"
+                flightMode={flightMode}
+                course={course}
+                apexLimit={apexLimit}
+                selectedId={selectedShot?.id}
+                onSelect={inspect}
+              />
+            ) : (
+              <SharedShotPatternVisual
+                course={course}
+                apexScale={apexLimit}
+                selectedShotId={selectedShot?.id}
+                onSelectShot={(id) => {
+                  const shot = selected.find((s) => s.id === id);
+                  if (shot) inspect(shot);
+                }}
+                shots={selected}
+                dispersionScale={dispersionScale}
+                mode="trajectory"
+                trajectoryView={flightMode === "average" ? "averages" : "shots"}
+              />
+            )}
+          </div>
+        ) : null}
+      </div>
+      {selected.some((s) => s.alignmentFlagged) && (
+        <p className="text-xs">
+          Alignment under review ·{" "}
+          {selected
+            .filter((s) => s.alignmentFlagged)
+            .map((s) => s.clubLabel + " #" + (s.shotNumber ?? s.id))
+            .join(", ")}
+          . Lateral comparisons omit these shots.
         </p>
       )}
-
       <PatternSummary summary={summary} />
 
-      {!compact && layout === "desktop" ? (
-        <AccessibleShotTable points={selected} onSelect={setSelectedShot} />
-      ) : null}
+      {!compact ? <AccessibleShotTable points={selected} onSelect={inspect} /> : null}
 
       <ShotDetailDrawer
-        shot={selected.find((point) => point.id === selectedShot?.id) ?? null}
+        shot={drawerOpen ? (selected.find((point) => point.id === selectedShot?.id) ?? null) : null}
         detail={details.find((detail) => detail.id === selectedShot?.id)}
         correctionClubs={correctionClubs}
-        onOpenChange={(open) => !open && setSelectedShot(null)}
+        onOpenChange={setDrawerOpen}
       />
     </section>
   );
@@ -261,7 +354,13 @@ function MobileShotPatternVisual({
   compact = false,
   flightMode = "shots",
   onSelect,
+  course,
+  selectedId,
+  apexLimit,
 }: {
+  course: boolean;
+  selectedId?: string;
+  apexLimit: number;
   points: ShotPatternPoint[];
   trustedPoints: ShotPatternPoint[];
   dispersionScale: DispersionScale;
@@ -277,9 +376,19 @@ function MobileShotPatternVisual({
       dispersionScale={dispersionScale}
       compact={compact}
       onSelect={onSelect}
+      course={course}
+      selectedId={selectedId}
     />
   ) : (
-    <MobileFlightVisual points={points} flightMode={flightMode} onSelect={onSelect} />
+    <MobileFlightVisual
+      course={course}
+      selectedId={selectedId}
+      maxCarry={dispersionScale.maxCarryYd}
+      maxApex={apexLimit}
+      points={points}
+      flightMode={flightMode}
+      onSelect={onSelect}
+    />
   );
 }
 
@@ -289,7 +398,11 @@ function MobileDispersionVisual({
   dispersionScale,
   compact,
   onSelect,
+  course,
+  selectedId,
 }: {
+  course: boolean;
+  selectedId?: string;
   points: ShotPatternPoint[];
   trustedPoints: ShotPatternPoint[];
   dispersionScale: DispersionScale;
@@ -298,7 +411,7 @@ function MobileDispersionVisual({
 }) {
   const plotClipId = useId();
   const landing = points.filter(hasLandingPoint);
-  const trustedSummary = summarizeShotPattern(trustedPoints);
+  const trustedSummary = summarizeShotPattern(trustedPoints, dispersionScale.targetSideYd);
   const width = 360;
   // Today gets a purpose-built complete preview rather than a cropped full chart.
   const height = compact ? 220 : 420;
@@ -332,7 +445,7 @@ function MobileDispersionVisual({
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className="block w-full"
-        role="img"
+        role="group"
         aria-label="Mobile dispersion chart. Tap any shot to inspect its measurements."
       >
         <defs>
@@ -341,14 +454,35 @@ function MobileDispersionVisual({
           </clipPath>
         </defs>
         <rect width={width} height={height} fill="var(--mobile-chart-surface)" />
+        {course && (
+          <CoursePlotBackdrop
+            view="fairway"
+            x={frame.left}
+            y={frame.top}
+            width={plotWidth}
+            height={plotHeight}
+          />
+        )}
         <rect
           x={x(-corridor)}
           y={frame.top}
           width={x(corridor) - x(-corridor)}
           height={plotHeight}
           fill="var(--mobile-chart-corridor)"
-          opacity={0.72}
+          fillOpacity={0.16}
         />
+        {[-corridor, corridor].map((edge) => (
+          <line
+            key={edge}
+            x1={x(edge)}
+            x2={x(edge)}
+            y1={frame.top}
+            y2={height - frame.bottom}
+            stroke="var(--mobile-chart-target)"
+            opacity=".55"
+            strokeDasharray="4 5"
+          />
+        ))}
         {hasTrustedZone ? (
           <rect
             clipPath={`url(#${plotClipId})`}
@@ -364,6 +498,13 @@ function MobileDispersionVisual({
             strokeWidth={1.5}
           />
         ) : null}
+        {!compact && (
+          <LandingContours
+            clipId={plotClipId}
+            cloud={landing.map((p) => [x(p.sideCarryYd), y(p.carryYd)])}
+            clubCount={new Set(landing.map((p) => p.clubType)).size}
+          />
+        )}
         {carryTicks.map((tick) => (
           <g key={tick}>
             <line
@@ -432,7 +573,8 @@ function MobileDispersionVisual({
             key={point.id}
             cx={x(point.sideCarryYd ?? 0)}
             cy={y(point.carryYd ?? 0)}
-            r={6.5}
+            r={point.id === selectedId ? 9 : 6.5}
+            aria-pressed={point.id === selectedId}
             fill={mobileClubColor(point.clubType)}
             fillOpacity={point.trusted ? 0.88 : 0.38}
             stroke="var(--mobile-chart-marker-stroke)"
@@ -474,7 +616,7 @@ function MobileDispersionVisual({
       <div className="grid grid-cols-3 border-t bg-card text-[10px] font-medium text-muted-foreground">
         <ChartKey
           tone="bg-[var(--mobile-chart-corridor)] ring-[var(--mobile-chart-corridor-border)]"
-          label="Playable corridor"
+          label="Target corridor"
         />
         <ChartKey
           tone="border border-dashed border-[var(--mobile-chart-zone)] bg-[var(--status-success-surface)]"
@@ -493,7 +635,15 @@ function MobileFlightVisual({
   points,
   flightMode,
   onSelect,
+  course,
+  selectedId,
+  maxCarry,
+  maxApex,
 }: {
+  course: boolean;
+  selectedId?: string;
+  maxCarry: number;
+  maxApex: number;
   points: ShotPatternPoint[];
   flightMode: FlightMode;
   onSelect: (point: ShotPatternPoint) => void;
@@ -505,8 +655,6 @@ function MobileFlightVisual({
   const frame = { top: 24, right: 16, bottom: 42, left: 42 };
   const plotWidth = width - frame.left - frame.right;
   const plotHeight = height - frame.top - frame.bottom;
-  const maxCarry = carryAxisMax(Math.max(0, ...flight.map((point) => point.carryYd ?? 0)));
-  const maxApex = niceCeiling(Math.max(30, ...visible.map((point) => point.apexFt ?? 0)), 20);
   const x = (value: number) => frame.left + (value / maxCarry) * plotWidth;
   const y = (value: number) => frame.top + plotHeight - (value / maxApex) * plotHeight;
 
@@ -516,13 +664,25 @@ function MobileFlightVisual({
       data-mobile-flight-layout
       data-trajectory-max-carry={maxCarry}
     >
+      <p className="p-2 text-xs">
+        Illustrative arcs from reported carry and apex · {flight.length} flights
+      </p>
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className="block w-full"
-        role="img"
-        aria-label="Mobile flight chart"
+        role="group"
+        aria-label="Illustrative flight arcs from carry and apex"
       >
         <rect width={width} height={height} fill="var(--mobile-chart-surface)" />
+        {course && (
+          <CoursePlotBackdrop
+            view="range"
+            x={frame.left}
+            y={frame.top}
+            width={plotWidth}
+            height={plotHeight}
+          />
+        )}
         {[0, maxApex / 2, maxApex].map((tick) => (
           <g key={tick}>
             <line
@@ -565,13 +725,26 @@ function MobileFlightVisual({
           const carry = point.carryYd ?? 0;
           const apex = point.apexFt ?? 0;
           return (
-            <g key={point.id}>
+            <g
+              key={point.id}
+              role={flightMode === "shots" ? "button" : "img"}
+              tabIndex={flightMode === "shots" ? 0 : undefined}
+              aria-pressed={flightMode === "shots" ? point.id === selectedId : undefined}
+              aria-label={point.clubLabel + " flight " + (point.shotNumber ?? "average")}
+              onClick={() => flightMode === "shots" && onSelect(point)}
+              onKeyDown={(e) => {
+                if (flightMode === "shots" && ["Enter", " "].includes(e.key)) {
+                  e.preventDefault();
+                  onSelect(point);
+                }
+              }}
+            >
               <path
-                d={`M ${x(0)} ${y(0)} Q ${x(carry / 2)} ${y(apex)} ${x(carry)} ${y(0)}`}
+                d={`M ${x(0)} ${y(0)} Q ${x(carry / 2)} ${y(2 * apex)} ${x(carry)} ${y(0)}`}
                 fill="none"
                 stroke={mobileClubColor(point.clubType)}
-                strokeWidth={flightMode === "average" ? 4 : 2}
-                strokeOpacity={flightMode === "average" ? 0.88 : 0.42}
+                strokeWidth={flightMode === "average" || point.id === selectedId ? 4 : 2}
+                strokeOpacity={flightMode === "average" || point.id === selectedId ? 0.95 : 0.55}
                 strokeLinecap="round"
               />
               <circle
@@ -581,14 +754,6 @@ function MobileFlightVisual({
                 fill={mobileClubColor(point.clubType)}
                 stroke="var(--mobile-chart-marker-stroke)"
                 strokeWidth={2}
-                role="button"
-                tabIndex={0}
-                className="cursor-pointer outline-none focus-visible:stroke-[var(--focus-ring)] focus-visible:stroke-[4px]"
-                aria-label={`${point.clubLabel} flight ${formatMeasure(point.carryYd, "yd")}`}
-                onClick={() => onSelect(point)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") onSelect(point);
-                }}
               />
             </g>
           );
@@ -627,13 +792,18 @@ function ChartKey({ tone, label }: { tone: string; label: string }) {
 function hasLandingPoint(
   point: ShotPatternPoint,
 ): point is ShotPatternPoint & { carryYd: number; sideCarryYd: number } {
-  return point.carryYd !== null && point.sideCarryYd !== null;
+  return (
+    !point.alignmentFlagged &&
+    point.carryYd !== null &&
+    point.carryYd >= 0 &&
+    point.sideCarryYd !== null
+  );
 }
 
 function hasFlightPoint(
   point: ShotPatternPoint,
 ): point is ShotPatternPoint & { carryYd: number; apexFt: number } {
-  return point.carryYd !== null && point.apexFt !== null;
+  return point.carryYd !== null && point.carryYd > 0 && point.apexFt !== null && point.apexFt >= 0;
 }
 
 function averageFlightPoints(points: ShotPatternPoint[]) {
@@ -699,6 +869,39 @@ function AccessibleShotTable({
         Accessible shot data ({points.length})
       </CollapsibleTrigger>
       <CollapsibleContent>
+        <a
+          className="inline-block py-2 underline"
+          download="shot-patterns.csv"
+          href={
+            "data:text/csv;charset=utf-8," +
+            encodeURIComponent(
+              [
+                [
+                  "Shot ID",
+                  "Club",
+                  "Shot number",
+                  "Carry (yd)",
+                  "Side carry (yd)",
+                  "Apex (ft)",
+                  "Alignment flagged",
+                ],
+                ...points.map((p) => [
+                  p.id,
+                  p.clubLabel,
+                  p.shotNumber,
+                  p.carryYd,
+                  p.sideCarryYd,
+                  p.apexFt,
+                  Boolean(p.alignmentFlagged),
+                ]),
+              ]
+                .map((row) => row.map((v) => csvCell(String(v ?? ""))).join(","))
+                .join("\n"),
+            )
+          }
+        >
+          Export CSV
+        </a>
         <div className="max-h-72 overflow-auto pb-2">
           <Table className="min-w-[34rem] text-xs">
             <caption className="sr-only">Measured shot data used by this chart</caption>
@@ -838,9 +1041,13 @@ function PatternSummary({ summary }: { summary: ReturnType<typeof summarizeShotP
   return (
     <div className="grid gap-0.5" aria-live="polite" data-shot-pattern-summary>
       <p className="text-base font-bold leading-5">
-        {summary.insideCorridor} / {summary.sampleSize} playable
+        {summary.insideCorridor} / {summary.sampleSize} within ±{summary.corridorYd} yd (
+        {Math.round((100 * summary.insideCorridor) / summary.sampleSize)}%)
       </p>
-      <p className="text-sm leading-5 text-muted-foreground">Pattern centres {direction}.</p>
+      <p className="text-sm leading-5 text-muted-foreground">
+        Median {direction}. Signed mean {formatSigned(summary.signedMiss)} · Mean absolute miss{" "}
+        {formatMeasure(summary.absoluteMiss, "yd")}.
+      </p>
       {miss ? <p className="text-sm leading-5 text-muted-foreground">{miss}</p> : null}
     </div>
   );

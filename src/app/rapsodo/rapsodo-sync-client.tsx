@@ -1237,6 +1237,7 @@ export function RapsodoSyncClient({
               <CardContent>
                 <div className="grid gap-3 pb-4">
                   <Input
+                    type="search"
                     aria-label="Search remote sessions"
                     value={sessionQuery}
                     onChange={(event) => setSessionQuery(event.target.value)}

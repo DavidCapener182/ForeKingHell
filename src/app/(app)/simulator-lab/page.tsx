@@ -160,7 +160,7 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
             </span>
           }
           title="Performance Lab"
-          description="WITB gapping, indoor-session deltas and range-handicap coaching from saved launch-monitor data."
+          description="See the gaps between clubs, compare indoor sessions and track your range-handicap estimate."
           actions={
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button asChild variant="outline">
@@ -205,7 +205,7 @@ export default async function SimulatorLabPage({ searchParams }: PageProps<"/sim
           <DataPanel className="border-[var(--status-warning-border)] bg-[var(--status-warning-surface)]">
             <SectionHeader
               title="Simulator data caveat"
-              description="The lab rendered with partial data rather than blocking the workspace."
+              description="Some measurements could not be loaded. Available results are shown below."
               action={<AlertTriangle className="size-5 text-[var(--status-warning-foreground)]" />}
             />
             <CardContent className="grid gap-2 text-sm leading-6 text-[var(--status-warning-foreground)]">

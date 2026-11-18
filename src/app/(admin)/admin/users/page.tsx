@@ -53,7 +53,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
         <AdminNav active="/admin/users" />
         <PageHeader
           title="Account management"
-          description="Search accounts and review their saved access. Role changes follow your current administrator permissions; permanent access and owner changes require an owner."
+          description="Find an account to review its access. Only an owner can change ownership or grant permanent access."
           actions={<AdminAccessDialog canManageOwners={canManageOwners} />}
         />
         <AdminUserFilters

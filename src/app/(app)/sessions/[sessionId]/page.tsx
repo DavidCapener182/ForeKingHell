@@ -409,7 +409,7 @@ export default async function PracticeSessionReviewPage({
         className="grid min-w-0 gap-3 rounded-xl border bg-card p-4 sm:p-5"
         aria-label="Complete shot evidence"
       >
-        <h2 className="text-xl font-semibold">Shot evidence ledger</h2>
+        <h2 className="text-xl font-semibold">Shots from this session</h2>
         <p className="text-sm leading-6 text-muted-foreground">
           Inspect every saved field, original source and review history. Keep, exclude or correct a
           club without rewriting raw measurements.

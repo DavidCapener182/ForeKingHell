@@ -76,9 +76,11 @@ export function globSync(pattern, options) {
   for (const original of expanded.filter(Boolean).sort((a, b) => a.length - b.length)) {
     const value = original.replace(/(?!^)\/{2,}/g, "/");
     if (value.startsWith("!") && !value.startsWith("!(")) continue;
-    const regex = picomatch.makeRe(value, { dot: false, posix: true, strictSlashes: false });
+    const regex = picomatch.directoryMatcher(value, { dot: false, posix: true });
     const accepts = (entry) =>
-      regex.test(entry.replace(/^\.\//, "")) || regex.test(`${entry.replace(/^\.\//, "")}/`);
+      (value === "./" && entry === "./") ||
+      regex(entry.replace(/^\.\//, "")) ||
+      regex(`${entry.replace(/^\.\//, "")}/`);
     const dynamic = /[*?]|\[[^[]*\]|(?:^|[^!*+?@])\([^(]*\|[^|]*\)|[!*+?@]\([^(]*\)|\\/.test(value);
     if (!dynamic) {
       if (directory(value) && accepts(value)) matches.add(value);

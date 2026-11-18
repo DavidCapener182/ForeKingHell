@@ -1,13 +1,14 @@
 import { ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
 
+import { marketingJoinBetaHref } from "@/lib/marketing-links";
 import { billingPlans } from "@/lib/billing-plan-catalog";
 
 import styles from "./cinematic.module.css";
 import { Reveal } from "./reveal";
 
 const publicPlans = billingPlans.filter((plan) => !plan.internal);
-const joinForBillingHref = "/login?mode=join&next=%2Fbilling";
+const comparePlansHref = "/login?next=%2Fbilling";
 
 export function PricingSection() {
   return (
@@ -57,7 +58,7 @@ export function PricingSection() {
                     ? "No paid subscription"
                     : `Or ${plan.yearlyPrice} billed yearly`}
                 </span>
-                <Link href={joinForBillingHref}>
+                <Link href={plan.key === "free" ? marketingJoinBetaHref : comparePlansHref}>
                   {plan.key === "free" ? "Start free" : "Sign in to compare plans"}
                   <ArrowRight aria-hidden />
                 </Link>

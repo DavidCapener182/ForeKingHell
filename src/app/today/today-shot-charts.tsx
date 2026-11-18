@@ -3,6 +3,9 @@
 import { lazy, Suspense, useId, useMemo, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { UntitledSelect } from "@/components/untitled-ui/form-controls";
+import { ShotTimeFilter, allShotTimes, withinShotTime } from "@/components/visuals/shot-time-range";
+import { CoursePlotBackdrop } from "@/components/visuals/course-plot-backdrop";
+import { LandingContours } from "@/components/visuals/landing-contours";
 import { Check, Eye } from "lucide-react";
 
 import type { TodayChartShot } from "@/app/today/today-shot-types";
@@ -129,7 +132,7 @@ const dispersionChartColumns: ChartFallbackColumn[] = [
   { key: "carry", label: "Carry" },
   { key: "side", label: "Left/right" },
   { key: "start", label: "Start line" },
-  { key: "curve", label: "Curve" },
+  { key: "curve", label: "Estimated curve from start line" },
   { key: "total", label: "Total" },
 ];
 
@@ -144,18 +147,34 @@ const trajectoryChartColumns: ChartFallbackColumn[] = [
 export function TodayShotCharts({
   shots,
   clubStatuses = [],
-  patternInsight = "Dispersion is the main diagnostic; trajectory adds ball-flight context.",
+  patternInsight = "Compare the reported landing with the illustrative side view for the same shot.",
   variant = "default",
+  importedCount = shots.length,
+  eligibleCount = shots.length,
   correctionClubs = [],
 }: {
   shots: TodayChartShot[];
   clubStatuses?: TodayChartClubStatus[];
   patternInsight?: string;
   variant?: "default" | "editorial";
+  importedCount?: number;
+  eligibleCount?: number;
   correctionClubs?: Array<{ value: string; label: string }>;
 }) {
   const clubGroups = useMemo(() => buildClubGroups(shots), [shots]);
-  const dispersionScale = useMemo(() => buildDispersionScale(shots), [shots]);
+  const [timeRange, setTimeRange] = useState(allShotTimes);
+  const [course, setCourse] = useState(true);
+  const [corridor, setCorridor] = useState(10);
+  const baseScale = useMemo(() => buildDispersionScale(shots.filter(hasDispersionData)), [shots]);
+  const dispersionScale = {
+    ...baseScale,
+    targetSideYd: corridor,
+    maxCarryYd: Math.max(
+      baseScale.maxCarryYd,
+      carryAxisMax(max(shots.filter(hasTrajectoryData).map((s) => s.carryYd!))),
+    ),
+  };
+  const apexScale = niceTrajectoryMax(max(shots.filter(hasTrajectoryData).map((s) => s.apexFt!)));
   const statusByClub = useMemo(
     () => new Map(clubStatuses.map((status) => [status.clubType, status] as const)),
     [clubStatuses],
@@ -163,10 +182,16 @@ export function TodayShotCharts({
   const [selectedClub, setSelectedClub] = useState("all");
   const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
   const [trajectoryView, setTrajectoryView] = useState<TrajectoryView>("shots");
+  function inspectShot(id: string) {
+    setSelectedShotId(id);
+    setTrajectoryView("shots");
+  }
   const [showOutliers, setShowOutliers] = useState(true);
   const visibleShots = useMemo(() => {
     const selected = shots.filter(
-      (shot) => selectedClub === "all" || shot.clubType === selectedClub,
+      (shot) =>
+        withinShotTime(shot.shotAt, timeRange) &&
+        (selectedClub === "all" || shot.clubType === selectedClub),
     );
     const outlierIds = dispersionOutlierIds(selected);
     return selected
@@ -175,14 +200,14 @@ export function TodayShotCharts({
         ...shot,
         color: colorForClub(shot.clubType),
       }));
-  }, [selectedClub, shots, showOutliers]);
+  }, [selectedClub, shots, showOutliers, timeRange]);
   const selectedShot = visibleShots.find((shot) => shot.id === selectedShotId) ?? null;
   const longestTotalShot = visibleShots.reduce<ChartPoint | null>((best, shot) => {
     return isNumber(shot.totalYd) && shot.totalYd > (best?.totalYd ?? 0) ? shot : best;
   }, null);
   const visibleClubCount =
     selectedClub === "all" ? clubGroups.length : visibleShots.length > 0 ? 1 : 0;
-  const dispersionSummary = buildDispersionChartSummary(visibleShots);
+  const dispersionSummary = buildDispersionChartSummary(visibleShots, corridor);
   const trajectorySummary = buildTrajectoryChartSummary(visibleShots, trajectoryView);
   const dispersionRows = buildDispersionChartRows(visibleShots);
   const trajectoryRows = buildTrajectoryChartRows(visibleShots);
@@ -207,181 +232,225 @@ export function TodayShotCharts({
                 variant="link"
                 size="sm"
                 className="h-auto p-0"
-                onClick={() => setSelectedShotId(longestTotalShot.id)}
+                onClick={() => inspectShot(longestTotalShot.id)}
               >
                 Longest total · {formatNullable(longestTotalShot.totalYd)}
               </Button>
             ) : null}
             <span>
-              {visibleShots.length} shots / {visibleClubCount} clubs
+              {importedCount} imported · {eligibleCount} review-eligible · {visibleShots.length} in
+              view / {visibleClubCount} clubs
             </span>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Alert className="border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-success-foreground)]">
-          <Check className="size-4" aria-hidden />
-          <AlertDescription className="font-medium">
-            Pattern detected: {patternInsight}
-          </AlertDescription>
-        </Alert>
-
-        <ToggleGroup
-          type="single"
-          value={selectedClub}
-          onValueChange={(value) => {
-            if (!value) return;
-            setSelectedClub(value);
-            setSelectedShotId(null);
-          }}
-          variant="outline"
-          aria-label="Shot chart club filters"
-          className="-mx-1 w-auto justify-start overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
-        >
-          <ToggleGroupItem
-            value="all"
-            className="min-h-9 shrink-0 gap-2 rounded-lg px-3 text-sm font-semibold"
+        <div className="flex flex-wrap items-center gap-3">
+          <ToggleGroup
+            type="single"
+            aria-label="Plot background"
+            variant="outline"
+            value={course ? "course" : "analysis"}
+            onValueChange={(v) => v && setCourse(v === "course")}
           >
-            {selectedClub === "all" ? <Check className="size-3.5" /> : null}
-            All clubs
-            <span
-              className={cn(
-                "text-xs",
-                selectedClub === "all" ? "text-primary-foreground/75" : "text-muted-foreground",
-              )}
-            >
-              {shots.length}
-            </span>
-          </ToggleGroupItem>
-          {clubGroups.map((club) => {
-            const selected = selectedClub === club.clubType;
-            const status = statusByClub.get(club.clubType);
+            <ToggleGroupItem value="course">Course</ToggleGroupItem>
+            <ToggleGroupItem value="analysis">Analysis</ToggleGroupItem>
+          </ToggleGroup>
+          <label className="text-sm">
+            Target ±{" "}
+            <input
+              aria-label="Target corridor half-width in yards"
+              className="w-16 rounded border bg-background p-1"
+              type="number"
+              min="1"
+              max={baseScale.maxSideYd}
+              value={corridor}
+              onChange={(e) => {
+                const n = e.target.valueAsNumber;
+                if (n > 0 && n <= baseScale.maxSideYd) setCorridor(n);
+              }}
+            />{" "}
+            yd
+          </label>
+        </div>
+        <details className="rounded-lg border border-border">
+          <summary className="min-h-11 cursor-pointer px-3 py-2.5 text-sm font-semibold">
+            Chart controls ·{" "}
+            {selectedClub === "all"
+              ? "All clubs"
+              : (clubGroups.find((group) => group.clubType === selectedClub)?.clubLabel ??
+                selectedClub)}{" "}
+            · {trajectoryView === "shots" ? "Individual shots" : "Club averages"}
+          </summary>
+          <div className="space-y-4 border-t border-border p-3">
+            {shots.some((s) => s.shotAt) && (
+              <ShotTimeFilter range={timeRange} onChange={setTimeRange} />
+            )}
+            <Alert className="border-[var(--status-success-border)] bg-[var(--status-success-surface)] text-[var(--status-success-foreground)] [&_[data-slot=alert-description]]:text-[var(--status-success-foreground)]">
+              <Check className="size-4" aria-hidden />
+              <AlertDescription className="font-medium">{patternInsight}</AlertDescription>
+            </Alert>
 
-            return (
+            <ToggleGroup
+              type="single"
+              value={selectedClub}
+              onValueChange={(value) => {
+                if (!value) return;
+                setSelectedClub(value);
+                setSelectedShotId(null);
+              }}
+              variant="outline"
+              aria-label="Shot chart club filters"
+              className="-mx-1 w-auto justify-start overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+            >
               <ToggleGroupItem
-                key={club.clubType}
-                value={club.clubType}
+                value="all"
                 className="min-h-9 shrink-0 gap-2 rounded-lg px-3 text-sm font-semibold"
               >
-                {selected ? <Check className="size-3.5" /> : null}
-                <span
-                  className="size-2.5 rounded-full"
-                  style={{ backgroundColor: club.color }}
-                  aria-hidden
-                />
-                <span>{club.clubLabel}</span>
+                {selectedClub === "all" ? <Check className="size-3.5" /> : null}
+                All clubs
                 <span
                   className={cn(
                     "text-xs",
-                    selected ? "text-primary-foreground/75" : "text-muted-foreground",
+                    selectedClub === "all" ? "text-primary-foreground/75" : "text-muted-foreground",
                   )}
                 >
-                  {club.shotCount}
+                  {shots.length}
                 </span>
-                {status ? (
-                  <span
-                    title={
-                      status.verdict === "new"
-                        ? "Not enough shots in this practice or its earlier baseline for a fair comparison."
-                        : status.verdict === "mixed"
-                          ? `No clear overall change versus earlier practice. ${status.summary}`
-                          : status.summary
-                    }
-                    className={cn(
-                      "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
-                      selected
-                        ? "bg-primary-foreground/15 text-primary-foreground"
-                        : statusPillClass(status.verdict),
-                    )}
-                  >
-                    {verdictLabel(status.verdict)}
-                  </span>
-                ) : null}
               </ToggleGroupItem>
-            );
-          })}
-        </ToggleGroup>
+              {clubGroups.map((club) => {
+                const selected = selectedClub === club.clubType;
+                const status = statusByClub.get(club.clubType);
 
-        {selectedClub !== "all" && statusByClub.get(selectedClub) ? (
-          <p className="text-sm text-muted-foreground" role="status">
-            <strong className="font-medium text-foreground">
-              Compared with earlier practice:{" "}
-            </strong>
-            {statusByClub.get(selectedClub)!.verdict === "mixed" ? "No clear overall change. " : ""}
-            {statusByClub.get(selectedClub)!.summary}
-          </p>
-        ) : null}
+                return (
+                  <ToggleGroupItem
+                    key={club.clubType}
+                    value={club.clubType}
+                    className="min-h-9 shrink-0 gap-2 rounded-lg px-3 text-sm font-semibold"
+                  >
+                    {selected ? <Check className="size-3.5" /> : null}
+                    <span
+                      className="size-2.5 rounded-full"
+                      style={{ backgroundColor: club.color }}
+                      aria-hidden
+                    />
+                    <span>{club.clubLabel}</span>
+                    <span
+                      className={cn(
+                        "text-xs",
+                        selected ? "text-primary-foreground/75" : "text-muted-foreground",
+                      )}
+                    >
+                      {club.shotCount}
+                    </span>
+                    {status ? (
+                      <span
+                        title={
+                          status.verdict === "new"
+                            ? "Not enough shots in this practice or its earlier baseline for a fair comparison."
+                            : status.verdict === "mixed"
+                              ? `No clear overall change versus earlier practice. ${status.summary}`
+                              : status.summary
+                        }
+                        className={cn(
+                          "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                          selected
+                            ? "bg-primary-foreground/15 text-primary-foreground"
+                            : statusPillClass(status.verdict),
+                        )}
+                      >
+                        {verdictLabel(status.verdict)}
+                      </span>
+                    ) : null}
+                  </ToggleGroupItem>
+                );
+              })}
+            </ToggleGroup>
 
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="font-medium text-muted-foreground">Trajectory</span>
-          <ToggleGroup
-            type="single"
-            value={trajectoryView}
-            onValueChange={(value) => value && setTrajectoryView(value as TrajectoryView)}
-            variant="outline"
-            size="sm"
-            spacing={0}
-            aria-label="Trajectory detail"
-          >
-            <ToggleGroupItem value="averages">Club averages</ToggleGroupItem>
-            <ToggleGroupItem value="shots">
-              <Eye className="size-3.5" />
-              Individual shots
-            </ToggleGroupItem>
-          </ToggleGroup>
-          {selectedClub !== "all" ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSelectedClub("all");
-                setSelectedShotId(null);
-              }}
-            >
-              Show all clubs
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            aria-pressed={showOutliers}
-            variant={showOutliers ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => {
-              setShowOutliers((value) => !value);
-              setSelectedShotId(null);
-            }}
-          >
-            {showOutliers ? "Hide outliers" : "Show outliers"}
-          </Button>
-        </div>
+            {selectedClub !== "all" && statusByClub.get(selectedClub) ? (
+              <p className="text-sm text-muted-foreground" role="status">
+                <strong className="font-medium text-foreground">
+                  Compared with earlier practice:{" "}
+                </strong>
+                {statusByClub.get(selectedClub)!.verdict === "mixed"
+                  ? "No clear overall change. "
+                  : ""}
+                {statusByClub.get(selectedClub)!.summary}
+              </p>
+            ) : null}
 
-        <UntitledSelect
-          label="Inspect a shot"
-          name="today-selected-shot"
-          value={selectedShot?.id ?? ""}
-          onValueChange={setSelectedShotId}
-          options={[
-            { value: "", label: "Choose a measured shot" },
-            ...visibleShots.map((shot) => ({
-              value: shot.id,
-              label: `${shot.clubLabel} · Shot ${shot.shotNumber ?? "unavailable"} · ${shot.carryYd === null ? "carry unavailable" : `${numberFormatter.format(shot.carryYd)} yd carry`}`,
-            })),
-          ]}
-          description="The charts use carry distance. Select a shot to see its carry and total."
-        />
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-medium text-muted-foreground">Trajectory</span>
+              <ToggleGroup
+                type="single"
+                value={trajectoryView}
+                onValueChange={(value) => value && setTrajectoryView(value as TrajectoryView)}
+                variant="outline"
+                size="sm"
+                spacing={0}
+                aria-label="Trajectory detail"
+              >
+                <ToggleGroupItem value="averages">Club averages</ToggleGroupItem>
+                <ToggleGroupItem value="shots">
+                  <Eye className="size-3.5" />
+                  Individual shots
+                </ToggleGroupItem>
+              </ToggleGroup>
+              {selectedClub !== "all" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedClub("all");
+                    setSelectedShotId(null);
+                  }}
+                >
+                  Show all clubs
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                aria-pressed={showOutliers}
+                variant={showOutliers ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setShowOutliers((value) => !value);
+                  setSelectedShotId(null);
+                }}
+              >
+                {showOutliers ? "Hide outliers" : "Show outliers"}
+              </Button>
+            </div>
+
+            <UntitledSelect
+              label="Inspect a shot"
+              name="today-selected-shot"
+              value={selectedShot?.id ?? ""}
+              onValueChange={inspectShot}
+              options={[
+                { value: "", label: "Choose a measured shot" },
+                ...visibleShots.map((shot) => ({
+                  value: shot.id,
+                  label: `${shot.clubLabel} · Shot ${shot.shotNumber ?? "unavailable"} · ${shot.carryYd === null ? "carry unavailable" : `${numberFormatter.format(shot.carryYd)} yd carry`}`,
+                })),
+              ]}
+              description="The charts use carry distance. Select a shot to see its carry and total."
+            />
+          </div>
+        </details>
         <div
           className={cn(
             "grid items-start gap-4",
             variant === "editorial"
-              ? "xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]"
+              ? "lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]"
               : "lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]",
           )}
         >
           <ChartPanel
             title="Dispersion"
-            detail="Scale stays locked across club and outlier filters. Select a landing to inspect the shot."
-            sampleSize={visibleShots.length}
+            detail="Recorded carry and lateral finish. The illustrated hole is decorative."
+            sampleSize={dispersionRows.length}
             empty={!visibleShots.some(hasDispersionData)}
             footer={<DispersionPanelFooter shots={visibleShots} scale={dispersionScale} />}
             fallback={
@@ -395,54 +464,67 @@ export function TodayShotCharts({
             chartClassName="min-h-0 overflow-hidden"
           >
             <SharedShotPatternVisual
+              course={course}
               shots={visibleShots}
               dispersionScale={dispersionScale}
               dispersionLayout="portrait"
               mode="dispersion"
               selectedShotId={selectedShotId}
-              onSelectShot={setSelectedShotId}
+              onSelectShot={inspectShot}
             />
           </ChartPanel>
-          {selectedShot ? (
-            <Suspense fallback={null}>
-              <TodaySelectedShotRail
-                key={selectedShot.id}
-                shot={selectedShot}
-                correctionClubs={correctionClubs}
-                onClose={() => setSelectedShotId(null)}
+          <ChartPanel
+            title="Ball flight · Trajectory"
+            detail={
+              trajectoryView === "averages"
+                ? "Illustrative arcs from club-average carry and apex."
+                : "Illustrative arcs from reported carry and apex. Select a flight to inspect the original shot."
+            }
+            sampleSize={trajectoryRows.length}
+            empty={!visibleShots.some(hasTrajectoryData)}
+            footer={<TrajectoryInsightCards shots={visibleShots} apexLimit={apexScale} />}
+            fallback={
+              <ChartAccessibleFallback
+                title="Today trajectory"
+                summary={trajectorySummary}
+                columns={trajectoryChartColumns}
+                rows={trajectoryRows}
               />
-            </Suspense>
-          ) : (
-            <ChartPanel
-              title="Trajectory"
-              detail={
-                trajectoryView === "averages"
-                  ? "Club average ball flights with dynamic apex scale."
-                  : "Individual shot flights with dynamic apex scale. Select a flight to inspect the exact shot."
-              }
-              sampleSize={visibleShots.length}
-              empty={!visibleShots.some(hasTrajectoryData)}
-              footer={<TrajectoryInsightCards shots={visibleShots} />}
-              fallback={
-                <ChartAccessibleFallback
-                  title="Today trajectory"
-                  summary={trajectorySummary}
-                  columns={trajectoryChartColumns}
-                  rows={trajectoryRows}
-                />
-              }
-              chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
-            >
-              <SharedShotPatternVisual
-                shots={visibleShots}
-                mode="trajectory"
-                trajectoryView={trajectoryView}
-                selectedShotId={selectedShotId}
-                onSelectShot={setSelectedShotId}
-              />
-            </ChartPanel>
-          )}
+            }
+            chartClassName="max-h-[520px] overflow-hidden [&_svg]:max-h-[500px]"
+          >
+            <SharedShotPatternVisual
+              course={course}
+              shots={visibleShots}
+              dispersionScale={dispersionScale}
+              apexScale={apexScale}
+              mode="trajectory"
+              trajectoryView={trajectoryView}
+              selectedShotId={selectedShotId}
+              onSelectShot={inspectShot}
+            />
+          </ChartPanel>
         </div>
+        {selectedShot ? (
+          <Suspense fallback={null}>
+            <TodaySelectedShotRail
+              key={selectedShot.id}
+              shot={selectedShot}
+              correctionClubs={correctionClubs}
+              onClose={() => setSelectedShotId(null)}
+            />
+          </Suspense>
+        ) : null}
+        {visibleShots.some((s) => s.alignmentFlagged) && (
+          <p className="text-xs">
+            Alignment review ·{" "}
+            {visibleShots
+              .filter((s) => s.alignmentFlagged)
+              .map((s) => s.clubLabel + " #" + (s.shotNumber ?? s.id))
+              .join(", ")}
+            . Lateral comparisons omit these shots.
+          </p>
+        )}
         <ClubLegend clubs={clubGroups} />
       </CardContent>
     </Card>
@@ -452,6 +534,8 @@ export function TodayShotCharts({
 export function SharedShotPatternVisual({
   shots,
   dispersionScale,
+  course = true,
+  apexScale,
   dispersionLayout = "landscape",
   mode,
   trajectoryView = "shots",
@@ -464,6 +548,8 @@ export function SharedShotPatternVisual({
   >;
   mode: "dispersion" | "trajectory";
   dispersionScale?: DispersionScale;
+  course?: boolean;
+  apexScale?: number;
   dispersionLayout?: DispersionLayout;
   trajectoryView?: TrajectoryView;
   selectedShotId?: string | null;
@@ -481,6 +567,7 @@ export function SharedShotPatternVisual({
     <DispersionChart
       shots={chartPoints}
       scale={dispersionScale ?? buildDispersionScale(chartPoints)}
+      course={course}
       layout={dispersionLayout}
       selectedShotId={selectedShotId}
       onSelectShot={onSelectShot}
@@ -488,6 +575,9 @@ export function SharedShotPatternVisual({
   ) : (
     <TrajectoryChart
       shots={chartPoints}
+      course={course}
+      carryLimit={dispersionScale?.maxCarryYd}
+      apexLimit={apexScale}
       view={trajectoryView}
       selectedShotId={selectedShotId}
       onSelectShot={onSelectShot}
@@ -516,20 +606,11 @@ function ChartPanel({
   chartClassName?: string;
   children: ReactNode;
 }) {
-  const confidence =
-    sampleSize >= 30
-      ? "High sample coverage"
-      : sampleSize >= 12
-        ? "Moderate sample coverage"
-        : sampleSize > 0
-          ? "Low sample coverage"
-          : "Insufficient evidence";
-
   return (
     <ChartSurface
       title={title}
       description={detail}
-      metadata={`${sampleSize} reported shot${sampleSize === 1 ? "" : "s"} · ${confidence} · current review filter`}
+      metadata={`${sampleSize} plotted shot${sampleSize === 1 ? "" : "s"} · current review filter`}
       className={className}
       chartClassName={chartClassName}
       emptyState={
@@ -547,24 +628,24 @@ function ChartPanel({
   );
 }
 
-function buildDispersionChartSummary(shots: ChartPoint[]) {
+function buildDispersionChartSummary(shots: ChartPoint[], corridor: number) {
   const points = shots.filter(hasDispersionData);
 
   if (points.length === 0) {
     return "No dispersion chart data is available for the visible club filter.";
   }
 
-  const averageCarry = meanNumber(points.map((shot) => shot.carryYd ?? shot.totalYd));
+  const averageCarry = meanNumber(points.map((shot) => shot.carryYd));
   const averageSide = meanNumber(points.map((shot) => shot.sideCarryYd));
   const shapeModel = buildTopDownShapeModel(points);
-  const bestMarker = bestTargetCorridorShot(points, 10);
+  const bestMarker = bestTargetCorridorShot(points, corridor);
   const worstShot = worstDispersionShot(points);
 
   return `${points.length} plotted shot${points.length === 1 ? "" : "s"}. ${
     shapeModel.estimatedCount
   } launch-direction trace${shapeModel.estimatedCount === 1 ? "" : "s"} visible. Average carry is ${formatNullable(
     averageCarry,
-  )}; average left/right miss is ${formatSigned(averageSide)}. ${
+  )}; signed bias is ${formatSigned(averageSide)}. Mean absolute miss is ${formatNullable(meanNumber(points.map((p) => Math.abs(p.sideCarryYd!))))}. ${
     bestMarker
       ? `${bestMarker.label}: ${compactShotLabel(bestMarker.shot)}.`
       : "No target-corridor shot is available."
@@ -584,57 +665,49 @@ function buildTrajectoryChartSummary(shots: ChartPoint[], view: TrajectoryView) 
     return "No trajectory chart data is available for the visible club filter.";
   }
 
-  const apexes = points.map((shot) => shot.apexFt ?? fallbackApex(shot)).filter(isNumber);
+  const apexes = points.map((shot) => shot.apexFt).filter(isNumber);
   const averageApex = meanNumber(apexes);
   const highestApex = max(apexes);
   const longest = [...points]
     .filter((shot) => isNumber(shot.carryYd) || isNumber(shot.totalYd))
-    .sort(
-      (left, right) => (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0),
-    )[0];
+    .sort((left, right) => (right.carryYd ?? 0) - (left.carryYd ?? 0))[0];
   const modeLabel = view === "averages" ? "club-average" : "individual-shot";
 
   return `${points.length} ${modeLabel} trajectory point${points.length === 1 ? "" : "s"}. Average apex is ${formatFeet(
     averageApex,
-  )}; highest apex is ${formatFeet(highestApex || null)}. ${
+  )}; highest apex is ${formatFeet(highestApex)}. ${
     longest
       ? `Longest visible flight: ${compactShotLabel(longest)} at ${formatNullable(
-          longest.carryYd ?? longest.totalYd ?? null,
+          longest.carryYd ?? null,
         )}.`
       : "No carry distance is available."
   }`;
 }
 
 function buildDispersionChartRows(shots: ChartPoint[]): ChartFallbackRow[] {
-  return shots
-    .filter(hasDispersionData)
-    .slice(-12)
-    .map((shot) => ({
-      _key: shot.id,
-      club: shot.clubLabel,
-      shot: shot.shotNumber ? `#${shot.shotNumber}` : "-",
-      carry: formatNullable(shot.carryYd),
-      side: formatSigned(shot.sideCarryYd),
-      start: formatDegrees(shot.launchDirectionDeg),
-      curve: formatShotCurve(shot),
-      total: formatNullable(shot.totalYd),
-    }));
+  return shots.filter(hasDispersionData).map((shot) => ({
+    _key: shot.id,
+    club: shot.clubLabel,
+    shot: shot.shotNumber ? `#${shot.shotNumber}` : "-",
+    carry: formatNullable(shot.carryYd),
+    side: formatSigned(shot.sideCarryYd),
+    start: formatDegrees(shot.launchDirectionDeg),
+    curve: formatShotCurve(shot),
+    total: formatNullable(shot.totalYd),
+  }));
 }
 
 function buildTrajectoryChartRows(shots: ChartPoint[]): ChartFallbackRow[] {
-  return shots
-    .filter(hasTrajectoryData)
-    .slice(-12)
-    .map((shot) => ({
-      _key: shot.id,
-      club: shot.clubLabel,
-      shot: shot.shotNumber ? `#${shot.shotNumber}` : "-",
-      carry: formatNullable(shot.carryYd ?? shot.totalYd ?? null),
-      apex: formatFeet(shot.apexFt ?? fallbackApex(shot)),
-      ballSpeed: isNumber(shot.ballSpeedMph)
-        ? `${numberFormatter.format(shot.ballSpeedMph)} mph`
-        : "-",
-    }));
+  return shots.filter(hasTrajectoryData).map((shot) => ({
+    _key: shot.id,
+    club: shot.clubLabel,
+    shot: shot.shotNumber ? `#${shot.shotNumber}` : "-",
+    carry: formatNullable(shot.carryYd ?? null),
+    apex: formatFeet(shot.apexFt),
+    ballSpeed: isNumber(shot.ballSpeedMph)
+      ? `${numberFormatter.format(shot.ballSpeedMph)} mph`
+      : "-",
+  }));
 }
 
 function DispersionPanelFooter({ shots, scale }: { shots: ChartPoint[]; scale: DispersionScale }) {
@@ -653,6 +726,10 @@ function DispersionPanelFooter({ shots, scale }: { shots: ChartPoint[]; scale: D
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground">
         Locked scale: ±{maxSide} yd left/right · {maxCarry} yd carry. Target ±{targetSide} yd.
+      </p>
+      <p className="text-xs text-muted-foreground">
+        {points.length} landings in distribution statistics. The 50% and 80% contours use a single
+        club with at least four non-collinear landings.
       </p>
       <DispersionCorridorStats buckets={buckets} />
       <DispersionMarkerLegend bestMarkerLabel={bestMarkerLabel} />
@@ -749,23 +826,20 @@ function MarkerLegendItem({
   );
 }
 
-function TrajectoryInsightCards({ shots }: { shots: ChartPoint[] }) {
+function TrajectoryInsightCards({ shots, apexLimit }: { shots: ChartPoint[]; apexLimit: number }) {
   const points = shots.filter(hasTrajectoryData);
-  const apexes = points.map((shot) => shot.apexFt ?? fallbackApex(shot)).filter(isNumber);
-  const carries = points.map((shot) => shot.carryYd ?? shot.totalYd).filter(isNumber);
+  const apexes = points.map((shot) => shot.apexFt).filter(isNumber);
+  const carries = points.map((shot) => shot.carryYd).filter(isNumber);
   const averageApex = meanNumber(apexes);
   const highestApex = max(apexes);
   const longest = [...points]
     .filter((shot) => isNumber(shot.carryYd) || isNumber(shot.totalYd))
-    .sort(
-      (left, right) => (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0),
-    )[0];
+    .sort((left, right) => (right.carryYd ?? 0) - (left.carryYd ?? 0))[0];
   const penetrating = [...points]
-    .filter((shot) => isNumber(shot.apexFt ?? fallbackApex(shot)))
+    .filter((shot) => isNumber(shot.apexFt))
     .sort(
       (left, right) =>
-        (left.apexFt ?? fallbackApex(left) ?? 999) - (right.apexFt ?? fallbackApex(right) ?? 999) ||
-        (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0),
+        (left.apexFt ?? 999) - (right.apexFt ?? 999) || (right.carryYd ?? 0) - (left.carryYd ?? 0),
     )[0];
 
   if (points.length === 0) {
@@ -775,18 +849,15 @@ function TrajectoryInsightCards({ shots }: { shots: ChartPoint[] }) {
   return (
     <div className="grid grid-cols-2 gap-2 text-xs">
       <TrajectoryInsight label="Avg apex" value={formatFeet(averageApex)} />
-      <TrajectoryInsight label="Highest" value={formatFeet(highestApex || null)} />
-      <TrajectoryInsight
-        label="Longest carry"
-        value={formatNullable(longest?.carryYd ?? longest?.totalYd ?? null)}
-      />
+      <TrajectoryInsight label="Highest" value={formatFeet(highestApex)} />
+      <TrajectoryInsight label="Longest carry" value={formatNullable(longest?.carryYd ?? null)} />
       <TrajectoryInsight
         label="Most penetrating"
         value={penetrating ? compactShotLabel(penetrating) : "--"}
       />
       {carries.length > 0 ? (
         <p className="col-span-2 text-[11px] text-muted-foreground">
-          Axis max: {formatFeet(niceTrajectoryMax(highestApex || 0))}
+          Axis max: {formatFeet(apexLimit)}
         </p>
       ) : null}
     </div>
@@ -826,12 +897,14 @@ function ClubLegend({ clubs }: { clubs: ClubChartGroup[] }) {
 function DispersionChart({
   shots,
   scale,
+  course,
   layout,
   selectedShotId,
   onSelectShot,
 }: {
   shots: ChartPoint[];
   scale: DispersionScale;
+  course: boolean;
   layout: DispersionLayout;
   selectedShotId: string | null;
   onSelectShot?: (shotId: string) => void;
@@ -849,16 +922,14 @@ function DispersionChart({
   const xScale = (value: number) => padding.left + ((value + maxSide) / (maxSide * 2)) * plotWidth;
   const yScale = (value: number) => padding.top + plotHeight - (value / maxCarry) * plotHeight;
   const medianSide = medianNumber(points.map((shot) => shot.sideCarryYd ?? null));
-  const medianCarry = medianNumber(points.map((shot) => shot.carryYd ?? shot.totalYd ?? null));
+  const medianCarry = medianNumber(points.map((shot) => shot.carryYd ?? null));
   const medianY = yScale(medianCarry ?? 0);
   const medianLabelY = medianY + (medianY < padding.top + 28 ? 15 : -15);
   const clubAverages = averageDispersionPoints(points);
   const shapeModel = buildTopDownShapeModel(points, scale, { width, height });
   const bestMarker = bestTargetCorridorShot(points, centerZone);
   const worstShot = worstDispersionShot(points);
-  const ellipse50 = dispersionEllipse(points, 1.18);
-  const ellipse80 = dispersionEllipse(points, 1.79);
-
+  const cloud = points.map((p): [number, number] => [xScale(p.sideCarryYd!), yScale(p.carryYd!)]);
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
@@ -879,14 +950,35 @@ function DispersionChart({
         </clipPath>
       </defs>
       <rect x={0} y={0} width={width} height={height} fill="white" />
+      {course && (
+        <CoursePlotBackdrop
+          view="fairway"
+          x={padding.left}
+          y={padding.top}
+          width={plotWidth}
+          height={plotHeight}
+        />
+      )}
       <rect
         x={xScale(-centerZone)}
         y={padding.top}
         width={xScale(centerZone) - xScale(-centerZone)}
         height={plotHeight}
         fill="#ecfdf5"
-        opacity={0.72}
+        fillOpacity={0.16}
       />
+      {[-centerZone, centerZone].map((edge) => (
+        <line
+          key={edge}
+          x1={xScale(edge)}
+          x2={xScale(edge)}
+          y1={padding.top}
+          y2={height - padding.bottom}
+          stroke="var(--mobile-chart-target)"
+          opacity=".55"
+          strokeDasharray="4 5"
+        />
+      ))}
       <text
         x={xScale(-maxSide * 0.72)}
         y={18}
@@ -909,37 +1001,9 @@ function DispersionChart({
         textAnchor="middle"
         className="fill-emerald-700 text-[10px] font-semibold uppercase tracking-[0.08em]"
       >
-        Target ±10 yd
+        Target ±{centerZone} yd
       </text>
-      {ellipse80 ? (
-        <ellipse
-          clipPath={`url(#${plotClipId})`}
-          cx={xScale(ellipse80.side)}
-          cy={yScale(ellipse80.carry)}
-          rx={Math.max(3, (ellipse80.sideSpread / (maxSide * 2)) * plotWidth)}
-          ry={Math.max(3, (ellipse80.carrySpread / maxCarry) * plotHeight)}
-          fill="var(--chart-comparison, #1555D6)"
-          fillOpacity={0.06}
-          stroke="var(--chart-comparison, #1555D6)"
-          strokeDasharray="7 5"
-          strokeWidth={1.5}
-          aria-hidden="true"
-        />
-      ) : null}
-      {ellipse50 ? (
-        <ellipse
-          clipPath={`url(#${plotClipId})`}
-          cx={xScale(ellipse50.side)}
-          cy={yScale(ellipse50.carry)}
-          rx={Math.max(3, (ellipse50.sideSpread / (maxSide * 2)) * plotWidth)}
-          ry={Math.max(3, (ellipse50.carrySpread / maxCarry) * plotHeight)}
-          fill="var(--chart-positive, #075F36)"
-          fillOpacity={0.08}
-          stroke="var(--chart-positive, #075F36)"
-          strokeWidth={1.75}
-          aria-hidden="true"
-        />
-      ) : null}
+      <LandingContours cloud={cloud} clubCount={clubAverages.length} clipId={plotClipId} />
       {yTicks.map((tick) => (
         <g key={`y-${tick}`}>
           <line
@@ -968,7 +1032,7 @@ function DispersionChart({
             y2={height - padding.bottom}
             stroke={tick === 0 ? "#111827" : "#e5e7eb"}
             strokeDasharray={tick === 0 ? undefined : "4 4"}
-            opacity={tick === 0 ? 0.5 : 1}
+            strokeWidth={tick === 0 ? 1.75 : 1}
           />
           <text
             x={xScale(tick)}
@@ -1005,7 +1069,7 @@ function DispersionChart({
         </path>
       ))}
       {points.map((shot) => {
-        const carry = shot.carryYd ?? shot.totalYd ?? 0;
+        const carry = shot.carryYd ?? 0;
         const side = shot.sideCarryYd ?? 0;
         const selected = shot.id === selectedShotId;
 
@@ -1082,7 +1146,7 @@ function DispersionChart({
         <DispersionMarker
           shot={bestMarker.shot}
           x={xScale(bestMarker.shot.sideCarryYd ?? 0)}
-          y={yScale(bestMarker.shot.carryYd ?? bestMarker.shot.totalYd ?? 0)}
+          y={yScale(bestMarker.shot.carryYd ?? 0)}
           label={bestMarker.label}
           marker="3"
           tone="green"
@@ -1092,7 +1156,7 @@ function DispersionChart({
         <DispersionMarker
           shot={worstShot}
           x={xScale(worstShot.sideCarryYd ?? 0)}
-          y={yScale(worstShot.carryYd ?? worstShot.totalYd ?? 0)}
+          y={yScale(worstShot.carryYd ?? 0)}
           label="Worst miss"
           marker="2"
           tone="pink"
@@ -1186,19 +1250,23 @@ function DispersionMarker({
 function TrajectoryChart({
   shots,
   view,
+  course,
+  carryLimit,
+  apexLimit,
   selectedShotId,
   onSelectShot,
 }: {
   shots: ChartPoint[];
   view: TrajectoryView;
+  course: boolean;
+  carryLimit?: number;
+  apexLimit?: number;
   selectedShotId: string | null;
   onSelectShot?: (shotId: string) => void;
 }) {
   const points = shots.filter(hasTrajectoryData);
-  const maxCarry = carryAxisMax(max(points.map((shot) => shot.carryYd ?? shot.totalYd ?? 0)));
-  const maxApex = niceTrajectoryMax(
-    max(points.map((shot) => shot.apexFt ?? fallbackApex(shot) ?? 0)),
-  );
+  const maxCarry = carryLimit ?? carryAxisMax(max(points.map((shot) => shot.carryYd ?? 0)));
+  const maxApex = apexLimit ?? niceTrajectoryMax(max(points.map((shot) => shot.apexFt ?? 0)));
   const yTicks = ticks(maxApex, 4);
   const xTicks = ticks(maxCarry, 5);
   const xScale = (value: number) => padding.left + (value / maxCarry) * plotWidth;
@@ -1218,6 +1286,15 @@ function TrajectoryChart({
       }
     >
       <rect x={0} y={0} width={chartWidth} height={chartHeight} fill="white" />
+      {course && (
+        <CoursePlotBackdrop
+          view="range"
+          x={padding.left}
+          y={padding.top}
+          width={plotWidth}
+          height={plotHeight}
+        />
+      )}
       {yTicks.map((tick) => (
         <g key={`apex-${tick}`}>
           <line
@@ -1276,14 +1353,14 @@ function TrajectoryChart({
         carry yd
       </text>
       {points.map((shot) => {
-        const carry = shot.carryYd ?? shot.totalYd ?? 0;
-        const apex = shot.apexFt ?? fallbackApex(shot) ?? 0;
+        const carry = shot.carryYd ?? 0;
+        const apex = shot.apexFt ?? 0;
         const startX = xScale(0);
         const startY = yScale(0);
         const endX = xScale(carry);
         const endY = yScale(0);
         const controlX = xScale(carry / 2);
-        const controlY = yScale(apex);
+        const controlY = yScale(2 * apex);
         const selected = shot.id === selectedShotId;
         const selectable = view === "shots" && Boolean(onSelectShot);
         const path = `M ${startX} ${startY} Q ${controlX} ${controlY} ${endX} ${endY}`;
@@ -1357,7 +1434,7 @@ function TrajectoryChart({
             const endX = xScale(trajectory.carryYd);
             const endY = yScale(0);
             const controlX = xScale(trajectory.carryYd / 2);
-            const controlY = yScale(trajectory.apexFt);
+            const controlY = yScale(2 * trajectory.apexFt);
 
             return (
               <g key={`trajectory-${trajectory.clubType}`}>
@@ -1409,7 +1486,7 @@ function buildTopDownShapeModel(
   const plotHeight = dimensions.height - padding.top - padding.bottom;
   const traces = points
     .map((shot) => {
-      const carryYd = shot.carryYd ?? shot.totalYd ?? null;
+      const carryYd = shot.carryYd ?? null;
       const sideCarryYd = shot.sideCarryYd;
       const trace = buildShotShapeTrace({
         id: shot.id,
@@ -1450,7 +1527,7 @@ function chartShapePath({
   xScale: (value: number) => number;
   yScale: (value: number) => number;
 }) {
-  const carryYd = shot.carryYd ?? shot.totalYd ?? 0;
+  const carryYd = shot.carryYd ?? 0;
   const sideCarryYd = shot.sideCarryYd ?? 0;
 
   if (carryYd <= 0 || !isNumber(shot.launchDirectionDeg)) {
@@ -1484,7 +1561,7 @@ function averageDispersionPoints(points: ChartPoint[]): AverageDispersion[] {
   >();
 
   for (const point of points) {
-    const carry = point.carryYd ?? point.totalYd;
+    const carry = point.carryYd;
 
     if (!isNumber(point.sideCarryYd) || !isNumber(carry)) {
       continue;
@@ -1524,8 +1601,8 @@ function averageTrajectoryPoints(points: ChartPoint[]): AverageTrajectory[] {
   >();
 
   for (const point of points) {
-    const carry = point.carryYd ?? point.totalYd;
-    const apex = point.apexFt ?? fallbackApex(point);
+    const carry = point.carryYd;
+    const apex = point.apexFt;
 
     if (!isNumber(carry) || !isNumber(apex)) {
       continue;
@@ -1561,7 +1638,7 @@ function bestTargetCorridorShot(
   const validShots = points.filter(hasDispersionData);
   const corridorShot = [...validShots]
     .filter((shot) => {
-      const distance = shot.carryYd ?? shot.totalYd;
+      const distance = shot.carryYd;
 
       return (
         isNumber(distance) &&
@@ -1571,7 +1648,7 @@ function bestTargetCorridorShot(
     })
     .sort(
       (left, right) =>
-        (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0) ||
+        (right.carryYd ?? 0) - (left.carryYd ?? 0) ||
         Math.abs(left.sideCarryYd ?? 999) - Math.abs(right.sideCarryYd ?? 999),
     )[0];
 
@@ -1583,7 +1660,7 @@ function bestTargetCorridorShot(
     [...validShots].sort(
       (left, right) =>
         Math.abs(left.sideCarryYd ?? 999) - Math.abs(right.sideCarryYd ?? 999) ||
-        (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0),
+        (right.carryYd ?? 0) - (left.carryYd ?? 0),
     )[0] ?? null;
 
   return straightestShot ? { shot: straightestShot, label: "Straightest shot" } : null;
@@ -1596,7 +1673,7 @@ function worstDispersionShot(points: ChartPoint[]) {
       .sort(
         (left, right) =>
           Math.abs(right.sideCarryYd ?? 0) - Math.abs(left.sideCarryYd ?? 0) ||
-          (right.carryYd ?? right.totalYd ?? 0) - (left.carryYd ?? left.totalYd ?? 0),
+          (right.carryYd ?? 0) - (left.carryYd ?? 0),
       )[0] ?? null
   );
 }
@@ -1629,7 +1706,7 @@ function dispersionOutlierIds(shots: TodayChartShot[]) {
   for (const rows of groups.values()) {
     if (rows.length < 7) continue;
     const sides = rows.map((shot) => shot.sideCarryYd ?? 0);
-    const carries = rows.map((shot) => shot.carryYd ?? shot.totalYd ?? 0);
+    const carries = rows.map((shot) => shot.carryYd ?? 0);
     const sideMean = rawMean(sides);
     const carryMean = rawMean(carries);
     const sideDeviation = standardDeviation(sides, sideMean);
@@ -1637,27 +1714,12 @@ function dispersionOutlierIds(shots: TodayChartShot[]) {
     for (const shot of rows) {
       const sideZ =
         sideDeviation > 0 ? Math.abs((shot.sideCarryYd! - sideMean) / sideDeviation) : 0;
-      const carry = shot.carryYd ?? shot.totalYd ?? 0;
+      const carry = shot.carryYd ?? 0;
       const carryZ = carryDeviation > 0 ? Math.abs((carry - carryMean) / carryDeviation) : 0;
       if (sideZ > 2.2 || carryZ > 2.2) ids.add(shot.id);
     }
   }
   return ids;
-}
-
-function dispersionEllipse(points: ChartPoint[], scale: number) {
-  const valid = points.filter(hasDispersionData);
-  if (valid.length < 4) return null;
-  const sides = valid.map((shot) => shot.sideCarryYd ?? 0);
-  const carries = valid.map((shot) => shot.carryYd ?? shot.totalYd ?? 0);
-  const side = rawMean(sides);
-  const carry = rawMean(carries);
-  return {
-    side,
-    carry,
-    sideSpread: standardDeviation(sides, side) * scale,
-    carrySpread: standardDeviation(carries, carry) * scale,
-  };
 }
 
 function colorForClub(clubType: string) {
@@ -1690,22 +1752,16 @@ function sortClub(clubType: string) {
 }
 
 function hasDispersionData(shot: TodayChartShot) {
-  return isNumber(shot.sideCarryYd) && (isNumber(shot.carryYd) || isNumber(shot.totalYd));
-}
-
-function hasTrajectoryData(shot: TodayChartShot) {
   return (
-    (isNumber(shot.carryYd) || isNumber(shot.totalYd)) &&
-    (isNumber(shot.apexFt) || isNumber(shot.launchAngleDeg))
+    !shot.alignmentFlagged &&
+    isNumber(shot.sideCarryYd) &&
+    isNumber(shot.carryYd) &&
+    shot.carryYd >= 0
   );
 }
 
-function fallbackApex(shot: TodayChartShot) {
-  if (!isNumber(shot.launchAngleDeg) || !isNumber(shot.carryYd)) {
-    return null;
-  }
-
-  return Math.max(8, Math.tan((shot.launchAngleDeg * Math.PI) / 180) * shot.carryYd * 3 * 0.18);
+function hasTrajectoryData(shot: TodayChartShot) {
+  return isNumber(shot.carryYd) && shot.carryYd > 0 && isNumber(shot.apexFt) && shot.apexFt >= 0;
 }
 
 function shotTitle(shot: TodayChartShot) {
@@ -1773,7 +1829,7 @@ function niceMax(value: number, step: number) {
 }
 
 function niceTrajectoryMax(value: number) {
-  return Math.min(150, Math.max(60, niceMax(value + 10, 10)));
+  return Math.max(60, niceMax(value + 10, 10));
 }
 
 function ticks(maxValue: number, count: number) {
@@ -1805,7 +1861,7 @@ function formatFeet(value: number | null) {
 }
 
 function formatShotCurve(shot: TodayChartShot) {
-  const carryYd = shot.carryYd ?? shot.totalYd;
+  const carryYd = shot.carryYd;
 
   if (
     !isNumber(carryYd) ||

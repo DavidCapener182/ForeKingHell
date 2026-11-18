@@ -58,7 +58,7 @@ export default async function AdminModerationPage({
         <AdminNav active="/admin/moderation" />
         <PageHeader
           title="Moderation queue"
-          description="Review user reports and detected events separately. Resolution closes a record; it does not delete the underlying content."
+          description="Review reports and detected events. Resolving a case keeps its original content."
         />
         <dl className="grid gap-3 rounded-xl border p-4 sm:grid-cols-3">
           {[

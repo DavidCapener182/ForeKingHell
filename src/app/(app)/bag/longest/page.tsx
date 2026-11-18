@@ -111,7 +111,7 @@ export default async function LongestShotsPage() {
           <PageHeader
             title="Best shots by club"
             eyebrow="Your personal records"
-            description="Longest carry and total are separate records. Choose a club and distance to inspect the exact saved shot."
+            description="Choose carry or total distance, then open the shot behind a club record."
           />
 
           <BestShotsBoard

@@ -162,6 +162,8 @@ export async function getDashboardData() {
         ballSpeedMph: shots.ballSpeedMph,
         launchAngleDeg: shots.launchAngleDeg,
         launchDirectionDeg: directionalMetricSql(shots.launchDirectionDeg),
+        sourceRawJson: shots.sourceRawJson,
+        spinAxis: directionalMetricSql(shots.spinAxis),
         clubPathDeg: directionalMetricSql(shots.clubPathDeg),
         faceAngleDeg: directionalMetricSql(shots.faceAngleDeg),
         clubDataEstType: shots.clubDataEstType,
@@ -381,6 +383,21 @@ export async function getDashboardData() {
     },
     latestRound,
     bagPreview,
+    carryLadder: bag
+      .flatMap((club) => {
+        const carry = club.stock.carryMedianYd;
+        if (carry === null || carry <= 0 || club.stock.sampleSize < 1 || club.isShortGameTouch)
+          return [];
+        return [
+          {
+            id: club.id,
+            label: formatClubType(club.type),
+            carry,
+            sampleSize: club.stock.sampleSize,
+          },
+        ];
+      })
+      .sort((a, b) => b.carry - a.carry),
     bagSummary,
     pathTrend,
     wedgeMatrix,

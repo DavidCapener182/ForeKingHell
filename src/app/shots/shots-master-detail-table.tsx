@@ -56,6 +56,7 @@ import { isRestorableShotReviewStatus, type ShotReviewStatus } from "@/lib/shot-
 import { cn } from "@/lib/utils";
 
 export type ShotMasterDetailRow = {
+  delivery?: import("@/lib/club-delivery").DeliveryObservation;
   flightEvidence?: FlightEvidence;
   id: string;
   sessionId: string;
@@ -821,14 +822,22 @@ export function SelectedShotDetail({
               <DetailPair label="Launch" value={`${shot.launchLabel}°`} />
               <DetailPair label="Direction" value={`${shot.launchDirectionLabel}°`} />
               <DetailPair label="Apex" value={`${shot.apexLabel} ft`} />
-              <DetailPair label="Spin" value={`${shot.spinRateLabel} rpm`} />
+              <DetailPair label="Reported spin rate" value={`${shot.spinRateLabel} rpm`} />
+              <DetailPair label="Descent" value={`${shot.descentLabel}°`} />
               <DetailPair label="Attack" value={`${shot.attackLabel}°`} />
               <DetailPair label="Path" value={`${shot.pathLabel}°`} />
               <DetailPair
                 label={shot.flightEvidence?.faceSource === "modelled" ? "Modelled face" : "Face"}
                 value={`${shot.faceLabel}°`}
               />
-              <DetailPair label="Spin axis" value={`${shot.spinAxisLabel}°`} />
+              <DetailPair
+                label={
+                  shot.delivery?.axis != null
+                    ? "Verified spin axis"
+                    : "Reported spin axis · unverified"
+                }
+                value={`${shot.spinAxisLabel}°`}
+              />
               <DetailPair label="Smash" value={shot.smashLabel} />
             </dl>
           </DetailSection>
@@ -957,6 +966,14 @@ function shotReviewDetailLabel(shot: ShotMasterDetailRow) {
 }
 
 function BallFlightVisual({ shot }: { shot: ShotMasterDetailRow }) {
+  if (
+    shot.carryYd == null ||
+    shot.carryYd <= 0 ||
+    shot.apexFt == null ||
+    shot.apexFt < 0 ||
+    shot.sideCarryYd == null
+  )
+    return null;
   const endX = 168 + Math.max(-42, Math.min(42, shot.sideCarryYd ?? 0));
   const peakY = 70 - Math.max(8, Math.min(46, (shot.apexFt ?? 45) / 2));
 

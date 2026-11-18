@@ -17,7 +17,11 @@ export function WelcomeJourney({ journey }: { journey: ActivationJourney }) {
                 : "Your setup evidence is ready"
               : "Setup progress is unavailable"
           }
-          description="Continue from the evidence saved in your account. Opening a step does not mark it complete."
+          description={
+            journey.available
+              ? `${count} of ${journey.steps.length} setup steps complete. Opening a step does not mark it complete.`
+              : "Try loading your saved checklist again."
+          }
         />
         {journey.dismissed ? (
           <p className="text-sm">

@@ -73,11 +73,11 @@ test("Public Today keeps owned evidence, surface, query and history across viewp
         expect(new URL(page.url()).searchParams.get("session")).toBe(records[0].session);
         expect(new URL(page.url()).searchParams.get("check")).toBe("retained");
         const tabs = page.locator("[data-today-workspace-tabs]");
-        await tabs.getByRole("tab", { name: "Evidence", exact: true }).click();
-        await expect(tabs.getByRole("tabpanel")).toHaveAccessibleName("Evidence");
+        await tabs.getByRole("tab", { name: "Shot evidence", exact: true }).click();
+        await expect(tabs.getByRole("tabpanel")).toHaveAccessibleName("Shot evidence");
         await tabs.getByRole("tab", { name: "Data quality", exact: true }).click();
         await page.goBack();
-        await expect(tabs.getByRole("tab", { name: "Evidence", exact: true })).toHaveAttribute(
+        await expect(tabs.getByRole("tab", { name: "Shot evidence", exact: true })).toHaveAttribute(
           "aria-selected",
           "true",
         );
@@ -91,11 +91,15 @@ test("Public Today keeps owned evidence, surface, query and history across viewp
           await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
         ).toBeTruthy();
         if (surface === "workbench") {
+          await page.getByRole("link", { name: "Dispersion & ball flight", exact: true }).click();
+          await expect(page.locator("[data-today-shot-point]").first()).toBeVisible();
           const points = await page
             .locator("[data-today-shot-point]")
             .evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-today-shot-point")));
           expect(points.length).toBeGreaterThan(0);
           expect(points.every((id) => id !== null && records[0].shots.includes(id))).toBeTruthy();
+          await page.goBack();
+          await expect(tabs).toBeVisible();
         }
         await page.screenshot({
           path: info.outputPath(`today-isolation-${surface}-${width}.png`),

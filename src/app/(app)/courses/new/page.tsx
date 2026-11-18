@@ -69,7 +69,7 @@ export default function NewCoursePage() {
       <PageHeader
         eyebrow={<StatusPill tone="green">Add a course</StatusPill>}
         title="Add a course"
-        description="Choose a source or enter the course and first tee. Then review its hole map."
+        description="Find your course by name or enter it manually. Start with the tees you play."
       />
 
       <DesktopWorkflowLayout

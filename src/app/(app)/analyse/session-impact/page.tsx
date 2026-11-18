@@ -32,7 +32,7 @@ async function SessionImpactPage({ searchParams }: { searchParams: SearchParams 
       <PageHeader
         eyebrow={<StatusPill tone="sky">Reversible analysis</StatusPill>}
         title="Session impact"
-        description="See exactly how selected shots and robust filters change the story without deleting or rewriting the source session."
+        description="Compare the session before and after filtering shots. Your saved readings stay intact."
         metrics={
           data.session
             ? [

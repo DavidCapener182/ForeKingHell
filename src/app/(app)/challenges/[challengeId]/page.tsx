@@ -159,7 +159,7 @@ export default async function ChallengePage({
   const attempts = (
     <section className="grid gap-3">
       <ChallengeSourceInspection challengeId={challengeId} data={sourceInspection} />
-      <h2 className="text-lg font-semibold">Qualifying attempt ledger</h2>
+      <h2 className="text-lg font-semibold">Qualifying attempts</h2>
       <p className="text-sm">
         These are calculated qualifying results, not a complete history of rejected imports.
         Excluded, modelled, out-of-window and nonmatching shots do not rank. Open Rules for the
@@ -228,7 +228,7 @@ export default async function ChallengePage({
             label: "Command board",
             content: (
               <section className="grid gap-4">
-                <h2 className="text-lg font-semibold">Challenge command board</h2>
+                <h2 className="text-lg font-semibold">Challenge progress</h2>
                 <p>
                   {data.results.length} ranked players · {data.attempts.length} qualifying results ·{" "}
                   {c.participantCount} joined players

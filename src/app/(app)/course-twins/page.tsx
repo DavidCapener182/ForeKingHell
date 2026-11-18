@@ -15,7 +15,7 @@ export default async function CourseTwinCataloguePage() {
     <PageShell>
       <PageHeader
         title="Course Twin"
-        description="Explore a mapped course, replay measured shots or prepare a virtual round. Grade B uses real terrain with approximate putting contours."
+        description="Choose a course to explore its holes in 3D or replay your shots. Grade B uses real terrain with approximate putting contours."
         actions={
           <Button asChild variant="outline">
             <Link href="/courses">

@@ -52,7 +52,7 @@ export function ImportStepper({
           {saved ? "Import saved" : `Step ${active + 1} of 4 · ${steps[active].label}`}
           {isPending ? " · Saving…" : error ? " · Needs attention" : ""}
         </p>
-        {active > 0 ? (
+        {active > 0 && hasFiles ? (
           <a
             href={steps[active - 1].href}
             className="inline-flex min-h-11 items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
@@ -70,6 +70,16 @@ export function ImportStepper({
           {steps.map((step, index) => {
             const complete = saved || index < active;
             const failed = error && index === active;
+            if (!hasFiles && index > 0) {
+              return (
+                <li
+                  key={step.label}
+                  className="flex min-h-11 items-start gap-2 p-2 text-sm text-muted-foreground"
+                >
+                  <Circle size={18} aria-hidden /> {step.label}
+                </li>
+              );
+            }
             return (
               <li key={step.label}>
                 <a

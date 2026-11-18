@@ -72,8 +72,9 @@ async function CoursesPageContent({
             Find your next course
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-            Browse the courses you play, prepare strategy, open a Course Twin, or review the records
-            for your saved courses.
+            {library.length} courses · {library.filter((course) => course.strategyReady).length}{" "}
+            ready for strategy · {library.filter((course) => course.courseTwinReady).length} with a
+            Course Twin
           </p>
         </div>
         <Button asChild className="min-h-11 w-full sm:w-auto">

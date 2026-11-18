@@ -22,7 +22,7 @@ const manifest = JSON.parse(
   fs.readFileSync(path.join(path.dirname(installed), "package.json"), "utf8"),
 );
 assert.equal(manifest.name, "@forekinghell/eslint-fast-glob-compat");
-assert.equal(manifest.version, "1.0.5");
+assert.equal(manifest.version, "1.0.9");
 const expected = JSON.parse(fs.readFileSync(path.join(local, "caller-sha256.json"), "utf8"));
 const pluginManifest = JSON.parse(
   fs.readFileSync(path.join(path.dirname(pluginFile), "../package.json"), "utf8"),

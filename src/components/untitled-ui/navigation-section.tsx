@@ -17,8 +17,8 @@ export function NavigationSection({
   children: ReactNode;
 }) {
   const id = useId();
-  const [collapsed, setCollapsed] = useState(false);
-  const expanded = iconMode || !collapsed;
+  const [manualOpen, setManualOpen] = useState<boolean | null>(null);
+  const expanded = iconMode || (manualOpen ?? (Boolean(activeLabel) || label === "Home"));
   return (
     <>
       <button
@@ -27,11 +27,11 @@ export function NavigationSection({
         hidden={iconMode}
         aria-expanded={expanded}
         aria-controls={id}
-        onClick={() => setCollapsed((value) => !value)}
+        onClick={() => setManualOpen(!expanded)}
       >
         <span>
           {label}
-          {collapsed && activeLabel ? <span className={styles.active}>{activeLabel}</span> : null}
+          {!expanded && activeLabel ? <span className={styles.active}>{activeLabel}</span> : null}
         </span>
         <ChevronDown aria-hidden className={styles.chevron} data-expanded={expanded} />
       </button>

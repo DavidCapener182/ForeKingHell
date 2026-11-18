@@ -10,21 +10,82 @@ function Table({
   "aria-describedby": ariaDescribedBy,
   ...props
 }: React.ComponentProps<"table"> & { containerClassName?: string }) {
+  const viewport = React.useRef<HTMLDivElement>(null);
+  const viewportId = React.useId();
+  const [edges, setEdges] = React.useState({ left: false, right: false });
+  const measure = React.useCallback(() => {
+    const node = viewport.current;
+    if (!node) return;
+    const left = node.scrollLeft > 1;
+    const right = node.scrollWidth - node.clientWidth - node.scrollLeft > 1;
+    setEdges((old) => (old.left === left && old.right === right ? old : { left, right }));
+  }, []);
+  React.useEffect(() => {
+    const node = viewport.current;
+    if (!node) return;
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    if (node.firstElementChild) observer.observe(node.firstElementChild);
+    return () => observer.disconnect();
+  }, [measure]);
+  function scrollColumns(direction: number) {
+    const node = viewport.current;
+    if (node) node.scrollBy({ left: direction * Math.max(1, node.clientWidth * 0.8) });
+  }
   return (
-    <div
-      data-slot="table-container"
-      tabIndex={0}
-      aria-label="Scrollable data table"
-      aria-describedby={ariaDescribedBy}
-      className={cn("data-table-scroll relative w-full overflow-x-auto", containerClassName)}
-    >
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+    <>
+      {(edges.left || edges.right) && (
+        <div className="flex flex-wrap items-center justify-end gap-2 px-2 py-1 text-sm">
+          <span className="mr-auto text-muted-foreground">
+            More columns{" "}
+            {edges.left && edges.right
+              ? "in both directions"
+              : edges.left
+                ? "to the left"
+                : "to the right"}
+          </span>
+          <button
+            type="button"
+            aria-label="Show previous columns"
+            aria-controls={viewportId}
+            disabled={!edges.left}
+            onClick={() => scrollColumns(-1)}
+            className="min-h-11 min-w-11 rounded-md border font-semibold disabled:opacity-40"
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            aria-label="Show next columns"
+            aria-controls={viewportId}
+            disabled={!edges.right}
+            onClick={() => scrollColumns(1)}
+            className="min-h-11 min-w-11 rounded-md border font-semibold disabled:opacity-40"
+          >
+            →
+          </button>
+        </div>
+      )}
+      <div
+        ref={viewport}
+        id={viewportId}
+        onScroll={measure}
+        data-slot="table-container"
+        tabIndex={0}
+        aria-label="Scrollable data table"
         aria-describedby={ariaDescribedBy}
-        {...props}
-      />
-    </div>
+        className={cn("data-table-scroll relative w-full overflow-x-auto", containerClassName)}
+      >
+        <table
+          data-slot="table"
+          className={cn("w-full caption-bottom text-sm", className)}
+          aria-describedby={ariaDescribedBy}
+          {...props}
+        />
+      </div>
+    </>
   );
 }
 

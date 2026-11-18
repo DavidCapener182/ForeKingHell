@@ -1,0 +1,583 @@
+{
+  "[\"src/**/*.js\",{}]": {
+    "prefix": "",
+    "input": "src/**/*.js",
+    "start": 0,
+    "base": "src",
+    "glob": "**/*.js",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false
+  },
+  "[\"src/**/*.js\",{\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "src/**/*.js",
+    "start": 0,
+    "base": "src",
+    "glob": "**/*.js",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": true,
+    "negated": false,
+    "negatedExtglob": false,
+    "slashes": [3, 6],
+    "parts": ["src", "**", "*.js"]
+  },
+  "[\"src/**/*.js\",{\"tokens\":true,\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "src/**/*.js",
+    "start": 0,
+    "base": "src",
+    "glob": "**/*.js",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": true,
+    "negated": false,
+    "negatedExtglob": false,
+    "maxDepth": null,
+    "tokens": [
+      {
+        "value": "src",
+        "depth": 1,
+        "isGlob": false
+      },
+      {
+        "value": "**",
+        "depth": null,
+        "isGlob": true,
+        "isGlobstar": true
+      },
+      {
+        "value": "*.js",
+        "depth": 1,
+        "isGlob": true
+      }
+    ],
+    "slashes": [3, 6],
+    "parts": ["src", "**", "*.js"]
+  },
+  "[\"./src/*\",{}]": {
+    "prefix": "./",
+    "input": "./src/*",
+    "start": 2,
+    "base": "src",
+    "glob": "*",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false
+  },
+  "[\"./src/*\",{\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "./",
+    "input": "./src/*",
+    "start": 2,
+    "base": "src",
+    "glob": "*",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false,
+    "slashes": [1, 5],
+    "parts": ["src", "*"]
+  },
+  "[\"./src/*\",{\"tokens\":true,\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "./",
+    "input": "./src/*",
+    "start": 2,
+    "base": "src",
+    "glob": "*",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false,
+    "maxDepth": 2,
+    "tokens": [
+      {
+        "value": "./",
+        "depth": 0,
+        "isGlob": false,
+        "isPrefix": true
+      },
+      {
+        "value": "src",
+        "depth": 1,
+        "isGlob": false
+      },
+      {
+        "value": "*",
+        "depth": 1,
+        "isGlob": true
+      }
+    ],
+    "slashes": [1, 5],
+    "parts": ["src", "*"]
+  },
+  "[\"a/!(b)/c\",{}]": {
+    "prefix": "",
+    "input": "a/!(b)/c",
+    "start": 0,
+    "base": "a",
+    "glob": "!(b)/c",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": true,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false
+  },
+  "[\"a/!(b)/c\",{\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "a/!(b)/c",
+    "start": 0,
+    "base": "a",
+    "glob": "!(b)/c",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": true,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false,
+    "slashes": [1, 6],
+    "parts": ["a", "!(b)", "c"]
+  },
+  "[\"a/!(b)/c\",{\"tokens\":true,\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "a/!(b)/c",
+    "start": 0,
+    "base": "a",
+    "glob": "!(b)/c",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": true,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false,
+    "maxDepth": 3,
+    "tokens": [
+      {
+        "value": "a",
+        "depth": 1,
+        "isGlob": false
+      },
+      {
+        "value": "!(b)",
+        "depth": 1,
+        "isGlob": true,
+        "isExtglob": true
+      },
+      {
+        "value": "c",
+        "depth": 1,
+        "isGlob": false
+      }
+    ],
+    "slashes": [1, 6],
+    "parts": ["a", "!(b)", "c"]
+  },
+  "[\"a/[bc]\",{}]": {
+    "prefix": "",
+    "input": "a/[bc]",
+    "start": 0,
+    "base": "a",
+    "glob": "[bc]",
+    "isBrace": false,
+    "isBracket": true,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false
+  },
+  "[\"a/[bc]\",{\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "a/[bc]",
+    "start": 0,
+    "base": "a",
+    "glob": "[bc]",
+    "isBrace": false,
+    "isBracket": true,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false,
+    "slashes": [1],
+    "parts": ["a", "[bc]"]
+  },
+  "[\"a/[bc]\",{\"tokens\":true,\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "a/[bc]",
+    "start": 0,
+    "base": "a",
+    "glob": "[bc]",
+    "isBrace": false,
+    "isBracket": true,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false,
+    "maxDepth": 2,
+    "tokens": [
+      {
+        "value": "a",
+        "depth": 1,
+        "isGlob": false
+      },
+      {
+        "value": "[bc]",
+        "depth": 1,
+        "isGlob": true,
+        "isBracket": true
+      }
+    ],
+    "slashes": [1],
+    "parts": ["a", "[bc]"]
+  },
+  "[\"a/{b,c}/x\",{}]": {
+    "prefix": "",
+    "input": "a/{b,c}/x",
+    "start": 0,
+    "base": "a",
+    "glob": "{b,c}/x",
+    "isBrace": true,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false
+  },
+  "[\"a/{b,c}/x\",{\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "a/{b,c}/x",
+    "start": 0,
+    "base": "a",
+    "glob": "{b,c}/x",
+    "isBrace": true,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false,
+    "slashes": [1, 7],
+    "parts": ["a", "{b,c}", "x"]
+  },
+  "[\"a/{b,c}/x\",{\"tokens\":true,\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "a/{b,c}/x",
+    "start": 0,
+    "base": "a",
+    "glob": "{b,c}/x",
+    "isBrace": true,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false,
+    "maxDepth": 3,
+    "tokens": [
+      {
+        "value": "a",
+        "depth": 1,
+        "isGlob": false
+      },
+      {
+        "value": "{b,c}",
+        "depth": 1,
+        "isGlob": true,
+        "isBrace": true
+      },
+      {
+        "value": "x",
+        "depth": 1,
+        "isGlob": false
+      }
+    ],
+    "slashes": [1, 7],
+    "parts": ["a", "{b,c}", "x"]
+  },
+  "[\"a/\\\\*/x\",{}]": {
+    "prefix": "",
+    "input": "a/\\*/x",
+    "start": 0,
+    "base": "a/\\*/x",
+    "glob": "",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": false,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false
+  },
+  "[\"a/\\\\*/x\",{\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "a/\\*/x",
+    "start": 0,
+    "base": "a/\\*/x",
+    "glob": "",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": false,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false,
+    "slashes": [1, 4],
+    "parts": ["a", "\\*", "x"]
+  },
+  "[\"a/\\\\*/x\",{\"tokens\":true,\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "a/\\*/x",
+    "start": 0,
+    "base": "a/\\*/x",
+    "glob": "",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": false,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false,
+    "maxDepth": 3,
+    "tokens": [
+      {
+        "value": "a",
+        "depth": 1,
+        "isGlob": false
+      },
+      {
+        "value": "\\*",
+        "depth": 1,
+        "isGlob": false,
+        "backslashes": true
+      },
+      {
+        "value": "x",
+        "depth": 1,
+        "isGlob": false
+      }
+    ],
+    "slashes": [1, 4],
+    "parts": ["a", "\\*", "x"]
+  },
+  "[\"!a/**\",{}]": {
+    "prefix": "!",
+    "input": "!a/**",
+    "start": 1,
+    "base": "a",
+    "glob": "**",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": true,
+    "negatedExtglob": false
+  },
+  "[\"!a/**\",{\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "!",
+    "input": "!a/**",
+    "start": 1,
+    "base": "a",
+    "glob": "**",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": true,
+    "negated": true,
+    "negatedExtglob": false,
+    "slashes": [2],
+    "parts": ["a", "**"]
+  },
+  "[\"!a/**\",{\"tokens\":true,\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "!",
+    "input": "!a/**",
+    "start": 1,
+    "base": "a",
+    "glob": "**",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": true,
+    "negated": true,
+    "negatedExtglob": false,
+    "maxDepth": null,
+    "tokens": [
+      {
+        "value": "!",
+        "depth": 0,
+        "isGlob": false,
+        "negated": true,
+        "isPrefix": true
+      },
+      {
+        "value": "**",
+        "depth": null,
+        "isGlob": true,
+        "isGlobstar": true
+      }
+    ],
+    "slashes": [2],
+    "parts": ["a", "**"]
+  },
+  "[\"a//b\",{}]": {
+    "prefix": "",
+    "input": "a//b",
+    "start": 0,
+    "base": "a//b",
+    "glob": "",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": false,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false
+  },
+  "[\"a//b\",{\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "a//b",
+    "start": 0,
+    "base": "a//b",
+    "glob": "",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": false,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false,
+    "slashes": [1, 2],
+    "parts": ["a", "", "b"]
+  },
+  "[\"a//b\",{\"tokens\":true,\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "a//b",
+    "start": 0,
+    "base": "a//b",
+    "glob": "",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": false,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false,
+    "maxDepth": 3,
+    "tokens": [
+      {
+        "value": "a",
+        "depth": 1,
+        "isGlob": false
+      },
+      {
+        "value": "",
+        "depth": 1,
+        "isGlob": false
+      },
+      {
+        "value": "b",
+        "depth": 1,
+        "isGlob": false
+      }
+    ],
+    "slashes": [1, 2],
+    "parts": ["a", "", "b"]
+  },
+  "[\"/tmp/a/**\",{}]": {
+    "prefix": "",
+    "input": "/tmp/a/**",
+    "start": 0,
+    "base": "/tmp/a",
+    "glob": "**",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": false,
+    "negated": false,
+    "negatedExtglob": false
+  },
+  "[\"/tmp/a/**\",{\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "/tmp/a/**",
+    "start": 0,
+    "base": "/tmp/a",
+    "glob": "**",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": true,
+    "negated": false,
+    "negatedExtglob": false,
+    "slashes": [0, 4, 6],
+    "parts": ["", "tmp", "a", "**"]
+  },
+  "[\"/tmp/a/**\",{\"tokens\":true,\"parts\":true,\"scanToEnd\":true}]": {
+    "prefix": "",
+    "input": "/tmp/a/**",
+    "start": 0,
+    "base": "/tmp/a",
+    "glob": "**",
+    "isBrace": false,
+    "isBracket": false,
+    "isGlob": true,
+    "isExtglob": false,
+    "isGlobstar": true,
+    "negated": false,
+    "negatedExtglob": false,
+    "maxDepth": null,
+    "tokens": [
+      {
+        "value": "",
+        "depth": 1,
+        "isGlob": false
+      },
+      {
+        "value": "tmp",
+        "depth": 1,
+        "isGlob": false
+      },
+      {
+        "value": "a",
+        "depth": 1,
+        "isGlob": false
+      },
+      {
+        "value": "**",
+        "depth": null,
+        "isGlob": true,
+        "isGlobstar": true
+      }
+    ],
+    "slashes": [0, 4, 6],
+    "parts": ["", "tmp", "a", "**"]
+  }
+}

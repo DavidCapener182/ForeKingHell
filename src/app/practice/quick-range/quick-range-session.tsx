@@ -169,7 +169,7 @@ export function QuickRangeCompanionSession({
               ? stored
                 ? "Your activity is saved on this device."
                 : "Keep this page open to retain your activity."
-              : "One club. One focus."
+              : `${draft.club} · ${draft.balls} balls · ${draft.focus || "Choose a focus"}`
           }
         />
       )}

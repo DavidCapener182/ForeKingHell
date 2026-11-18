@@ -1,0 +1,674 @@
+{
+  "paths": [
+    ".git",
+    ".git/config",
+    "x/.git",
+    "x/.git/config",
+    ".env",
+    ".env.local",
+    "x/.env",
+    "x/.env.production",
+    "node_modules",
+    "node_modules/a/index.js",
+    "x/node_modules",
+    "x/node_modules/a.js",
+    "src/[slug]/page.tsx",
+    "src/(group)/page.tsx",
+    "src/.hidden/page.tsx",
+    "nested/x/base",
+    "nested/x/base/child",
+    "nested/.x/base",
+    "src",
+    "src/",
+    "src//index.ts",
+    "src/lib/example.test.ts",
+    "src/lib/example.test.ts/",
+    "src/a.tsx",
+    "src/a.js"
+  ],
+  "cases": [
+    {
+      "pattern": "**/*",
+      "opts": {
+        "dot": true
+      },
+      "expected": [
+        ".git",
+        ".git/config",
+        "x/.git",
+        "x/.git/config",
+        ".env",
+        ".env.local",
+        "x/.env",
+        "x/.env.production",
+        "node_modules",
+        "node_modules/a/index.js",
+        "x/node_modules",
+        "x/node_modules/a.js",
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src/.hidden/page.tsx",
+        "nested/x/base",
+        "nested/x/base/child",
+        "nested/.x/base",
+        "src",
+        "src/",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/lib/example.test.ts/",
+        "src/a.tsx",
+        "src/a.js"
+      ]
+    },
+    {
+      "pattern": "**/*",
+      "opts": {
+        "dot": false
+      },
+      "expected": [
+        "node_modules",
+        "node_modules/a/index.js",
+        "x/node_modules",
+        "x/node_modules/a.js",
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "nested/x/base",
+        "nested/x/base/child",
+        "src",
+        "src/",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/lib/example.test.ts/",
+        "src/a.tsx",
+        "src/a.js"
+      ]
+    },
+    {
+      "pattern": "**/*",
+      "opts": {
+        "dot": true,
+        "nocase": true,
+        "noextglob": true
+      },
+      "expected": [
+        ".git",
+        ".git/config",
+        "x/.git",
+        "x/.git/config",
+        ".env",
+        ".env.local",
+        "x/.env",
+        "x/.env.production",
+        "node_modules",
+        "node_modules/a/index.js",
+        "x/node_modules",
+        "x/node_modules/a.js",
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src/.hidden/page.tsx",
+        "nested/x/base",
+        "nested/x/base/child",
+        "nested/.x/base",
+        "src",
+        "src/",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/lib/example.test.ts/",
+        "src/a.tsx",
+        "src/a.js"
+      ]
+    },
+    {
+      "pattern": "**/*",
+      "opts": {
+        "matchBase": false,
+        "nocase": true,
+        "dot": true
+      },
+      "expected": [
+        ".git",
+        ".git/config",
+        "x/.git",
+        "x/.git/config",
+        ".env",
+        ".env.local",
+        "x/.env",
+        "x/.env.production",
+        "node_modules",
+        "node_modules/a/index.js",
+        "x/node_modules",
+        "x/node_modules/a.js",
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src/.hidden/page.tsx",
+        "nested/x/base",
+        "nested/x/base/child",
+        "nested/.x/base",
+        "src",
+        "src/",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/lib/example.test.ts/",
+        "src/a.tsx",
+        "src/a.js"
+      ]
+    },
+    {
+      "pattern": "**/*.{ts,tsx}",
+      "opts": {
+        "dot": true
+      },
+      "expected": [
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src/.hidden/page.tsx",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/a.tsx"
+      ]
+    },
+    {
+      "pattern": "**/*.{ts,tsx}",
+      "opts": {
+        "dot": false
+      },
+      "expected": [
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/a.tsx"
+      ]
+    },
+    {
+      "pattern": "**/*.{ts,tsx}",
+      "opts": {
+        "dot": true,
+        "nocase": true,
+        "noextglob": true
+      },
+      "expected": [
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src/.hidden/page.tsx",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/a.tsx"
+      ]
+    },
+    {
+      "pattern": "**/*.{ts,tsx}",
+      "opts": {
+        "matchBase": false,
+        "nocase": true,
+        "dot": true
+      },
+      "expected": [
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src/.hidden/page.tsx",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/a.tsx"
+      ]
+    },
+    {
+      "pattern": "src/**",
+      "opts": {
+        "dot": true
+      },
+      "expected": [
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src/.hidden/page.tsx",
+        "src",
+        "src/",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/lib/example.test.ts/",
+        "src/a.tsx",
+        "src/a.js"
+      ]
+    },
+    {
+      "pattern": "src/**",
+      "opts": {
+        "dot": false
+      },
+      "expected": [
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src",
+        "src/",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/lib/example.test.ts/",
+        "src/a.tsx",
+        "src/a.js"
+      ]
+    },
+    {
+      "pattern": "src/**",
+      "opts": {
+        "dot": true,
+        "nocase": true,
+        "noextglob": true
+      },
+      "expected": [
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src/.hidden/page.tsx",
+        "src",
+        "src/",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/lib/example.test.ts/",
+        "src/a.tsx",
+        "src/a.js"
+      ]
+    },
+    {
+      "pattern": "src/**",
+      "opts": {
+        "matchBase": false,
+        "nocase": true,
+        "dot": true
+      },
+      "expected": [
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src/.hidden/page.tsx",
+        "src",
+        "src/",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/lib/example.test.ts/",
+        "src/a.tsx",
+        "src/a.js"
+      ]
+    },
+    {
+      "pattern": "**/node_modules/**",
+      "opts": {
+        "dot": true
+      },
+      "expected": [
+        "node_modules",
+        "node_modules/a/index.js",
+        "x/node_modules",
+        "x/node_modules/a.js"
+      ]
+    },
+    {
+      "pattern": "**/node_modules/**",
+      "opts": {
+        "dot": false
+      },
+      "expected": [
+        "node_modules",
+        "node_modules/a/index.js",
+        "x/node_modules",
+        "x/node_modules/a.js"
+      ]
+    },
+    {
+      "pattern": "**/node_modules/**",
+      "opts": {
+        "dot": true,
+        "nocase": true,
+        "noextglob": true
+      },
+      "expected": [
+        "node_modules",
+        "node_modules/a/index.js",
+        "x/node_modules",
+        "x/node_modules/a.js"
+      ]
+    },
+    {
+      "pattern": "**/node_modules/**",
+      "opts": {
+        "matchBase": false,
+        "nocase": true,
+        "dot": true
+      },
+      "expected": [
+        "node_modules",
+        "node_modules/a/index.js",
+        "x/node_modules",
+        "x/node_modules/a.js"
+      ]
+    },
+    {
+      "pattern": "**/.git/**",
+      "opts": {
+        "dot": true
+      },
+      "expected": [".git", ".git/config", "x/.git", "x/.git/config"]
+    },
+    {
+      "pattern": "**/.git/**",
+      "opts": {
+        "dot": false
+      },
+      "expected": [".git", ".git/config", "x/.git", "x/.git/config"]
+    },
+    {
+      "pattern": "**/.git/**",
+      "opts": {
+        "dot": true,
+        "nocase": true,
+        "noextglob": true
+      },
+      "expected": [".git", ".git/config", "x/.git", "x/.git/config"]
+    },
+    {
+      "pattern": "**/.git/**",
+      "opts": {
+        "matchBase": false,
+        "nocase": true,
+        "dot": true
+      },
+      "expected": [".git", ".git/config", "x/.git", "x/.git/config"]
+    },
+    {
+      "pattern": "**/.env*",
+      "opts": {
+        "dot": true
+      },
+      "expected": [".env", ".env.local", "x/.env", "x/.env.production"]
+    },
+    {
+      "pattern": "**/.env*",
+      "opts": {
+        "dot": false
+      },
+      "expected": [".env", ".env.local", "x/.env", "x/.env.production"]
+    },
+    {
+      "pattern": "**/.env*",
+      "opts": {
+        "dot": true,
+        "nocase": true,
+        "noextglob": true
+      },
+      "expected": [".env", ".env.local", "x/.env", "x/.env.production"]
+    },
+    {
+      "pattern": "**/.env*",
+      "opts": {
+        "matchBase": false,
+        "nocase": true,
+        "dot": true
+      },
+      "expected": [".env", ".env.local", "x/.env", "x/.env.production"]
+    },
+    {
+      "pattern": "nested/*/base/**",
+      "opts": {
+        "dot": true
+      },
+      "expected": ["nested/x/base", "nested/x/base/child", "nested/.x/base"]
+    },
+    {
+      "pattern": "nested/*/base/**",
+      "opts": {
+        "dot": false
+      },
+      "expected": ["nested/x/base", "nested/x/base/child"]
+    },
+    {
+      "pattern": "nested/*/base/**",
+      "opts": {
+        "dot": true,
+        "nocase": true,
+        "noextglob": true
+      },
+      "expected": ["nested/x/base", "nested/x/base/child", "nested/.x/base"]
+    },
+    {
+      "pattern": "nested/*/base/**",
+      "opts": {
+        "matchBase": false,
+        "nocase": true,
+        "dot": true
+      },
+      "expected": ["nested/x/base", "nested/x/base/child", "nested/.x/base"]
+    },
+    {
+      "pattern": "src/**/*.test.ts/**",
+      "opts": {
+        "dot": true
+      },
+      "expected": ["src/lib/example.test.ts", "src/lib/example.test.ts/"]
+    },
+    {
+      "pattern": "src/**/*.test.ts/**",
+      "opts": {
+        "dot": false
+      },
+      "expected": ["src/lib/example.test.ts", "src/lib/example.test.ts/"]
+    },
+    {
+      "pattern": "src/**/*.test.ts/**",
+      "opts": {
+        "dot": true,
+        "nocase": true,
+        "noextglob": true
+      },
+      "expected": ["src/lib/example.test.ts", "src/lib/example.test.ts/"]
+    },
+    {
+      "pattern": "src/**/*.test.ts/**",
+      "opts": {
+        "matchBase": false,
+        "nocase": true,
+        "dot": true
+      },
+      "expected": ["src/lib/example.test.ts", "src/lib/example.test.ts/"]
+    },
+    {
+      "pattern": "src/**/**",
+      "opts": {
+        "dot": true
+      },
+      "expected": [
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src/.hidden/page.tsx",
+        "src",
+        "src/",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/lib/example.test.ts/",
+        "src/a.tsx",
+        "src/a.js"
+      ]
+    },
+    {
+      "pattern": "src/**/**",
+      "opts": {
+        "dot": false
+      },
+      "expected": [
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src",
+        "src/",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/lib/example.test.ts/",
+        "src/a.tsx",
+        "src/a.js"
+      ]
+    },
+    {
+      "pattern": "src/**/**",
+      "opts": {
+        "dot": true,
+        "nocase": true,
+        "noextglob": true
+      },
+      "expected": [
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src/.hidden/page.tsx",
+        "src",
+        "src/",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/lib/example.test.ts/",
+        "src/a.tsx",
+        "src/a.js"
+      ]
+    },
+    {
+      "pattern": "src/**/**",
+      "opts": {
+        "matchBase": false,
+        "nocase": true,
+        "dot": true
+      },
+      "expected": [
+        "src/[slug]/page.tsx",
+        "src/(group)/page.tsx",
+        "src/.hidden/page.tsx",
+        "src",
+        "src/",
+        "src//index.ts",
+        "src/lib/example.test.ts",
+        "src/lib/example.test.ts/",
+        "src/a.tsx",
+        "src/a.js"
+      ]
+    },
+    {
+      "pattern": "src/[slug]/**",
+      "opts": {
+        "dot": true
+      },
+      "expected": ["src/[slug]/page.tsx"]
+    },
+    {
+      "pattern": "src/[slug]/**",
+      "opts": {
+        "dot": false
+      },
+      "expected": ["src/[slug]/page.tsx"]
+    },
+    {
+      "pattern": "src/[slug]/**",
+      "opts": {
+        "dot": true,
+        "nocase": true,
+        "noextglob": true
+      },
+      "expected": ["src/[slug]/page.tsx"]
+    },
+    {
+      "pattern": "src/[slug]/**",
+      "opts": {
+        "matchBase": false,
+        "nocase": true,
+        "dot": true
+      },
+      "expected": ["src/[slug]/page.tsx"]
+    },
+    {
+      "pattern": "src/(group)/**",
+      "opts": {
+        "dot": true
+      },
+      "expected": []
+    },
+    {
+      "pattern": "src/(group)/**",
+      "opts": {
+        "dot": false
+      },
+      "expected": []
+    },
+    {
+      "pattern": "src/(group)/**",
+      "opts": {
+        "dot": true,
+        "nocase": true,
+        "noextglob": true
+      },
+      "expected": []
+    },
+    {
+      "pattern": "src/(group)/**",
+      "opts": {
+        "matchBase": false,
+        "nocase": true,
+        "dot": true
+      },
+      "expected": []
+    },
+    {
+      "pattern": "src/**/page.tsx",
+      "opts": {
+        "dot": true
+      },
+      "expected": ["src/[slug]/page.tsx", "src/(group)/page.tsx", "src/.hidden/page.tsx"]
+    },
+    {
+      "pattern": "src/**/page.tsx",
+      "opts": {
+        "dot": false
+      },
+      "expected": ["src/[slug]/page.tsx", "src/(group)/page.tsx"]
+    },
+    {
+      "pattern": "src/**/page.tsx",
+      "opts": {
+        "dot": true,
+        "nocase": true,
+        "noextglob": true
+      },
+      "expected": ["src/[slug]/page.tsx", "src/(group)/page.tsx", "src/.hidden/page.tsx"]
+    },
+    {
+      "pattern": "src/**/page.tsx",
+      "opts": {
+        "matchBase": false,
+        "nocase": true,
+        "dot": true
+      },
+      "expected": ["src/[slug]/page.tsx", "src/(group)/page.tsx", "src/.hidden/page.tsx"]
+    },
+    {
+      "pattern": "**/*.js",
+      "opts": {
+        "dot": true
+      },
+      "expected": ["node_modules/a/index.js", "x/node_modules/a.js", "src/a.js"]
+    },
+    {
+      "pattern": "**/*.js",
+      "opts": {
+        "dot": false
+      },
+      "expected": ["node_modules/a/index.js", "x/node_modules/a.js", "src/a.js"]
+    },
+    {
+      "pattern": "**/*.js",
+      "opts": {
+        "dot": true,
+        "nocase": true,
+        "noextglob": true
+      },
+      "expected": ["node_modules/a/index.js", "x/node_modules/a.js", "src/a.js"]
+    },
+    {
+      "pattern": "**/*.js",
+      "opts": {
+        "matchBase": false,
+        "nocase": true,
+        "dot": true
+      },
+      "expected": ["node_modules/a/index.js", "x/node_modules/a.js", "src/a.js"]
+    }
+  ]
+}

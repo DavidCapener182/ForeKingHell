@@ -153,20 +153,16 @@ describe("mobile post-practice review", () => {
       practiceOnly: false,
     });
     expect(html).toContain("Practice complete · Today");
-    expect(html).toContain("data-today-progress-report");
-    expect(html.indexOf("data-today-progress-report")).toBeLessThan(
-      html.indexOf("data-today-workspace-tabs"),
-    );
-    expect(html).toContain('aria-label="Practice totals"');
-    expect(html).toContain('aria-label="Today&#x27;s practice review sections"');
-    expect(html).toContain("Overview");
-    expect(html).toContain("Clubs");
-    expect(html).toContain("Sessions");
+    expect(html).not.toContain("data-today-progress-report");
     expect(html).toContain("Interactive shot patterns");
-    expect(html).toContain("6.0 yd longer average carry.");
-    expect(html.indexOf("Interactive shot patterns")).toBeLessThan(
-      html.indexOf("For your next practice"),
+    expect(html).toContain("Next practice");
+    expect(getTodayProgressHistory).not.toHaveBeenCalled();
+    const analysis = renderToStaticMarkup(
+      await TodayCompanionPage({ searchParams: Promise.resolve({ panel: "analysis" }) }),
     );
+    expect(analysis).toContain("Interactive shot patterns");
+    expect(analysis).toContain("data-today-workspace-tabs");
+    expect(analysis).toContain('aria-label="Practice totals"');
     const review = buildMobileTodayReview(practice(), now)!;
     expect(review.summary).toBe("3 sessions · 63 shots · 2 clubs");
     expect(review.trustedCount).toBe(61);
@@ -201,7 +197,7 @@ describe("mobile post-practice review", () => {
     expect(getTodayPracticeData).toHaveBeenCalledTimes(1);
     expect(html).toContain("Your latest practice");
     expect(html).toContain("Sunday, 6 September 2026");
-    expect(html).toContain("Interactive shot patterns");
+    expect(html).toContain("Dispersion &amp; ball flight");
     expect(html).toContain("Next practice");
     expect(html).not.toContain("Practice complete · Today");
     expect(html).not.toContain("For your next session");
@@ -237,8 +233,11 @@ describe("mobile post-practice review", () => {
   it("keeps the saved review available when only the history comparison fails", async () => {
     vi.mocked(getTodayProgressHistory).mockRejectedValue(new Error("History unavailable"));
     const html = renderToStaticMarkup(await TodayCompanionPage({}));
-    expect(html).toContain("Practice comparison couldn’t load");
-    expect(html).toContain("Interactive shot patterns");
+    const trends = renderToStaticMarkup(
+      await TodayCompanionPage({ searchParams: Promise.resolve({ panel: "trends" }) }),
+    );
+    expect(trends).toContain("Practice comparison couldn’t load");
+    expect(html).toContain("Dispersion &amp; ball flight");
     expect(html).toContain("Practice complete · Today");
   });
 
@@ -255,10 +254,14 @@ describe("mobile post-practice review", () => {
       scope: "day",
       practiceOnly: false,
     });
+    expect(html).toContain("date=2026-09-05&amp;panel=trends");
+    await TodayCompanionPage({
+      searchParams: Promise.resolve({ date: "2026-09-05", panel: "trends" }),
+    });
     expect(getTodayProgressHistory).toHaveBeenCalledWith({ beforeDateKey: "2026-09-05" });
     expect(html).toContain("Practice review · Saturday, 5 September 2026");
     expect(html).not.toContain("Practice complete · Today");
-    expect(html).toContain("Interactive shot patterns");
+    expect(html).toContain("Dispersion &amp; ball flight");
   });
 
   it("does not present yesterday or a future day as practice completed today", () => {
@@ -274,7 +277,7 @@ describe("mobile post-practice review", () => {
 });
 
 describe("mobile round review", () => {
-  it("leads with shared progress while retaining round, practice and planning", async () => {
+  it("leads with the scored round and keeps practice views reachable", async () => {
     vi.mocked(getTodayRound).mockResolvedValueOnce({
       session: {
         id: "round",
@@ -287,16 +290,12 @@ describe("mobile round review", () => {
       tee: null,
     } as TodayRound);
     const html = renderToStaticMarkup(await TodayCompanionPage({}));
-    expect(html.indexOf("data-club-progress")).toBeLessThan(html.indexOf("data-today-round"));
+    expect(html).not.toContain("data-club-progress");
     expect(html).toContain("data-today-round");
     expect(html).toContain("Ellesmere Port");
-    expect(html).toContain("data-today-progress-report");
-    expect(html.indexOf("data-today-round")).toBeLessThan(
-      html.indexOf("data-today-progress-report"),
-    );
-    expect(html).toContain("data-today-workspace-tabs");
+    expect(html).toContain("panel=analysis");
+    expect(html).toContain("panel=trends");
     expect(html).toContain("Practice &amp; progress");
-    expect((html.match(/id="today-practice-review"/g) ?? []).length).toBe(1);
     expect(html).toContain('id="today-practice-progress"');
     expect(getTodayPracticeData).toHaveBeenCalled();
     expect(getPracticePlannerContext).toHaveBeenCalled();

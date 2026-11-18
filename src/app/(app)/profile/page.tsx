@@ -349,7 +349,7 @@ function RecentMeaningfulActivity({ items }: { items: FeedItemView[] }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
-          <Activity className="size-5 text-primary" /> Recent meaningful activity
+          <Activity className="size-5 text-primary" /> Recent golf activity
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-1">
@@ -377,7 +377,7 @@ function RecentMeaningfulActivity({ items }: { items: FeedItemView[] }) {
         ) : (
           <div className="grid justify-items-center gap-2 py-8 text-center">
             <Activity className="size-7 text-muted-foreground" />
-            <p className="font-medium">No meaningful activity yet</p>
+            <p className="font-medium">No recorded activity yet</p>
             <p className="max-w-md text-sm text-muted-foreground">
               Verified PBs, achievements, rounds and challenges will appear here.
             </p>

@@ -105,124 +105,129 @@ export function TodayRoundView({ round }: { round: TodayRound }) {
           </dl>
         </div>
       </div>
-      {metrics.length ? (
-        <dl className={styles.metrics} aria-label="Round statistics">
-          {metrics.map((m) => (
-            <div key={m.label}>
-              <dt>{m.label}</dt>
-              <dd>{m.value}</dd>
-              <p>{m.detail}</p>
-            </div>
-          ))}
-        </dl>
-      ) : null}
-      <div className={styles.analysis}>
-        <div className={styles.scorecard}>
-          <div className={styles.sectionTitle}>
-            <h3>Your scorecard</h3>
-            <Link href={`/rounds/${round.session.id}`}>
-              Full details <ArrowUpRight size={14} aria-hidden />
-            </Link>
-          </div>
-          <div className={styles.nines}>
-            {nines.map((nine, index) =>
-              nine.length ? (
-                <table key={index} className={styles.nine}>
-                  <caption>
-                    {index === 0 ? "Front nine" : "Back nine"}{" "}
-                    <span>
-                      {index === 0 ? s.front : s.back} ·{" "}
-                      {relativeScore(index === 0 ? frontToPar : backToPar)}
-                    </span>
-                  </caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Hole</th>
-                      {nine.map((h) => (
-                        <th key={h.holeNumber} scope="col">
-                          {h.holeNumber}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <th scope="row">Par</th>
-                      {nine.map((h) => (
-                        <td key={h.holeNumber}>{h.par}</td>
-                      ))}
-                    </tr>
-                    <tr>
-                      <th scope="row">Score</th>
-                      {nine.map((h) => (
-                        <td key={h.holeNumber}>
-                          <span
-                            className={styles.holeScore}
-                            data-result={
-                              h.score! < h.par
-                                ? "birdie"
-                                : h.score === h.par
-                                  ? "par"
-                                  : h.score === h.par + 1
-                                    ? "bogey"
-                                    : "double"
-                            }
-                          >
-                            {h.score}
-                          </span>
-                        </td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-              ) : null,
-            )}
-          </div>
-          <div className={styles.distribution} aria-label="Scoring breakdown">
-            {distribution.map((d) => (
-              <span key={d.label}>
-                <i data-result={d.tone} />
-                <strong>{d.value}</strong> {d.label}
-              </span>
+      <details className="border-t border-border">
+        <summary className="min-h-11 cursor-pointer px-5 py-3 text-sm font-semibold">
+          Scorecard and round statistics
+        </summary>
+        {metrics.length ? (
+          <dl className={styles.metrics} aria-label="Round statistics">
+            {metrics.map((m) => (
+              <div key={m.label}>
+                <dt>{m.label}</dt>
+                <dd>{m.value}</dd>
+                <p>{m.detail}</p>
+              </div>
             ))}
+          </dl>
+        ) : null}
+        <div className={styles.analysis}>
+          <div className={styles.scorecard}>
+            <div className={styles.sectionTitle}>
+              <h3>Your scorecard</h3>
+              <Link href={`/rounds/${round.session.id}`}>
+                Full details <ArrowUpRight size={14} aria-hidden />
+              </Link>
+            </div>
+            <div className={styles.nines}>
+              {nines.map((nine, index) =>
+                nine.length ? (
+                  <table key={index} className={styles.nine}>
+                    <caption>
+                      {index === 0 ? "Front nine" : "Back nine"}{" "}
+                      <span>
+                        {index === 0 ? s.front : s.back} ·{" "}
+                        {relativeScore(index === 0 ? frontToPar : backToPar)}
+                      </span>
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Hole</th>
+                        {nine.map((h) => (
+                          <th key={h.holeNumber} scope="col">
+                            {h.holeNumber}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <th scope="row">Par</th>
+                        {nine.map((h) => (
+                          <td key={h.holeNumber}>{h.par}</td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <th scope="row">Score</th>
+                        {nine.map((h) => (
+                          <td key={h.holeNumber}>
+                            <span
+                              className={styles.holeScore}
+                              data-result={
+                                h.score! < h.par
+                                  ? "birdie"
+                                  : h.score === h.par
+                                    ? "par"
+                                    : h.score === h.par + 1
+                                      ? "bogey"
+                                      : "double"
+                              }
+                            >
+                              {h.score}
+                            </span>
+                          </td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                ) : null,
+              )}
+            </div>
+            <div className={styles.distribution} aria-label="Scoring breakdown">
+              {distribution.map((d) => (
+                <span key={d.label}>
+                  <i data-result={d.tone} />
+                  <strong>{d.value}</strong> {d.label}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
-        <aside className={styles.takeaways} aria-label="Round takeaways">
-          <h3>
-            <Target size={16} aria-hidden /> Take from this round
-          </h3>
-          <div>
-            <span className={styles.takeawayLabel}>Scoring</span>
-            <p>
-              {completeNines
-                ? improvement > 0
-                  ? `${improvement} shots better on the back nine`
-                  : improvement < 0
-                    ? `${Math.abs(improvement)} shots better on the front nine`
-                    : "Same score to par on both nines"
-                : `${s.pars + s.birdies} holes at par or better`}
-            </p>
-            <small>
-              {completeNines
-                ? `${relativeScore(frontToPar)} out → ${relativeScore(backToPar)} back, against par.`
-                : `Across ${s.played.length} scored holes.`}
-            </small>
-          </div>
-          {s.greens.recorded ? (
+          <aside className={styles.takeaways} aria-label="Round takeaways">
+            <h3>
+              <Target size={16} aria-hidden /> Take from this round
+            </h3>
             <div>
-              <span className={styles.takeawayLabel}>Approach play</span>
-              <p>{s.greens.hit} greens in regulation</p>
+              <span className={styles.takeawayLabel}>Scoring</span>
+              <p>
+                {completeNines
+                  ? improvement > 0
+                    ? `${improvement} shots better on the back nine`
+                    : improvement < 0
+                      ? `${Math.abs(improvement)} shots better on the front nine`
+                      : "Same score to par on both nines"
+                  : `${s.pars + s.birdies} holes at par or better`}
+              </p>
               <small>
-                {s.greens.recorded - s.greens.hit} missed greens across {s.greens.recorded} recorded
-                holes.
+                {completeNines
+                  ? `${relativeScore(frontToPar)} out → ${relativeScore(backToPar)} back, against par.`
+                  : `Across ${s.played.length} scored holes.`}
               </small>
             </div>
-          ) : null}
-          <Link href="/practice">
-            Plan next practice <ArrowUpRight size={15} aria-hidden />
-          </Link>
-        </aside>
-      </div>
+            {s.greens.recorded ? (
+              <div>
+                <span className={styles.takeawayLabel}>Approach play</span>
+                <p>{s.greens.hit} greens in regulation</p>
+                <small>
+                  {s.greens.recorded - s.greens.hit} missed greens across {s.greens.recorded}{" "}
+                  recorded holes.
+                </small>
+              </div>
+            ) : null}
+            <Link href="/practice">
+              Plan next practice <ArrowUpRight size={15} aria-hidden />
+            </Link>
+          </aside>
+        </div>
+      </details>
     </section>
   );
 }

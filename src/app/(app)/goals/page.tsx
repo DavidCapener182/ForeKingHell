@@ -53,7 +53,7 @@ export default async function GoalsPage() {
       <div className="grid min-w-0 gap-5" data-goals-ui>
         <PageHeader
           title="Goals"
-          description="Keep your season plan and numerical targets together. Saved values and verified evidence remain distinct."
+          description="Track this week’s practice and your progress towards each season target."
           actions={<GoalCreateDialog label="Add goal" />}
         />
         <section
@@ -74,6 +74,25 @@ export default async function GoalsPage() {
             {plan.targetDate ? `Target date ${formatDate(plan.targetDate)}` : "No target date set"}{" "}
             · {plan.weeklySessions} measured sessions per week
           </p>
+          {plan.weeklySessions > 0 && (
+            <div className="rounded-lg bg-muted/50 p-3">
+              <p className="mb-2 flex flex-wrap justify-between gap-2 text-sm font-medium">
+                <span>Measured sessions · last 7 days</span>
+                <span className="tabular-nums">
+                  {weeklySessions} / {plan.weeklySessions}
+                </span>
+              </p>
+              <Progress
+                aria-label="Weekly measured session target"
+                value={Math.min(100, (100 * weeklySessions) / plan.weeklySessions)}
+              />
+              <p className="mt-2 text-sm">
+                {rhythmMet
+                  ? "Weekly target reached"
+                  : `${plan.weeklySessions - weeklySessions} more to reach your weekly target`}
+              </p>
+            </div>
+          )}
           <SeasonPlanEditor plan={plan} />
         </section>
         <GoalProjectPanel data={projectData} />
@@ -145,7 +164,7 @@ export default async function GoalsPage() {
           ) : (
             <AppEmptyState
               title="No numerical targets yet"
-              description="Set a starting value, current value, target and unit; keep the source description accurate."
+              description="Enter your starting value, current value and target. Saved values and verified evidence remain distinct."
               primaryAction={<GoalCreateDialog label="Add first goal" />}
             />
           )}

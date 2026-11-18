@@ -288,7 +288,7 @@ function CoachDiagnosis({
               Supporting evidence
             </p>
             <h2 id="supporting-evidence-heading" className="mt-1 text-xl font-semibold">
-              Three signals behind the read
+              Why this drill?
             </h2>
           </div>
           <Link
@@ -613,7 +613,7 @@ function CoachEvidenceBrowser({
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
           Evidence browser
         </p>
-        <h2 className="mt-4 text-4xl font-semibold tracking-[-0.03em]">Trace the coaching read</h2>
+        <h2 className="mt-4 text-4xl font-semibold tracking-[-0.03em]">See the supporting shots</h2>
         <p className="mt-2 max-w-3xl text-base leading-7 text-muted-foreground">
           Move from the diagnosis to the measured sessions, clubs, rounds and source records behind
           it.

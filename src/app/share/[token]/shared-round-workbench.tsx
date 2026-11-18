@@ -71,7 +71,7 @@ export function SharedRoundWorkbench({ round, token }: { round: SharedRoundData;
         <PageHeader
           eyebrow={<StatusPill tone="green">Shared round</StatusPill>}
           title={round.session.courseName ?? round.link.title ?? "Shared scorecard"}
-          description={`${formatDate(round.session.date)} by ${round.ownerName ?? `${BRAND_NAME} player`}`}
+          description={`${formatDate(round.session.date)} · ${scoredHoles} of ${round.holes.length} holes scored · ${round.ownerName ?? `${BRAND_NAME} player`}`}
           metrics={[
             {
               label: completeScore ? "Recorded score" : "Partial recorded score",

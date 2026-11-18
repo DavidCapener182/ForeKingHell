@@ -97,7 +97,7 @@ test("Public home keeps all sections, complete pricing and example controls usab
       for (const feature of plan.features) await expect(card).toContainText(feature);
       await expect(card.getByRole("link")).toHaveAttribute(
         "href",
-        "/login?mode=join&next=%2Fbilling",
+        plan.key === "free" ? "/login?mode=join&next=%2Fwelcome" : "/login?next=%2Fbilling",
       );
     }
     await pricing.scrollIntoViewIfNeeded();

@@ -89,7 +89,7 @@ async function ConditionsAnalysisPage({
       <PageHeader
         eyebrow={<StatusPill tone="sky">Conditions analysis</StatusPill>}
         title="Conditions analysis"
-        description="Compare recorded indoor, outdoor, weather, elevation, surface and ball conditions without silently mixing missing context into the result."
+        description="Compare shots by location, weather, surface or ball. Shots with missing conditions are labelled separately."
       />
       <ConditionsScope
         key={baseQuery.toString()}
@@ -324,7 +324,7 @@ async function ConditionsAnalysisPage({
           )}
           <section className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div>
-              <h2 className="font-semibold">Need the row-level proof?</h2>
+              <h2 className="font-semibold">Which shots counted?</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Open Shots with the same club and inspect the preserved source fields before
                 accepting a condition claim.

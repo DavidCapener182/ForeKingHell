@@ -50,7 +50,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
             Your plan
           </h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-            See what you have, what happens next, and manage your billing in one place.
+            Review your current plan, renewal and usage limits.
           </p>
         </div>
         <p className="break-all text-sm text-muted-foreground">{data.user?.email}</p>

@@ -40,10 +40,15 @@ test.describe("Today exact-shot chart inspection", () => {
       test.skip(true, "The configured authenticated browser state has expired.");
     }
     await expectPageReady(page, /Today|Home/i);
-    await expect(page.getByRole("tab", { name: "Evidence", exact: true })).toHaveAttribute(
+    await expect(page.getByRole("tab", { name: "Shot evidence", exact: true })).toHaveAttribute(
       "aria-selected",
       "true",
     );
+
+    await page
+      .getByRole("navigation", { name: "Practice views" })
+      .getByRole("link", { name: "Dispersion & ball flight" })
+      .click();
 
     // SVG paint order puts later markers above coincident shots in this fixture.
     const point = page.locator("[data-today-shot-point]").last();

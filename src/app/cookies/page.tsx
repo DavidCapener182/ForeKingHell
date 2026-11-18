@@ -15,6 +15,12 @@ export default function CookiesPage() {
       title="Your privacy choices"
       description="Essential storage keeps the product working. Optional analytics is your choice, and you can change it here at any time."
     >
+      <a
+        href="#analytics-choice"
+        className="inline-flex min-h-11 items-center font-semibold md:col-span-2"
+      >
+        Go to analytics preferences
+      </a>
       <section>
         <h2>Essential storage</h2>
         <p>
@@ -42,7 +48,7 @@ export default function CookiesPage() {
           storage only keeps optional analytics off.
         </p>
       </section>
-      <section>
+      <section id="analytics-choice" className="scroll-mt-6">
         <h2>Change your preference</h2>
         <p className="mb-5">
           Allow or decline analytics below. Withdrawing permission stops future optional events; it

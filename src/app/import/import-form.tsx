@@ -71,6 +71,7 @@ import type { ExtractedScorecard } from "@/lib/scorecard-extraction";
 
 type SaveState =
   | { status: "idle" }
+  | { status: "queued"; message: string }
   | {
       status: "success";
       message: string;
@@ -728,11 +729,8 @@ export function ImportForm({
       payload: { inputs },
     });
     setSaveState({
-      status: "success",
+      status: "queued",
       message: `Queued ${inputs.length} CSV ${inputs.length === 1 ? "file" : "files"} for retry when this device is online.`,
-      savedSessionId: null,
-      longestShotNotifications: [],
-      achievementUnlockNotifications: [],
     });
     clearFiles();
     trackPlausibleEvent("Import Queued Offline", {
@@ -752,18 +750,20 @@ export function ImportForm({
         <ImportAllowancePanel state={allowance.state} error={allowance.error} />
       )}
       <div className="mx-auto flex w-full max-w-none flex-col gap-6">
-        <ImportStepper
-          isCourseUpload={isCourseUpload}
-          hasFiles={uploadedFiles.length > 0}
-          hasShots={aggregate.shotCount > 0}
-          hasCourseMapping={!isCourseUpload || courseAssignedShotCount === aggregate.shotCount}
-          hasWarnings={aggregate.warnings.length > 0 && !warningsReviewed}
-          canSave={canSave}
-          settingsConfirmed={settingsConfirmed}
-          isPending={isPending}
-          saved={saveState.status === "success"}
-          error={saveState.status === "error"}
-        />
+        {saveState.status !== "queued" && (
+          <ImportStepper
+            isCourseUpload={isCourseUpload}
+            hasFiles={uploadedFiles.length > 0}
+            hasShots={aggregate.shotCount > 0}
+            hasCourseMapping={!isCourseUpload || courseAssignedShotCount === aggregate.shotCount}
+            hasWarnings={aggregate.warnings.length > 0 && !warningsReviewed}
+            canSave={canSave}
+            settingsConfirmed={settingsConfirmed}
+            isPending={isPending}
+            saved={saveState.status === "success"}
+            error={saveState.status === "error"}
+          />
+        )}
         {startWithSampleData ? (
           <Alert>
             <FlaskConical className="size-4" />
@@ -790,19 +790,21 @@ export function ImportForm({
           />
         ) : saveState.status !== "idle" ? (
           <OperationStatus
-            status={saveState.status}
+            status={saveState.status === "queued" ? "success" : saveState.status}
             title={
-              saveState.status === "error"
-                ? saveState.fileResults?.some(
-                    (file) => file.status === "saved" || file.status === "duplicate",
-                  )
-                  ? "Import partly saved"
-                  : "Import failed"
-                : saveState.achievementUnlockNotifications.length > 0
-                  ? "Achievements unlocked"
-                  : saveState.longestShotNotifications.length > 0
-                    ? "New longest shot"
-                    : "Import saved"
+              saveState.status === "queued"
+                ? "Queued on this device"
+                : saveState.status === "error"
+                  ? saveState.fileResults?.some(
+                      (file) => file.status === "saved" || file.status === "duplicate",
+                    )
+                    ? "Import partly saved"
+                    : "Import failed"
+                  : saveState.achievementUnlockNotifications.length > 0
+                    ? "Achievements unlocked"
+                    : saveState.longestShotNotifications.length > 0
+                      ? "New longest shot"
+                      : "Import saved"
             }
             description={
               <>
@@ -959,7 +961,7 @@ export function ImportForm({
               Drag in one or more launch-monitor files. Obvious parse issues appear before save.
             </p>
           </header>
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className={uploadedFiles.length ? "grid gap-5 xl:grid-cols-2" : "grid gap-5"}>
             <div id="import-files" className="grid min-w-0 scroll-mt-28 content-start gap-5">
               <UploadDropzone
                 disabled={
@@ -978,96 +980,99 @@ export function ImportForm({
                 onRemoveFile={removeFile}
               />
             </div>
-            <div className="grid min-w-0 content-start gap-5">
-              <SessionSettings
-                sessionDate={sessionDate}
-                sessionType={sessionType}
-                distanceUnit={distanceUnit}
-                detectedUnits={detectedUnits}
-                detectedSessionDateIso={detectedSessionDateIso}
-                onSessionDateChange={(value) => {
-                  cancelScorecardExtraction();
-                  setSessionDate(value);
-                  setSettingsConfirmed(false);
-                }}
-                onSessionTypeChange={(value) => {
-                  cancelScorecardExtraction();
-                  setSessionType(value);
-                  setSettingsConfirmed(false);
-                }}
-                onDistanceUnitChange={(value) => {
-                  setDistanceUnit(value);
-                  setSettingsConfirmed(false);
-                  setWarningsReviewed(false);
-                }}
-                confirmed={settingsConfirmed}
-                onConfirm={() => setSettingsConfirmed(true)}
-              />
-
-              <ColumnMappingPanel
-                files={uploadedFiles}
-                samples={Object.fromEntries(
-                  (parsedFiles[0]?.parsed.headers ?? []).map((header) => [
-                    header,
-                    (parsedFiles[0]?.parsed.shots ?? [])
-                      .slice(0, 3)
-                      .map((shot) => shot.sourceRawJson[header])
-                      .filter(Boolean),
-                  ]),
-                )}
-                columnMapping={columnMapping}
-                onColumnMappingChange={(value) => {
-                  setColumnMapping(value);
-                  setWarningsReviewed(false);
-                }}
-              />
-              {isCourseUpload ? (
-                <ScorecardExtractionPanel
-                  scorecardImageInputRef={scorecardImageInputRef}
-                  scorecardExtractState={scorecardExtractState}
-                  courseName={courseName}
-                  scorecardText={scorecardText}
-                  holeCount={scorecard.holes.length}
-                  totalYards={scorecard.holes.reduce((total, hole) => total + hole.yards, 0)}
-                  onApplySawgrassPreset={applySawgrassPreset}
-                  onExtractScorecardImage={extractScorecardImage}
-                  onCourseNameChange={(value) => {
+            {uploadedFiles.length > 0 && (
+              <div className="grid min-w-0 content-start gap-5">
+                <SessionSettings
+                  sessionDate={sessionDate}
+                  sessionType={sessionType}
+                  distanceUnit={distanceUnit}
+                  detectedUnits={detectedUnits}
+                  detectedSessionDateIso={detectedSessionDateIso}
+                  onSessionDateChange={(value) => {
                     cancelScorecardExtraction();
-                    setCourseName(value);
-                    setScorecardReviewed(false);
+                    setSessionDate(value);
+                    setSettingsConfirmed(false);
                   }}
-                  onScorecardTextChange={(value) => {
+                  onSessionTypeChange={(value) => {
                     cancelScorecardExtraction();
-                    setScorecardText(value);
-                    setScorecardReviewed(false);
+                    setSessionType(value);
+                    setSettingsConfirmed(false);
+                  }}
+                  onDistanceUnitChange={(value) => {
+                    setDistanceUnit(value);
+                    setSettingsConfirmed(false);
+                    setWarningsReviewed(false);
+                  }}
+                  confirmed={settingsConfirmed}
+                  onConfirm={() => setSettingsConfirmed(true)}
+                />
+
+                <ColumnMappingPanel
+                  files={uploadedFiles}
+                  samples={Object.fromEntries(
+                    (parsedFiles[0]?.parsed.headers ?? []).map((header) => [
+                      header,
+                      (parsedFiles[0]?.parsed.shots ?? [])
+                        .slice(0, 3)
+                        .map((shot) => shot.sourceRawJson[header])
+                        .filter(Boolean),
+                    ]),
+                  )}
+                  columnMapping={columnMapping}
+                  onColumnMappingChange={(value) => {
+                    setColumnMapping(value);
+                    setWarningsReviewed(false);
                   }}
                 />
-              ) : null}
-              {scorecardExtractState.status === "loading" ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-11"
-                  onClick={cancelScorecardExtraction}
-                >
-                  Cancel extraction
-                </Button>
-              ) : null}
-              {isCourseUpload && hasExtractedScorecard ? (
-                <label className="flex min-h-11 items-start gap-2 rounded-xl border border-border p-3 text-sm">
-                  <input
-                    type="checkbox"
-                    className="mt-1 size-5 shrink-0 accent-primary"
-                    checked={scorecardReviewed}
-                    disabled={scorecardExtractState.status === "loading"}
-                    onChange={(event) => setScorecardReviewed(event.target.checked)}
+                {isCourseUpload ? (
+                  <ScorecardExtractionPanel
+                    scorecardImageInputRef={scorecardImageInputRef}
+                    scorecardExtractState={scorecardExtractState}
+                    courseName={courseName}
+                    scorecardText={scorecardText}
+                    holeCount={scorecard.holes.length}
+                    totalYards={scorecard.holes.reduce((total, hole) => total + hole.yards, 0)}
+                    onApplySawgrassPreset={applySawgrassPreset}
+                    onExtractScorecardImage={extractScorecardImage}
+                    onCourseNameChange={(value) => {
+                      cancelScorecardExtraction();
+                      setCourseName(value);
+                      setScorecardReviewed(false);
+                    }}
+                    onScorecardTextChange={(value) => {
+                      cancelScorecardExtraction();
+                      setScorecardText(value);
+                      setScorecardReviewed(false);
+                    }}
                   />
-                  <span>
-                    I have checked the extracted scorecard values, course details and hole mapping.
-                  </span>
-                </label>
-              ) : null}
-            </div>
+                ) : null}
+                {scorecardExtractState.status === "loading" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11"
+                    onClick={cancelScorecardExtraction}
+                  >
+                    Cancel extraction
+                  </Button>
+                ) : null}
+                {isCourseUpload && hasExtractedScorecard ? (
+                  <label className="flex min-h-11 items-start gap-2 rounded-xl border border-border p-3 text-sm">
+                    <input
+                      type="checkbox"
+                      className="mt-1 size-5 shrink-0 accent-primary"
+                      checked={scorecardReviewed}
+                      disabled={scorecardExtractState.status === "loading"}
+                      onChange={(event) => setScorecardReviewed(event.target.checked)}
+                    />
+                    <span>
+                      I have checked the extracted scorecard values, course details and hole
+                      mapping.
+                    </span>
+                  </label>
+                ) : null}
+              </div>
+            )}
           </div>
         </section>
 
@@ -1078,7 +1083,7 @@ export function ImportForm({
         ) : null}
         {parseError ? (
           <Alert variant="destructive">
-            <AlertTitle>Could not parse files</AlertTitle>
+            <AlertTitle>Could not read the selected files</AlertTitle>
             <AlertDescription>{parseError}</AlertDescription>
             <ul className="mt-3 space-y-2">
               {parseFailures.map((file) => (
@@ -1125,7 +1130,7 @@ export function ImportForm({
           </Alert>
         ) : null}
 
-        {isCourseUpload ? (
+        {uploadedFiles.length > 0 && isCourseUpload ? (
           <Card className="premium-card">
             <CardHeader>
               <div className="flex items-start justify-between gap-4">
@@ -1151,48 +1156,52 @@ export function ImportForm({
           </Card>
         ) : null}
 
-        <div id="import-preview" className="scroll-mt-28">
-          <ShotPreview
-            shots={previewShots}
-            isCourseUpload={isCourseUpload}
-            onClubChange={(fileId, rowNumber, value) => {
-              setClubCorrections((current) => ({
-                ...current,
-                [fileId]: { ...current[fileId], [rowNumber]: value },
-              }));
-              setWarningsReviewed(false);
-            }}
-          />
-        </div>
-        {invalidMappings || unresolvedClubs ? (
-          <Alert variant="destructive">
-            <AlertTitle>Review mappings before saving</AlertTitle>
-            <AlertDescription>
-              {invalidMappings
-                ? "Complete required column mappings and resolve duplicate source columns. "
-                : ""}
-              {unresolvedClubs
-                ? "Choose a club for each unknown or inferred shot in the preview."
-                : ""}
-            </AlertDescription>
-          </Alert>
-        ) : null}
-        <SaveChecklistCard
-          hasFiles={uploadedFiles.length > 0}
-          hasShots={aggregate.shotCount > 0}
-          hasCompleteCourseMapping={
-            !isCourseUpload || courseAssignedShotCount === aggregate.shotCount
-          }
-          hasNoWarnings={aggregate.warnings.length === 0 || warningsReviewed}
-          settingsConfirmed={settingsConfirmed}
-          fileCount={uploadedFiles.length}
-          shotCount={aggregate.shotCount}
-          sessionSummary={`${sessionType.replaceAll("_", " ")} · ${sessionDate} · fallback ${distanceUnit}`}
-          isOnline={isOnline}
-          isPending={isPending}
-          canSave={canSave}
-          onSave={saveImportBatch}
-        />
+        {uploadedFiles.length > 0 && (
+          <>
+            <div id="import-preview" className="scroll-mt-28">
+              <ShotPreview
+                shots={previewShots}
+                isCourseUpload={isCourseUpload}
+                onClubChange={(fileId, rowNumber, value) => {
+                  setClubCorrections((current) => ({
+                    ...current,
+                    [fileId]: { ...current[fileId], [rowNumber]: value },
+                  }));
+                  setWarningsReviewed(false);
+                }}
+              />
+            </div>
+            {invalidMappings || unresolvedClubs ? (
+              <Alert variant="destructive">
+                <AlertTitle>Review mappings before saving</AlertTitle>
+                <AlertDescription>
+                  {invalidMappings
+                    ? "Complete required column mappings and resolve duplicate source columns. "
+                    : ""}
+                  {unresolvedClubs
+                    ? "Choose a club for each unknown or inferred shot in the preview."
+                    : ""}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            <SaveChecklistCard
+              hasFiles={uploadedFiles.length > 0}
+              hasShots={aggregate.shotCount > 0}
+              hasCompleteCourseMapping={
+                !isCourseUpload || courseAssignedShotCount === aggregate.shotCount
+              }
+              hasNoWarnings={aggregate.warnings.length === 0 || warningsReviewed}
+              settingsConfirmed={settingsConfirmed}
+              fileCount={uploadedFiles.length}
+              shotCount={aggregate.shotCount}
+              sessionSummary={`${sessionType.replaceAll("_", " ")} · ${sessionDate} · fallback ${distanceUnit}`}
+              isOnline={isOnline}
+              isPending={isPending}
+              canSave={canSave}
+              onSave={saveImportBatch}
+            />
+          </>
+        )}
       </div>
     </section>
   );

@@ -10,9 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { HighlightCarousel } from "@/components/app/highlight-carousel";
-import { TodayHighlightCard } from "@/components/app/today-highlight-card";
-import type { TodayHighlight } from "@/lib/today-highlights";
+import { TodayPracticePhoto } from "./today-practice-photo";
 import { ArrowRight, RefreshCw, Target, ChevronRight, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import styles from "./mobile-companion.module.css";
@@ -34,7 +32,6 @@ export function TodayPrimaryAnswer({
   evidenceDate,
   evidenceContent,
   compact = false,
-  highlights = [],
   reviewContext = "today",
 }: {
   accountId: string;
@@ -43,7 +40,6 @@ export function TodayPrimaryAnswer({
   evidenceDate?: string;
   evidenceContent: ReactNode;
   compact?: boolean;
-  highlights?: TodayHighlight[];
   reviewContext?: "today" | "selected" | "latest";
 }) {
   const evidenceTrigger = useRef<HTMLButtonElement>(null);
@@ -129,96 +125,72 @@ export function TodayPrimaryAnswer({
           </Link>
         </div>
       ) : null}
-      <HighlightCarousel
-        label="Your session highlights"
-        autoPlay={!syncState && isReview}
-        slides={[
-          {
-            id: "next-action",
-            label: serverState.eyebrow,
-            content: (
-              <section
-                className={
-                  highlights.length ? styles.focus : compact ? styles.reviewBrief : styles.focus
-                }
-                data-primary-recommendation
-                aria-label={
-                  isReview
-                    ? reviewContext === "selected"
-                      ? "Selected practice review"
-                      : reviewContext === "latest"
-                        ? "Latest practice review"
-                        : "Today’s practice review"
-                    : "Today's focus"
-                }
-              >
-                <div className={styles.focusHeading}>
-                  <p className={styles.focusEyebrow}>
-                    {isRecommendation ? "For your next session" : serverState.eyebrow}
-                  </p>
-                  <span className={styles.focusIcon}>
-                    {isReview ? (
-                      <ClipboardCheck className="size-5" aria-hidden />
-                    ) : (
-                      <Target className="size-5" aria-hidden />
-                    )}
-                  </span>
-                </div>
-                <div>
-                  <h2 className={styles.focusTitle}>
-                    {compact && reason === "Mixed session"
-                      ? reviewContext !== "today"
-                        ? "Mixed results in this practice"
-                        : "Mixed results today"
-                      : title}
-                  </h2>
-                  {!compact || reason !== "Mixed session" ? (
-                    <p className={styles.focusReason}>{reason}</p>
-                  ) : null}
-                </div>
-                {!compact || highlights.length > 0 ? (
-                  <Link
-                    href={serverState.href}
-                    className={styles.focusAction}
-                    data-today-primary-action
-                  >
-                    {isRecommendation && duration
-                      ? `Build ${duration} practice`
-                      : serverState.action}
-                    <ArrowRight className="size-4" aria-hidden />
-                  </Link>
-                ) : null}
-                <button
-                  id="today-evidence"
-                  className={styles.focusEvidence}
-                  onClick={() => setEvidenceOpen(true)}
-                  ref={evidenceTrigger}
-                  aria-label={evidenceTitle}
-                >
-                  <span>
-                    <strong>
-                      {compact ? "Saved practice · View evidence" : evidence}
-                      {isRecommendation ? ` · ${serverState.status} confidence` : ""}
-                    </strong>
-                    {evidenceDate ? (
-                      <span>
-                        {reviewContext === "selected" ? "Selected practice" : "Latest practice"} ·{" "}
-                        {evidenceDate}
-                      </span>
-                    ) : null}
-                  </span>
-                  <ChevronRight className="size-5 shrink-0" aria-hidden />
-                </button>
-              </section>
-            ),
-          },
-          ...highlights.map((highlight) => ({
-            id: highlight.id,
-            label: highlight.label,
-            content: <TodayHighlightCard highlight={highlight} />,
-          })),
-        ]}
-      />
+      <section
+        className={styles.focus}
+        data-primary-recommendation
+        aria-label={
+          isReview
+            ? reviewContext === "selected"
+              ? "Selected practice review"
+              : reviewContext === "latest"
+                ? "Latest practice review"
+                : "Today’s practice review"
+            : "Today's focus"
+        }
+      >
+        <div className="-mx-[var(--mobile-space-large)] -mt-[var(--mobile-space-large)] grid h-28">
+          <TodayPracticePhoto />
+        </div>
+        <div className={styles.focusHeading}>
+          <p className={styles.focusEyebrow}>
+            {isRecommendation ? "For your next session" : serverState.eyebrow}
+          </p>
+          <span className={styles.focusIcon}>
+            {isReview ? (
+              <ClipboardCheck className="size-5" aria-hidden />
+            ) : (
+              <Target className="size-5" aria-hidden />
+            )}
+          </span>
+        </div>
+        <div>
+          <h2 className={styles.focusTitle}>
+            {compact && reason === "Mixed session"
+              ? reviewContext !== "today"
+                ? "Mixed results in this practice"
+                : "Mixed results today"
+              : title}
+          </h2>
+          {!compact || reason !== "Mixed session" ? (
+            <p className={styles.focusReason}>{reason}</p>
+          ) : null}
+        </div>
+        <Link href={serverState.href} className={styles.focusAction} data-today-primary-action>
+          {isRecommendation && duration ? `Build ${duration} practice` : serverState.action}
+          <ArrowRight className="size-4" aria-hidden />
+        </Link>
+        <button
+          id="today-evidence"
+          className={styles.focusEvidence}
+          onClick={() => setEvidenceOpen(true)}
+          ref={evidenceTrigger}
+          aria-label={evidenceTitle}
+        >
+          <span>
+            <strong>
+              {compact ? (evidence ?? "View practice evidence") : evidence}
+              {isRecommendation ? ` · ${serverState.status} confidence` : ""}
+            </strong>
+            {evidenceDate ? (
+              <span>
+                {reviewContext === "selected" ? "Selected practice" : "Latest practice"} ·{" "}
+                {evidenceDate}
+              </span>
+            ) : null}
+          </span>
+          <ChevronRight className="size-5 shrink-0" aria-hidden />
+        </button>
+      </section>
 
       {evidenceVisited ? (
         <TodayEvidenceDrawer

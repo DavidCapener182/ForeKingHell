@@ -24,9 +24,9 @@ test.describe("mobile launch monitor loop", () => {
     page,
   }) => {
     await gotoAuthenticatedOrSkip(page, "/today", /Today|Home/i);
-    const highlights = page.getByRole("region", { name: "Your session highlights" });
+    const highlights = page.locator("[data-primary-recommendation]");
     await expect(highlights).toBeVisible();
-    await expect(page.getByRole("link", { name: "Next practice", exact: true })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: /Next practice/ })).toHaveAttribute(
       "href",
       /\/practice/,
     );
@@ -35,7 +35,7 @@ test.describe("mobile launch monitor loop", () => {
         .bottom,
       mainTop: document.querySelector("main")!.getBoundingClientRect().top,
       highlightsTop: document
-        .querySelector('[aria-label="Your session highlights"]')!
+        .querySelector("[data-primary-recommendation]")!
         .getBoundingClientRect().top,
       overflow: document.documentElement.scrollWidth - innerWidth,
     }));

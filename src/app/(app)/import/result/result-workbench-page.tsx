@@ -161,7 +161,7 @@ export default async function ImportResultWorkbenchPage({ searchParams }: Import
           <ResultAction
             href={`/shots?sessionId=${encodeURIComponent(result.id)}`}
             icon={<Database className="size-4" />}
-            title="Audit shot rows"
+            title="Inspect imported shots"
             detail="Inspect normalized shots and preserved raw import rows."
           />
           <ResultAction

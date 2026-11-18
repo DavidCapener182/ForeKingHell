@@ -14,7 +14,7 @@ export default async function CoachDiagnosisPage() {
     <PageShell>
       <PageHeader
         title="Club improvement centre"
-        description="Inspect the evidence, select one drill, then retest with measured shots."
+        description="Choose a club, practise its suggested drill, then compare the next measured session."
         actions={
           <Button asChild variant="outline">
             <Link href="/coach?tab=evidence">Back to Coach evidence</Link>

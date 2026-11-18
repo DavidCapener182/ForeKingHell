@@ -33,7 +33,8 @@ export default async function AchievementsPage({
           <div>
             <h1 className="text-2xl font-semibold sm:text-3xl">Achievements</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Your unlocks, next targets and the evidence behind earned XP.
+              {data.unlockedCount} of {data.totalCount} achievements unlocked · Level{" "}
+              {data.level.level}
             </p>
           </div>
           <Button asChild>

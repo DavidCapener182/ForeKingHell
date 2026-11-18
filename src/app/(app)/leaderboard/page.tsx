@@ -1585,7 +1585,7 @@ function TournamentBoards({ boards }: { boards: TournamentBoard[] }) {
     <DataPanel>
       <SectionHeader
         title="Tournament leaders"
-        description="Event leaders presented as standings, with gross result and completed rounds."
+        description="Compare gross scores and completed rounds for each event."
         action={
           <Button asChild variant="outline" size="sm">
             <Link href="/tournaments" prefetch={false}>

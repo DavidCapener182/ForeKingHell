@@ -68,7 +68,7 @@
     "geotiff": "^3.0.5",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.14.0",
-    "next": "16.4.2",
+    "next": "16.4.6",
     "postgres": "^3.4.9",
     "proj4": "^2.20.9",
     "qrcode": "^1.5.4",
@@ -110,14 +110,15 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.5",
-    "fast-glob": "file:./tools/eslint-fast-glob-compat/forekinghell-eslint-fast-glob-compat-1.0.5.tgz",
+    "fast-glob": "file:./tools/eslint-fast-glob-compat/forekinghell-eslint-fast-glob-compat-1.0.9.tgz",
     "brace-expansion": "5.0.12",
-    "picomatch": "4.0.7"
+    "picomatch": "file:./tools/nonrecursive-glob-compat/forekinghell-nonrecursive-glob-compat-1.0.3.tgz"
   },
   "overrides": {
     "sharp": "^0.35.5",
     "@next/eslint-plugin-next@16.4.2": {
       "fast-glob": "$fast-glob"
-    }
+    },
+    "picomatch": "$picomatch"
   }
 }

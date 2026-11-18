@@ -57,6 +57,12 @@ export default async function ClubDetailPage({ params }: PageProps) {
               Bag map
             </Link>
           </Button>
+          <Link
+            className="ml-auto inline-flex min-h-11 items-center font-semibold underline underline-offset-4"
+            href={`/bag/${clubId}/analytics`}
+          >
+            See club trends
+          </Link>
           <Button asChild variant="outline">
             <Link href="/import">
               <Upload className="size-4" />

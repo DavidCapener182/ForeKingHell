@@ -495,7 +495,7 @@ export function CompanionRangeImport({ practicePlanId }: { practicePlanId: strin
           </CollapsibleTrigger>
           <CollapsibleContent>
             <Alert className="mb-2">
-              <AlertTitle>Some rows need a cautious read</AlertTitle>
+              <AlertTitle>Check these readings before saving</AlertTitle>
               <AlertDescription>
                 <ul className="list-disc space-y-1 pl-5 text-xs leading-5">
                   {file.parsed.warnings.map((warning) => (

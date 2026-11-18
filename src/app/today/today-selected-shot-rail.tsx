@@ -1,5 +1,8 @@
 "use client";
 
+import ClubDeliveryChart, {
+  formatSignedDegrees,
+} from "@/components/visuals/face-path-delivery-chart";
 import { useState } from "react";
 import { Ban, RotateCcw, X } from "lucide-react";
 
@@ -57,6 +60,25 @@ export function TodaySelectedShotRail({
         </Button>
       </header>
 
+      {detail?.delivery?.path != null && (
+        <details className="border-b p-4">
+          <summary className="cursor-pointer font-semibold">
+            Club delivery · shot {shot.shotNumber ?? "details"}
+          </summary>
+          <p className="my-2 text-sm">
+            Path {formatSignedDegrees(detail.delivery.path)} · Face{" "}
+            {formatSignedDegrees(detail.delivery.face)} ({detail.delivery.source}) · Face-to-path{" "}
+            {formatSignedDegrees(detail.delivery.delta)}
+            {detail.delivery.strike && " · Strike " + detail.delivery.strike}
+          </p>
+          <ClubDeliveryChart
+            clubName={shot.clubLabel}
+            clubPath={detail.delivery.path}
+            faceAngle={detail.delivery.face}
+            rows={[detail.delivery]}
+          />
+        </details>
+      )}
       {detail ? (
         <>
           <div className="grid gap-2 border-b border-border bg-muted/15 p-4 sm:grid-cols-2">
@@ -104,6 +126,12 @@ export function TodaySelectedShotRail({
         <div className="grid gap-3 p-4">
           <div className="grid grid-cols-3 gap-2 text-sm">
             <Metric label="Carry" value={formatDistance(shot.carryYd)} />
+            <Metric label="Apex" value={shot.apexFt === null ? "—" : shot.apexFt + " ft"} />
+            <Metric
+              label="Ball speed"
+              value={shot.ballSpeedMph === null ? "—" : shot.ballSpeedMph + " mph"}
+            />
+            <Metric label="Launch angle" value={formatSignedDegrees(shot.launchAngleDeg)} />
             <Metric label="Total" value={formatDistance(shot.totalYd)} />
             <Metric label="Side" value={formatSide(shot.sideCarryYd)} />
           </div>

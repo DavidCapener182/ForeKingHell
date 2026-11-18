@@ -23,8 +23,8 @@ export function SharedTwinView({ title, manifest, replay, initialHoleNumber }: P
           <p className="text-xs text-emerald-200">{BRAND_NAME} · read-only Course Twin</p>
           <h1 className="mt-1 break-words text-lg font-semibold leading-snug">{title}</h1>
           <p id="shared-course-twin-context" className="mt-1 text-sm leading-5 text-emerald-100/80">
-            Only the linked reconstructed shot path and course package are shared. Account details
-            and source uploads are excluded.
+            Replay the shared shot path across {manifest.holes.length} mapped holes. Player account
+            details and source files are private.
           </p>
         </div>
         <Button asChild variant="secondary" className="h-auto min-h-11 whitespace-normal">

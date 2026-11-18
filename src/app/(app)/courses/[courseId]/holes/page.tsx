@@ -346,7 +346,7 @@ export default async function CourseHoleEditorPage({ params, searchParams }: Pag
                   ) : allowManualHoleEditing ? (
                     <DataPanel>
                       <SectionHeader
-                        title="Visual hole editor"
+                        title="Map tee and green positions"
                         description="Use the satellite map to place tee and green points. This saves the same geometry used by round overlays."
                         action={<MapPinned className="size-5 text-primary" />}
                       />

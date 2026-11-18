@@ -25,7 +25,7 @@ test("P02 Today UI: shared sections and viewport layout", async ({ page }, info)
     ]) {
       await page.setViewportSize({ width, height });
       await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
-      for (const label of ["Overview", "Practice", "Evidence", "Data quality"]) {
+      for (const label of ["Session verdict", "Practice plan", "Shot evidence", "Data quality"]) {
         await workspace.getByRole("tab", { name: label, exact: true }).click();
         await expect(workspace.getByRole("tab", { name: label, exact: true })).toHaveAttribute(
           "aria-selected",

@@ -33,7 +33,14 @@ export default async function SessionsCompanionPage({
 
   return (
     <PageShell>
-      <PageHeader title="Activity" description="Practice sessions and rounds, newest first." />
+      <PageHeader
+        title="Activity"
+        description={
+          total === result.savedTotal
+            ? `${result.savedTotal.toLocaleString("en-GB")} saved activities`
+            : `${total.toLocaleString("en-GB")} of ${result.savedTotal.toLocaleString("en-GB")} activities match your filters`
+        }
+      />
       <MobileAppShell className="gap-4" data-sessions-companion>
         {result.savedTotal > 0 ? (
           <SessionsCompanionList

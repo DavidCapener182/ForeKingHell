@@ -68,7 +68,11 @@ export default async function ImportCompanionPage({
       <MobileAppShell className="gap-4" data-import-companion-home>
         <UntitledPageHeader
           title="Import"
-          description="Choose a source and review your session before saving."
+          description={
+            history.activeCount
+              ? `${history.activeCount} saved import files. Choose a source to add another session.`
+              : "Choose a source, then review your first session before saving."
+          }
         />
         <CompanionSyncStatus accountId={userId} />
 

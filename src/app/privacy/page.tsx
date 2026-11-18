@@ -68,7 +68,7 @@ export default function PrivacyPage() {
             <Link href="/terms">Terms</Link>
           </Button>
           <Button asChild variant="ghost">
-            <Link href="/cookies">Cookie preferences</Link>
+            <Link href="/cookies#analytics-choice">Cookie preferences</Link>
           </Button>
         </nav>
         <PageHeader
@@ -92,6 +92,18 @@ export default function PrivacyPage() {
               {s.title}
             </a>
           ))}
+          <a
+            href="#controls-title"
+            className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm underline underline-offset-4"
+          >
+            Manage my data
+          </a>
+          <a
+            href="#privacy-contact-title"
+            className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm underline underline-offset-4"
+          >
+            Privacy contact
+          </a>
         </nav>
         <div className="grid gap-4 md:grid-cols-2">
           {sections.map((s) => (
@@ -109,7 +121,7 @@ export default function PrivacyPage() {
           ))}
         </div>
         <section className="grid gap-3 rounded-xl border p-5" aria-labelledby="controls-title">
-          <h2 id="controls-title" className="text-lg font-semibold">
+          <h2 id="controls-title" className="scroll-mt-24 text-lg font-semibold">
             Your practical controls
           </h2>
           <p className="text-sm text-muted-foreground">
@@ -153,7 +165,7 @@ export default function PrivacyPage() {
           </div>
         </section>
         <section className="rounded-xl border p-5" aria-labelledby="privacy-contact-title">
-          <h2 id="privacy-contact-title" className="text-lg font-semibold">
+          <h2 id="privacy-contact-title" className="scroll-mt-24 text-lg font-semibold">
             Contact
           </h2>
           <p className="mt-3 text-base leading-7 text-muted-foreground">

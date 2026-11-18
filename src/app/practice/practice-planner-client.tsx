@@ -838,9 +838,9 @@ function PracticeEvidenceLedgerDrawer({
       </DrawerTrigger>
       <DrawerContent className="inset-y-0 right-0 left-auto mt-0 h-full w-full max-w-4xl rounded-none">
         <DrawerHeader className="border-b text-left">
-          <DrawerTitle>Practice evidence ledger</DrawerTitle>
+          <DrawerTitle>Plan and measured results</DrawerTitle>
           <DrawerDescription>
-            Exportable plan-versus-upload detail for coach review and reporting.
+            Compare the planned blocks with your uploaded shots.
           </DrawerDescription>
         </DrawerHeader>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">

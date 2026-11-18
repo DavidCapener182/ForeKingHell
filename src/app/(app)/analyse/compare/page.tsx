@@ -1,3 +1,4 @@
+import { StockSampleComparison } from "@/components/app/stock-sample-comparison";
 import { comparisonReadiness } from "@/app/analyse/compare/comparison-readiness";
 import { requirePlanUser } from "@/lib/require-plan-access";
 import Link from "next/link";
@@ -111,7 +112,7 @@ async function SessionComparePage({ searchParams }: { searchParams: SearchParams
 
       <PageHeader
         title="Compare sessions"
-        description="Choose focus and baseline samples, then inspect measured change, source coverage and confidence."
+        description="Choose two sessions to compare carry, accuracy and the number of readings behind each change."
         actions={
           <SaveComparisonDialog
             filters={saveFilters}
@@ -162,6 +163,7 @@ async function SessionComparePage({ searchParams }: { searchParams: SearchParams
         </div>
       </section>
 
+      <StockSampleComparison focus={data.focus} baseline={data.baseline} />
       <SessionComparisonStage
         key={`${params.metric ?? ""}:${params.view ?? ""}`}
         initialMetric={params.metric}
@@ -187,7 +189,7 @@ async function SessionComparePage({ searchParams }: { searchParams: SearchParams
               Exact comparison
             </p>
             <h2 id="changed-metrics-title" className="mt-0.5 text-2xl font-semibold">
-              Metric deltas
+              Change between samples
             </h2>
           </div>
           <div className="flex flex-wrap gap-2">

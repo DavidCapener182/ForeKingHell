@@ -105,9 +105,13 @@ test("Today automatically reviews populated practice history on both surfaces", 
           await report.evaluate((element) => Boolean(element.closest('[role="tabpanel"]'))),
         ).toBe(false);
         await page.screenshot({ path: info.outputPath(`today-progress-${surface}.png`) });
+        await page
+          .getByRole("navigation", { name: "Practice views" })
+          .getByRole("link", { name: "Practice review", exact: true })
+          .click();
         const workspace = page.locator("[data-today-workspace-tabs]");
         await expect(workspace).toHaveAttribute("data-ready", "true", { timeout: 60000 });
-        await workspace.getByRole("tab", { name: "Evidence", exact: true }).click();
+        await workspace.getByRole("tab", { name: "Shot evidence", exact: true }).click();
         await expect(workspace.getByRole("tabpanel")).toBeVisible();
         await openPracticeDayReport(page);
         await expect(report).toBeVisible();
@@ -322,9 +326,13 @@ test("Today keeps the latest completed practice after the calendar day changes",
           await expect(report).not.toContainText("7i");
           await expect(page.locator("[data-today-shot-point]")).toHaveCount(0);
 
+          await page
+            .getByRole("navigation", { name: "Practice views" })
+            .getByRole("link", { name: "Practice review", exact: true })
+            .click();
           const workspace = page.locator("[data-today-workspace-tabs]");
           await expect(workspace).toHaveAttribute("data-ready", "true", { timeout: 60000 });
-          await workspace.getByRole("tab", { name: "Evidence", exact: true }).click();
+          await workspace.getByRole("tab", { name: "Shot evidence", exact: true }).click();
           const filters = workspace.getByRole("tabpanel").locator("#today-review-controls");
           await expect(filters.locator('input[name="club"]')).toHaveValue("driver");
           await expect(filters.getByRole("button", { name: /Driver.*Club/ })).toBeVisible();
@@ -384,6 +392,10 @@ function practiceDatesFrom(now: Date) {
 
 // The practice-day report retains its own baseline below the shared session answer.
 async function openPracticeDayReport(page: Page) {
+  const trends = page
+    .getByRole("navigation", { name: "Practice views" })
+    .getByRole("link", { name: "Club trends" });
+  if ((await trends.getAttribute("aria-current")) !== "page") await trends.click();
   const report = page.locator("[data-today-progress-report]");
   await report.waitFor({ state: "attached", timeout: 60000 });
   const disclosure = page.locator("details").filter({ has: report }).first();

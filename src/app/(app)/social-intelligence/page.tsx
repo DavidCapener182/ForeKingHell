@@ -100,7 +100,7 @@ export default async function SocialIntelligencePage() {
         <PageHeader
           eyebrow={<StatusPill tone="sky">Recaps and safety</StatusPill>}
           title="Recaps & Safety"
-          description="Review recaps generated from your own activity and track your submitted reports."
+          description="Create a recap of your golf or check the status of a content report."
           metrics={[
             { label: "Summaries", value: data.summaries.length },
             { label: "Reports", value: data.reports.length },

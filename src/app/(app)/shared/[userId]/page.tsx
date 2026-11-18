@@ -54,7 +54,7 @@ export default async function SharedAccountPage({
       <div className="grid min-w-0 gap-5 pb-28">
         <PageHeader
           title={name}
-          description={`${data.accessRole} access · Read-only shared account overview. You remain signed in to your own account.`}
+          description={`${data.accessRole} access · Read-only shared account overview · signed in to your own account.`}
           actions={
             <Button asChild variant="outline">
               <Link href="/settings?section=sharing" prefetch={false}>

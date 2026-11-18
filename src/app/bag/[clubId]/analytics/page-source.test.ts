@@ -85,7 +85,7 @@ describe("club analytics desktop evidence ledger", () => {
 
   it("keeps the contextual AI rail as shared wide-monitor support", () => {
     expect(source).toContain("DesktopInsightRail");
-    expect(source).toContain('title="AI club rail"');
+    expect(source).toContain('title="Ask about this club"');
     expect(source).toContain('scope="club-analytics"');
     expect(source).not.toContain("railBreakpoint=");
   });

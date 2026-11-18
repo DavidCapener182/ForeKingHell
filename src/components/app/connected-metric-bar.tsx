@@ -21,12 +21,15 @@ export function ConnectedMetricBar({
   className?: string;
   embedded?: boolean;
 }) {
-  const visibleMetrics = metrics.slice(0, 4);
+  const visibleMetrics = metrics;
 
   const metricCells = visibleMetrics.map((metric, index) => (
     <div
       key={metric.label}
-      className={cn("relative grid min-w-0 content-start gap-1.5 px-5 py-5", metric.className)}
+      className={cn(
+        "relative grid min-w-0 content-start gap-1 px-4 py-3 sm:px-5 sm:py-4",
+        metric.className,
+      )}
     >
       {index > 0 ? <Separator className="absolute inset-x-4 top-0 w-auto sm:hidden" /> : null}
       {index > 0 ? (
@@ -48,11 +51,11 @@ export function ConnectedMetricBar({
           <span className="shrink-0 text-xs font-semibold">{metric.trend}</span>
         ) : null}
       </div>
-      <p className="mt-2 break-words text-3xl font-semibold tracking-tight [font-variant-numeric:tabular-nums]">
+      <p className="mt-1 break-words text-2xl sm:text-3xl font-semibold tracking-tight [font-variant-numeric:tabular-nums]">
         {metric.value}
       </p>
       {metric.detail ? (
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">{metric.detail}</p>
+        <p className="mt-1 text-sm leading-5 text-muted-foreground">{metric.detail}</p>
       ) : null}
     </div>
   ));

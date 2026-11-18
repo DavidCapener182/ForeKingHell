@@ -109,7 +109,7 @@ describe("composable analysis design primitives", () => {
   it("keeps inactive tabs above the normal-text contrast threshold", () => {
     const tabs = source("src/components/ui/tabs.tsx");
 
-    expect(tabs).toContain("text-foreground/70");
+    expect(tabs).toContain("whitespace-nowrap text-foreground outline-none");
     expect(tabs).not.toContain("text-foreground/60");
   });
 });

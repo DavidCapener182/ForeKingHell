@@ -44,7 +44,7 @@ describe("profile golf identity contract", () => {
     expect(source).toContain("Current handicap");
     expect(source).toContain("Favourite / home course");
     expect(source).toContain("Launch monitor");
-    expect(source).toContain("Recent meaningful activity");
+    expect(source).toContain("Recent golf activity");
     expect(source).not.toContain("Your golf workspaces");
     expect(source).not.toContain('href="/progress"');
     expect(source).not.toContain('href="/bag"');

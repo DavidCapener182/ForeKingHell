@@ -12,7 +12,7 @@ export default function TodayLoading() {
           className="gap-3 py-3"
           role="status"
           aria-busy="true"
-          aria-label="Loading shared club progress"
+          aria-label="Loading your practice summary"
         >
           <CardHeader className="grid gap-2">
             <Skeleton className="h-3 w-28" />
@@ -30,14 +30,14 @@ export default function TodayLoading() {
           className="gap-3 py-3"
           role="status"
           aria-busy="true"
-          aria-label="Loading latest shot pattern"
+          aria-label="Loading your next steps"
         >
           <CardHeader className="grid gap-2 px-3">
             <Skeleton className="h-5 w-36" />
             <Skeleton className="h-3 w-52" />
           </CardHeader>
           <CardContent className="px-3">
-            <Skeleton className="aspect-[82/43] w-full rounded-xl" />
+            <Skeleton className="h-20 w-full rounded-xl" />
           </CardContent>
         </Card>
       </div>

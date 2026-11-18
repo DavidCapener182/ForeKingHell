@@ -768,7 +768,7 @@ export function PracticeCompanionClient({
                 ))}
                 <IOSListRow
                   label="Training load"
-                  href="/training-load"
+                  href="/stats/training-over-time"
                   value={context.trainingLoad.statusLabel}
                   detail={context.trainingLoad.recommendation}
                 />

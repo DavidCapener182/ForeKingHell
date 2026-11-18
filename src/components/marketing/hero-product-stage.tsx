@@ -137,8 +137,8 @@ export function HeroProductStage() {
       </div>
       <div className={cinematic.heroCopy} data-hero-layer data-hero-depth="2">
         <p>
-          Turn measured shots into a trusted bag, a focused practice job and a smarter plan for the
-          course.
+          Import your launch-monitor shots to see how far each club carries, what to practise next
+          and which club to take on the course.
         </p>
         <div className={cinematic.heroActions} data-mobile-cta-origin>
           <Link
@@ -154,24 +154,26 @@ export function HeroProductStage() {
         </div>
       </div>
 
-      <article
+      <a
         className={cinematic.heroSignal}
-        aria-label="LM World Tour evidence principle"
+        href="#preview-bag"
+        aria-label="Explore the sample bag and its club distances"
         data-hero-layer
         data-hero-depth="4"
       >
-        <header>
-          <span>Product principle</span>
-          <span className={cinematic.heroProofMark} aria-hidden>
-            ✓
-          </span>
-        </header>
-        <strong>Evidence before advice</strong>
+        <Image
+          src="/assets/landing/product-bag.avif"
+          alt=""
+          width={400}
+          height={150}
+          sizes="(max-width: 767px) 0px, 240px"
+          className={cinematic.heroBagPreview}
+        />
         <div>
-          <span>Original rows stay traceable</span>
-          <b>Read only</b>
+          <strong>Explore a sample bag</strong>
+          <span aria-hidden>↘</span>
         </div>
-      </article>
+      </a>
 
       <div className={cinematic.heroForeground} aria-hidden data-hero-layer data-hero-depth="10" />
       <a

@@ -58,10 +58,10 @@ export function SharedCoachReportView({
             <FileLock2 className="size-8 shrink-0 text-primary" aria-hidden />
           </div>
           <p className="mt-3 text-sm text-muted-foreground">
-            Included:{" "}
+            Sections shared ·{" "}
             {report.disclosure.selectedSections.map(formatLabel).join(", ") ||
               "No sections selected"}
-            . Later account changes do not update this frozen report.
+            . Figures reflect the report date.
           </p>
           <div className="mt-5 flex flex-wrap gap-3 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2">

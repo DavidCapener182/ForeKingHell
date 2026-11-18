@@ -150,7 +150,7 @@ export default async function CoachReportsPage({
       <div className="grid gap-5">
         <PageHeader
           title="Coach reports"
-          description="Create a frozen evidence report, choose exactly what it contains, and revoke access whenever you want."
+          description="Choose the sessions and figures to share. Each report is a dated snapshot and you can withdraw access."
           actions={
             <Button asChild variant="outline" className="min-h-11 rounded-xl">
               <Link href="/coach">

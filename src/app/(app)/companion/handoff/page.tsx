@@ -29,7 +29,7 @@ export default async function CompanionHandoffPage({
       <div className="grid min-w-0 gap-5 pb-28" data-companion-desktop-handoff>
         <PageHeader
           title="Choose how to continue"
-          description="This request does not yet have a complete companion task here. Open its full workspace or choose an available task below."
+          description="Open the full workspace for this task, or choose a tool that works on your phone."
           actions={
             <Button asChild className="h-auto min-h-11 whitespace-normal">
               <AppSurfaceLink href={appSurfaceHref("workbench", requestedPath)}>
@@ -58,7 +58,7 @@ export default async function CompanionHandoffPage({
         </section>
         <section aria-labelledby="alternatives-title" className="grid gap-3">
           <h2 id="alternatives-title" className="text-lg font-semibold">
-            Available companion tasks
+            Available on your phone
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {alternatives

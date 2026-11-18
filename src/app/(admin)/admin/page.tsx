@@ -254,7 +254,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
           <OperationsPanel
             title="Recent operational activity"
-            description="Latest recorded owner and operator audit events."
+            description="Recent actions by owners and operators."
           >
             <div className="p-4">
               <p className="mb-3 text-xs text-muted-foreground">
