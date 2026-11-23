@@ -244,7 +244,7 @@ export function TodayShotCharts({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="@container/today-charts space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <ToggleGroup
             type="single"
@@ -440,11 +440,11 @@ export function TodayShotCharts({
           </div>
         </details>
         <div
+          data-today-chart-layout
           className={cn(
-            "grid items-start gap-4",
-            variant === "editorial"
-              ? "lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]"
-              : "lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]",
+            "grid items-start gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]",
+            selectedShot &&
+              "@min-[64rem]/today-charts:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_16rem]",
           )}
         >
           <ChartPanel
@@ -504,17 +504,17 @@ export function TodayShotCharts({
               onSelectShot={inspectShot}
             />
           </ChartPanel>
+          {selectedShot ? (
+            <Suspense fallback={null}>
+              <TodaySelectedShotRail
+                key={selectedShot.id}
+                shot={selectedShot}
+                correctionClubs={correctionClubs}
+                onClose={() => setSelectedShotId(null)}
+              />
+            </Suspense>
+          ) : null}
         </div>
-        {selectedShot ? (
-          <Suspense fallback={null}>
-            <TodaySelectedShotRail
-              key={selectedShot.id}
-              shot={selectedShot}
-              correctionClubs={correctionClubs}
-              onClose={() => setSelectedShotId(null)}
-            />
-          </Suspense>
-        ) : null}
         {visibleShots.some((s) => s.alignmentFlagged) && (
           <p className="text-xs">
             Alignment review ·{" "}

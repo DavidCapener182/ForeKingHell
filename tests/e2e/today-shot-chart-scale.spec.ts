@@ -276,6 +276,59 @@ test("Today portrait dispersion leaves a wider trajectory and fits narrow screen
   expect(errors).toEqual([]);
 });
 
+test("Today shows the exact shot in a slim desktop column and keeps Delete in view on narrow screens", async ({
+  page,
+}, info) => {
+  test.skip(!["chromium", "webkit"].includes(info.project.name));
+  for (const [width, height] of [
+    [1440, 1000],
+    [390, 844],
+    [320, 568],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await renderFixture(page, "?selection=1");
+    const layout = page.locator("[data-today-chart-layout]");
+    const point = layout.locator('[data-today-shot-point="driver-9"]');
+    const action = layout.locator('[data-today-quick-delete="driver-9"]');
+    await expect(layout.locator("[data-today-selected-shot]")).toHaveCount(0);
+    await point.click();
+    const details = layout.locator('[data-today-selected-shot="driver-9"]');
+    const deleteShot = action.getByRole("button", { name: "Delete shot permanently" });
+    await expect(details).toBeVisible();
+    await expect(deleteShot).toBeInViewport({ ratio: 1 });
+    await expect(page.getByRole("button", { name: "Delete shot permanently" })).toHaveCount(1);
+    expect((await deleteShot.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+
+    if (width >= 1440) {
+      const dispersion = layout.getByRole("heading", { name: "Dispersion", exact: true });
+      const trajectory = layout.getByRole("heading", { name: "Ball flight · Trajectory" });
+      const [left, mid, right] = await Promise.all([
+        dispersion.boundingBox(),
+        trajectory.boundingBox(),
+        details.boundingBox(),
+      ]);
+      expect(left!.x).toBeLessThan(mid!.x);
+      expect(mid!.x).toBeLessThan(right!.x);
+      expect(right!.width).toBeLessThanOrEqual(256);
+      await expect(action).toHaveCSS("position", "static");
+    } else {
+      await expect(action).toHaveCSS("position", "fixed");
+    }
+
+    await deleteShot.click();
+    await expect(page.getByRole("alertdialog")).toBeVisible();
+    await page.getByRole("button", { name: "Keep shot" }).click();
+    await expect(page.getByRole("alertdialog")).toBeHidden();
+    await expect(deleteShot).toBeInViewport({ ratio: 1 });
+
+    await layout.locator('[data-today-shot-point="driver-8"]').click();
+    await expect(layout.locator('[data-today-selected-shot="driver-8"]')).toBeVisible();
+    await expect(layout.getByText(/course-managed shot can be excluded/)).toBeVisible();
+    await expect(layout.locator("[data-today-quick-delete]")).toHaveCount(0);
+    await expectNoOverflow(page);
+  }
+});
+
 test("Companion dispersion stays fixed when club and trusted-shot filters change", async ({
   page,
 }, info) => {

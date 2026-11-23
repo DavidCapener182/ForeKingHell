@@ -55,6 +55,7 @@ test.describe("Today exact-shot chart inspection", () => {
     // The owned measured-shot fixture is populated; the charts load in a client chunk.
     await expect(point).toBeVisible();
 
+    await expect(page.locator("[data-today-quick-delete]")).toHaveCount(0);
     const shotId = await point.getAttribute("data-today-shot-point");
     expect(shotId).toBeTruthy();
     await point.click();
@@ -66,26 +67,33 @@ test.describe("Today exact-shot chart inspection", () => {
       detail.getByRole("button", { name: /Exclude from stats|Keep in stats|Restore to stats/ }),
     ).toBeVisible();
 
-    await detail.getByRole("tab", { name: "Source" }).click();
-    await expect(detail.getByText("Source record", { exact: true })).toBeVisible();
-    await detail.getByRole("tab", { name: "History" }).click();
-    await expect(detail.getByText("Current review", { exact: true })).toBeVisible();
-
-    const permanentDelete = detail.getByRole("button", { name: "Delete shot permanently" }).first();
-    if ((await permanentDelete.count()) > 0) {
+    const quickDelete = page.locator(`[data-today-quick-delete="${shotId}"]`);
+    if ((await detail.locator("[data-course-shot-delete-restricted]").count()) > 0) {
+      await expect(page.locator("[data-today-quick-delete]")).toHaveCount(0);
+      await expect(detail.locator("[data-course-shot-delete-restricted]")).toContainText(
+        "score stays correct",
+      );
+    } else {
+      await expect(page.getByRole("button", { name: "Delete shot permanently" })).toHaveCount(1);
+      const permanentDelete = quickDelete.getByRole("button", { name: "Delete shot permanently" });
+      // Assert before clicking, since Playwright can otherwise scroll a hidden in-flow control into view.
+      await expect(permanentDelete).toBeInViewport({ ratio: 1 });
       await permanentDelete.click();
       await expect(
         page.getByRole("heading", { name: "Permanently delete this shot?" }),
       ).toBeVisible();
       await page.getByRole("button", { name: "Keep shot" }).click();
-    } else {
-      await expect(detail.locator("[data-course-shot-delete-restricted]")).toContainText(
-        "score stays correct",
-      );
+      await expect(permanentDelete).toBeInViewport({ ratio: 1 });
     }
+
+    await detail.getByRole("tab", { name: "Source" }).click();
+    await expect(detail.getByText("Source record", { exact: true })).toBeVisible();
+    await detail.getByRole("tab", { name: "History" }).click();
+    await expect(detail.getByText("Current review", { exact: true })).toBeVisible();
 
     await detail.getByRole("button", { name: "Close selected shot details" }).click();
     await expect(detail).toBeHidden();
+    await expect(page.locator("[data-today-quick-delete]")).toHaveCount(0);
 
     await point.focus();
     await point.press("Enter");
