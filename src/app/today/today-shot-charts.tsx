@@ -449,6 +449,7 @@ export function TodayShotCharts({
         >
           <ChartPanel
             title="Dispersion"
+            className={selectedShot ? "@min-[64rem]/today-charts:h-auto" : undefined}
             detail="Recorded carry and lateral finish. The illustrated hole is decorative."
             sampleSize={dispersionRows.length}
             empty={!visibleShots.some(hasDispersionData)}
@@ -475,6 +476,7 @@ export function TodayShotCharts({
           </ChartPanel>
           <ChartPanel
             title="Ball flight · Trajectory"
+            className={selectedShot ? "@min-[64rem]/today-charts:h-auto" : undefined}
             detail={
               trajectoryView === "averages"
                 ? "Illustrative arcs from club-average carry and apex."
