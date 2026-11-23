@@ -310,8 +310,25 @@ test("Today shows the exact shot in a slim desktop column and keeps Delete in vi
       expect(left!.x).toBeLessThan(mid!.x);
       expect(mid!.x).toBeLessThan(right!.x);
       expect(right!.width).toBeLessThanOrEqual(256);
+      expect(right!.height).toBeLessThanOrEqual(42 * 16);
+      const evidence = details.locator("[data-today-selected-shot-body]");
+      await expect(evidence).toHaveCSS("overflow-y", "auto");
+      for (const chart of await layout.locator("[data-chart-system]").all()) {
+        // Each card ends just after its table control instead of matching the evidence rail.
+        expect(
+          await chart.evaluate(
+            (node) =>
+              node.getBoundingClientRect().bottom -
+              node.lastElementChild!.getBoundingClientRect().bottom,
+          ),
+        ).toBeLessThanOrEqual(16);
+      }
       await expect(action).toHaveCSS("position", "static");
     } else {
+      await expect(details.locator("[data-today-selected-shot-body]")).toHaveCSS(
+        "display",
+        "contents",
+      );
       await expect(action).toHaveCSS("position", "fixed");
     }
 

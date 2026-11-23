@@ -50,9 +50,9 @@ export function TodaySelectedShotRail({
     <section
       aria-label="Selected chart shot details"
       data-today-selected-shot={shot.id}
-      className="min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:col-span-2 @min-[64rem]/today-charts:sticky @min-[64rem]/today-charts:top-4 @min-[64rem]/today-charts:col-span-1"
+      className="min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:col-span-2 @min-[64rem]/today-charts:sticky @min-[64rem]/today-charts:top-4 @min-[64rem]/today-charts:col-span-1 @min-[64rem]/today-charts:flex @min-[64rem]/today-charts:max-h-[min(42rem,calc(100dvh-2rem))] @min-[64rem]/today-charts:flex-col"
     >
-      <header className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+      <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
             Selected shot
@@ -80,7 +80,7 @@ export function TodaySelectedShotRail({
       {detail?.canDeletePermanently ? (
         <div
           ref={deleteSlot}
-          className="@min-[64rem]/today-charts:min-h-14 @min-[64rem]/today-charts:px-3 @min-[64rem]/today-charts:py-1.5"
+          className="shrink-0 @min-[64rem]/today-charts:min-h-14 @min-[64rem]/today-charts:px-3 @min-[64rem]/today-charts:py-1.5"
         >
           <div
             role="group"
@@ -114,84 +114,89 @@ export function TodaySelectedShotRail({
         </div>
       ) : null}
 
-      {detail?.delivery?.path != null && (
-        <details className="border-b p-4">
-          <summary className="cursor-pointer font-semibold">
-            Club delivery · shot {shot.shotNumber ?? "details"}
-          </summary>
-          <p className="my-2 text-sm">
-            Path {formatSignedDegrees(detail.delivery.path)} · Face{" "}
-            {formatSignedDegrees(detail.delivery.face)} ({detail.delivery.source}) · Face-to-path{" "}
-            {formatSignedDegrees(detail.delivery.delta)}
-            {detail.delivery.strike && " · Strike " + detail.delivery.strike}
-          </p>
-          <ClubDeliveryChart
-            clubName={shot.clubLabel}
-            clubPath={detail.delivery.path}
-            faceAngle={detail.delivery.face}
-            rows={[detail.delivery]}
-          />
-        </details>
-      )}
-      {detail ? (
-        <>
-          <div className="grid gap-2 border-b border-border bg-muted/15 p-4 sm:grid-cols-2 @min-[64rem]/today-charts:grid-cols-1">
-            <ShotReviewButton
-              shotId={detail.id}
-              reviewStatus={detail.reviewStatus}
-              trigger={
-                <Button type="button" variant="outline" className="w-full justify-between">
-                  {reviewLabel}
-                  {isRestorableShotReviewStatus(detail.reviewStatus) ? (
-                    <RotateCcw className="size-4" />
-                  ) : (
-                    <Ban className="size-4" />
-                  )}
-                </Button>
-              }
+      <div
+        data-today-selected-shot-body
+        className="contents @min-[64rem]/today-charts:block @min-[64rem]/today-charts:min-h-0 @min-[64rem]/today-charts:overflow-y-auto"
+      >
+        {detail?.delivery?.path != null && (
+          <details className="border-b p-4">
+            <summary className="cursor-pointer font-semibold">
+              Club delivery · shot {shot.shotNumber ?? "details"}
+            </summary>
+            <p className="my-2 text-sm">
+              Path {formatSignedDegrees(detail.delivery.path)} · Face{" "}
+              {formatSignedDegrees(detail.delivery.face)} ({detail.delivery.source}) · Face-to-path{" "}
+              {formatSignedDegrees(detail.delivery.delta)}
+              {detail.delivery.strike && " · Strike " + detail.delivery.strike}
+            </p>
+            <ClubDeliveryChart
+              clubName={shot.clubLabel}
+              clubPath={detail.delivery.path}
+              faceAngle={detail.delivery.face}
+              rows={[detail.delivery]}
             />
-            {!detail.canDeletePermanently && (
-              <div
-                className="rounded-lg border border-border bg-background px-3 py-2 text-xs leading-5 text-muted-foreground sm:col-span-2 @min-[64rem]/today-charts:col-span-1"
-                data-course-shot-delete-restricted
-              >
-                This course-managed shot can be excluded from stats here. Permanent deletion is only
-                available in its course or round workflow so the score stays correct.
-              </div>
-            )}
-          </div>
-          {correctionClubs.length ? (
-            <div className="border-b border-border p-4">
-              <ClubCorrection shotId={shot.id} clubs={correctionClubs} />
+          </details>
+        )}
+        {detail ? (
+          <>
+            <div className="grid gap-2 border-b border-border bg-muted/15 p-4 sm:grid-cols-2 @min-[64rem]/today-charts:grid-cols-1">
+              <ShotReviewButton
+                shotId={detail.id}
+                reviewStatus={detail.reviewStatus}
+                trigger={
+                  <Button type="button" variant="outline" className="w-full justify-between">
+                    {reviewLabel}
+                    {isRestorableShotReviewStatus(detail.reviewStatus) ? (
+                      <RotateCcw className="size-4" />
+                    ) : (
+                      <Ban className="size-4" />
+                    )}
+                  </Button>
+                }
+              />
+              {!detail.canDeletePermanently && (
+                <div
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-xs leading-5 text-muted-foreground sm:col-span-2 @min-[64rem]/today-charts:col-span-1"
+                  data-course-shot-delete-restricted
+                >
+                  This course-managed shot can be excluded from stats here. Permanent deletion is
+                  only available in its course or round workflow so the score stays correct.
+                </div>
+              )}
             </div>
-          ) : null}
-          <SelectedShotDetail
-            shot={detail}
-            tab={detailTab}
-            onTabChange={setDetailTab}
-            compact
-            onDeleteComplete={onClose}
-            showActions={false}
-          />
-        </>
-      ) : (
-        <div className="grid gap-3 p-4">
-          <div className="grid grid-cols-3 gap-2 text-sm">
-            <Metric label="Carry" value={formatDistance(shot.carryYd)} />
-            <Metric label="Apex" value={shot.apexFt === null ? "—" : shot.apexFt + " ft"} />
-            <Metric
-              label="Ball speed"
-              value={shot.ballSpeedMph === null ? "—" : shot.ballSpeedMph + " mph"}
+            {correctionClubs.length ? (
+              <div className="border-b border-border p-4">
+                <ClubCorrection shotId={shot.id} clubs={correctionClubs} />
+              </div>
+            ) : null}
+            <SelectedShotDetail
+              shot={detail}
+              tab={detailTab}
+              onTabChange={setDetailTab}
+              compact
+              onDeleteComplete={onClose}
+              showActions={false}
             />
-            <Metric label="Launch angle" value={formatSignedDegrees(shot.launchAngleDeg)} />
-            <Metric label="Total" value={formatDistance(shot.totalYd)} />
-            <Metric label="Side" value={formatSide(shot.sideCarryYd)} />
+          </>
+        ) : (
+          <div className="grid gap-3 p-4">
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <Metric label="Carry" value={formatDistance(shot.carryYd)} />
+              <Metric label="Apex" value={shot.apexFt === null ? "—" : shot.apexFt + " ft"} />
+              <Metric
+                label="Ball speed"
+                value={shot.ballSpeedMph === null ? "—" : shot.ballSpeedMph + " mph"}
+              />
+              <Metric label="Launch angle" value={formatSignedDegrees(shot.launchAngleDeg)} />
+              <Metric label="Total" value={formatDistance(shot.totalYd)} />
+              <Metric label="Side" value={formatSide(shot.sideCarryYd)} />
+            </div>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Detailed source and review history are unavailable for this chart instance.
+            </p>
           </div>
-          <p className="text-sm leading-6 text-muted-foreground">
-            Detailed source and review history are unavailable for this chart instance.
-          </p>
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }
