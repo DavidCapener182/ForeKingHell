@@ -3,8 +3,8 @@
 import ClubDeliveryChart, {
   formatSignedDegrees,
 } from "@/components/visuals/face-path-delivery-chart";
-import { useState } from "react";
-import { Ban, RotateCcw, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Ban, RotateCcw, Trash2, X } from "lucide-react";
 
 import { ClubCorrection } from "@/app/shots/club-correction";
 import { ShotDeleteButton, ShotReviewButton } from "@/app/shots/shot-review-controls";
@@ -15,6 +15,7 @@ import {
 import type { TodayChartShot } from "@/app/today/today-shot-types";
 import { Button } from "@/components/ui/button";
 import { isRestorableShotReviewStatus } from "@/lib/shot-review";
+import { cn } from "@/lib/utils";
 
 export function TodaySelectedShotRail({
   shot,
@@ -29,11 +30,27 @@ export function TodaySelectedShotRail({
   const detail = shot.detail ?? null;
   const reviewLabel = detail ? selectedShotReviewLabel(detail.reviewStatus) : "Exclude from stats";
 
+  const deleteSlot = useRef<HTMLDivElement>(null);
+  const [deleteSlotInView, setDeleteSlotInView] = useState(false);
+
+  useEffect(() => {
+    const slot = deleteSlot.current;
+    if (!slot || typeof IntersectionObserver === "undefined") return;
+
+    // Keep the same guarded action reachable even if the chart is already partly scrolled.
+    const observer = new IntersectionObserver(
+      ([entry]) => setDeleteSlotInView(entry.intersectionRatio >= 0.99),
+      { threshold: [0, 0.99], rootMargin: "-4px 0px -4px 0px" },
+    );
+    observer.observe(slot);
+    return () => observer.disconnect();
+  }, [detail?.canDeletePermanently]);
+
   return (
     <section
       aria-label="Selected chart shot details"
       data-today-selected-shot={shot.id}
-      className="min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+      className="min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:col-span-2 @min-[64rem]/today-charts:sticky @min-[64rem]/today-charts:top-4 @min-[64rem]/today-charts:col-span-1"
     >
       <header className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
         <div className="min-w-0">
@@ -60,6 +77,43 @@ export function TodaySelectedShotRail({
         </Button>
       </header>
 
+      {detail?.canDeletePermanently ? (
+        <div
+          ref={deleteSlot}
+          className="@min-[64rem]/today-charts:min-h-14 @min-[64rem]/today-charts:px-3 @min-[64rem]/today-charts:py-1.5"
+        >
+          <div
+            role="group"
+            aria-label="Selected chart shot action"
+            data-today-quick-delete={detail.id}
+            className={cn(
+              "fixed inset-x-3 bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] z-30 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-xl border border-border bg-card p-2 text-card-foreground shadow-lg sm:left-auto sm:right-4 sm:max-w-sm",
+              deleteSlotInView &&
+                "@min-[64rem]/today-charts:static @min-[64rem]/today-charts:grid-cols-1 @min-[64rem]/today-charts:border-0 @min-[64rem]/today-charts:p-0 @min-[64rem]/today-charts:shadow-none",
+            )}
+          >
+            <span
+              className={cn(
+                "min-w-0 break-words px-1 text-sm font-semibold",
+                deleteSlotInView && "@min-[64rem]/today-charts:hidden",
+              )}
+            >
+              {detail.clubLabel} · shot {detail.shotNumberLabel ?? shot.shotNumber ?? "—"}
+            </span>
+            <ShotDeleteButton
+              shotId={detail.id}
+              onComplete={onClose}
+              trigger={
+                <Button type="button" variant="destructive" className="min-h-11 gap-2">
+                  <Trash2 className="size-4" aria-hidden />
+                  Delete shot permanently
+                </Button>
+              }
+            />
+          </div>
+        </div>
+      ) : null}
+
       {detail?.delivery?.path != null && (
         <details className="border-b p-4">
           <summary className="cursor-pointer font-semibold">
@@ -81,7 +135,7 @@ export function TodaySelectedShotRail({
       )}
       {detail ? (
         <>
-          <div className="grid gap-2 border-b border-border bg-muted/15 p-4 sm:grid-cols-2">
+          <div className="grid gap-2 border-b border-border bg-muted/15 p-4 sm:grid-cols-2 @min-[64rem]/today-charts:grid-cols-1">
             <ShotReviewButton
               shotId={detail.id}
               reviewStatus={detail.reviewStatus}
@@ -96,11 +150,9 @@ export function TodaySelectedShotRail({
                 </Button>
               }
             />
-            {detail.canDeletePermanently ? (
-              <ShotDeleteButton shotId={detail.id} onComplete={onClose} />
-            ) : (
+            {!detail.canDeletePermanently && (
               <div
-                className="rounded-lg border border-border bg-background px-3 py-2 text-xs leading-5 text-muted-foreground sm:col-span-2"
+                className="rounded-lg border border-border bg-background px-3 py-2 text-xs leading-5 text-muted-foreground sm:col-span-2 @min-[64rem]/today-charts:col-span-1"
                 data-course-shot-delete-restricted
               >
                 This course-managed shot can be excluded from stats here. Permanent deletion is only
